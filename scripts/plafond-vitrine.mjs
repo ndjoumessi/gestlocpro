@@ -170,7 +170,18 @@ const PLAFONDS = [
     d'une branche de mesure — `complet` ne tourne que sur `main`) : +26, +47,
     +25 et +26.
   */
-  { largeur: 360, langue: 'fr', plafond: 10223, plafondLarge: 10223, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  /*
+    +24 px (fr@360), LE 2026-09-13 : LE LIEN « CONFIDENTIALITÉ ». À côté de
+    « Mentions légales » dans la rangée du « © », les deux liens passent à la
+    ligne ensemble à 360 en français ; en anglais (« Legal notice »,
+    « Privacy ») et au bureau, la rangée tient sur une ligne. La case de
+    l'inscription faisait accepter une politique qui n'existait pas. En police
+    large (exécution 34771718248), aucun des quatre points ne bouge, et
+    `plafondLarge` reste le relevé précédent. Pourquoi — la rangée y passait
+    peut-être déjà à la ligne avec le seul « Mentions légales » — n'est pas
+    mesuré.
+  */
+  { largeur: 360, langue: 'fr', plafond: 10247, plafondLarge: 10223, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
   { largeur: 360, langue: 'en', plafond: 10105, plafondLarge: 9997, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.

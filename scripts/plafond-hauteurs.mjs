@@ -332,6 +332,18 @@ const HORS_PORTEE = {
  * police large (exécution 34727561716) : 1528 et 1227, les 44 autres points
  * identiques.
  *
+ * ═══ ET CE QUE LA POLITIQUE DE CONFIDENTIALITÉ EST, LE 2026-09-13 ═══
+ *
+ * 3347 px à 360, 2356 à 1280 : UN DOCUMENT, PAS UN ÉCRAN. Neuf rubriques : ce
+ * que les articles 13 et 14 du RGPD exigent d'une information complète —
+ * responsable, rôles, données, finalités et bases légales, destinataires,
+ * transferts, conservation, droits —, plus le cookie et le stockage du
+ * navigateur, qui relèvent de la loi Informatique et libertés (article 82).
+ * Ce plafond ne se discute pas rubrique par
+ * rubrique : il garde que la page ne GRANDISSE pas sans qu'un diff le dise.
+ * Sous la police large (exécution 34771718248) : 3261 et 2313, les 46 autres
+ * points identiques.
+ *
  * ═══ ET CE QUE `/demo/acces@360` A ACHETÉ, LE 2026-09-11 ═══
  *
  * +22 px, 2226 → 2248 : L'EXPIRATION D'UN CODE, VISIBLE SUR TÉLÉPHONE. La
@@ -356,6 +368,7 @@ const PLAFONDS = [
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mentions-legales', largeur: 360, plafond: 1554, plafondLarge: 1528 },
+  { adresse: '/confidentialite', largeur: 360, plafond: 3347, plafondLarge: 3261 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
@@ -380,6 +393,7 @@ const PLAFONDS = [
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mentions-legales', largeur: 1280, plafond: 1227, plafondLarge: 1227 },
+  { adresse: '/confidentialite', largeur: 1280, plafond: 2356, plafondLarge: 2313 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
@@ -434,11 +448,12 @@ const ADRESSES = routes.map((r) => r.adresse)
   vider l'inventaire, et l'inspection comparerait 0 à 0 puis se déclarerait
   verte. La même mutation a trouvé ce piège quatre fois dans ce dépôt.
 
-  46 = (25 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
-       `/mentions-legales`, le 2026-09-12.
+  48 = (26 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
+       `/mentions-legales`, le 2026-09-12 ; la 26e `/confidentialite`, le
+       2026-09-13.
    4 = les deux adresses hors portée, à leurs deux largeurs.
 */
-const ATTENDUS = 46
+const ATTENDUS = 48
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.
@@ -476,6 +491,8 @@ const SANS_ATTENTE_DECLARES = new Set([
   '/reinitialiser',
   // Une page de faits écrits dans le paquet : elle n'attend aucune donnée.
   '/mentions-legales',
+  // La politique de confidentialité, pour la même raison.
+  '/confidentialite',
   '/adresse-qui-n-existe-pas',
   '/demo/acces',
   '/demo/decisions',

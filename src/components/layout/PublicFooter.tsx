@@ -167,23 +167,45 @@ export function PublicFooter() {
               d'auteur, où l'on cherche ce genre de lien — pas dans la colonne
               « Produit ».
 
-              IL NE COÛTE RIEN À LA VITRINE, et c'est mesuré. Posé tel quel, il
-              ajoutait 60 px à 360 — la rangée s'empilait — et 27 à 1280 — sa
+              IL NE COÛTAIT RIEN À LA VITRINE, et c'était mesuré. Posé tel quel,
+              il ajoutait 60 px à 360 — la rangée s'empilait — et 27 à 1280 — sa
               cible de 44 px grandissait la rangée du « © » ; `plafond-vitrine`
-              l'a refusé. La rangée reste donc sur UNE ligne à toute largeur (243
-              px de contenu dans les 280 de la plus étroite), et `-my-[14px]`
+              l'a refusé. Seul à côté du « © », il tenait sur UNE ligne à toute
+              largeur (243 px de contenu dans les 280 de la plus étroite). Depuis
+              le 2026-09-13, « Confidentialité » le rejoint : en français à 360 les
+              deux liens passent sous le « © », +24 px mesurés ; en anglais et au
+              bureau, la rangée tient encore. `-my-[14px]`
               ramène la cible à 16 px de hauteur utile, sous les 16,8 du « © » :
               elle garde ses 44 px au toucher, débordant dans la marge au-dessus
               et le rembourrage du pied en dessous, où rien d'autre ne se touche.
               Pas de marge négative sur le CÔTÉ : `-mr-2` alignait le texte sur le
               bord, et faisait sortir la cible de 8 px de sa rangée —
               `MESURER_DEBORD_LOCAL` l'a refusé. */}
-          <Link
-            to="/mentions-legales"
-            className="-my-[14px] inline-flex min-h-11 min-w-11 items-center px-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
-          >
-            {t('legal.footerLink')}
-          </Link>
+          {/* DEUX LIENS JURIDIQUES, GROUPÉS : quand la rangée ne tient plus sur
+              une ligne — à 360, « © », « Mentions légales » et « Confidentialité »
+              dépassent les 280 px de contenu —, ils passent à la ligne ENSEMBLE,
+              plutôt que d'en laisser un seul à côté du « © ». Aucune marge
+              négative sur le côté, pour la raison écrite plus haut : `-mr-2`
+              faisait sortir une cible de sa rangée. Le PREMIER lien n'a donc
+              pas de rembourrage à gauche : passé sous le « © », son texte
+              s'aligne sur lui au lieu de rentrer de 8 px. */}
+          <div className="flex flex-wrap items-center">
+            {/* Classes écrites en entier sur chaque lien, sans constante
+                partagée : `cibles.test.ts` lit le plancher de 44 px dans la
+                source, là où la balise est posée. */}
+            <Link
+              to="/mentions-legales"
+              className="-my-[14px] inline-flex min-h-11 min-w-11 items-center pr-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
+            >
+              {t('legal.footerLink')}
+            </Link>
+            <Link
+              to="/confidentialite"
+              className="-my-[14px] inline-flex min-h-11 min-w-11 items-center px-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
+            >
+              {t('privacy.footerLink')}
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

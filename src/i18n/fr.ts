@@ -2645,6 +2645,79 @@ export const fr = {
     footerLink: 'Mentions légales',
   },
 
+  privacy: {
+    title: 'Politique de confidentialité',
+    intro:
+      'Ce que GestLocPro fait des données personnelles qu’il reçoit, relevé dans le fonctionnement du service lui-même.',
+    updatedOn: 'Relevé au {date}',
+    controller: {
+      title: 'Responsable du traitement',
+      body: 'L’éditeur de GestLocPro : {name}, {form}, SIREN {siren}. Pour toute question sur vos données, ou pour exercer vos droits, écrivez à :',
+    },
+    roles: {
+      title: 'Qui décide de quoi',
+      account:
+        'Pour votre compte — nom, adresse électronique, téléphone, mot de passe, connexions —, l’éditeur est responsable du traitement.',
+      rental:
+        'Les données qu’un bailleur ou son gestionnaire saisit sur ses locataires, ses logements, ses loyers et ses états des lieux sont traitées pour son compte : le bailleur en est responsable, et l’éditeur agit comme son sous-traitant. Si vous êtes locataire, adressez d’abord vos demandes à votre bailleur.',
+    },
+    data: {
+      title: 'Données traitées',
+      account:
+        'Compte : nom, adresse électronique, téléphone, pays, langue, mot de passe (conservé haché, jamais en clair), date d’acceptation des conditions et choix de la lettre d’information.',
+      sessions: 'Connexions : date, navigateur utilisé et adresse IP.',
+      rental:
+        'Gestion locative : nom, téléphone et adresse électronique des locataires ; baux, loyers, paiements et dépôts de garantie ; relevés de compteurs ; états des lieux et leurs photos ; demandes de travaux et de documents ; messages et annonces.',
+      audit:
+        'Journal des opérations : qui a fait quoi, et quand. Il garde le nom d’un locataire après sa suppression.',
+      none: 'Aucune donnée bancaire, pièce d’identité ni donnée de santé n’est demandée. Les photos sont réencodées dans le navigateur avant l’envoi, ce qui retire leurs métadonnées, dont la position.',
+    },
+    purposes: {
+      title: 'Pourquoi',
+      service:
+        'Fournir le service — tenir le compte et la gestion locative, envoyer les courriels de réinitialisation du mot de passe, de suivi des travaux et de relance des loyers : exécution du contrat.',
+      security: 'Protéger les comptes — connexions et journal des opérations : intérêt légitime.',
+      newsletter:
+        'Lettre d’information : votre consentement, que vous pouvez retirer. Aucune n’est envoyée à ce jour.',
+      noTracking: 'Aucun outil de mesure d’audience, aucune publicité, aucune revente de données.',
+    },
+    recipients: {
+      title: 'Destinataires',
+      intro: 'Les membres d’un parc en voient les données selon leur rôle. Hors du parc, trois prestataires en reçoivent :',
+      hebergement: 'hébergement de l’application, de la base de données et des photos',
+      courriels: 'envoi des courriels',
+      relais: 'relais technique de l’adresse gestlocpro.vercel.app',
+      US: 'États-Unis',
+    },
+    transfers: {
+      title: 'Transferts hors de l’Union européenne',
+      body: 'Ces trois prestataires sont établis aux États-Unis. Chacun déclare adhérer au Data Privacy Framework UE–États-Unis, que la Commission européenne a reconnu par sa décision d’adéquation du 10 juillet 2023.',
+    },
+    retention: {
+      title: 'Durée de conservation',
+      body: 'Les données sont conservées tant que le compte ou le parc existe. Il n’y a aujourd’hui aucune suppression automatique : une session de connexion expire, mais sa trace est gardée.',
+      onRequest:
+        'Sur demande écrite, l’éditeur supprime les données dont il est responsable. Celles d’un locataire se suppriment sur instruction de son bailleur.',
+    },
+    storage: {
+      title: 'Cookies et stockage du navigateur',
+      cookieLead: 'Un seul cookie :',
+      cookieBody: 'Il maintient votre connexion ; strictement nécessaire, il ne demande pas de consentement.',
+      preferences: 'Votre navigateur garde aussi vos préférences : thème, langue, région, devise et taux de change.',
+      login:
+        'Si vous cochez « Rester connecté », il garde ce choix et votre adresse électronique, pour préremplir la connexion. Elle y reste après la déconnexion, jusqu’à ce que vous décochiez la case.',
+      demo: 'La démonstration garde ses données fictives dans le navigateur.',
+    },
+    rights: {
+      title: 'Vos droits',
+      body: 'Vous pouvez demander l’accès à vos données, leur rectification, leur effacement, leur portabilité ou la limitation de leur traitement, vous opposer à ce traitement, et définir des directives sur leur sort après votre décès. Écrivez à l’éditeur, à l’adresse ci-dessus.',
+      complaint: 'Si la réponse ne vous satisfait pas, vous pouvez saisir la CNIL :',
+      complaintLink: 'adresser une plainte à la CNIL',
+    },
+    home: 'Retour à l’accueil',
+    footerLink: 'Confidentialité',
+  },
+
   notFound: {
     code: 'Erreur 404',
     title: 'Cette page n’existe pas',

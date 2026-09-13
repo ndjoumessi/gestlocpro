@@ -199,8 +199,10 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * PASSÉ DE 24 À 25 LE 2026-09-12 : `/mentions-legales`, la première page
  * juridique du produit. `plancherDesRoutes.test.ts` l'a exigé — c'est lui qui
  * empêche désormais ce nombre de vieillir en silence.
+ *
+ * PASSÉ DE 25 À 26 LE 2026-09-13 : `/confidentialite`, la deuxième.
  */
-export const ROUTES_ATTENDUES = 25
+export const ROUTES_ATTENDUES = 26
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}

@@ -1875,6 +1875,76 @@ export const en: Dictionary = {
     footerLink: 'Legal notice',
   },
 
+  privacy: {
+    title: 'Privacy policy',
+    intro: 'What GestLocPro does with the personal data it receives, taken from how the service actually works.',
+    updatedOn: 'Established as of {date}',
+    controller: {
+      title: 'Data controller',
+      body: 'The publisher of GestLocPro: {name}, {form}, SIREN {siren}. For any question about your data, or to exercise your rights, write to:',
+    },
+    roles: {
+      title: 'Who decides what',
+      account:
+        'For your account — name, email address, phone, password, sign-ins — the publisher is the data controller.',
+      rental:
+        'The data a landlord or their manager enters about tenants, units, rents and inspections is processed on the landlord’s behalf: the landlord is the controller, and the publisher acts as their processor. If you are a tenant, contact your landlord first.',
+    },
+    data: {
+      title: 'Data processed',
+      account:
+        'Account: name, email address, phone, country, language, password (stored hashed, never in plain text), date the terms were accepted, and newsletter choice.',
+      sessions: 'Sign-ins: date, browser used and IP address.',
+      rental:
+        'Rental management: tenants’ names, phone numbers and email addresses; leases, rents, payments and security deposits; meter readings; inspections and their photos; repair and document requests; messages and announcements.',
+      audit: 'Activity log: who did what, and when. It keeps a tenant’s name after the tenant is deleted.',
+      none: 'No bank details, identity documents or health data are requested. Photos are re-encoded in the browser before upload, which strips their metadata, including location.',
+    },
+    purposes: {
+      title: 'Why',
+      service:
+        'Providing the service — keeping the account and the rental records, sending password reset, repair follow-up and rent reminder emails: performance of the contract.',
+      security: 'Protecting accounts — sign-ins and the activity log: legitimate interest.',
+      newsletter: 'Newsletter: your consent, which you can withdraw. None is sent at this time.',
+      noTracking: 'No audience measurement tool, no advertising, no sale of data.',
+    },
+    recipients: {
+      title: 'Recipients',
+      intro: 'Members of a portfolio see its data according to their role. Outside the portfolio, three providers receive data:',
+      hebergement: 'hosting of the application, the database and the photos',
+      courriels: 'sending emails',
+      relais: 'technical relay for the gestlocpro.vercel.app address',
+      US: 'United States',
+    },
+    transfers: {
+      title: 'Transfers outside the European Union',
+      body: 'These three providers are based in the United States. Each states that it adheres to the EU–U.S. Data Privacy Framework, recognised by the European Commission’s adequacy decision of 10 July 2023.',
+    },
+    retention: {
+      title: 'Retention',
+      body: 'Data is kept for as long as the account or the portfolio exists. There is currently no automatic deletion: a sign-in session expires, but its record is kept.',
+      onRequest:
+        'On written request, the publisher deletes the data it controls. A tenant’s data is deleted on their landlord’s instruction.',
+    },
+    storage: {
+      title: 'Cookies and browser storage',
+      cookieLead: 'A single cookie:',
+      cookieBody: 'It keeps you signed in; being strictly necessary, it requires no consent.',
+      preferences: 'Your browser also keeps your preferences: theme, language, region, currency and exchange rates.',
+      login:
+        'If you tick “Stay signed in”, it keeps that choice and your email address, to prefill the sign-in form. The address stays there after you sign out, until you untick the box.',
+      demo: 'The demonstration keeps its fictitious data in the browser.',
+    },
+    rights: {
+      title: 'Your rights',
+      body: 'You can ask for access to your data, its rectification, erasure or portability, or restriction of its processing, object to that processing, and set instructions for what happens to it after your death. Write to the publisher at the address above.',
+      complaint: 'If the answer does not satisfy you, you can refer the matter to the CNIL, the French data protection authority:',
+      complaintLink: 'lodge a complaint with the CNIL',
+    },
+    home: 'Back to home',
+    footerLink: 'Privacy',
+  },
+
   notFound: {
     code: 'Error 404',
     title: 'This page does not exist',
