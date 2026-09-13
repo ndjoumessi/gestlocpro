@@ -160,8 +160,18 @@ const PLAFONDS = [
     après, de plus loin. La divergence locale se lit comme telle ; elle ne se
     corrige pas en desserrant.
   */
-  { largeur: 360, langue: 'fr', plafond: 10197, plafondLarge: 10197, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 10058, plafondLarge: 9950, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  /*
+    +26 px (fr) ET +47 px (en) AU TÉLÉPHONE, +26 ET +25 AU BUREAU, LE 2026-09-13 :
+    LA TVA DITE SOUS LES PRIX. Une ligne dans le bloc de la note de devise —
+    « TVA non applicable, article 293 B du CGI. » —, deux en anglais à 360, où la
+    formule traduite ne tient pas sur une. Un prix nu se lit hors taxes ;
+    l'éditeur est en franchise en base et n'en facture pas. En police large,
+    relevée sur la porte publique (exécution 34755807766, le travail `polices`
+    d'une branche de mesure — `complet` ne tourne que sur `main`) : +26, +47,
+    +25 et +26.
+  */
+  { largeur: 360, langue: 'fr', plafond: 10223, plafondLarge: 10223, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 10105, plafondLarge: 9997, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -200,8 +210,8 @@ const PLAFONDS = [
     cette table — 7247 et non 7250. La porte publique fait autorité ; aucune
     mesure locale n'entre ici.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7169, plafondLarge: 7247, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
-  { largeur: 1280, langue: 'en', plafond: 7244, plafondLarge: 7222, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'fr', plafond: 7195, plafondLarge: 7272, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 7269, plafondLarge: 7248, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══

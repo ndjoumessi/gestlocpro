@@ -2799,6 +2799,7 @@ export const fr = {
       roundingNote: 'Arrondi : la formule donne {exact}.',
       currencyNote:
         'Prix ancrés localement par devise, sans conversion de change automatique.',
+      vatNote: 'TVA non applicable, article 293 B du CGI.',
       essential: { name: 'Essentiel', pitch: 'Un premier immeuble à tenir proprement.' },
       pro: { name: 'Pro', pitch: 'Un parc constitué, avec de la délégation.' },
       cabinet: { name: 'Cabinet', pitch: 'Plusieurs propriétaires, plusieurs sociétés.' },

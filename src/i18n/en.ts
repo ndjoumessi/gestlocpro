@@ -2010,6 +2010,7 @@ export const en: Dictionary = {
       roundingNote: 'Rounded: the formula gives {exact}.',
       currencyNote:
         'Prices anchored locally per currency, with no automatic exchange-rate conversion.',
+      vatNote: 'VAT not applicable, article 293 B of the French General Tax Code.',
       essential: { name: 'Essential', pitch: 'A first building, kept properly.' },
       pro: { name: 'Pro', pitch: 'An established portfolio, with delegation.' },
       cabinet: { name: 'Firm', pitch: 'Several owners, several companies.' },

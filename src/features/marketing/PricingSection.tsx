@@ -219,10 +219,21 @@ export function PricingSection() {
         </div>
       )}
 
-      <p className="mx-auto mt-8 flex max-w-xl items-start justify-center gap-2 text-body text-muted">
+      {/* LA TVA, DITE SOUS LES PRIX. L'éditeur est en franchise en base : il n'en
+          facture pas, et un prix nu se lit hors taxes — un professionnel y
+          ajoutait vingt pour cent de tête. Une fois pour la section, pas une
+          par carte ; même article que la page des mentions légales, et
+          `tarifsTva.test.tsx` les lie.
+
+          DANS LE BLOC DE LA NOTE DE DEVISE, ET NON SOUS LUI : centrée seule,
+          elle flottait à 360 px sous un texte aligné contre son icône. */}
+      <div className="mx-auto mt-8 flex max-w-xl items-start justify-center gap-2 text-body text-muted">
         <Icon name="info" size={15} className="mt-0.5 shrink-0 text-accent-ink" />
-        {t('marketing.pricing.currencyNote')}
-      </p>
+        <div className="text-pretty">
+          <p>{t('marketing.pricing.currencyNote')}</p>
+          <p className="mt-1">{t('marketing.pricing.vatNote')}</p>
+        </div>
+      </div>
     </Section>
   )
 }
