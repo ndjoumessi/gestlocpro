@@ -4,15 +4,52 @@ Application SaaS de gestion locative — immeubles, unités, locataires, paiemen
 relevés de compteurs, états des lieux, travaux et cautions. Multi-devises et
 bilingue FR/EN.
 
-Front-end complet, sans backend : aucune requête réseau n'est émise, les
-formulaires valident et changent d'état en local. Le parcours est enregistré
-dans le navigateur pour survivre à un rechargement.
+Deux paquets dans un dépôt : le client React (Vite) à la racine, et l'API
+Express + Prisma sur PostgreSQL dans `server/`. En production, un seul conteneur
+Railway sert les deux (`Dockerfile`) ; Vercel ne fait que relayer vers lui
+(`vercel.json`).
 
 ## Démarrer
 
+Prérequis : **Node 20** — la version du `Dockerfile` et de l'intégration
+continue — et **Docker**, pour la base.
+
 ```bash
-npm install && npm run dev
+git clone https://github.com/ndjoumessi/gestlocpro.git && cd gestlocpro
+
+npm ci                                 # dépendances du client
+npm --prefix server ci                 # dépendances de l'API
+cp server/.env.example server/.env     # configuration locale, jamais commitée
+
+npm run db:up                          # PostgreSQL 17 dans Docker, port 5433
+(cd server && npx prisma generate)     # client Prisma : généré, pas versionné
+(cd server && npx prisma migrate deploy)  # applique les migrations existantes
+npm --prefix server run db:test:setup  # crée et migre la base gestlocpro_test
+
+npx playwright install chromium        # seulement pour npm run check
 ```
+
+Puis deux terminaux :
+
+```bash
+npm --prefix server run dev   # API sur http://localhost:3001
+npm run dev                   # client sur http://localhost:5173
+```
+
+Le client relaie `/api` vers le port 3001 (`vite.config.ts`) : ouvrir
+http://localhost:5173 suffit, et `/api/health` doit y répondre `{"ok":true}`.
+
+Trois gestes de la liste se trompent facilement :
+
+- **`cd server` et non `--prefix` pour Prisma.** `--prefix` dit à npm où trouver
+  le paquet, pas dans quel répertoire lancer le programme : Prisma chercherait
+  alors `prisma/schema.prisma` à la racine et ne le trouverait pas.
+- **`migrate deploy` et non `migrate dev`** sur une copie neuve : on applique les
+  migrations du dépôt, on n'en fabrique pas. `migrate dev` sert à celui qui
+  modifie `schema.prisma`.
+- **La base de test est distincte.** La suite serveur efface ce qu'elle trouve
+  avant chaque cas ; `server/.env.test` l'envoie sur `gestlocpro_test`, et un
+  garde-fou refuse toute base dont le nom ne finit pas par `_test`.
 
 ## Routes
 
