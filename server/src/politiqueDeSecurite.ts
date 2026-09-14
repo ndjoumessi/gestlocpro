@@ -27,8 +27,8 @@ import { createHash } from 'node:crypto'
  *
  * `default-src 'self'`      tout le reste vient d'ici, et de nulle part ailleurs
  * `script-src`              'self' plus l'empreinte du script de thème
- * `style-src`               'self' plus la fonderie, qui sert une feuille
- * `font-src`                'self' plus la fonderie, qui sert les fichiers
+ * `style-src`               'self', et `'unsafe-inline'` — voir plus bas
+ * `font-src 'self'`         la police des titres est servie par le produit
  * `img-src` `data:` `blob:` les aperçus de photos avant envoi, et les PDF rendus
  *                           dans le navigateur
  * `connect-src 'self'`      l'API est de première partie — c'est la condition
@@ -46,10 +46,18 @@ import { createHash } from 'node:crypto'
  *
  * `style-src` GARDE `'unsafe-inline'`, et il faut le dire plutôt que le taire.
  * Le produit pose des styles calculés — la hauteur d'une barre EST la donnée —
- * et React les écrit par le modèle objet, ce qu'une politique ne voit pas ; mais
- * la feuille de la fonderie, elle, arrive avec ses propres règles. Retirer
- * `'unsafe-inline'` demanderait une empreinte par feuille et une nonce par
- * requête, donc un document non mis en cache. C'est un lot à soi seul.
+ * et React les écrit par le modèle objet, ce qu'une politique ne voit pas.
+ * Retirer `'unsafe-inline'` demanderait une empreinte par feuille et une nonce
+ * par requête, donc un document non mis en cache. C'est un lot à soi seul.
+ *
+ * ═══ LA FONDERIE EST PARTIE, LE 2026-09-14 ═══
+ *
+ * `style-src` et `font-src` ouvraient `fonts.googleapis.com` et
+ * `fonts.gstatic.com`, d'où venaient les titres. Depuis `5c9ca32`, la police vit
+ * dans `public/polices/` et rien ne demande plus Google — le paquet construit ne
+ * le cite nulle part. Les deux origines restaient autorisées sans servir : une
+ * porte ouverte que personne n'emprunte, sinon qui saurait s'en servir. La
+ * politique de confidentialité dit d'ailleurs que Google ne reçoit rien.
  *
  * Elle ne remplace NI l'échappement, NI la validation : elle réduit ce qu'un
  * défaut peut faire, elle n'empêche pas le défaut.
@@ -75,8 +83,8 @@ export function politiqueDeSecurite(html: string): string {
   return [
     "default-src 'self'",
     `script-src ${scripts}`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
     "img-src 'self' data: blob:",
     "connect-src 'self'",
     "worker-src 'self'",

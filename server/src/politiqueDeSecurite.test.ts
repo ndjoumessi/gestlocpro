@@ -66,13 +66,18 @@ describe('la politique de sécurité du contenu', () => {
     expect(politiqueDeSecurite(AVEC_SCRIPT)).toContain("connect-src 'self'")
   })
 
-  it('déclare la fonderie, faute de quoi la page perd sa police', () => {
-    /* Mesuré : sans `https://fonts.googleapis.com` dans `style-src`, les douze
-       écrans de la porte au navigateur rougissent tous à la fois. */
+  it('n’ouvre ni les styles ni les polices à une autre origine', () => {
+    /* LA FONDERIE EST PARTIE, SON AUTORISATION RESTAIT. Ce cas exigeait
+       `fonts.googleapis.com` et `fonts.gstatic.com` : les titres en venaient.
+       Depuis `5c9ca32`, la police est servie par le produit
+       (`policeAutoHebergee.test.ts`), et plus rien ne les demande — le paquet
+       construit ne les cite plus. Une origine autorisée que personne n'utilise
+       est une porte laissée ouverte à qui saurait s'en servir, et la politique
+       de confidentialité dit que Google ne reçoit rien. */
     const politique = politiqueDeSecurite(AVEC_SCRIPT)
-    expect(politique).toContain('style-src')
-    expect(politique).toMatch(/style-src[^;]*https:\/\/fonts\.googleapis\.com/)
-    expect(politique).toMatch(/font-src[^;]*https:\/\/fonts\.gstatic\.com/)
+    expect(politique).toContain("style-src 'self' 'unsafe-inline';")
+    expect(politique).toContain("font-src 'self';")
+    expect(politique).not.toMatch(/https?:\/\//)
   })
 
   it('rend une politique même sans script en ligne', () => {
