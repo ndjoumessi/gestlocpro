@@ -319,8 +319,8 @@ const HORS_PORTEE = {
  * porte huit, plus l'hébergeur — nom, forme juridique, SIREN, directeur de la
  * publication, et les quatre coordonnées de Railway. Aucune n'est un ornement :
  * chacune est une obligation de l'article 6-III de la LCEN, et leur absence était
- * le défaut. Restent le téléphone et l'adresse électronique de l'éditeur, que
- * Nelson a laissés manquants : les ajouter montera encore ces nombres. Sous la
+ * le défaut. Restaient le téléphone et l'adresse électronique de l'éditeur, que
+ * Nelson avait laissés manquants : voir plus bas, le 2026-09-14. Sous la
  * police large (exécution 34717868028) : 1460 à 360, 1180 à 1280 ; les 44 autres
  * points identiques.
  *
@@ -331,6 +331,15 @@ const HORS_PORTEE = {
  * empilées sur téléphone, une seule à côté de son terme sur ordinateur. Sous la
  * police large (exécution 34727561716) : 1528 et 1227, les 44 autres points
  * identiques.
+ *
+ * 1554 → 1836 à 360, 1227 → 1426 à 1280, le 2026-09-14 : L'ÉDITEUR JOIGNABLE.
+ * Quatre lignes — SIRET du siège, code APE, téléphone, courriel —, que Nelson a
+ * données. Le téléphone et le courriel sont exigés par la LCEN et manquaient
+ * depuis la première version ; le SIRET et le code APE figuraient déjà sur
+ * l'attestation. Et `/confidentialite` +36 aux deux largeurs : une ligne pour
+ * le courriel du responsable, le moyen électronique que la CNIL recommande.
+ * Sous la police large (exécution 34901748670) : 1811 et 1426, 3297 et 2349,
+ * les 44 autres points identiques.
  *
  * ═══ ET CE QUE LA POLITIQUE DE CONFIDENTIALITÉ EST, LE 2026-09-13 ═══
  *
@@ -367,8 +376,8 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 360, plafond: 1554, plafondLarge: 1528 },
-  { adresse: '/confidentialite', largeur: 360, plafond: 3347, plafondLarge: 3261 },
+  { adresse: '/mentions-legales', largeur: 360, plafond: 1836, plafondLarge: 1811 },
+  { adresse: '/confidentialite', largeur: 360, plafond: 3383, plafondLarge: 3297 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
@@ -392,8 +401,8 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 1280, plafond: 1227, plafondLarge: 1227 },
-  { adresse: '/confidentialite', largeur: 1280, plafond: 2356, plafondLarge: 2313 },
+  { adresse: '/mentions-legales', largeur: 1280, plafond: 1426, plafondLarge: 1426 },
+  { adresse: '/confidentialite', largeur: 1280, plafond: 2392, plafondLarge: 2349 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },

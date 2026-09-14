@@ -19,10 +19,9 @@ import { EDITEUR, HEBERGEUR } from '@/legal/editeur'
  * l'attestation d'immatriculation de l'entreprise qui édite GestLocPro : c'est la
  * première pièce qui permet d'écrire l'une de ces pages SANS rien inventer.
  *
- * Ce que la page rend vient de `EDITEUR`, et seulement de lui. Ce que la loi exige
- * en plus et que l'attestation ne porte pas n'est pas affiché — ni deviné, ni
- * remplacé par « à compléter » sous les yeux d'un visiteur : voir
- * `MENTIONS_A_COMPLETER`.
+ * Ce que la page rend vient de `EDITEUR`, et seulement de lui. Rien n'y a jamais
+ * été deviné ni remplacé par « à compléter » : le téléphone et l'adresse
+ * électronique n'ont paru qu'une fois donnés par Nelson, le 2026-09-14.
  *
  * LES VALEURS DU REGISTRE RESTENT EN FRANÇAIS dans l'interface anglaise, et le
  * disent (`lang="fr"`) : une nature d'établissement inscrite au registre français
@@ -41,11 +40,13 @@ export function MentionsLegales() {
     { cle: 'entrepreneur', libelle: t('legal.name'), valeur: EDITEUR.entrepreneur },
     { cle: 'forme', libelle: t('legal.legalForm'), valeur: <span lang="fr">{EDITEUR.forme}</span> },
     { cle: 'siren', libelle: t('legal.siren'), valeur: <span className="numeric">{EDITEUR.siren}</span> },
+    { cle: 'siret', libelle: t('legal.siret'), valeur: <span className="numeric">{EDITEUR.siret}</span> },
     /* Une citation du code général des impôts : en français dans les deux
        interfaces, comme les valeurs du registre. */
     { cle: 'tva', libelle: t('legal.vat'), valeur: <span lang="fr">{EDITEUR.tva}</span> },
     { cle: 'nature', libelle: t('legal.nature'), valeur: <span lang="fr">{EDITEUR.nature}</span> },
     { cle: 'activite', libelle: t('legal.activity'), valeur: <span lang="fr">{EDITEUR.activite}</span> },
+    { cle: 'ape', libelle: t('legal.ape'), valeur: <span className="numeric">{EDITEUR.codeApe}</span> },
     {
       cle: 'adresse',
       libelle: t('legal.address'),
@@ -72,6 +73,32 @@ export function MentionsLegales() {
       ),
     },
     { cle: 'directeur', libelle: t('legal.director'), valeur: EDITEUR.directeurDeLaPublication },
+    /* Joignable d'un geste, comme l'hébergeur plus bas : même cible de 44 px,
+       sans agrandir la ligne. */
+    {
+      cle: 'telephone',
+      libelle: t('legal.phone'),
+      valeur: (
+        <a
+          href={`tel:${EDITEUR.telephone.replace(/[^\d+]/g, '')}`}
+          className="numeric -my-2 inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline"
+        >
+          {EDITEUR.telephone}
+        </a>
+      ),
+    },
+    {
+      cle: 'courriel',
+      libelle: t('legal.email'),
+      valeur: (
+        <a
+          href={`mailto:${EDITEUR.courriel}`}
+          className="-my-2 inline-flex min-h-11 items-center text-accent-ink underline-offset-4 hover:underline"
+        >
+          {EDITEUR.courriel}
+        </a>
+      ),
+    },
   ]
 
   /* L'HÉBERGEUR EST AMÉRICAIN, ses coordonnées sont écrites en anglais et le

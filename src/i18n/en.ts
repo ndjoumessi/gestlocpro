@@ -1862,6 +1862,8 @@ export const en: Dictionary = {
     name: 'Name',
     legalForm: 'Legal form',
     siren: 'SIREN number',
+    siret: 'Head office SIRET',
+    ape: 'APE code',
     vat: 'VAT',
     director: 'Publication director',
     nature: 'Type of establishment',
@@ -1884,6 +1886,7 @@ export const en: Dictionary = {
     controller: {
       title: 'Data controller',
       body: 'The publisher of GestLocPro: {name}, {form}, SIREN {siren}. For any question about your data, or to exercise your rights, write to:',
+      email: 'or by email:',
     },
     roles: {
       title: 'Who decides what',
@@ -1939,7 +1942,7 @@ export const en: Dictionary = {
     },
     rights: {
       title: 'Your rights',
-      body: 'You can ask for access to your data, its rectification, erasure or portability, or restriction of its processing, object to that processing, and set instructions for what happens to it after your death. Write to the publisher at the address above.',
+      body: 'You can ask for access to your data, its rectification, erasure or portability, or restriction of its processing, object to that processing, and set instructions for what happens to it after your death. Write to the publisher, by post or by email, at the addresses above.',
       complaint: 'If the answer does not satisfy you, you can refer the matter to the CNIL, the French data protection authority:',
       complaintLink: 'lodge a complaint with the CNIL',
     },

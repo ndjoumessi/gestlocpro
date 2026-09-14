@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, userEvent, within } from '@/test/render'
-import { EDITEUR, MENTIONS_A_COMPLETER } from '@/legal/editeur'
+import { EDITEUR } from '@/legal/editeur'
 
 /**
  * LES MENTIONS LÉGALES, VUES DE L'ÉCRAN.
@@ -23,6 +23,8 @@ describe('les mentions légales', () => {
     expect(valeur('Nom')).toBe('Romel Djoumessi')
     expect(valeur('Forme juridique')).toBe('Entrepreneur individuel')
     expect(valeur('SIREN')).toBe('109 761 023')
+    expect(valeur('SIRET du siège')).toBe('109 761 023 00018')
+    expect(valeur('Code APE')).toBe('6201Z')
     /* Franchise en base, déclarée par Nelson le 2026-09-13 : pas de numéro de TVA
        à afficher, et la page dit pourquoi plutôt que de se taire. */
     expect(valeur('TVA')).toBe('Non applicable, article 293 B du CGI')
@@ -62,30 +64,32 @@ describe('les mentions légales', () => {
   })
 
   /**
-   * RIEN DE CE QUI N'A PAS ÉTÉ ÉTABLI.
+   * L'ÉDITEUR JOIGNABLE D'UN GESTE.
    *
-   * Le téléphone et l'adresse électronique de l'ÉDITEUR sont des choix, pas des
-   * faits : Nelson les a laissés manquants le 2026-09-12. La page n'en affiche
-   * aucun, et surtout aucun « à compléter » sous les yeux d'un visiteur. La liste
-   * est ÉCRITE ici plutôt que relue du module : la combler devra toucher ce cas.
-   * L'hébergeur, le SIREN et le directeur de la publication en sont sortis le même
-   * jour, établis par leurs sources.
+   * Le téléphone et l'adresse électronique manquaient : des CHOIX, que Nelson a
+   * faits le 2026-09-14. Ils sont rendus en liens, comme ceux de l'hébergeur.
+   * Et aucun « à compléter » ne subsiste sur la page.
    */
-  it('n’affichent rien de ce qui n’a pas été établi, et le disent au code', async () => {
-    expect([...MENTIONS_A_COMPLETER]).toEqual(['telephone', 'courriel'])
-
+  it('donnent le téléphone et le courriel de l’éditeur, et rien d’inachevé', async () => {
     await renderApp('/mentions-legales')
-    const main = screen.getByRole('main')
-    /* Un numéro de TVA intracommunautaire — `FR91109761023` se calcule du SIREN —
-       n'a rien à faire sur la page d'une entreprise en franchise en base. */
-    for (const absent of [/SIRET/i, /compl[ée]ter/i, /à venir/i, /FR\s?\d{2}\s?\d{3}\s?\d{3}\s?\d{3}/, /intracommunautaire/i]) {
-      expect(main.textContent, `la page affiche ${absent}, qui n’a pas été établi`).not.toMatch(absent)
-    }
-    /* Le téléphone et le courriel de l'ÉDITEUR : ceux de la page appartiennent
-       tous à l'hébergeur. */
     const editeur = screen.getByRole('region', { name: 'Éditeur' })
-    expect(within(editeur).queryAllByRole('link')).toHaveLength(0)
-    expect(editeur.textContent).not.toMatch(/@|\+\d/)
+
+    expect(within(editeur).getByRole('link', { name: '+33 6 61 75 19 23' })).toHaveAttribute(
+      'href',
+      'tel:+33661751923',
+    )
+    expect(within(editeur).getByRole('link', { name: 'romel.djoumessi@gmail.com' })).toHaveAttribute(
+      'href',
+      'mailto:romel.djoumessi@gmail.com',
+    )
+    /* Les coordonnées de l'hébergeur restent chez l'hébergeur : aucune ne doit
+       être recopiée dans le bloc de l'éditeur. */
+    expect(editeur.textContent).not.toMatch(/railway|415/i)
+
+    const main = screen.getByRole('main')
+    for (const absent of [/compl[ée]ter/i, /à venir/i]) {
+      expect(main.textContent, `la page affiche ${absent}`).not.toMatch(absent)
+    }
   })
 
   /* LES VALEURS DU REGISTRE NE SE TRADUISENT PAS, et le disent au lecteur d'écran. */

@@ -36,6 +36,25 @@ export const EDITEUR = {
   /** Nature juridique 1000 à l'annuaire des entreprises. */
   forme: 'Entrepreneur individuel',
   siren: '109 761 023',
+  /** SIRET du siège, à l'attestation (« 10976102300018 ») et donné par Nelson le 2026-09-14. */
+  siret: '109 761 023 00018',
+  /** Code APE, à l'attestation (« 6201Z - Programmation informatique »). */
+  codeApe: '6201Z',
+  /**
+   * LE TÉLÉPHONE ET L'ADRESSE ÉLECTRONIQUE, donnés par Nelson le 2026-09-14.
+   *
+   * Ils manquaient depuis la première version de la page : ce ne sont pas des
+   * faits qu'un registre établit, ce sont des CHOIX — quel numéro, quelle adresse
+   * rendre publics. `MENTIONS_A_COMPLETER` et `CONFIDENTIALITE_A_COMPLETER` les
+   * nommaient ; ils sont retirés avec ce qu'ils attendaient.
+   *
+   * La FORME reste « Entrepreneur individuel », telle que l'attestation et
+   * l'annuaire l'écrivent, et non « entreprise individuelle », la formule de
+   * Nelson : depuis la réforme de 2022, c'est « entrepreneur individuel » (ou
+   * « EI ») qui doit accompagner le nom (code de commerce, art. L. 526-22).
+   */
+  telephone: '+33 6 61 75 19 23',
+  courriel: 'romel.djoumessi@gmail.com',
   /**
    * FRANCHISE EN BASE DE TVA — déclarée par Nelson le 2026-09-13, et c'est la seule
    * source : ni l'attestation, ni l'annuaire des entreprises ne portent le régime
@@ -90,14 +109,3 @@ export const HEBERGEUR = {
   courriel: 'team@railway.com',
 } as const
 
-/**
- * LES MENTIONS QUE LA LOI EXIGE ET QUI NE SONT PAS ENCORE ÉTABLIES.
- *
- * Un éditeur professionnel doit afficher un téléphone et une adresse électronique
- * où le joindre (LCEN, art. 6-III). Ce ne sont pas des faits qu'on relève : ce
- * sont des CHOIX — quel numéro, quelle adresse rendre publics —, et ils
- * appartiennent à Nelson. Le 2026-09-12, il a choisi de les laisser manquants
- * pour l'instant. Rien n'est inventé ; cette liste dit ce qui manque, et un cas
- * l'exige à l'identique pour que la combler oblige à le toucher.
- */
-export const MENTIONS_A_COMPLETER = ['telephone', 'courriel'] as const

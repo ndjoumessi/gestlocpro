@@ -2639,6 +2639,8 @@ export const fr = {
     name: 'Nom',
     legalForm: 'Forme juridique',
     siren: 'SIREN',
+    siret: 'SIRET du siège',
+    ape: 'Code APE',
     vat: 'TVA',
     director: 'Directeur de la publication',
     nature: 'Nature de l’établissement',
@@ -2662,6 +2664,7 @@ export const fr = {
     controller: {
       title: 'Responsable du traitement',
       body: 'L’éditeur de GestLocPro : {name}, {form}, SIREN {siren}. Pour toute question sur vos données, ou pour exercer vos droits, écrivez à :',
+      email: 'ou par courriel :',
     },
     roles: {
       title: 'Qui décide de quoi',
@@ -2719,7 +2722,7 @@ export const fr = {
     },
     rights: {
       title: 'Vos droits',
-      body: 'Vous pouvez demander l’accès à vos données, leur rectification, leur effacement, leur portabilité ou la limitation de leur traitement, vous opposer à ce traitement, et définir des directives sur leur sort après votre décès. Écrivez à l’éditeur, à l’adresse ci-dessus.',
+      body: 'Vous pouvez demander l’accès à vos données, leur rectification, leur effacement, leur portabilité ou la limitation de leur traitement, vous opposer à ce traitement, et définir des directives sur leur sort après votre décès. Écrivez à l’éditeur, par courrier ou par courriel, aux adresses ci-dessus.',
       complaint: 'Si la réponse ne vous satisfait pas, vous pouvez saisir la CNIL :',
       complaintLink: 'adresser une plainte à la CNIL',
     },

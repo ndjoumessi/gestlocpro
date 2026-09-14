@@ -10,7 +10,8 @@ import type { DateParts } from '@/data/portfolio'
  * valeurs —, relais Vercel qui répond encore). La page ne dit que cela.
  *
  * CE QUI EST UN CHOIX DE NELSON, et non un relevé, le 2026-09-13 :
- *   - le contact pour exercer ses droits est l'adresse POSTALE de l'éditeur ;
+ *   - le contact pour exercer ses droits est l'adresse POSTALE de l'éditeur,
+ *     puis, le 2026-09-14, aussi son adresse électronique (`EDITEUR.courriel`) ;
  *   - les durées de conservation sont décrites telles qu'elles sont — rien
  *     n'est purgé —, plutôt que promises avant d'être codées.
  */
@@ -71,12 +72,3 @@ export const CLES_DU_NAVIGATEUR = {
 /** Date du relevé : 13 septembre 2026 (`DateParts` compte les mois depuis zéro). */
 export const RELEVE_LE = { year: 2026, month: 8, day: 13 } satisfies DateParts
 
-/**
- * CE QUI MANQUE, ET QUE LA PAGE N'INVENTE PAS.
- *
- * Un moyen ÉLECTRONIQUE d'exercer ses droits : la CNIL le recommande, et
- * l'adresse postale seule rend la demande plus lente. Nelson a choisi le
- * 2026-09-13 de s'en tenir à l'adresse postale, comme il a laissé l'e-mail
- * manquant sur les mentions légales. Un cas exige cette liste à l'identique.
- */
-export const CONFIDENTIALITE_A_COMPLETER = ['courriel'] as const

@@ -5,7 +5,6 @@ import { EDITEUR } from '@/legal/editeur'
 import {
   CLES_DU_NAVIGATEUR,
   COOKIE_DE_SESSION,
-  CONFIDENTIALITE_A_COMPLETER,
   SOUS_TRAITANTS,
 } from '@/legal/confidentialite'
 
@@ -39,6 +38,12 @@ describe('la politique de confidentialité', () => {
     for (const ligne of EDITEUR.adresse) {
       expect(within(responsable).getByText(ligne)).toBeInTheDocument()
     }
+    /* Le moyen ÉLECTRONIQUE que la CNIL recommande, donné par Nelson le
+       2026-09-14. */
+    expect(within(responsable).getByRole('link', { name: EDITEUR.courriel })).toHaveAttribute(
+      'href',
+      `mailto:${EDITEUR.courriel}`,
+    )
   })
 
   /* Les locataires saisis par un bailleur ne sont pas les clients de l'éditeur :
@@ -100,8 +105,6 @@ describe('la politique de confidentialité', () => {
   })
 
   it('dit la conservation telle qu’elle est, et les droits avec leur adresse', async () => {
-    expect([...CONFIDENTIALITE_A_COMPLETER]).toEqual(['courriel'])
-
     await renderApp('/confidentialite')
     const conservation = screen.getByRole('region', { name: 'Durée de conservation' })
     /* Rien n'est purgé : la page ne promet aucune durée qu'aucun code ne tient. */
@@ -110,9 +113,17 @@ describe('la politique de confidentialité', () => {
 
     const droits = screen.getByRole('region', { name: 'Vos droits' })
     expect(within(droits).getByRole('link', { name: /CNIL/ })).toHaveAttribute('href', 'https://www.cnil.fr/fr/plaintes')
-    /* Aucun courriel, ni celui de l'éditeur qui n'existe pas, ni celui d'un
-       prestataire recopié par mégarde. */
-    expect(screen.getByRole('main').textContent).not.toMatch(/@/)
+    /* UN SEUL courriel sur la page, celui de l'éditeur : aucun prestataire
+       recopié par mégarde. */
+    /* Nœud de texte par nœud de texte : `textContent` colle un courriel au titre
+       qui le suit (« …gmail.comQui décide »), mesuré. */
+    const marcheur = document.createTreeWalker(screen.getByRole('main'), NodeFilter.SHOW_TEXT)
+    const courriels: string[] = []
+    for (let n = marcheur.nextNode(); n; n = marcheur.nextNode()) {
+      courriels.push(...(n.textContent?.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) ?? []))
+    }
+    expect(courriels.length).toBeGreaterThan(0)
+    expect(new Set(courriels)).toEqual(new Set([EDITEUR.courriel]))
   })
 
   it('se lit en anglais', async () => {

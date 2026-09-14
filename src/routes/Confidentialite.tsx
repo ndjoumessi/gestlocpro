@@ -66,6 +66,15 @@ export function Confidentialite() {
                 </span>
               ))}
             </address>
+            <p className="mt-2">
+              {t('privacy.controller.email')}{' '}
+              <a
+                href={`mailto:${EDITEUR.courriel}`}
+                className="-my-2 inline-flex min-h-11 items-center text-accent-ink underline underline-offset-4"
+              >
+                {EDITEUR.courriel}
+              </a>
+            </p>
           </Rubrique>
 
           <Rubrique id="roles" titre={t('privacy.roles.title')}>
