@@ -450,7 +450,10 @@ export const fr = {
       emailTaken: 'Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez-en une autre.',
       errorOffline: 'Le serveur est injoignable. Vos réponses sont conservées : réessayez.',
       errorUnexpected: 'La création du compte a échoué. Vos réponses sont conservées : réessayez.',
-      newsletter: 'Recevoir les nouveautés produit (une fois par trimestre, sans revente de données).',
+      // Sans rythme promis : aucune lettre n’existe encore, et « une fois par
+      // trimestre » engageait un envoi que rien ne tient — voir
+      // `caseDeConfidentialite.test.tsx`.
+      newsletter: 'Recevoir les nouveautés produit par e-mail, sans revente de données.',
 
       submit: 'Créer mon espace',
       successTitle: 'Votre espace est prêt',

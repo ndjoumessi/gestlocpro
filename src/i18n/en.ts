@@ -344,7 +344,7 @@ export const en: Dictionary = {
       emailTaken: 'An account already exists for this address. Sign in, or use another one.',
       errorOffline: 'The server is unreachable. Your answers are kept: try again.',
       errorUnexpected: 'Account creation failed. Your answers are kept: try again.',
-      newsletter: 'Send me product news (once a quarter, no data resale).',
+      newsletter: 'Send me product news by email, with no data resale.',
 
       submit: 'Create my space',
       successTitle: 'Your space is ready',

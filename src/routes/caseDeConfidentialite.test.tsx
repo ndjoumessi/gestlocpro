@@ -74,3 +74,22 @@ describe('la case de confidentialité de l’inscription', () => {
     expect(alertes.every((a) => /politique de confidentialité/i.test(a.textContent ?? ''))).toBe(true)
   })
 })
+
+/**
+ * LA CASE DE LA LETTRE D'INFORMATION NE PROMET PAS UN RYTHME QUE RIEN NE TIENT.
+ *
+ * Elle disait « une fois par trimestre ». Aucune lettre n'existe et rien ne
+ * l'envoie — la politique de confidentialité le dit. Nelson a choisi le
+ * 2026-09-14 de garder la case et le choix enregistré, et de retirer la promesse.
+ */
+describe('la case de la lettre d’information', () => {
+  it('ne promet aucun rythme d’envoi, et garde ce qui est vrai', async () => {
+    const user = userEvent.setup()
+    await allerAuRecapitulatif(user)
+
+    const lettre = screen.getByRole('checkbox', { name: /nouveautés produit/i })
+    const libelle = lettre.closest('label')?.textContent ?? ''
+    expect(libelle).not.toMatch(/trimestre|mois|mensuel|semaine|hebdomadaire|par an|annuel/i)
+    expect(libelle).toMatch(/sans revente de données/)
+  })
+})
