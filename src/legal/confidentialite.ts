@@ -36,6 +36,14 @@ import type { DateParts } from '@/data/portfolio'
  * l'accord de traitement des données de chacun, relevé le 2026-09-13 — Resend
  * est la marque de « Plus Five Five, Inc. ». Les trois déclarent, dans leur
  * politique de confidentialité, adhérer au Data Privacy Framework UE–États-Unis.
+ *
+ * VÉRIFIÉ SUR LA LISTE OFFICIELLE le 2026-09-15 (API de
+ * dataprivacyframework.gov, statut « Active ») : Railway Corporation (n° 2913)
+ * et Vercel Inc. (n° 6847), actifs ; Resend (n° 8907), « Active -
+ * Re-certification under Review » — actif, recertification en cours d'examen.
+ * La page garde « déclare adhérer » et non « figure sur la liste » : la
+ * première reste vraie si une certification tombe, la seconde deviendrait
+ * fausse sans que rien dans le dépôt ne le voie. Aucune garde ne relit la liste.
  */
 export const SOUS_TRAITANTS = [
   { cle: 'railway', nom: 'Railway Corporation', role: 'hebergement', pays: 'US' },

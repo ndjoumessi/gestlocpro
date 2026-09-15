@@ -141,6 +141,19 @@ describe('la politique de confidentialité', () => {
     expect(screen.getByRole('region', { name: 'Your rights' })).toBeInTheDocument()
   })
 
+  /* La forme juridique est une valeur du registre français, citée telle quelle
+     dans une phrase anglaise : sans `lang="fr"`, un lecteur d'écran prononce
+     « Entrepreneur individuel » avec la phonétique anglaise. Même règle que les
+     mentions légales. */
+  it('déclare en français la forme juridique citée dans la page anglaise', async () => {
+    await renderApp('/confidentialite', { locale: 'en' })
+    const responsable = screen.getByRole('region', { name: 'Data controller' })
+    const forme = within(responsable).queryByText(EDITEUR.forme)
+    expect(forme, 'la forme juridique n’a pas d’élément à elle, donc pas de langue à elle').not.toBeNull()
+    expect(forme!.closest('[lang]')?.getAttribute('lang')).toBe('fr')
+    expect(responsable.textContent).toContain(`SIREN ${EDITEUR.siren}`)
+  })
+
   it('s’ouvre depuis le pied de la vitrine', async () => {
     await renderApp('/')
     const pied = screen.getByRole('contentinfo')

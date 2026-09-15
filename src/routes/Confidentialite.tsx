@@ -28,6 +28,15 @@ export function Confidentialite() {
   const t = useT()
   const d = useDates()
   useDocumentTitle(t('privacy.title'))
+  /* La forme juridique est une valeur du registre français : dans la page
+     anglaise, elle doit se déclarer `lang="fr"`, comme sur les mentions légales.
+     `{form}` est laissé sans valeur — `interpolate` rend alors le jeton intact —
+     et la phrase se coupe dessus : chaque langue garde UNE phrase, dans son
+     ordre à elle, au lieu de trois fragments à recoller. */
+  const [avantLaForme, apresLaForme] = t('privacy.controller.body', {
+    name: EDITEUR.entrepreneur,
+    siren: EDITEUR.siren,
+  }).split('{form}')
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas">
@@ -53,11 +62,9 @@ export function Confidentialite() {
 
           <Rubrique id="controleur" titre={t('privacy.controller.title')}>
             <p>
-              {t('privacy.controller.body', {
-                name: EDITEUR.entrepreneur,
-                form: EDITEUR.forme,
-                siren: EDITEUR.siren,
-              })}
+              {avantLaForme}
+              <span lang="fr">{EDITEUR.forme}</span>
+              {apresLaForme}
             </p>
             <address className="mt-2 not-italic" lang="fr">
               {EDITEUR.adresse.map((ligne) => (
