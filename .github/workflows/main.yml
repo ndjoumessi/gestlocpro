@@ -20,9 +20,11 @@
 #   complet  ~15 min   sur `main` seulement, et seulement si les deux passent
 #
 # Plus `polices`, qui n'est pas un étage : c'est un RELEVÉ, lancé à la demande
-# (`workflow_dispatch`) et non à chaque poussée. Il a servi une fois, pour nommer
-# ce que l'exécuteur met derrière `system-ui` ; le garder automatique paierait un
-# `playwright install` indéfiniment pour une réponse déjà connue.
+# (`workflow_dispatch`) et non à chaque poussée. Il a d'abord nommé ce que
+# l'exécuteur met derrière `system-ui` ; il sert depuis à relever, sur cette
+# machine, les plafonds en police large d'une branche avant de la pousser. Le
+# garder automatique paierait un `playwright install` à chaque poussée pour une
+# mesure qu'on ne lit qu'aux lots qui changent une hauteur.
 #
 # Le retour immédiat sans payer un quart d'heure à chaque commit. Les portes au
 # navigateur sont les lentes — elles ouvrent Chromium sur onze largeurs et deux
@@ -181,6 +183,22 @@ jobs:
       # paquet périmé ; ce travail, lui, ne construisait rien.
       - run: npm run build
       - run: node scripts/plafond-hauteurs.mjs --relever
+        env:
+          MESURER_EN_POLICE_LARGE: '1'
+      # LE TROISIÈME : LA VITRINE EN POLICE LARGE, depuis une BRANCHE.
+      #
+      # `plafond-vitrine` tourne déjà en police large dans `complet` — mais
+      # `complet` ne tourne que sur `main`, donc APRÈS la poussée qui change la
+      # page. Relever `plafondLarge` avant de pousser exigeait d'ajouter ce pas à
+      # la main sur une branche de mesure, puis de le retirer : trois lots de
+      # septembre l'ont fait (34755807766 en premier). Il reste ici désormais.
+      #
+      # `continue-on-error` parce que c'est un RELEVÉ : la hauteur mesurée
+      # s'imprime AVANT le verdict, et c'est justement quand elle dépasse le
+      # plafond inscrit qu'on la vient lire. Le verdict qui compte reste celui de
+      # `complet`, sur `main`.
+      - run: node scripts/plafond-vitrine.mjs
+        continue-on-error: true
         env:
           MESURER_EN_POLICE_LARGE: '1'
 
