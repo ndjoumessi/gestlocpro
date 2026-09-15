@@ -52,7 +52,6 @@ export async function ouvrirSession(
   userId: string,
   contexte: {
     userAgent?: string | undefined
-    ipAddress?: string | undefined
     /**
      * « Rester connecté sur cet appareil », tel que l'écran l'a demandé.
      *
@@ -76,7 +75,6 @@ export async function ouvrirSession(
       expiresAt: expirationDepuis(maintenant, persistante),
       persistent: persistante,
       userAgent: contexte.userAgent ?? null,
-      ipAddress: contexte.ipAddress ?? null,
     },
   })
 

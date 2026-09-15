@@ -183,7 +183,10 @@ model Session {
   createdAt    DateTime @default(now())
   revokedAt    DateTime?
   userAgent    String?
-  ipAddress    String?
+  /// PAS D'ADRESSE IP, depuis le 2026-09-15. `ipAddress` était rempli à chaque
+  /// connexion et rien ne le lisait ; derrière le relais Vercel, il gardait
+  /// l'adresse de Vercel. Retiré par la migration `session_sans_adresse_ip`,
+  /// avec ce qu'il contenait — voir `src/auth/sansAdresseIp.test.ts`.
 
   @@index([userId])
   @@index([expiresAt])

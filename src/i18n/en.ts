@@ -1899,7 +1899,7 @@ export const en: Dictionary = {
       title: 'Data processed',
       account:
         'Account: name, email address, phone, country, language, password (stored hashed, never in plain text), date this policy was read, and newsletter choice.',
-      sessions: 'Sign-ins: date, browser used and IP address.',
+      sessions: 'Sign-ins: date and browser used, without the IP address.',
       rental:
         'Rental management: tenants’ names, phone numbers and email addresses; leases, rents, payments and security deposits; meter readings; inspections and their photos; repair and document requests; messages and announcements.',
       audit: 'Activity log: who did what, and when. It keeps a tenant’s name after the tenant is deleted.',

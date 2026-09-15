@@ -2677,7 +2677,7 @@ export const fr = {
       title: 'Données traitées',
       account:
         'Compte : nom, adresse électronique, téléphone, pays, langue, mot de passe (conservé haché, jamais en clair), date de lecture de cette politique et choix de la lettre d’information.',
-      sessions: 'Connexions : date, navigateur utilisé et adresse IP.',
+      sessions: 'Connexions : date et navigateur utilisé, sans l’adresse IP.',
       rental:
         'Gestion locative : nom, téléphone et adresse électronique des locataires ; baux, loyers, paiements et dépôts de garantie ; relevés de compteurs ; états des lieux et leurs photos ; demandes de travaux et de documents ; messages et annonces.',
       audit:

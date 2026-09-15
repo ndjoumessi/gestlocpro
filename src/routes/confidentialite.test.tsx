@@ -84,6 +84,15 @@ describe('la politique de confidentialité', () => {
     expect(within(stockage).getByText(COOKIE_DE_SESSION)).toBeInTheDocument()
   })
 
+  /* Le serveur ne garde plus l'adresse IP depuis le 2026-09-15
+     (`server/src/auth/sansAdresseIp.test.ts`) : la page ne doit pas la lister
+     parmi ce qui est conservé. */
+  it('ne compte pas l’adresse IP parmi ce qui est conservé', async () => {
+    await renderApp('/confidentialite')
+    const donnees = screen.getByRole('region', { name: 'Données traitées' })
+    expect(donnees.textContent).toMatch(/sans l’adresse IP/)
+  })
+
   /* LA GARDE QUI VIEILLIRA LE MIEUX : une clé de stockage ajoutée au produit
      sans être déclarée ici fait rougir ce cas. */
   it('déclare chaque clé que le navigateur garde, ni plus ni moins', () => {

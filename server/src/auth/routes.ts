@@ -135,7 +135,7 @@ const schemaConnexion = z.object({
 function contexte(req: Request) {
   return {
     userAgent: req.get('user-agent') ?? undefined,
-    ipAddress: req.ip ?? undefined,
+    /* Pas d'adresse IP : voir `sansAdresseIp.test.ts`. */
   }
 }
 
