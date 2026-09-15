@@ -292,6 +292,7 @@ export const fr = {
     */
     threadEmailCopies: 'Copies des signalements',
     threadEmailDigest: 'Les grouper en un résumé',
+    newsletter: 'Nouveautés produit par e-mail',
     backToSite: 'Retour au site',
     /* LE CHEMIN DU RETOUR, et il n'existait pas. « Retour au site » emmène du
        produit vers la vitrine ; rien ne ramenait. L'en-tête public servait ses
@@ -2690,7 +2691,7 @@ export const fr = {
         'Fournir le service — tenir le compte et la gestion locative, envoyer les courriels de réinitialisation du mot de passe, de suivi des travaux et de relance des loyers : exécution du contrat.',
       security: 'Protéger les comptes — connexions et journal des opérations : intérêt légitime.',
       newsletter:
-        'Lettre d’information : votre consentement, que vous pouvez retirer. Aucune n’est envoyée à ce jour.',
+        'Lettre d’information : votre consentement, retirable depuis le menu de votre compte. Aucune n’est envoyée à ce jour.',
       noTracking: 'Aucun outil de mesure d’audience, aucune publicité, aucune revente de données.',
     },
     recipients: {

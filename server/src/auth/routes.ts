@@ -149,6 +149,7 @@ function vueCompte(u: {
   phoneE164: string | null
   threadEmailOptIn?: boolean
   threadEmailDigest?: boolean
+  newsletterOptIn?: boolean
 }) {
   return {
     id: u.id,
@@ -162,6 +163,10 @@ function vueCompte(u: {
        ferait croire à un désabonnement que personne n'a demandé. */
     threadEmailOptIn: u.threadEmailOptIn ?? true,
     threadEmailDigest: u.threadEmailDigest ?? false,
+    /* Le consentement à la lettre : l'écran qui le RETIRE doit d'abord pouvoir
+       l'afficher — voir `retraitDeLaLettre.test.ts`. Faux quand il manque : on
+       ne présume jamais un consentement. */
+    newsletterOptIn: u.newsletterOptIn ?? false,
   }
 }
 
@@ -558,10 +563,22 @@ const schemaPreferences = z
     threadEmailOptIn: z.boolean().optional(),
     /** Grouper les copies en un résumé. Voir `threadEmailDigest` au schéma. */
     threadEmailDigest: z.boolean().optional(),
+    /**
+     * Retirer (ou redonner) le consentement à la lettre d'information. Le RGPD
+     * (art. 7.3) veut que retirer soit aussi simple que donner : la case de
+     * l'inscription le donne, ce réglage le reprend.
+     */
+    newsletterOptIn: z.boolean().optional(),
   })
-  .refine((v) => v.threadEmailOptIn !== undefined || v.threadEmailDigest !== undefined, {
-    message: 'Rien à régler',
-  })
+  .refine(
+    (v) =>
+      v.threadEmailOptIn !== undefined ||
+      v.threadEmailDigest !== undefined ||
+      v.newsletterOptIn !== undefined,
+    {
+      message: 'Rien à régler',
+    },
+  )
 
 authRouter.patch('/me', async (req: Request, res: Response) => {
   const session = await lireSession(req)
@@ -579,6 +596,9 @@ authRouter.patch('/me', async (req: Request, res: Response) => {
     data: {
       ...(analyse.data.threadEmailOptIn !== undefined
         ? { threadEmailOptIn: analyse.data.threadEmailOptIn }
+        : {}),
+      ...(analyse.data.newsletterOptIn !== undefined
+        ? { newsletterOptIn: analyse.data.newsletterOptIn }
         : {}),
       ...(analyse.data.threadEmailDigest !== undefined
         ? {
@@ -612,6 +632,7 @@ authRouter.patch('/me', async (req: Request, res: Response) => {
       phoneE164: true,
       threadEmailOptIn: true,
       threadEmailDigest: true,
+      newsletterOptIn: true,
     },
   })
   res.json({ user: vueCompte(compte) })

@@ -27,6 +27,7 @@ export const COMPTE_FICTIF = {
   phoneE164: '+237677214408',
   threadEmailOptIn: true,
   threadEmailDigest: false,
+  newsletterOptIn: false,
 }
 
 export interface FauxServeur {

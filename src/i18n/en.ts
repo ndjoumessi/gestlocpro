@@ -216,6 +216,7 @@ export const en: Dictionary = {
     closeNav: 'Close navigation',
     threadEmailCopies: 'Report copies',
     threadEmailDigest: 'Group them into a summary',
+    newsletter: 'Product news by email',
     backToSite: 'Back to the website',
     backToApp: 'Back to my space',
     searchPlaceholder: 'Search a unit, a tenant…',
@@ -1910,7 +1911,7 @@ export const en: Dictionary = {
       service:
         'Providing the service — keeping the account and the rental records, sending password reset, repair follow-up and rent reminder emails: performance of the contract.',
       security: 'Protecting accounts — sign-ins and the activity log: legitimate interest.',
-      newsletter: 'Newsletter: your consent, which you can withdraw. None is sent at this time.',
+      newsletter: 'Newsletter: your consent, which you can withdraw from your account menu. None is sent at this time.',
       noTracking: 'No audience measurement tool, no advertising, no sale of data.',
     },
     recipients: {

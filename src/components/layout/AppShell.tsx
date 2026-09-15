@@ -1566,6 +1566,21 @@ function MenuCompte() {
     }
   }
 
+  /* LA LETTRE D'INFORMATION, et la même bascule optimiste. Restaurer sur un
+     refus compte doublement ici : une case décochée sur un serveur qui a
+     refusé ferait croire à un consentement retiré qui ne l'est pas. */
+  const [lettreLocale, setLettreLocale] = useState<boolean | null>(null)
+  const lettreActive = lettreLocale ?? compte?.newsletterOptIn === true
+  const basculerLaLettre = async () => {
+    const vise = !lettreActive
+    setLettreLocale(vise)
+    try {
+      await api.updatePreferences({ newsletterOptIn: vise })
+    } catch {
+      setLettreLocale(!vise)
+    }
+  }
+
   const basculerLesCopies = async () => {
     const vise = !copiesActives
     setCopiesLocales(vise)
@@ -1764,6 +1779,23 @@ function MenuCompte() {
                   {t('nav.threadEmailDigest')}
                 </button>
               )}
+              {/*
+                LE CONSENTEMENT À LA LETTRE, retirable d'un geste — la case de
+                l'inscription le donne, celle-ci le reprend (RGPD, art. 7.3).
+                Toujours visible : il ne dépend d'aucun autre réglage.
+              */}
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={lettreActive}
+                onClick={() => {
+                  void basculerLaLettre()
+                }}
+                className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-label text-ink hover:bg-surface-sunken"
+              >
+                <Icon name={lettreActive ? 'check' : 'close'} size={16} />
+                {t('nav.newsletter')}
+              </button>
               <div role="separator" className="my-1 h-px bg-border" />
               <button
                 type="button"

@@ -203,6 +203,8 @@ export interface CompteApi {
   threadEmailOptIn?: boolean
   /** Grouper ces copies en un résumé. Faux quand le serveur ne le rend pas. */
   threadEmailDigest?: boolean
+  /** Consentement à la lettre d'information. Faux quand le serveur ne le rend pas. */
+  newsletterOptIn?: boolean
 }
 
 /** Devises que le serveur STOCKE. `CFA` n'en est pas une : voir `DeviseDuParc`. */
@@ -317,6 +319,7 @@ export const api = {
   updatePreferences: (preferences: {
     threadEmailOptIn?: boolean
     threadEmailDigest?: boolean
+    newsletterOptIn?: boolean
   }) =>
     requete<{ user: CompteApi }>('/auth/me', {
       method: 'PATCH',

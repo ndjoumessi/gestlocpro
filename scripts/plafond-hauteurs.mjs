@@ -341,6 +341,14 @@ const HORS_PORTEE = {
  * Sous la police large (exécution 34901748670) : 1811 et 1426, 3297 et 2349,
  * les 44 autres points identiques.
  *
+ * `/confidentialite@1280` 2392 → 2414, le 2026-09-15 : LE RETRAIT DE LA LETTRE.
+ * La phrase dit désormais OÙ retirer son consentement — le menu du compte —, et
+ * passe sur deux lignes. Mesuré au navigateur : c'est elle, et elle seule (43 px
+ * pour 22). Deux formulations plus courtes essayées rendaient la même hauteur.
+ * La ligne des connexions, qui ne cite plus l'adresse IP, tient sur une. Sous
+ * la police large (exécution 34907460952) : 2349 → 2371, les 47 autres points
+ * identiques.
+ *
  * ═══ ET CE QUE LA POLITIQUE DE CONFIDENTIALITÉ EST, LE 2026-09-13 ═══
  *
  * 3347 px à 360, 2356 à 1280 : UN DOCUMENT, PAS UN ÉCRAN. Neuf rubriques : ce
@@ -402,7 +410,7 @@ const PLAFONDS = [
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mentions-legales', largeur: 1280, plafond: 1426, plafondLarge: 1426 },
-  { adresse: '/confidentialite', largeur: 1280, plafond: 2392, plafondLarge: 2349 },
+  { adresse: '/confidentialite', largeur: 1280, plafond: 2414, plafondLarge: 2371 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
