@@ -1077,7 +1077,7 @@ function ReviewStep({
     titre: string;
     step: number;
     entete?: string;
-    lignes: { label: string; value: string }[];
+    lignes: { label: string; value: string; adresse?: boolean }[];
   }[] = [
     {
       titre: t("auth.signup.steps.role"),
@@ -1093,7 +1093,7 @@ function ReviewStep({
       step: 1,
       lignes: [
         { label: t("auth.signup.summaryName"), value: state.name },
-        { label: t("auth.signup.summaryEmail"), value: state.email },
+        { label: t("auth.signup.summaryEmail"), value: state.email, adresse: true },
         {
           label: t("auth.signup.summaryPhone"),
           value: `${state.dial} ${state.phone}`,
@@ -1153,7 +1153,22 @@ function ReviewStep({
                           ne se vérifie pas. Une adresse longue tient sur deux
                           lignes, c'est le prix juste. */}
                       <dd className="min-w-0 flex-1 break-words text-body font-medium text-ink">
-                        {ligne.value || "—"}
+                        {ligne.adresse && ligne.value.includes("@") ? (
+                          /* Une adresse n'a aucune espace : sans occasion de
+                             coupure, `break-words` la tranche au caractère près
+                             — « arsene@example.co » puis « m » seul, mesuré à
+                             320 px en anglais. Après l'arrobase, la coupure
+                             sépare deux moitiés qui se relisent. Au-delà (une
+                             partie locale plus large que la colonne),
+                             `break-words` reprend la main. */
+                          <>
+                            {ligne.value.slice(0, ligne.value.indexOf("@") + 1)}
+                            <wbr />
+                            {ligne.value.slice(ligne.value.indexOf("@") + 1)}
+                          </>
+                        ) : (
+                          ligne.value || "—"
+                        )}
                       </dd>
                     </div>
                   ))}

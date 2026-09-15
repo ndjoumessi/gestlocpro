@@ -457,7 +457,17 @@ describe('inscription', () => {
     expect(screen.getByText('Gestion')).toBeInTheDocument()
     expect(screen.queryByText(/Comment gérez-vous/)).not.toBeInTheDocument()
     // Et les réponses des étapes précédentes restent présentes.
-    expect(screen.getByText('arsene@example.com')).toBeInTheDocument()
+    const adresse = screen.getByText('arsene@example.com')
+    expect(adresse).toBeInTheDocument()
+    /* L'ADRESSE SE COUPE APRÈS L'ARROBASE, pas au caractère près. Une adresse
+       n'a aucune espace : `break-words` la coupait donc là où la colonne
+       s'arrêtait — « arsene@example.co » puis « m » seul, mesuré à 320 px en
+       anglais le 2026-09-15. Une valeur qu'on vient relire ne se lit pas
+       coupée au milieu de son domaine. jsdom ne met rien en page : ce cas tient
+       l'OCCASION de coupure, la mesure au navigateur tient son effet. */
+    const coupure = adresse.querySelector('wbr')
+    expect(coupure, 'aucune occasion de coupure dans l’adresse').not.toBeNull()
+    expect(coupure!.previousSibling?.textContent).toBe('arsene@')
   })
 })
 
