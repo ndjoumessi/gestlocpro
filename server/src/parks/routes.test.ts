@@ -2849,8 +2849,32 @@ describe('rang des relances', () => {
     proprio = p.cookie
     const parcs = await request(serveur).get('/api/auth/me').set('Cookie', proprio)
     parkId = parcs.body.memberships[0].parkId
+    /*
+      UN BAIL QUE LA DÉMONSTRATION N'A PAS RELANCÉ, et toujours le même.
+
+      Ce cas prenait « le premier bail du parc » sans `orderBy`. Postgres ne
+      promet aucun ordre à travers une jointure : le plan en décide, et il
+      change avec les statistiques d'une base de test qui se remplit. Le jour
+      où il rendait le bail de Serge Mbarga (A3), les trois relances semées
+      — il y a 6 h, 174 h et 318 h — s'intercalaient entre celles posées ici
+      à 21, 14 et 7 jours, et la troisième portait le n° 5. Rouge intermittent
+      du 2026-09-15 vers 01 h 36, « expected 5 to be 3 » ; rejoué au chiffre
+      près en forçant ce bail.
+
+      Trié sur le LIBELLÉ du logement, pas sur `id` : les identifiants sont des
+      UUID aléatoires, et « le plus petit id » change à chaque exécution.
+    */
+    const relancesSemees = await prisma.notification.findMany({
+      where: { parkId, messageKey: 'rentReminder' },
+      select: { params: true },
+    })
+    const bauxRelances = relancesSemees
+      .map((n) => (n.params as { leaseId?: string }).leaseId)
+      .filter((id): id is string => typeof id === 'string')
+    expect(bauxRelances.length, 'la démonstration ne relance plus — ce choix ne protège plus rien').toBeGreaterThan(0)
     const bail = await prisma.lease.findFirstOrThrow({
-      where: { unit: { building: { parkId } } },
+      where: { unit: { building: { parkId } }, id: { notIn: bauxRelances } },
+      orderBy: { unit: { label: 'asc' } },
       select: { id: true, unitId: true },
     })
     leaseId = bail.id
