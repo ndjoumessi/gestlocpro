@@ -56,6 +56,7 @@ import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { attendreUneReponse } from './serveur-de-previsualisation.mjs'
+import { exigerUnInventairePlein, inventaireDesRoutes } from './inventaire/routes.mjs'
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
    sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
@@ -66,21 +67,19 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PORT = 4195
 const BASE = `http://127.0.0.1:${PORT}`
 
-/** Les écrans atteignables sans session, plus la vitrine et l'authentification. */
-const ADRESSES = [
-  '/',
-  '/connexion',
-  '/inscription',
-  '/demo',
-  '/demo/paiements',
-  '/demo/parc',
-  '/demo/releves',
-  '/demo/cautions',
-  '/demo/locataires',
-  '/demo/documents',
-  '/demo/portail',
-  '/demo/systeme',
-]
+/*
+  LES ÉCRANS SONT LUS DANS LE ROUTEUR, PLUS RECOPIÉS ICI.
+
+  Cette porte portait sa propre liste de douze adresses, écrite à la main le
+  jour de sa naissance. Le produit en a gagné quatorze depuis — dont les deux
+  pages juridiques, et `/confidentialite` est justement celle dont la politique
+  a été resserrée le 2026-09-14 (`949dd69`) — sans qu'aucune n'entre ici : une
+  liste recopiée se périme en silence, et elle n'avait jamais été relue.
+
+  L'inventaire partagé est celui de `plafond-coquille` et d'`inventaire-ui`, et
+  sa garde du garde refuse une lecture qui rendrait moins de routes qu'hier.
+*/
+const ADRESSES = exigerUnInventairePlein(inventaireDesRoutes()).map((r) => r.adresse)
 
 /** Le serveur RÉEL, en production, avec le client construit. */
 function servir() {
@@ -198,7 +197,7 @@ try {
     }
     inspectes++
     process.stdout.write(
-      `   ${adresse.padEnd(20)} ${violations.length === 0 ? '✓' : '✗'}  ` +
+      `   ${adresse.padEnd(28)} ${violations.length === 0 ? '✓' : '✗'}  ` +
         `${rendu.elements} éléments\n`,
     )
     for (const v of violations) {
