@@ -3910,9 +3910,15 @@ describe('défaire un arbitrage', () => {
   it('rend la caution à son état retenu, et garde les deux traces', async () => {
     const pf = await request(serveur).get(`/api/parks/${parkId}/portfolio`).set('Cookie', proprio)
     const caution = pf.body.deposits.find((d: { status: string }) => d.status !== 'returned')
-    const depositId = (
-      await prisma.deposit.findFirstOrThrow({ where: { lease: { unit: { label: caution.unit } } } })
-    ).id
+    /* L'IDENTIFIANT DE LA RÉPONSE, et plus une recherche en base. Elle filtrait
+       sur `label: caution.unit` — un champ que la caution du portefeuille n'a
+       pas (elle porte `unitId`). Le filtre valait `undefined`, que Prisma
+       IGNORE : la recherche rendait n'importe quelle caution de la base, et
+       tombait sur la bonne par chance (mesuré le 2026-09-15 : A1 rendue et
+       visée, parmi A1, A2 et A3 « settling »). `pf.body` n'est pas typé, donc
+       rien ne l'a signalé. */
+    const depositId: string = caution.id
+    expect(depositId, JSON.stringify(caution)).toEqual(expect.any(String))
 
     await request(serveur)
       .patch(`/api/parks/${parkId}/deposits/${depositId}/settle`)
