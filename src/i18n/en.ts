@@ -241,6 +241,8 @@ export const en: Dictionary = {
     forgotPassword: 'Forgot your password?',
 
     login: {
+      closureNotice:
+        'Your account will be erased on {date}. Sign in again before that date to cancel the request.',
       title: 'Good to see you again',
       subtitle: 'Pick your portfolio back up.',
       submit: 'Sign in',
@@ -445,6 +447,15 @@ export const en: Dictionary = {
         'This summary states what the export contains and the date it was drawn up. The detail of each kind of record is in the spreadsheet files downloaded with it.',
       pdfCounts: 'Rows exported, by kind of record',
       pdfFoot: 'Page {page} of {total}',
+      closeTitle: 'Close my account',
+      closeBody:
+        'Closing your account requests the erasure of everything you have just exported — {lignes} rows, ' +
+        'including your documents and your portfolio. Erasure happens {jours} days later, and it is final.',
+      closeUndo:
+        'During those {jours} days, signing in again cancels the request. Your open sessions, however, are ended at once.',
+      closeUnderstood: 'I have exported my data and I understand that everything will be erased.',
+      close: 'Close my account',
+      closeFailed: 'The closure could not be requested. Try again in a moment.',
       natures: {
         immeubles: 'Buildings',
         logements: 'Units',

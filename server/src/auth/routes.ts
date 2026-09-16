@@ -13,6 +13,7 @@ import type { ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
 import { fermerSession, lireSession, ouvrirSession } from './session.js'
+import { effacementPrevu } from './fermeture.js'
 import { semerParcDemonstration } from '../parks/demo.js'
 import { Currency } from '../generated/prisma/client.js'
 
@@ -479,8 +480,19 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     })
   }
 
+  /* LA RECONNEXION ANNULE UNE FERMETURE, ET LE DIT. Annuler en silence
+     laisserait quelqu'un croire que sa demande n'a jamais été prise — et la
+     refaire « pour de bon », en doutant du produit. */
+  const fermetureAnnulee = compte.closureRequestedAt !== null
+  if (fermetureAnnulee) {
+    await prisma.userAccount.update({
+      where: { id: compte.id },
+      data: { closureRequestedAt: null },
+    })
+  }
+
   await ouvrirSession(res, compte.id, { ...contexte(req), persistante: persistent ?? true })
-  res.json({ user: vueCompte(compte) })
+  res.json({ user: vueCompte(compte), ...(fermetureAnnulee ? { fermetureAnnulee } : {}) })
 })
 
 authRouter.post('/logout', async (req: Request, res: Response) => {
@@ -488,6 +500,42 @@ authRouter.post('/logout', async (req: Request, res: Response) => {
   // 204 et non 401 quand il n'y avait pas de session : se déconnecter deux fois
   // n'est pas une erreur, et l'appelant n'a rien à corriger.
   res.sendStatus(204)
+})
+
+/**
+ * FERMER SON COMPTE — la demande d'effacement, et son filet de trente jours.
+ *
+ * Elle NE SUPPRIME RIEN. Elle date la demande, coupe toutes les sessions, et
+ * rend la date à laquelle le travail quotidien effacera. Se reconnecter avant
+ * cette date annule tout : voir `/login`, qui remet la date à zéro et le dit.
+ *
+ * TOUTES LES SESSIONS, pas seulement celle qui demande : un onglet resté ouvert
+ * sur un autre appareil continuerait sinon de gérer un parc dont le
+ * propriétaire vient de demander l'effacement.
+ *
+ * `closureRequestedAt` ET NON `disabledAt` : cette seconde date barre un compte
+ * du côté de l'éditeur et fait refuser la connexion. L'employer ici fermerait la
+ * porte par laquelle on se ravise.
+ */
+authRouter.post('/me/closure', async (req: Request, res: Response) => {
+  const session = await lireSession(req)
+  if (!session) {
+    res.status(401).json({ error: 'unauthenticated' })
+    return
+  }
+  const maintenant = new Date()
+  await prisma.$transaction([
+    prisma.userAccount.update({
+      where: { id: session.userId },
+      data: { closureRequestedAt: maintenant },
+    }),
+    prisma.session.updateMany({
+      where: { userId: session.userId, revokedAt: null },
+      data: { revokedAt: maintenant },
+    }),
+  ])
+  await fermerSession(req, res)
+  res.json({ effaceLe: effacementPrevu(maintenant).toISOString() })
 })
 
 authRouter.get('/me', async (req: Request, res: Response) => {

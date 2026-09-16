@@ -329,6 +329,14 @@ export const api = {
   logout: () => requete<void>('/auth/logout', { method: 'POST' }),
 
   /**
+   * FERMER SON COMPTE — la demande d'effacement, avec son filet.
+   *
+   * Elle ne supprime rien sur-le-champ : le serveur date la demande, coupe
+   * toutes les sessions et rend la date d'effacement. Se reconnecter annule.
+   */
+  closeAccount: <T>() => requete<T>('/auth/me/closure', { method: 'POST' }),
+
+  /**
    * Demande d'un lien de réinitialisation.
    *
    * Rend le même 202 que l'adresse existe ou non — la règle est portée par le

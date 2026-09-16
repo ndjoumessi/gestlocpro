@@ -135,6 +135,10 @@ model UserAccount {
   /// On désactive, on ne supprime pas : cette personne est citée par des baux,
   /// des paiements et des décisions d'arbitrage.
   disabledAt      DateTime?
+  /// La fermeture DEMANDÉE par la personne, distincte de `disabledAt` qui barre
+  /// un compte du côté de l'éditeur : celle-ci s'annule à la reconnexion, et
+  /// l'effacement suit trente jours plus tard (`auth/fermeture.ts`).
+  closureRequestedAt DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -153,6 +157,7 @@ model UserAccount {
   resolvedDocumentRequests DocumentRequest[] @relation("DocumentResolver")
 
   @@index([disabledAt])
+  @@index([closureRequestedAt])
 }
 
 /// Session opaque. Seule l'empreinte du jeton est conservée.

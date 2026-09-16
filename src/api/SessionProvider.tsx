@@ -135,6 +135,18 @@ interface SessionContextValue {
   connecter: (email: string, motDePasse: string, persistante: boolean) => Promise<Role>
   inscrire: (donnees: DemandeInscription) => Promise<void>
   deconnecter: () => Promise<void>
+  /**
+   * Ferme le compte, et repasse l'interface en anonyme.
+   *
+   * TROIS ISSUES, comme les gestes du portefeuille : la date d'effacement quand
+   * le serveur a pris la demande, `demonstration` quand il n'y a pas de compte à
+   * fermer, `echec` quand la requête n'est pas passée. Rendre `null` pour les
+   * deux derniers ferait dire à l'écran « c'est fait » ou « c'est raté » au
+   * hasard de ce qu'il devinerait.
+   */
+  fermerLeCompte: () => Promise<
+    { issue: 'fermee'; effaceLe: string } | { issue: 'demonstration' } | { issue: 'echec' }
+  >
   /** Relit `/auth/me`. Rend les adhésions lues, pour qui doit décider aussitôt. */
   rafraichir: () => Promise<AdhesionApi[]>
   /** Ouvre l'application sur le jeu de démonstration, sans compte. */
@@ -356,6 +368,22 @@ export function SessionProvider({
     }
   }, [])
 
+  const fermerLeCompte = useCallback(async (): Promise<
+    { issue: 'fermee'; effaceLe: string } | { issue: 'demonstration' } | { issue: 'echec' }
+  > => {
+    if (etat.statut !== 'connecte') return { issue: 'demonstration' }
+    try {
+      const { effaceLe } = await api.closeAccount<{ effaceLe: string }>()
+      /* LA SESSION EST DÉJÀ MORTE CÔTÉ SERVEUR : l'interface le reflète tout de
+         suite, sans repasser par `/auth/me` pour s'entendre répondre 401. */
+      effacerStockage('session', CLE_DEMO)
+      setEtat({ statut: 'anonyme' })
+      return { issue: 'fermee', effaceLe }
+    } catch {
+      return { issue: 'echec' }
+    }
+  }, [etat.statut])
+
   const adhesions = etat.statut === 'connecte' ? etat.adhesions : []
   /**
    * Le parc actif est un IDENTIFIANT, pas un index.
@@ -384,6 +412,7 @@ export function SessionProvider({
       connecter,
       inscrire,
       deconnecter,
+      fermerLeCompte,
       rafraichir,
       entrerEnDemo,
       estDemo: etat.statut === 'demo',
@@ -403,6 +432,7 @@ export function SessionProvider({
       connecter,
       inscrire,
       deconnecter,
+      fermerLeCompte,
       rafraichir,
       entrerEnDemo,
       adhesionActive,

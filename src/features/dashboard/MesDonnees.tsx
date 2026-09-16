@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/primitives/Button'
 import { Notice } from '@/components/primitives/Notice'
+import { Checkbox } from '@/components/primitives/Choice'
 import { DataTable, type Column } from '@/components/primitives/DataTable'
 import { SkeletonTable } from '@/components/primitives/Skeleton'
 import { useT } from '@/i18n/I18nProvider'
@@ -22,6 +24,7 @@ import {
   type Dossier,
   type NatureDuDossier,
 } from '@/data/dossier'
+import { DELAI_D_EFFACEMENT_JOURS } from '@/data/fermeture'
 
 /**
  * MES DONNÉES — le droit à la portabilité, rendu par le produit.
@@ -53,12 +56,19 @@ import {
 export function MesDonnees() {
   const t = useT()
   const d = useDates()
-  const { etat: session, adhesionActive } = useSession()
+  const { etat: session, adhesionActive, fermerLeCompte } = useSession()
+  const naviguer = useNavigate()
   const courriel = session.statut === 'connecte' ? session.compte.email : ''
   const { exporterLeDossier } = usePortfolio()
   const exporterEnTableur = useCsvExport()
   const [etat, setEtat] = useState<'repos' | 'attente' | 'pret' | 'demonstration' | 'echec'>('repos')
   const [dossier, setDossier] = useState<Dossier | null>(null)
+  const [compris, setCompris] = useState(false)
+  /* PAS DE `demonstration` ICI, ET C'EST MESURÉ : ce bloc n'existe qu'avec un
+     dossier préparé, donc avec un parc réel — la démonstration n'atteint jamais
+     ce geste. Garder la branche aurait laissé une phrase que personne ne voit,
+     et `notes-conditionnelles` la réclamerait à juste titre. */
+  const [fermeture, setFermeture] = useState<'repos' | 'attente' | 'echec'>('repos')
 
   const preparer = useCallback(async () => {
     setEtat('attente')
@@ -117,6 +127,37 @@ export function MesDonnees() {
       PDF_MIME,
     )
   }, [adhesionActive, d, dossier, t])
+
+  /**
+   * FERMER SON COMPTE — le geste que la politique de confidentialité promettait
+   * par courrier.
+   *
+   * IL EXIGE D'AVOIR PRÉPARÉ SON EXPORT. Nelson l'a tranché le 2026-09-16 :
+   * « avertir et laisser exporter avant ». Sans le dossier, l'écran ne peut
+   * même pas CHIFFRER ce qui va disparaître — et un avertissement sans chiffres
+   * est une formule, pas un avertissement.
+   */
+  const fermer = useCallback(async () => {
+    setFermeture('attente')
+    const issue = await fermerLeCompte()
+    if (issue.issue === 'fermee') {
+      /* L'INTERFACE EST DÉJÀ ANONYME — le fournisseur l'a posée, et cela suffit
+         à quitter l'espace applicatif : mesuré, une mutation qui retire cette
+         navigation ne fait rougir aucun cas. Elle sert à autre chose, et c'est
+         pour cela qu'elle reste : PORTER LA DATE jusqu'à l'écran de connexion,
+         seul endroit où la personne peut encore lire ce qui va se passer. */
+      naviguer('/connexion', { state: { fermetureLe: issue.effaceLe } })
+      return
+    }
+    /* `demonstration` ne peut pas arriver ici — voir l'état ci-dessus — et
+       l'écran ne peut rien faire de plus qu'avec un échec : il le dit. */
+    setFermeture('echec')
+  }, [fermerLeCompte, naviguer])
+
+  /** Ce qui disparaîtra, chiffré depuis le dossier et non depuis une promesse. */
+  const aEffacer = dossier
+    ? NATURES_DU_DOSSIER.reduce((somme, nature) => somme + dossier[nature].length, 0)
+    : 0
 
   const colonnes: Column<NatureDuDossier>[] = [
     {
@@ -190,6 +231,44 @@ export function MesDonnees() {
               {t('app.data.downloadPdf')}
             </Button>
           </div>
+
+          {/* LA FERMETURE VIENT APRÈS L'EXPORT, ET SUR LE MÊME ÉCRAN : c'est la
+              seule disposition où l'on ne peut pas demander l'effacement sans
+              avoir vu ce qu'on efface. Le bloc est SÉPARÉ par un filet et par sa
+              couleur — un geste irréversible ne se range pas parmi les autres. */}
+          <section
+            aria-labelledby="fermeture-du-compte"
+            className="mt-4 rounded-lg border border-danger-border bg-danger-tint p-4"
+          >
+            <h2 id="fermeture-du-compte" className="title-s text-ink">
+              {t('app.data.closeTitle')}
+            </h2>
+            <p className="mt-2 text-body text-pretty text-ink">
+              {t('app.data.closeBody', { lignes: aEffacer, jours: DELAI_D_EFFACEMENT_JOURS })}
+            </p>
+            <p className="mt-2 text-body text-pretty text-muted">{t('app.data.closeUndo', { jours: DELAI_D_EFFACEMENT_JOURS })}</p>
+            <div className="mt-3">
+              <Checkbox
+                label={t('app.data.closeUnderstood')}
+                checked={compris}
+                onChange={(e) => setCompris(e.currentTarget.checked)}
+              />
+            </div>
+            {fermeture === 'echec' && (
+              <Notice tone="danger" className="mt-3">
+                {t('app.data.closeFailed')}
+              </Notice>
+            )}
+            <div className="mt-3">
+              <Button
+                variant="danger"
+                disabled={!compris || fermeture === 'attente'}
+                onClick={() => void fermer()}
+              >
+                {t('app.data.close')}
+              </Button>
+            </div>
+          </section>
         </>
       )}
     </div>

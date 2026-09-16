@@ -334,6 +334,8 @@ export const fr = {
     forgotPassword: 'Mot de passe oublié ?',
 
     login: {
+      closureNotice:
+        'Votre compte sera effacé le {date}. Reconnectez-vous avant cette date pour annuler la demande.',
       title: 'Content de vous revoir',
       subtitle: 'Reprenez la main sur votre parc.',
       submit: 'Se connecter',
@@ -593,6 +595,15 @@ export const fr = {
         'Ce récapitulatif dit ce que contient l’export et à quelle date il a été arrêté. Le détail de chaque nature se trouve dans les fichiers de tableur téléchargés avec lui.',
       pdfCounts: 'Lignes exportées, par nature',
       pdfFoot: 'Page {page} sur {total}',
+      closeTitle: 'Fermer mon compte',
+      closeBody:
+        'Fermer votre compte demande l’effacement de tout ce que vous venez d’exporter — {lignes} lignes, ' +
+        'vos documents et votre parc compris. L’effacement a lieu {jours} jours plus tard, et il est définitif.',
+      closeUndo:
+        'Pendant ces {jours} jours, vous reconnecter annule la demande. Vos sessions ouvertes, elles, sont coupées tout de suite.',
+      closeUnderstood: 'J’ai exporté mes données et je comprends que tout sera effacé.',
+      close: 'Fermer mon compte',
+      closeFailed: 'La fermeture n’a pas pu être demandée. Réessayez dans un moment.',
       natures: {
         immeubles: 'Immeubles',
         logements: 'Logements',

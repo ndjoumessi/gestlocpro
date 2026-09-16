@@ -6,6 +6,8 @@ import { Field } from '@/components/primitives/Field'
 import { Checkbox } from '@/components/primitives/Choice'
 import { Input, PasswordInput } from '@/components/primitives/Input'
 import { Notice } from '@/components/primitives/Notice'
+import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { useToast } from '@/components/primitives/Toast'
 import { useT, type MessageKey } from '@/i18n/I18nProvider'
 import { ApiError, NetworkError } from '@/api/client'
@@ -63,6 +65,12 @@ export function Login() {
    * saisi son mot de passe. On n'accepte donc qu'un chemin interne.
    */
   const demandee = (location.state as { from?: unknown } | null)?.from
+  /* La date d'effacement, portée par la navigation depuis « Mes données ». Elle
+     vient du SERVEUR : l'écran ne la calcule pas, il la relaie. */
+  const etatDeNavigation = location.state as { fermetureLe?: unknown } | null
+  const fermetureLe =
+    typeof etatDeNavigation?.fermetureLe === 'string' ? etatDeNavigation.fermetureLe : null
+  const d = useDates()
   const destination =
     typeof demandee === 'string' && /^\/app(?:[/?]|$)/.test(demandee) ? demandee : '/app'
 
@@ -267,6 +275,17 @@ export function Login() {
         {echec && (
           <Notice tone="danger" role="alert">
             {t(echec)}
+          </Notice>
+        )}
+
+        {/* LE COMPTE VIENT D'ÊTRE FERMÉ, et c'est ici qu'on l'apprend.
+            La fermeture coupe la session : l'écran qui l'a demandée n'existe
+            plus pour annoncer quoi que ce soit, et sans cette note le geste le
+            plus grave du produit se terminerait par un silence. Elle porte les
+            DEUX faits qui comptent — la date, et que se reconnecter annule. */}
+        {fermetureLe && (
+          <Notice tone="warn" role="status">
+            {t('auth.login.closureNotice', { date: d.fullDate(partiesDeDateISO(fermetureLe)) })}
           </Notice>
         )}
 

@@ -232,6 +232,21 @@ const REGISTRE = {
   'app.data.demo': { adresse: '/demo/mes-donnees', geste: preparerLExport },
 
   /* ── Les aveux, et leur motif ── */
+  'app.data.closeFailed': {
+    nonMesurable:
+      'Elle dit une PANNE de la route de fermeture, et le bloc qui la porte n’existe ' +
+      'qu’après un dossier préparé — donc sous une vraie session. La provoquer ' +
+      'demanderait de casser la route le temps d’une mesure : on mesurerait la panne, ' +
+      'pas le produit. Tenue en jsdom par `mesDonnees.test.tsx`.',
+  },
+  'auth.login.closureNotice': {
+    nonMesurable:
+      'Elle ne paraît qu’avec un ÉTAT DE NAVIGATION — la date d’effacement, portée ' +
+      'depuis « Mes données » jusqu’à l’écran de connexion. Une porte qui ouvre une ' +
+      'adresse n’en pose aucun, et l’inventer ici peindrait une phrase que le produit ' +
+      'n’a pas rendue. Le chemin entier est tenu en jsdom par `mesDonnees.test.tsx`, ' +
+      'qui ferme un compte et lit la date sur l’écran de connexion.',
+  },
   'app.data.ready': {
     nonMesurable:
       'Elle ne paraît qu’avec un DOSSIER rendu par le serveur — donc sous une vraie ' +

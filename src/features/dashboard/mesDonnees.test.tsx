@@ -55,6 +55,10 @@ beforeEach(() => {
     },
   })
   serveur.quand('GET', `/parks/${PARC}/export`, { status: 200, body: DOSSIER })
+  serveur.quand('POST', '/auth/me/closure', {
+    status: 200,
+    body: { effaceLe: '2026-10-16T08:00:00.000Z' },
+  })
 })
 
 async function preparer(session: EtatSession = SESSION) {
@@ -129,4 +133,62 @@ describe('l’écran « Mes données »', () => {
     expect(await screen.findByText(/n’a pas pu être préparé/i)).toBeInTheDocument()
     expect(screen.queryByRole('table', { name: /mes données/i })).not.toBeInTheDocument()
   })
+})
+
+/**
+ * LA FERMETURE DU COMPTE, sur le même écran que l'export — et c'est le point.
+ *
+ * Nelson a tranché le 2026-09-16 : « avertir et laisser exporter avant ». Le
+ * bloc de fermeture ne peut donc pas exister avant que le dossier soit préparé,
+ * faute de quoi l'avertissement ne chiffrerait rien.
+ */
+describe('la fermeture du compte', () => {
+  it('ne s’offre pas avant que le dossier soit préparé', async () => {
+    await renderApp('/app/mes-donnees', { session: SESSION })
+    expect(screen.queryByRole('button', { name: /^Fermer mon compte$/ })).not.toBeInTheDocument()
+  })
+
+  it('chiffre ce qui disparaîtra, et attend une confirmation', async () => {
+    const user = await preparer()
+    await screen.findByRole('table', { name: /mes données/i })
+
+    const bloc = screen.getByRole('region', { name: /fermer mon compte/i })
+    /* Le nombre vient du dossier : seize natures d'une ligne, sauf les baux qui
+       en portent deux. */
+    const lignes = NATURES_DU_DOSSIER.length + 1
+    expect(bloc.textContent).toContain(String(lignes))
+    expect(bloc.textContent).toMatch(/30 jours/)
+
+    const bouton = screen.getByRole('button', { name: /^Fermer mon compte$/ })
+    expect(bouton).toBeDisabled()
+    await user.click(screen.getByRole('checkbox', { name: /j’ai exporté mes données/i }))
+    expect(bouton).toBeEnabled()
+  })
+
+  it('demande la fermeture au serveur, et quitte l’espace', async () => {
+    const user = await preparer()
+    await screen.findByRole('table', { name: /mes données/i })
+    await user.click(screen.getByRole('checkbox', { name: /j’ai exporté mes données/i }))
+    await user.click(screen.getByRole('button', { name: /^Fermer mon compte$/ }))
+
+    await waitFor(() =>
+      expect(serveur.appels.some((a) => a.methode === 'POST' && a.chemin === '/auth/me/closure')).toBe(
+        true,
+      ),
+    )
+    /* L'espace applicatif n'existe plus pour ce compte : l'écran ne doit pas y
+       rester à faire semblant. */
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /^Fermer mon compte$/ })).not.toBeInTheDocument(),
+    )
+    /* ET LA DATE SUIT LA PERSONNE. La fermeture coupe la session : sans cette
+       note sur l'écran de connexion, le geste le plus grave du produit se
+       terminerait par un silence, et personne ne saurait jusqu'à quand se
+       raviser. La date est celle du SERVEUR, relayée. */
+    /* La date est celle que le serveur a rendue, mise en forme par le produit —
+       « 16/10/2026 » dans la région du cas, et non une chaîne recopiée ici. */
+    expect(await screen.findByText(/16\/10\/2026/)).toBeInTheDocument()
+    expect(screen.getByText(/reconnectez-vous/i)).toBeInTheDocument()
+  })
+
 })

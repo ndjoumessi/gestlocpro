@@ -50,6 +50,11 @@ const RACINE = join(import.meta.dirname, '../..')
  * rougir la règle du dessous, avec son nom.
  */
 const AFFIRMATIONS: Record<string, string> = {
+  'UserAccount.closureRequestedAt':
+    'NULL affirme qu’aucun compte existant n’a demandé sa fermeture, ce qui est ' +
+    'VRAI : le geste n’existait pas avant cette migration. Et c’est la seule ' +
+    'valeur sûre — poser une date aurait programmé l’effacement de tous les ' +
+    'comptes du produit.',
   'RentCharge.waterMinor':
     'Zéro eau refacturée sur toute échéance antérieure. VRAI, et vérifié après ' +
     'coup : la refacturation par fluide n’existait pas avant cette migration, ' +
@@ -179,13 +184,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont DIX-HUIT, et le compte est écrit à la main', () => {
+  it('sont DIX-NEUF, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(18)
+    ).toBe(19)
   })
 })
