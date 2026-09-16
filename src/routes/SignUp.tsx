@@ -1137,7 +1137,15 @@ function ReviewStep({
                   {groupe.lignes.map((ligne) => (
                     <div
                       key={ligne.label}
-                      className="flex items-baseline gap-3"
+                      /* LA VALEUR DESCEND SOUS SON ÉTIQUETTE QUAND ELLE NE
+                         TIENT PAS, et elle seule. À 320 px, l'étiquette et son
+                         écart prennent 108 px des 250 disponibles : une adresse
+                         longue se coupait au milieu d'un mot. Empiler toutes
+                         les lignes allongeait l'écran de 200 px pour dix
+                         valeurs qui tenaient. `flex-wrap` décide par ligne :
+                         une valeur plus large que la place restante passe
+                         dessous et reprend toute la largeur. Mesuré. */
+                      className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5"
                     >
                       {/* L'étiquette n'est plus en capitales : dix intertitres
                           alignés en majuscules pesaient autant que les valeurs
@@ -1152,7 +1160,7 @@ function ReviewStep({
                           dont la valeur se termine par des points de suspension
                           ne se vérifie pas. Une adresse longue tient sur deux
                           lignes, c'est le prix juste. */}
-                      <dd className="min-w-0 flex-1 break-words text-body font-medium text-ink">
+                      <dd className="min-w-0 max-w-full grow basis-auto break-words text-body font-medium text-ink">
                         {ligne.adresse && ligne.value.includes("@") ? (
                           /* Une adresse n'a aucune espace : sans occasion de
                              coupure, `break-words` la tranche au caractère près
