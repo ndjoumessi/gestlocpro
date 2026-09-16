@@ -398,6 +398,7 @@ const PLAFONDS = [
   { adresse: '/demo/releves', largeur: 360, plafond: 3753, plafondLarge: 3753 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2121, plafondLarge: 2121 },
   { adresse: '/demo/locataires', largeur: 360, plafond: 4364, plafondLarge: 4364 },
+  { adresse: '/demo/mes-donnees', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/acces', largeur: 360, plafond: 2248, plafondLarge: 2209 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
@@ -423,6 +424,7 @@ const PLAFONDS = [
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },
+  { adresse: '/demo/mes-donnees', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/acces', largeur: 1280, plafond: 1213, plafondLarge: 1213 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
@@ -465,12 +467,12 @@ const ADRESSES = routes.map((r) => r.adresse)
   vider l'inventaire, et l'inspection comparerait 0 à 0 puis se déclarerait
   verte. La même mutation a trouvé ce piège quatre fois dans ce dépôt.
 
-  48 = (26 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
+  50 = (27 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
        `/mentions-legales`, le 2026-09-12 ; la 26e `/confidentialite`, le
-       2026-09-13.
+       2026-09-13 ; la 27e `/demo/mes-donnees`, le 2026-09-16.
    4 = les deux adresses hors portée, à leurs deux largeurs.
 */
-const ATTENDUS = 48
+const ATTENDUS = 50
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.
@@ -511,6 +513,8 @@ const SANS_ATTENTE_DECLARES = new Set([
   // La politique de confidentialité, pour la même raison.
   '/confidentialite',
   '/adresse-qui-n-existe-pas',
+  // L'écran de l'export n'appelle rien au montage : le dossier ne part qu'au geste.
+  '/demo/mes-donnees',
   '/demo/acces',
   '/demo/decisions',
   '/demo/prise-en-main',

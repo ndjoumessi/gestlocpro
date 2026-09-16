@@ -1577,6 +1577,269 @@ parksRouter.get(
 )
 
 /**
+ * L'EXPORT DE SES DONNÉES — le droit à la portabilité, rendu par le produit.
+ *
+ * La politique de confidentialité renvoyait vers une adresse postale pour
+ * exercer ce droit : personne ne l'exerce par courrier. Cette route rend, en un
+ * appel, tout ce que le produit sait de qui la demande.
+ *
+ * ELLE EST BORNÉE COMME UNE LECTURE ORDINAIRE, par les mêmes fragments que le
+ * portefeuille : `porteeDesUnites` pour le gestionnaire, `unitesVisibles` pour
+ * le locataire. Écrire ici un second bornage — plus large « puisque ce sont ses
+ * données » — ferait de l'export le seul chemin par lequel un locataire lit le
+ * bail de son voisin. Le dossier de chacun est donc ce que chacun voit déjà,
+ * rassemblé.
+ *
+ * CE QU'ELLE NE REND JAMAIS : l'empreinte du mot de passe et les jetons de
+ * session. Ce sont des données personnelles, et les rendre en clair servirait
+ * qui vole un fichier exporté, pas la personne qui l'a demandé — un cas les
+ * refuse nommément.
+ *
+ * LES DATES SORTENT EN ISO, les montants en unités mineures, comme partout dans
+ * cette API : la mise en forme appartient à l'écran qui compose les fichiers,
+ * et deux mises en forme pour une même donnée finissent toujours par diverger.
+ */
+parksRouter.get(
+  '/:parkId/export',
+  exigerAppartenance,
+  async (req: Request, res: Response) => {
+    const { parkId, role } = req.adhesion!
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const perimetreImmeuble = porteeDesImmeublesTenus(req.adhesion!)
+    const visibles = await unitesVisibles(parkId, req.compteId!, role)
+    const idsVisibles = visibles ? visibles.map((u) => u.id) : null
+    const filtreUnite = idsVisibles ? { in: idsVisibles } : undefined
+    const ouUnite = {
+      building: { parkId, ...perimetreImmeuble },
+      ...perimetreUnite,
+      ...(filtreUnite ? { id: filtreUnite } : {}),
+    }
+    /* Le locataire n'a ni adhésions des autres, ni invitations, ni tarifs : ce
+       sont des données du PARC, pas les siennes. Elles sortent vides plutôt que
+       d'être tues — un dossier qui omet une nature laisse croire qu'elle
+       n'existe pas. */
+    const duParc = role !== 'tenant'
+    /* LE REGISTRE DES DÉCISIONS EST AU PROPRIÉTAIRE, ET CET EXPORT NE LE
+       CONTOURNE PAS. `GET /decisions` porte `exigerRole('owner')`, et son écran
+       redit pourquoi : « le gestionnaire n'y trouverait que ses propres actes
+       rassemblés pour son employeur ». La première rédaction le rendait à tout
+       non-locataire — une porte dérobée sur ce que la porte principale refuse. */
+    const leRegistre = role === 'owner'
+
+    const [
+      compte,
+      parc,
+      immeubles,
+      logements,
+      locataires,
+      baux,
+      loyersAppeles,
+      versements,
+      cautions,
+      releves,
+      tarifs,
+      etatsDesLieux,
+      travaux,
+      avis,
+      adhesions,
+      invitations,
+      journal,
+    ] = await Promise.all([
+      prisma.userAccount.findUniqueOrThrow({
+        where: { id: req.compteId! },
+        select: {
+          email: true,
+          fullName: true,
+          phoneE164: true,
+          locale: true,
+          newsletterOptIn: true,
+          threadEmailOptIn: true,
+          threadEmailDigest: true,
+          termsAcceptedAt: true,
+          createdAt: true,
+        },
+      }),
+      prisma.park.findUniqueOrThrow({
+        where: { id: parkId },
+        select: { name: true, countryCode: true, currency: true, createdAt: true },
+      }),
+      prisma.building.findMany({
+        where: { parkId, ...perimetreImmeuble },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, district: true, createdAt: true },
+      }),
+      prisma.unit.findMany({
+        where: ouUnite,
+        orderBy: { label: 'asc' },
+        select: {
+          id: true,
+          buildingId: true,
+          label: true,
+          type: true,
+          surfaceSqm: true,
+          baseRentMinor: true,
+        },
+      }),
+      /* Les fiches se bornent par leurs BAUX : une fiche sans bail appartient au
+         parc, pas au logement, et le locataire n'a pas à lire celles des autres. */
+      prisma.tenant.findMany({
+        where: duParc ? { parkId, ...(perimetreUnite.AND || filtreUnite ? { leases: { some: { unit: ouUnite } } } : {}) } : { parkId, leases: { some: { unit: ouUnite } } },
+        orderBy: { fullName: 'asc' },
+        select: { id: true, fullName: true, phoneE164: true, email: true, createdAt: true },
+      }),
+      prisma.lease.findMany({
+        where: { unit: ouUnite },
+        orderBy: { startsOn: 'desc' },
+        select: {
+          id: true,
+          unitId: true,
+          tenantId: true,
+          startsOn: true,
+          endsOn: true,
+          rentMinor: true,
+          status: true,
+        },
+      }),
+      prisma.rentCharge.findMany({
+        where: { lease: { unit: ouUnite } },
+        orderBy: { periodStart: 'desc' },
+        select: {
+          id: true,
+          leaseId: true,
+          periodStart: true,
+          dueOn: true,
+          rentMinor: true,
+          waterMinor: true,
+          powerMinor: true,
+        },
+      }),
+      prisma.payment.findMany({
+        where: { charge: { lease: { unit: ouUnite } } },
+        orderBy: { paidOn: 'desc' },
+        select: {
+          id: true,
+          chargeId: true,
+          amountMinor: true,
+          currency: true,
+          method: true,
+          paidOn: true,
+          reference: true,
+        },
+      }),
+      prisma.deposit.findMany({
+        where: { lease: { unit: ouUnite } },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          leaseId: true,
+          heldMinor: true,
+          withheldMinor: true,
+          withheldReason: true,
+          status: true,
+          settledAt: true,
+        },
+      }),
+      prisma.meterReading.findMany({
+        where: { unit: ouUnite },
+        orderBy: { readAt: 'desc' },
+        select: { id: true, unitId: true, utility: true, periodStart: true, indexValue: true, readAt: true },
+      }),
+      duParc
+        ? prisma.utilityTariff.findMany({
+            where: { parkId },
+            orderBy: { effectiveFrom: 'desc' },
+            select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
+          })
+        : [],
+      prisma.inspection.findMany({
+        where: { unit: ouUnite },
+        orderBy: { performedOn: 'desc' },
+        select: {
+          id: true,
+          unitId: true,
+          kind: true,
+          performedOn: true,
+          findings: { select: { room: true, description: true, severity: true, costMinor: true } },
+        },
+      }),
+      prisma.workOrder.findMany({
+        where: { unit: ouUnite },
+        orderBy: { reportedAt: 'desc' },
+        select: {
+          id: true,
+          unitId: true,
+          reference: true,
+          title: true,
+          trade: true,
+          status: true,
+          urgency: true,
+          quotedAmountMinor: true,
+          approvedAmountMinor: true,
+          completedOn: true,
+          reportedAt: true,
+        },
+      }),
+      /* Les avis sont ceux qu'on a REÇUS, jamais ceux du parc : c'est la même
+         règle que la liste de l'écran, et la seule qui vaille pour un locataire. */
+      prisma.notification.findMany({
+        where: { parkId, recipients: { some: { userId: req.compteId! } } },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, kind: true, messageKey: true, severity: true, createdAt: true, sentAt: true },
+      }),
+      duParc
+        ? prisma.membership.findMany({
+            where: { parkId },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              role: true,
+              status: true,
+              createdAt: true,
+              user: { select: { fullName: true, email: true } },
+            },
+          })
+        : [],
+      duParc
+        ? prisma.invitation.findMany({
+            where: { parkId },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, role: true, createdAt: true, acceptedAt: true, revokedAt: true },
+          })
+        : [],
+      leRegistre
+        ? prisma.auditEvent.findMany({
+            where: { parkId },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, action: true, entity: true, entityId: true, createdAt: true },
+          })
+        : [],
+    ])
+
+    res.json({
+      exporteLe: new Date().toISOString(),
+      role,
+      compte,
+      parc,
+      immeubles,
+      logements,
+      locataires,
+      baux,
+      loyersAppeles,
+      versements,
+      cautions,
+      releves,
+      tarifs,
+      etatsDesLieux,
+      travaux,
+      avis,
+      adhesions,
+      invitations,
+      journal,
+    })
+  },
+)
+
+/**
  * Validation d'un devis — le droit qui distingue le propriétaire du gestionnaire.
  *
  * Le client l'appliquait par un `canApprove = role === 'owner'` qui masquait un

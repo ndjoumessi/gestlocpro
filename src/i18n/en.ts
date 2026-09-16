@@ -216,6 +216,7 @@ export const en: Dictionary = {
     closeNav: 'Close navigation',
     threadEmailCopies: 'Report copies',
     threadEmailDigest: 'Group them into a summary',
+    myData: 'My data',
     newsletter: 'Product news by email',
     backToSite: 'Back to the website',
     backToApp: 'Back to my space',
@@ -416,6 +417,52 @@ export const en: Dictionary = {
     demoBanner:
       'Amounts display in {currency} with no exchange conversion.',
 
+    /** MY DATA — the portability export (GDPR, art. 20). */
+    data: {
+      title: 'My data',
+      subtitle: 'Take away what the product knows about you.',
+      body:
+        'Your file gathers what your account ({email}) can read in this portfolio. ' +
+        'It downloads as spreadsheets, one per kind of record, and as a summary to archive.',
+      bodyAnonyme:
+        'Your file gathers what your account can read in this portfolio. ' +
+        'It downloads as spreadsheets, one per kind of record, and as a summary to archive.',
+      prepare: 'Prepare my export',
+      preparing: 'Preparing…',
+      ready: 'File as of {date}.',
+      demo: 'The demonstration holds no file, and nothing is produced here. Sign in to your portfolio to export your data.',
+      failed: 'The file could not be prepared. Try again in a moment.',
+      nature: 'Kind of record',
+      rows: 'Rows',
+      file: 'File',
+      downloadCsv: 'Spreadsheet',
+      downloadPdf: 'PDF summary',
+      csvReady: 'File {file} downloaded',
+      pdfTitle: 'Summary of my export',
+      pdfFor: 'File of {name}',
+      pdfOn: 'As of {date}',
+      pdfIntro:
+        'This summary states what the export contains and the date it was drawn up. The detail of each kind of record is in the spreadsheet files downloaded with it.',
+      pdfCounts: 'Rows exported, by kind of record',
+      pdfFoot: 'Page {page} of {total}',
+      natures: {
+        immeubles: 'Buildings',
+        logements: 'Units',
+        locataires: 'Tenant records',
+        baux: 'Leases',
+        loyersAppeles: 'Rent charges',
+        versements: 'Payments',
+        cautions: 'Deposits',
+        releves: 'Meter readings',
+        tarifs: 'Utility tariffs',
+        etatsDesLieux: 'Inspections',
+        travaux: 'Works and reports',
+        avis: 'Notifications received',
+        adhesions: 'Portfolio members',
+        invitations: 'Invitations',
+        journal: 'Decision log',
+      },
+    },
     documents: {
       title: 'My documents and receipts',
       subtitle: 'Your lease file and the history of your receipts.',

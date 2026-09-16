@@ -1796,6 +1796,20 @@ function MenuCompte() {
                 <Icon name={lettreActive ? 'check' : 'close'} size={16} />
                 {t('nav.newsletter')}
               </button>
+              {/* MES DONNÉES — le droit à la portabilité, à côté du retrait du
+                  consentement : les deux sont des droits de la PERSONNE, et
+                  c'est ici qu'elle vient les chercher. L'écran, lui, vit sous
+                  `/app` pour être mesurable en démonstration — voir
+                  `MesDonnees.tsx`. */}
+              <Link
+                role="menuitem"
+                to="/app/mes-donnees"
+                onClick={() => setOuvert(false)}
+                className="flex min-h-11 items-center gap-2 rounded-sm px-2 text-label text-ink no-underline hover:bg-surface-sunken"
+              >
+                <Icon name="file" size={16} />
+                {t('nav.myData')}
+              </Link>
               <div role="separator" className="my-1 h-px bg-border" />
               <button
                 type="button"

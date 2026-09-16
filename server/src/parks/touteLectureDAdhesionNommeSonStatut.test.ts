@@ -68,6 +68,14 @@ const RACINE = new URL('../..', import.meta.url).pathname
  */
 const SANS_STATUT_ASSUME: { ou: string; motif: string }[] = [
   {
+    ou: "{ parkId }",
+    motif:
+      'GET /api/parks/:parkId/export — le dossier de portabilité liste les membres du ' +
+      'parc TELS QU’ILS SONT, actifs, en attente et révoqués. Filtrer sur `active` ferait ' +
+      'un export qui tait une révocation, c’est-à-dire précisément le fait qu’un ancien ' +
+      'gestionnaire a eu accès aux données — ce que la personne vient chercher.',
+  },
+  {
     ou: "{ userId: req.compteId!, parkId }",
     motif:
       'POST /api/access-requests — « déjà membre, à quelque titre et quel que soit le ' +

@@ -113,6 +113,12 @@ async function ouvrirLInvitation(page) {
   await page.waitForTimeout(350)
 }
 
+/** L'export de ses données : sans parc réel, le geste rend la note de démonstration. */
+async function preparerLExport(page) {
+  await page.getByRole('button', { name: /^Préparer mon export$/ }).first().click()
+  await page.waitForTimeout(350)
+}
+
 /** « Relier à une fiche » vit sur la rangée d'un membre sans fiche. */
 async function ouvrirLaLiaison(page) {
   await page.getByRole('button', { name: /^Relier à une fiche$/ }).first().click()
@@ -221,7 +227,28 @@ const REGISTRE = {
      il se rencontre en ouvrant la page nue. */
   'auth.reset.invalidBody': { adresse: '/reinitialiser' },
 
+  /* MES DONNÉES — la note de démonstration est MESURABLE : sous `/demo`, aucun
+     parc réel n'existe, et c'est exactement ce que le geste déclenche. */
+  'app.data.demo': { adresse: '/demo/mes-donnees', geste: preparerLExport },
+
   /* ── Les aveux, et leur motif ── */
+  'app.data.ready': {
+    nonMesurable:
+      'Elle ne paraît qu’avec un DOSSIER rendu par le serveur — donc sous une vraie ' +
+      'session, que `mesure-ui` et ses voisines n’ouvrent pas. La démonstration ne peut ' +
+      'pas la peindre sans fabriquer un dossier fictif, c’est-à-dire sans faire croire à ' +
+      'un export que personne n’a produit. CE QUI LA RENDRAIT MESURABLE EST NOMMÉ : ' +
+      '`espace-connecte` monte déjà sept sessions réelles derrière le vrai serveur ; ' +
+      'ouvrir `/app/mes-donnees` et cliquer le geste y peindrait la note pour de vrai.',
+  },
+  'app.data.failed': {
+    nonMesurable:
+      'Elle dit une PANNE du serveur d’export. La provoquer demanderait de casser la ' +
+      'route exprès le temps d’une mesure — ce qui mesurerait la panne, pas le produit. ' +
+      'Elle est tenue en jsdom par `mesDonnees.test.tsx`, qui vérifie qu’un 500 rend ' +
+      'cette phrase et AUCUN tableau ; ce que personne n’a vu, c’est sa géométrie.',
+  },
+
   'app.readings.chargeNotCalled': {
     nonMesurable:
       'Elle ne paraît qu’APRÈS un relevé ENREGISTRÉ dont l’échéance du mois n’a pas ' +

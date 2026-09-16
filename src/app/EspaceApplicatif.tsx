@@ -14,6 +14,7 @@ import { Dashboard } from '@/features/dashboard/Dashboard'
 import { Portfolio } from '@/features/dashboard/Portfolio'
 import { UnitFile } from '@/features/dashboard/UnitFile'
 import { Payments } from '@/features/dashboard/Payments'
+import { MesDonnees } from '@/features/dashboard/MesDonnees'
 import { Meters } from '@/features/dashboard/Meters'
 import { Inspections } from '@/features/dashboard/Inspections'
 import { Works } from '@/features/dashboard/Works'
@@ -218,6 +219,11 @@ function ecransDeLApplication() {
       />
       {/* Ouverts au locataire : ce sont SES relevés et SA caution, et le
           portefeuille les borne déjà à son unité côté serveur. */}
+      {/* MES DONNÉES : ouvert aux TROIS rôles, sans `Restricted`, parce que le
+          droit à la portabilité appartient à la personne et non au rôle. Le
+          serveur borne le dossier à ce que chacun lit déjà — c'est lui qui
+          décide de l'étendue, pas cette route. */}
+      <Route path="mes-donnees" element={<MesDonnees />} />
       <Route path="releves" element={<Meters />} />
       <Route path="cautions" element={<Deposits />} />
       <Route path="locataires" element={<Restricted adresse="locataires"><Tenants /></Restricted>} />

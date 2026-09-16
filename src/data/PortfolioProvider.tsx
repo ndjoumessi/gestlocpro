@@ -42,6 +42,7 @@ import {
   type WorkOrder,
 } from './portfolio'
 import { chargerParc, consommations, type Immeuble } from './apiPortfolio'
+import type { Dossier } from './dossier'
 import {
   ALERTS as ALERTS_DEMO,
   BUILDINGS as IMMEUBLES_DEMO,
@@ -453,6 +454,16 @@ interface PortfolioContextValue {
   callRent: (
     periodStart: string,
   ) => Promise<{ issue: 'appele'; emises: number } | { issue: 'demonstration' } | { issue: 'echec' }>
+  /**
+   * LE DOSSIER PERSONNEL, tel que le serveur le rend — droit à la portabilité.
+   *
+   * Trois issues et non un objet nullable, pour la raison écrite plus haut sur
+   * `callRent` : « rien à exporter faute de parc » et « la requête a échoué »
+   * ne se racontent pas de la même façon, et l'écran doit pouvoir les séparer.
+   */
+  exporterLeDossier: () => Promise<
+    { issue: 'pret'; dossier: Dossier } | { issue: 'demonstration' } | { issue: 'echec' }
+  >
   /** Met en demeure. Droit du seul propriétaire, motif obligatoire. */
   serveFormalNotice: (
     leaseId: string,
@@ -1903,6 +1914,25 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     [parkId, signalerEchec],
   )
 
+  /**
+   * L'EXPORT DE SES DONNÉES — une lecture, et rien d'autre.
+   *
+   * Aucun état gardé ici : le dossier est rendu à l'appelant, qui en compose
+   * des fichiers. Le mettre en cache ferait vieillir un dossier qu'on croit
+   * frais, et c'est la seule chose qu'un export ne doit pas être.
+   */
+  const exporterLeDossier = useCallback(async (): Promise<
+    { issue: 'pret'; dossier: Dossier } | { issue: 'demonstration' } | { issue: 'echec' }
+  > => {
+    if (!parkId) return { issue: 'demonstration' }
+    try {
+      return { issue: 'pret', dossier: await api.exportPark<Dossier>(parkId) }
+    } catch (erreur) {
+      signalerEchec(erreur)
+      return { issue: 'echec' }
+    }
+  }, [parkId, signalerEchec])
+
   const callRent = useCallback(
     async (
       periodStart: string,
@@ -2194,6 +2224,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       updateUnit,
       remindRent,
       callRent,
+      exporterLeDossier,
       serveFormalNotice,
       addUnit,
       recordPayment,
@@ -2294,6 +2325,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       updateUnit,
       remindRent,
       callRent,
+      exporterLeDossier,
       serveFormalNotice,
       addUnit,
       recordPayment,

@@ -412,6 +412,15 @@ export const api = {
   },
 
   /**
+   * LE DOSSIER COMPLET DE QUI LE DEMANDE — le droit à la portabilité.
+   *
+   * Le serveur le borne au périmètre du demandeur, exactement comme le
+   * portefeuille : l'écran ne choisit rien de ce qu'il reçoit, il compose des
+   * fichiers avec ce que le serveur lui rend.
+   */
+  exportPark: <T>(parkId: string) => requete<T>(`/parks/${parkId}/export`),
+
+  /**
    * Le locataire demande une pièce administrative.
    *
    * Elle empruntait `addWork`, le canal des signalements : le gestionnaire la

@@ -201,8 +201,12 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * empêche désormais ce nombre de vieillir en silence.
  *
  * PASSÉ DE 25 À 26 LE 2026-09-13 : `/confidentialite`, la deuxième.
+ *
+ * PUIS DE 26 À 27 LE 2026-09-16 : `/demo/mes-donnees`, l'écran qui rend le
+ * droit à la portabilité — le premier que le produit doit à une LOI plutôt
+ * qu'à un besoin de gestion.
  */
-export const ROUTES_ATTENDUES = 26
+export const ROUTES_ATTENDUES = 27
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}

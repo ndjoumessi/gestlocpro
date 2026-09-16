@@ -292,6 +292,7 @@ export const fr = {
     */
     threadEmailCopies: 'Copies des signalements',
     threadEmailDigest: 'Les grouper en un résumé',
+    myData: 'Mes données',
     newsletter: 'Nouveautés produit par e-mail',
     backToSite: 'Retour au site',
     /* LE CHEMIN DU RETOUR, et il n'existait pas. « Retour au site » emmène du
@@ -558,6 +559,58 @@ export const fr = {
     demoBanner:
       'Les montants s’affichent en {currency} sans conversion de change.',
 
+    /**
+     * MES DONNÉES — l'export de portabilité (RGPD, art. 20).
+     *
+     * Les NATURES portent le nom que l'écran montre et que le fichier prend ;
+     * les EN-TÊTES des CSV, eux, gardent les noms du serveur — voir
+     * `MesDonnees.tsx`, qui dit pourquoi.
+     */
+    data: {
+      title: 'Mes données',
+      subtitle: 'Emporter ce que le produit sait de vous.',
+      body:
+        'Votre dossier rassemble ce que votre compte ({email}) peut lire dans ce parc. ' +
+        'Il se télécharge en tableur, nature par nature, et en récapitulatif à archiver.',
+      bodyAnonyme:
+        'Votre dossier rassemble ce que votre compte peut lire dans ce parc. ' +
+        'Il se télécharge en tableur, nature par nature, et en récapitulatif à archiver.',
+      prepare: 'Préparer mon export',
+      preparing: 'Préparation…',
+      ready: 'Dossier arrêté au {date}.',
+      demo: 'La démonstration ne tient aucun dossier, et rien n’est produit ici. Connectez-vous à votre parc pour exporter vos données.',
+      failed: 'Le dossier n’a pas pu être préparé. Réessayez dans un moment.',
+      nature: 'Nature',
+      rows: 'Lignes',
+      file: 'Fichier',
+      downloadCsv: 'Tableur',
+      downloadPdf: 'Récapitulatif PDF',
+      csvReady: 'Fichier {file} téléchargé',
+      pdfTitle: 'Récapitulatif de mon export',
+      pdfFor: 'Dossier de {name}',
+      pdfOn: 'Arrêté le {date}',
+      pdfIntro:
+        'Ce récapitulatif dit ce que contient l’export et à quelle date il a été arrêté. Le détail de chaque nature se trouve dans les fichiers de tableur téléchargés avec lui.',
+      pdfCounts: 'Lignes exportées, par nature',
+      pdfFoot: 'Page {page} sur {total}',
+      natures: {
+        immeubles: 'Immeubles',
+        logements: 'Logements',
+        locataires: 'Fiches locataires',
+        baux: 'Baux',
+        loyersAppeles: 'Loyers appelés',
+        versements: 'Versements',
+        cautions: 'Cautions',
+        releves: 'Relevés de compteurs',
+        tarifs: 'Tarifs de refacturation',
+        etatsDesLieux: 'États des lieux',
+        travaux: 'Travaux et signalements',
+        avis: 'Avis reçus',
+        adhesions: 'Membres du parc',
+        invitations: 'Invitations',
+        journal: 'Registre des décisions',
+      },
+    },
     documents: {
       title: 'Mes pièces et quittances',
       subtitle: 'Votre dossier de bail et l’historique de vos quittances.',
