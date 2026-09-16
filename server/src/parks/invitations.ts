@@ -177,7 +177,9 @@ export async function consignerLeRattachement({
   userId,
 }: {
   parkId: string
-  actorId: string
+  /* NUL quand le compte qui a émis le code a été effacé depuis : la trace reste,
+     son auteur n'existe plus. `AuditEvent.actorId` l'accepte déjà (SetNull). */
+  actorId: string | null
   tenantId: string
   userId: string
 }): Promise<void> {

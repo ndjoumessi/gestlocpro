@@ -1,4 +1,5 @@
 import { prisma } from '../db.js'
+import { compteRenduDEffacement, effacerLesComptesFermes } from '../auth/effacementDesComptes.js'
 import { calculerRetard, tenterRelanceEmailMilestone } from '../parks/routes.js'
 import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
 
@@ -245,4 +246,24 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       ? `À BLANC — ${resumes ?? 0} résumé(s) du fil PARTIRAIENT.`
       : compteRenduDesResumes(resumes),
   )
+
+  /*
+    L'EFFACEMENT DES COMPTES FERMÉS, AU MÊME PASSAGE — et pour la raison écrite
+    quinze lignes plus haut : « un expéditeur que rien n'appelle est une
+    fonctionnalité qui n'existe pas ». La fermeture promet un effacement à
+    trente jours ; sans ce branchement, elle promettrait dans le vide.
+
+    EN DERNIER, après les relances et les résumés. Un passage interrompu perd
+    alors l'effacement, qui a trente jours devant lui, plutôt qu'une relance de
+    loyer, qui a une échéance qui court.
+
+    À BLANC, IL N'EFFACE RIEN ET NE COMPTE RIEN. Le mode à blanc existe pour
+    LIRE ce qui partirait ; lui faire supprimer des comptes ferait de la lecture
+    le geste le plus destructeur du produit.
+  */
+  if (aBlanc) {
+    console.log('À BLANC — aucun compte fermé n’est effacé, et aucun n’est compté.')
+  } else {
+    console.log(compteRenduDEffacement(await effacerLesComptesFermes()))
+  }
 }

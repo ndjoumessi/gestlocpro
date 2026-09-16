@@ -412,8 +412,11 @@ model Invitation {
   unitId    String? @db.Uuid
   unit      Unit?   @relation(fields: [unitId], references: [id], onDelete: SetNull)
 
-  issuedById String @db.Uuid
-  issuedBy   UserAccount @relation("InvitationIssuer", fields: [issuedById], references: [id])
+  /// NULL après l'effacement du compte qui l'a émise : l'invitation reste — elle
+  /// documente un accès donné —, la personne s'en va. Sans cela, une demande
+  /// d'effacement se heurterait au premier code jamais émis.
+  issuedById String? @db.Uuid
+  issuedBy   UserAccount? @relation("InvitationIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
   expiresAt  DateTime
   acceptedAt DateTime?
   revokedAt  DateTime?
@@ -589,8 +592,12 @@ model Payment {
   note      String?
   /// Qui a enregistré l'encaissement. Un versement en espèces sans auteur est
   /// incontestable et donc indéfendable.
-  recordedById String @db.Uuid
-  recordedBy   UserAccount @relation("PaymentRecorder", fields: [recordedById], references: [id])
+  /// NULL après l'effacement du compte qui l'a saisi. Le versement RESTE : c'est
+  /// l'argent d'un locataire, pas une donnée du gestionnaire. Ce qui disparaît
+  /// est le lien vers la personne, et c'est précisément ce qu'un effacement doit
+  /// faire.
+  recordedById String? @db.Uuid
+  recordedBy   UserAccount? @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
   @@index([chargeId])

@@ -96,6 +96,17 @@ const MODELES_SANS_ENJEU = [
  */
 const SANS_TRACE_ATOMIQUE: { route: string; motif: string }[] = [
   {
+    route: 'effacerLesComptesFermes',
+    motif:
+      'C’EST UN EFFACEMENT DEMANDÉ, et le registre serait exactement ce qu’il doit ' +
+      'emporter. Écrire « le compte de X a été effacé » garderait, après coup, le nom ' +
+      'de qui a demandé qu’on n’en garde rien — et le registre du parc supprimé ' +
+      'disparaît avec lui, de sorte qu’il n’existe même plus d’endroit où l’écrire. ' +
+      'CE QUI TIENT LA PLACE DE LA TRACE : la demande est datée trente jours à ' +
+      'l’avance (`closureRequestedAt`), le passage quotidien imprime son bilan chiffré, ' +
+      'et `effacementDesComptes.test.ts` éprouve les deux bouts.',
+  },
+  {
     route: 'balayerLesReservationsMortes',
     motif:
       'Il ne prend QUE des lignes dont `confirmedAt` est nul, et la route de lecture ' +

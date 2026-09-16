@@ -8550,7 +8550,10 @@ export const rejoindreRouter = Router()
  * route a déjà porté quatre fois : corrigé un cas à la fois, jamais la forme.
  */
 async function consignerLEntreeParCode(
-  invitation: { parkId: string; role: ParkRole; issuedById: string },
+  /* `issuedById` peut être NUL : le compte qui a émis le code a pu être effacé
+     depuis. `AuditEvent.actorId` l'est aussi — le registre dit alors « par un
+     compte effacé » plutôt que d'attribuer la décision à qui la subit. */
+  invitation: { parkId: string; role: ParkRole; issuedById: string | null },
   membershipId: string,
 ): Promise<void> {
   await prisma.auditEvent.create({

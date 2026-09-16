@@ -230,7 +230,9 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
     parkId: string
     role: ParkRole
     // L'ACTEUR d'un rattachement consigné : voir `consignerLeRattachement`.
-    issuedById: string
+    /* NUL quand le compte émetteur a été effacé — la décision reste tracée,
+       son auteur n'existe plus. */
+    issuedById: string | null
   } | null = null
 
   if (donnees.invitationCode) {
