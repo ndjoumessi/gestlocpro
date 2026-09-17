@@ -22,6 +22,17 @@ describe('les mentions légales', () => {
        personne : la première version écrivait « DJOUMESSI » seul. */
     expect(valeur('Nom')).toBe('Romel Djoumessi')
     expect(valeur('Forme juridique')).toBe('Entrepreneur individuel')
+    /* LE RÉGIME EST UNE LIGNE À PART, et la forme n'a pas bougé. Nelson a
+       répondu « micro-entreprise » à la question de la forme juridique le
+       2026-09-17 : c'est un RÉGIME fiscal et social, pas une forme — celle du
+       registre reste « Entrepreneur individuel ». Les fondre ferait écrire à une
+       page légale une chose que l'annuaire des entreprises dément. */
+    expect(valeur('Régime')).toBe('Micro-entreprise')
+    /* LE NOM COMMERCIAL, donné le même jour : le produit s'appelle GestLocPro,
+       la personne s'appelle Romel Djoumessi, et une mention légale doit porter
+       les deux — sans quoi un visiteur ne peut pas relier le site qu'il lit à
+       l'entreprise qui le publie. */
+    expect(valeur('Nom commercial')).toBe('GestLocPro')
     expect(valeur('SIREN')).toBe('109 761 023')
     expect(valeur('SIRET du siège')).toBe('109 761 023 00018')
     expect(valeur('Code APE')).toBe('6201Z')

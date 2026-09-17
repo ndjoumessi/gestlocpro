@@ -38,7 +38,16 @@ export function MentionsLegales() {
 
   const faits: { cle: string; libelle: string; valeur: React.ReactNode }[] = [
     { cle: 'entrepreneur', libelle: t('legal.name'), valeur: EDITEUR.entrepreneur },
+    {
+      cle: 'nomCommercial',
+      libelle: t('legal.tradeName'),
+      /* Le nom du produit, en anglais de fait : il se cite tel quel et se
+         déclare, comme la raison sociale de l'hébergeur plus bas. */
+      valeur: <span lang="en">{EDITEUR.nomCommercial}</span>,
+    },
     { cle: 'forme', libelle: t('legal.legalForm'), valeur: <span lang="fr">{EDITEUR.forme}</span> },
+    /* LE RÉGIME SOUS LA FORME, et distinct d'elle — voir `EDITEUR.regime`. */
+    { cle: 'regime', libelle: t('legal.regime'), valeur: <span lang="fr">{EDITEUR.regime}</span> },
     { cle: 'siren', libelle: t('legal.siren'), valeur: <span className="numeric">{EDITEUR.siren}</span> },
     { cle: 'siret', libelle: t('legal.siret'), valeur: <span className="numeric">{EDITEUR.siret}</span> },
     /* Une citation du code général des impôts : en français dans les deux

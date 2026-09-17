@@ -1921,6 +1921,8 @@ export const en: Dictionary = {
       'The publisher of GestLocPro, as established by its registration certificate from the French National Business Register and the French business directory, and the service’s hosting provider.',
     publisher: 'Publisher',
     name: 'Name',
+    tradeName: 'Trade name',
+    regime: 'Tax regime',
     legalForm: 'Legal form',
     siren: 'SIREN number',
     siret: 'Head office SIRET',

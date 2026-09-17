@@ -2704,6 +2704,8 @@ export const fr = {
       'L’éditeur de GestLocPro, tel que l’établissent son attestation d’immatriculation au Registre national des entreprises et l’annuaire des entreprises, et l’hébergeur du service.',
     publisher: 'Éditeur',
     name: 'Nom',
+    tradeName: 'Nom commercial',
+    regime: 'Régime',
     legalForm: 'Forme juridique',
     siren: 'SIREN',
     siret: 'SIRET du siège',

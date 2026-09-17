@@ -378,13 +378,27 @@ const HORS_PORTEE = {
  * +21 px. Ce sont ces treize-là qui auraient fait rougir l'intégration continue
  * si la colonne large avait été recopiée d'ici.
  */
+/*
+  +135 px (360) ET +94 px (1280), LE 2026-09-17 : LE NOM COMMERCIAL ET LE RÉGIME.
+
+  Deux lignes de plus dans la liste de l'éditeur. Nelson a donné « GestLocPro »
+  comme nom commercial et « micro-entreprise » comme régime — ce dernier n'étant
+  pas une forme juridique, il vit sur sa propre ligne plutôt que de remplacer
+  « Entrepreneur individuel », que le registre inscrit.
+
+  Deux lignes pour deux faits : les fondre aurait fait tenir la page à l'ancien
+  plafond en écrivant une chose fausse.
+
+  COLONNE LARGE RELEVÉE SUR LE CI (exécution 35239036485, travail `polices`) :
+  1945 et 1520. Les 48 autres points n'ont pas bougé d'un pixel.
+*/
 const PLAFONDS = [
   /* 360 px — 23 écrans */
   { adresse: '/inscription', largeur: 360, plafond: 1371, plafondLarge: 1371 },
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 360, plafond: 1836, plafondLarge: 1811 },
+  { adresse: '/mentions-legales', largeur: 360, plafond: 1971, plafondLarge: 1945 },
   { adresse: '/confidentialite', largeur: 360, plafond: 3383, plafondLarge: 3297 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
@@ -410,7 +424,7 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 1280, plafond: 1426, plafondLarge: 1426 },
+  { adresse: '/mentions-legales', largeur: 1280, plafond: 1520, plafondLarge: 1520 },
   { adresse: '/confidentialite', largeur: 1280, plafond: 2414, plafondLarge: 2371 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },

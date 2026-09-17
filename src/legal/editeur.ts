@@ -35,6 +35,30 @@ export const EDITEUR = {
   entrepreneur: 'Romel Djoumessi',
   /** Nature juridique 1000 à l'annuaire des entreprises. */
   forme: 'Entrepreneur individuel',
+  /**
+   * LE RÉGIME, ET IL N'EST PAS LA FORME.
+   *
+   * Nelson a répondu « micro-entreprise » à la question de la FORME juridique, le
+   * 2026-09-17. La micro-entreprise n'en est pas une : c'est un régime fiscal et
+   * social qui s'applique à un entrepreneur individuel, et la forme inscrite au
+   * registre reste celle que `forme` porte. Les fondre ferait écrire à une page
+   * légale une chose que l'annuaire des entreprises dément — d'où deux lignes.
+   *
+   * DÉCLARÉ PAR NELSON, comme la franchise de TVA, et pour la même raison : ni
+   * l'attestation ni l'annuaire ne portent le régime. Les deux vieillissent
+   * ensemble — sortir de la franchise et sortir de la micro-entreprise sont
+   * souvent le même jour.
+   */
+  regime: 'Micro-entreprise',
+  /**
+   * LE NOM COMMERCIAL, donné le 2026-09-17.
+   *
+   * Un entrepreneur individuel n'a pas de dénomination sociale : sa
+   * dénomination est son nom. Le nom commercial est ce sous quoi il exerce — et
+   * sans lui, une mention légale ne relie pas le site qu'on lit à l'entreprise
+   * qui le publie.
+   */
+  nomCommercial: 'GestLocPro',
   siren: '109 761 023',
   /** SIRET du siège, à l'attestation (« 10976102300018 ») et donné par Nelson le 2026-09-14. */
   siret: '109 761 023 00018',
