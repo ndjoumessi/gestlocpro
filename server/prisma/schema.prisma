@@ -284,6 +284,9 @@ model Park {
   tariffs     UtilityTariff[]
   notifications Notification[]
   auditEvents AuditEvent[]
+  /// Les interventions du parc, reliées en direct pour que leur RÉFÉRENCE soit
+  /// unique ici — voir `WorkOrder.parkId`, qui dit ce que cette recopie paie.
+  workOrders WorkOrder[]
   /// Compteur de références lisibles, par année. Voir `WorkOrder.reference`.
   workCounters WorkReferenceCounter[]
 }
@@ -763,9 +766,18 @@ model WorkOrder {
   id      String @id @default(uuid()) @db.Uuid
   unitId  String @db.Uuid
   unit    Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  /// LE PARC, RECOPIÉ ICI, et il ne l'était pas.
+  ///
+  /// Il se déduit par `unit.building.parkId`, et une colonne dérivée est
+  /// d'ordinaire une dette. Elle paie une chose qu'aucune jointure ne sait
+  /// faire : porter l'unicité de la référence AU PARC. Sans elle, `reference`
+  /// était unique globalement alors que son compteur est par parc — le premier
+  /// signalement du second parc rendait 500 (relevé le 2026-09-16).
+  parkId  String @db.Uuid
+  park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
   /// « SIG-2026-042 » : affichée, jamais référencée. Allouée par parc et par
-  /// année — voir `WorkReferenceCounter`.
-  reference String @unique
+  /// année — voir `WorkReferenceCounter` —, et unique DANS son parc.
+  reference String
   /// Texte libre, écrit par qui signale. Le client avait figé cinq clés de
   /// démonstration ; son propre commentaire annonçait ce champ.
   title       String
@@ -819,6 +831,8 @@ model WorkOrder {
   @@index([unitId, origin])
   /// Les courriels du fil tentés pour ce chantier. Voir `WorkThreadEmail`.
   threadEmails WorkThreadEmail[]
+
+  @@unique([parkId, reference])
 }
 
 /// Alloue les références lisibles par parc et par année, sans balayer la table.

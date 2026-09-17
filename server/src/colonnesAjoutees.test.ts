@@ -50,6 +50,12 @@ const RACINE = join(import.meta.dirname, '../..')
  * rougir la règle du dessous, avec son nom.
  */
 const AFFIRMATIONS: Record<string, string> = {
+  'WorkOrder.parkId':
+    'AUCUN DÉFAUT, ET AUCUN NULL : la migration REMPLIT la colonne depuis ' +
+    '`unit.building.parkId` avant de la rendre obligatoire. Elle n’affirme donc ' +
+    'rien des lignes d’avant — elle écrit ce que la jointure rendait déjà, et une ' +
+    'intervention qui changerait de parc au passage serait une intervention ' +
+    'déplacée, ce que rien dans le produit ne sait faire.',
   'UserAccount.closureRequestedAt':
     'NULL affirme qu’aucun compte existant n’a demandé sa fermeture, ce qui est ' +
     'VRAI : le geste n’existait pas avant cette migration. Et c’est la seule ' +
@@ -184,13 +190,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont DIX-NEUF, et le compte est écrit à la main', () => {
+  it('sont VINGT, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(19)
+    ).toBe(20)
   })
 })

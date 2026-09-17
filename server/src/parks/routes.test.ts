@@ -5701,26 +5701,34 @@ describe('répondre au locataire', () => {
   })
 
   it('ne répond pas à une intervention du parc d’à côté', async () => {
+    /* LE PARC EST MONTÉ D'ABORD : depuis que la référence est unique PAR PARC
+       (`20260916190000_reference_unique_par_parc`), l'intervention porte son
+       `parkId`, et un parc imbriqué ne peut plus le nommer. */
+    const parcVoisin = await prisma.park.create({
+      data: { name: 'Parc Bastos', countryCode: 'CM', currency: 'XAF' },
+      select: { id: true },
+    })
+    const immeubleVoisin = await prisma.building.create({
+      data: { parkId: parcVoisin.id, name: 'Résidence voisine', district: 'Bastos' },
+      select: { id: true },
+    })
+    const uniteVoisine = await prisma.unit.create({
+      data: {
+        buildingId: immeubleVoisin.id,
+        label: 'Z9',
+        type: 'T2',
+        surfaceSqm: 40,
+        baseRentMinor: 100000,
+      },
+      select: { id: true },
+    })
     const ailleurs = await prisma.workOrder.create({
       data: {
+        parkId: parcVoisin.id,
+        unitId: uniteVoisine.id,
         reference: 'SIG-2026-999',
         title: 'Fuite chez le voisin',
         trade: 'plumbing',
-        unit: {
-          create: {
-            label: 'Z9',
-            type: 'T2',
-            surfaceSqm: 40,
-            baseRentMinor: 100000,
-            building: {
-              create: {
-                name: 'Résidence voisine',
-                district: 'Bastos',
-                park: { create: { name: 'Parc Bastos', countryCode: 'CM', currency: 'XAF' } },
-              },
-            },
-          },
-        },
       },
       select: { id: true },
     })

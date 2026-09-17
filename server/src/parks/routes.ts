@@ -6313,6 +6313,9 @@ parksRouter.post(
       return tx.workOrder.create({
         data: {
           unitId: unite.id,
+          /* LE PARC, RECOPIÉ : c'est lui qui porte l'unicité de la référence —
+             voir `WorkOrder.parkId` dans le schéma. */
+          parkId,
           reference,
           title: corps.title,
           trade: corps.trade,

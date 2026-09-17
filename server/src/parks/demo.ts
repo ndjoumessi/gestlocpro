@@ -466,6 +466,7 @@ export async function semerParcDemonstration(
     await tx.workOrder.create({
       data: {
         unitId,
+        parkId,
         reference: `SIG-${annee}-${numero}`,
         title: w.title,
         trade: w.trade,
