@@ -26,6 +26,8 @@ import type { CurrencyCode } from '@/currency/currencies'
 import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { api } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { lien, useBase } from '@/lib/base'
@@ -547,6 +549,7 @@ export function AppShell() {
           <BarreLocataire setRole={setRole} />
           <BandeauDemo />
           <BandeauHorsLigne />
+          <BandeauFermeture />
           <main
             id="main"
             ref={mainRef}
@@ -618,6 +621,7 @@ export function AppShell() {
           <Topbar onOpenDrawer={() => setDrawerOpen(true)} />
           <BandeauDemo />
           <BandeauHorsLigne />
+          <BandeauFermeture />
           {/*
             Le contenu coule, il n'est ni collant ni fixe — mais avec
             `viewport-fit=cover` le bas du document EST le bas physique de
@@ -957,6 +961,45 @@ function useHorsLigne(): boolean {
  * pour un lecteur d'écran. Aucune porte au navigateur ne coupe le réseau ;
  * `bandeauHorsLigne.test.tsx` le rend en jsdom, dans les deux sens.
  */
+/**
+ * CE PARC VA DISPARAÎTRE — dit dans le produit, et pas seulement par courriel.
+ *
+ * Les locataires et les gestionnaires sont prévenus par courriel à la fermeture
+ * (`avertirAvantLEffacement`). Un message peut tomber dans les indésirables ;
+ * l'écran qu'on ouvre tous les jours, non. Ce bandeau double l'avertissement là
+ * où le travail se fait.
+ *
+ * LE PROPRIÉTAIRE QUI A FERMÉ NE LE VERRA JAMAIS : sa fermeture a coupé ses
+ * sessions, et se reconnecter l'annule. Ce bandeau s'adresse donc aux TIERS,
+ * et son texte le suppose — il dit d'emporter ses documents, pas d'annuler.
+ *
+ * `role="status"` comme les deux bandeaux voisins : annoncé une fois, sans
+ * interrompre. `alert` conviendrait à une urgence ; ici on a trente jours.
+ */
+function BandeauFermeture() {
+  const { fermetureLe } = usePortfolio()
+  const t = useT()
+  const d = useDates()
+  const id = useId()
+  if (!fermetureLe) return null
+  return (
+    <div
+      role="status"
+      aria-labelledby={id}
+      data-bandeau-fermeture=""
+      className={cn(
+        'flex items-center gap-x-3 border-b border-danger-border bg-danger-tint py-2 text-body text-danger',
+        GOUTTIERE_LATERALE,
+      )}
+    >
+      <Icon name="alert" size={16} className="shrink-0" />
+      <span id={id} className="min-w-0 flex-1">
+        {t('app.closureBanner', { date: d.fullDate(partiesDeDateISO(fermetureLe)) })}
+      </span>
+    </div>
+  )
+}
+
 function BandeauHorsLigne() {
   const horsLigne = useHorsLigne()
   const t = useT()

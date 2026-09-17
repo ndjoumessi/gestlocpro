@@ -558,6 +558,8 @@ export const fr = {
     },
     paymentSaved: 'Paiement enregistré · quittance envoyée',
     roleNotice: 'Vous consultez l’espace en tant que {role}. Changez de profil dans la barre latérale.',
+    closureBanner:
+      'Ce parc sera supprimé le {date}. Emportez vos documents avant cette date — depuis « Mes données », dans le menu de votre compte.',
     demoBanner:
       'Les montants s’affichent en {currency} sans conversion de change.',
 

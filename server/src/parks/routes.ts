@@ -12,6 +12,7 @@ import {
 } from './invitations.js'
 import { empreinteJeton } from '../auth/token.js'
 import { laMessagerie } from '../messagerie/messagerie.js'
+import { effacementDuParc } from '../auth/fermeture.js'
 import { env } from '../env.js'
 import {
   etatsDesLieuxVisibles,
@@ -1269,6 +1270,17 @@ parksRouter.get(
     }
 
     res.json({
+      /**
+       * CE PARC VA-T-IL DISPARAÎTRE, ET QUAND.
+       *
+       * LA DATE, jamais un booléen : « ce parc va être supprimé » sans dire
+       * quand laisse chacun deviner s'il lui reste un jour ou un mois — et
+       * c'est justement le temps qu'on lui donne pour emporter ses pièces.
+       *
+       * ELLE DOUBLE LE COURRIEL, elle ne le remplace pas : un message peut
+       * tomber dans les indésirables, l'écran qu'on ouvre tous les jours, non.
+       */
+      fermetureLe: (await effacementDuParc(parkId))?.toISOString() ?? null,
       /**
        * SA VUE EST-ELLE BORNÉE ? — le FAIT, jamais son étendue.
        *

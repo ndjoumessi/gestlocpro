@@ -224,6 +224,8 @@ interface PortefeuilleApi {
    * tait alors plutôt que d'affirmer un périmètre qu'il ignore.
    */
   scoped?: boolean
+  /** Date ISO d'effacement du parc, ou `null` — voir la route du portefeuille. */
+  fermetureLe?: string | null
   /** Le jour où l'accès du locataire PARTI se ferme — jamais posé tant qu'un
       bail court. Absent d'un serveur d'avant ce lot. */
   accessUntil?: string | null
@@ -246,6 +248,15 @@ export interface ParcCharge {
   scoped: boolean
   /** Voir la route : le jour de fin d'accès du locataire parti, ou `null`. */
   accessUntil: string | null
+  /**
+   * LE JOUR OÙ CE PARC SERA EFFACÉ, ou `null`.
+   *
+   * Rendu par le serveur, jamais calculé ici : le délai vit à trois endroits du
+   * serveur — la route qui ferme, le balayage qui efface, le courriel qui
+   * prévient — et une quatrième copie dans le client dirait un jour différent
+   * de celui annoncé par courriel.
+   */
+  fermetureLe: string | null
   buildings: Immeuble[]
   units: Unit[]
   works: WorkOrder[]
@@ -339,6 +350,7 @@ export async function chargerParc(parkId: string, mois?: string): Promise<ParcCh
        avertissement de restriction — l'inverse exact du repli de
        `tenantHasAccount`, où l'absence vaut « reliée ». */
     scoped: data.scoped === true,
+    fermetureLe: data.fermetureLe ?? null,
     accessUntil: data.accessUntil ?? null,
     buildings,
     units,

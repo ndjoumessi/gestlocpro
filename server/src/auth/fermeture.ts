@@ -46,3 +46,23 @@ export async function parcsEmportesParLEffacement(userId: string): Promise<strin
     .filter((parc) => parc.memberships.every((adhesion) => adhesion.userId === userId))
     .map((parc) => parc.id)
 }
+
+/**
+ * LA DATE À LAQUELLE CE PARC SERA EFFACÉ, ou `null`.
+ *
+ * Le parc disparaît quand son SEUL propriétaire actif a demandé la fermeture —
+ * c'est la règle de `parcsEmportesParLEffacement`, lue ici dans l'autre sens :
+ * non plus « quels parcs ce compte emporte », mais « ce parc est-il emporté ».
+ *
+ * RENDUE À TOUS LES MEMBRES, et le propriétaire qui a fermé n'en fait jamais
+ * partie : sa fermeture a coupé ses sessions, et se reconnecter l'annule.
+ */
+export async function effacementDuParc(parkId: string): Promise<Date | null> {
+  const proprietaires = await prisma.membership.findMany({
+    where: { parkId, role: 'owner', status: 'active' },
+    select: { user: { select: { closureRequestedAt: true } } },
+  })
+  if (proprietaires.length !== 1) return null
+  const demande = proprietaires[0]?.user?.closureRequestedAt
+  return demande ? effacementPrevu(demande) : null
+}

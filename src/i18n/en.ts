@@ -416,6 +416,8 @@ export const en: Dictionary = {
     },
     paymentSaved: 'Payment recorded · receipt sent',
     roleNotice: 'You are viewing this space as {role}. Switch profile in the sidebar.',
+    closureBanner:
+      'This portfolio will be deleted on {date}. Take your documents with you before then — from “My data”, in your account menu.',
     demoBanner:
       'Amounts display in {currency} with no exchange conversion.',
 

@@ -614,6 +614,8 @@ interface PortfolioContextValue {
    * qu'il y en a un.
    */
   scoped: boolean
+  /** Le jour où ce parc sera effacé, ou `null` — voir `ParcCharge`. */
+  fermetureLe: string | null
   /**
    * Le jour où l'accès d'un locataire PARTI se ferme, ou `null`.
    *
@@ -751,6 +753,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   /* Faux tant qu'on n'a pas lu : la démonstration n'a pas de périmètre, et un
      `true` par défaut peindrait un avertissement sur un parc entier. */
   const [scoped, setScoped] = useState(false)
+  const [fermetureLe, setFermetureLe] = useState<string | null>(null)
   const [accessUntil, setAccessUntil] = useState<string | null>(null)
   const [echecDuParc, setEchecDuParc] = useState<EchecDuParc | null>(null)
   /**
@@ -947,6 +950,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       setDocumentRequests(parc.documentRequests)
       setLeases(parc.leases)
       setScoped(parc.scoped)
+      setFermetureLe(parc.fermetureLe)
       setAccessUntil(parc.accessUntil)
       setFromApi(true)
       setEchecDuParc(null)
@@ -2234,6 +2238,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       hasChanges: stored,
       fromApi,
       scoped,
+      fermetureLe,
       accessUntil,
       loading,
       echecDuParc,
@@ -2291,6 +2296,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       collections,
       fromApi,
       scoped,
+      fermetureLe,
       accessUntil,
       loading,
       echecDuParc,
