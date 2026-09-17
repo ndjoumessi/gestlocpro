@@ -14,7 +14,7 @@ import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
 import { fermerSession, lireSession, ouvrirSession } from './session.js'
 import { effacementPrevu } from './fermeture.js'
-import { avertirAvantLEffacement } from './avertirAvantLEffacement.js'
+import { annoncerLAnnulation, avertirAvantLEffacement } from './avertirAvantLEffacement.js'
 import { semerParcDemonstration } from '../parks/demo.js'
 import { Currency } from '../generated/prisma/client.js'
 
@@ -492,6 +492,16 @@ authRouter.post('/login', async (req: Request, res: Response) => {
       where: { id: compte.id },
       data: { closureRequestedAt: null },
     })
+    /* ON DÉTROMPE CEUX QU'ON A ALARMÉS. Une alerte qu'on ne lève pas est une
+       alerte qui ment : un locataire prévenu puis laissé sans nouvelle cesse de
+       se servir d'un portail qui existe toujours. Comme l'avertissement, cet
+       envoi ne peut pas faire échouer le geste — se reconnecter ne dépend pas
+       d'un fournisseur de courriels. */
+    try {
+      await annoncerLAnnulation(compte.id)
+    } catch (erreur) {
+      console.error('annonce d’annulation — envoi impossible', erreur)
+    }
   }
 
   await ouvrirSession(res, compte.id, { ...contexte(req), persistante: persistent ?? true })

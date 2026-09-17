@@ -122,6 +122,11 @@ async function parcHabite() {
 const fermer = (cookie: string) =>
   request(serveur).post('/api/auth/me/closure').set('Cookie', cookie)
 
+const seReconnecter = () =>
+  request(serveur)
+    .post('/api/auth/login')
+    .send({ email: 'proprio@example.com', password: MDP })
+
 beforeEach(async () => {
   await prisma.park.deleteMany()
   await prisma.userAccount.deleteMany()
@@ -196,5 +201,65 @@ describe('l’avertissement des tiers à la fermeture', () => {
       (await prisma.userAccount.findUniqueOrThrow({ where: { email: 'proprio@example.com' } }))
         .closureRequestedAt,
     ).not.toBeNull()
+  })
+})
+
+/**
+ * L'ANNULATION SE DIT AUSSI, ET C'EST LA MOITIÉ QUI MANQUAIT.
+ *
+ * 4fe498d a livré l'avertissement et nommé ce trou dans sa section « ce que je
+ * peux avoir raté » : « qui se reconnecte annule la fermeture, et les locataires
+ * gardent un courriel qui annonce une suppression qui n'aura pas lieu ».
+ *
+ * Un locataire prévenu puis laissé sans nouvelle fait l'une de deux choses : il
+ * déménage ses pièces pour rien, ou — pire — il attend la disparition annoncée
+ * et cesse de se servir d'un portail qui existe toujours. Une alerte qu'on ne
+ * lève pas est une alerte qui ment.
+ */
+describe('l’annonce de l’annulation', () => {
+  it('prévient les mêmes personnes que la fermeture', async () => {
+    const { cookie } = await parcHabite()
+    await fermer(cookie).expect(200)
+    const avertis = envois.map((e) => e.destinataire).sort()
+    expect(avertis.length).toBeGreaterThan(0)
+
+    envois = []
+    const reconnexion = await seReconnecter()
+    expect(reconnexion.body.fermetureAnnulee).toBe(true)
+
+    expect(envois.map((e) => e.destinataire).sort()).toEqual(avertis)
+    for (const envoi of envois) {
+      /* LE MESSAGE LÈVE L'ALERTE, en toutes lettres : « ne sera pas supprimé ».
+         Un courriel qui se contenterait de ne plus parler de date laisserait le
+         lecteur avec les deux messages et aucun moyen de les départager. */
+      expect(envoi.texte, envoi.destinataire).toMatch(/ne sera pas supprimé/)
+      expect(envoi.texte).toContain('Parc Bonamoussadi')
+    }
+  })
+
+  it('ne dit rien à une connexion ordinaire', async () => {
+    const { cookie } = await parcHabite()
+    expect(cookie).toBeTruthy()
+    envois = []
+
+    const reconnexion = await seReconnecter()
+    expect(reconnexion.status).toBe(200)
+    expect(reconnexion.body.fermetureAnnulee).toBeUndefined()
+    expect(envois).toEqual([])
+  })
+
+  it('laisse entrer même si le courriel ne part pas', async () => {
+    const { cookie } = await parcHabite()
+    await fermer(cookie).expect(200)
+    rendre = false
+
+    const reconnexion = await seReconnecter()
+    expect(reconnexion.status, JSON.stringify(reconnexion.body)).toBe(200)
+    /* La fermeture est bien annulée : le droit de se raviser ne dépend pas
+       davantage du fournisseur de courriels que celui de partir. */
+    expect(
+      (await prisma.userAccount.findUniqueOrThrow({ where: { email: 'proprio@example.com' } }))
+        .closureRequestedAt,
+    ).toBeNull()
   })
 })
