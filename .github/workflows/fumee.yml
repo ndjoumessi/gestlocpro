@@ -1,0 +1,71 @@
+# LA FUMÉE — SUR L'HÔTE VIVANT, ET ELLE NE JUGE PAS UN COMMIT.
+#
+# ═══ POURQUOI ELLE A QUITTÉ `portes` LE 2026-09-17 ═══
+#
+# Elle y était un cinquième travail, après `complet`. Railway déploie désormais
+# SEULEMENT SI LES PORTES SONT VERTES (réglage « Wait for CI »), et sa
+# documentation est explicite sur la maille : « Railway looks at the conclusion
+# of each WORKFLOW RUN, not at individual jobs ».
+#
+# Une fumée restée dans `portes` aurait donc fermé une boucle : le déploiement
+# attend la fin du workflow, le workflow attend la fumée, et la fumée attend le
+# déploiement. Elle n'aurait pas bloqué — `continue-on-error` la fait conclure —
+# mais elle aurait mesuré le déploiement PRÉCÉDENT à chaque poussée, en silence,
+# et c'est exactement le faux vert que son propre en-tête disait éviter.
+#
+# ═══ POURQUOI ELLE N'EST PAS DÉCLENCHÉE PAR LA POUSSÉE ═══
+#
+# Tout workflow déclenché sur le commit poussé — `push`, `workflow_run` — entre
+# dans l'ensemble que Railway attend, et ramène le même défaut. Le seul
+# déclenchement qui échappe au commit est celui qui ne le vise pas : l'horloge,
+# et la main.
+#
+# CE QUE CE DÉPLACEMENT COÛTE, ET IL FAUT LE DIRE : la fumée ne suit plus chaque
+# déploiement. Elle ne répond plus à « ce commit-ci a-t-il cassé l'hôte ? » mais
+# à « l'hôte est-il sain ce matin ? ». C'est une perte réelle, et elle est
+# acceptée parce que ce travail n'a JAMAIS jugé un commit : `continue-on-error`
+# était déjà là, et son en-tête disait déjà « il RAPPORTE ce que voit un
+# visiteur ». Ce qu'il gardait de vraiment sien — surprendre un hôte qui sert
+# autre chose que ce qu'on croit y avoir mis — un passage quotidien le garde.
+#
+# ═══ L'HEURE, ET ELLE EST CHOISIE ═══
+#
+# 5 h UTC. Un passage programmé porte le SHA de la pointe de branche : s'il
+# démarrait pendant que Railway attend les portes d'une poussée fraîche, il
+# retarderait ce déploiement du temps de son propre passage. 5 h UTC est le
+# creux — les poussées de ce dépôt tombent le soir en Europe. Le risque restant
+# est nommé plutôt que nié : environ un quart d'heure par jour où les deux
+# peuvent se croiser, et la conséquence est un déploiement retardé de dix
+# minutes, jamais un déploiement manqué.
+#
+# ═══ CE QU'ELLE NE FAIT TOUJOURS PAS ═══
+#
+# SANS IDENTIFIANTS : la passe connectée reste à lancer à la main. Poser un mot
+# de passe de production dans les secrets d'un dépôt pour qu'un robot le tape
+# chaque matin est un prix qu'on ne paie pas pour de la mesure.
+
+name: fumée
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  fumee:
+    name: fumée — l'hôte vivant (rapport, pas verdict)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # `continue-on-error` EST LE POINT, pas une commodité. Une porte qui rougit
+    # sur un DNS qui hoquette apprend à être ignorée, et c'est la seule façon de
+    # perdre un outil pour de bon. Ce travail RAPPORTE ce que voit un visiteur.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run fumee

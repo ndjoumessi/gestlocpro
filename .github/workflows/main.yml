@@ -30,6 +30,26 @@
 # navigateur sont les lentes — elles ouvrent Chromium sur onze largeurs et deux
 # langues — et ce sont aussi celles qui ne changent d'avis qu'à la refonte.
 #
+# ═══ CE FICHIER TIENT DÉSORMAIS LA PRODUCTION, ET PAS SEULEMENT UN VERDICT ═══
+#
+# Railway ne déploie plus `main` sur la poussée : il attend la CONCLUSION de ce
+# workflow (réglage « Wait for CI », activé le 2026-09-17). Ce qui rougit ici ne
+# part donc plus en production — et c'est la BASE que cela protège d'abord :
+# `prisma migrate deploy` s'exécute au démarrage du conteneur, si bien qu'une
+# migration mal formée altérait le schéma de production un quart d'heure avant
+# que qui que ce soit ne la juge.
+#
+# Le prix est une attente : un déploiement coûte désormais le temps de `complet`,
+# environ vingt minutes, au lieu d'une.
+#
+# DEUX CONSÉQUENCES QUI SE LISENT AILLEURS DANS CE FICHIER. La première est le
+# `cancel-in-progress` ci-dessous, qui n'annule JAMAIS sur `main` : la
+# documentation de Railway le demande nommément pour un workflow dont dépend un
+# déploiement, et ce fichier l'avait déjà pour une autre raison — deux arguments
+# pour la même ligne. La seconde est le départ de `fumée`, qui vit maintenant
+# dans `fumee.yml` : Railway attend le workflow ENTIER, et un travail qui mesure
+# l'hôte déployé ne peut pas être dans ce qu'on attend pour déployer.
+#
 # ═══ LA LISTE DES PORTES N'EST PAS RECOPIÉE ICI, ET C'EST DÉLIBÉRÉ ═══
 #
 # Une liste recopiée se périme en silence : c'est la panne qu'`appariements.test.ts`
@@ -320,46 +340,3 @@ jobs:
           path: captures/
           retention-days: 7
           if-no-files-found: ignore
-
-  # ══════════════════════════════════════════════════════════════════════════
-  # LA FUMÉE — SUR L'HÔTE VIVANT, ET ELLE NE FAIT PAS ÉCHOUER UN COMMIT
-  # ══════════════════════════════════════════════════════════════════════════
-  #
-  # Les quatre travaux au-dessus sont des PORTES : hermétiques, exigées avant
-  # de pousser, dignes de confiance parce qu'elles ne dépendent de rien
-  # d'extérieur. Celui-ci est d'une autre nature — il interroge une adresse
-  # publique, donc le réseau, le déploiement et un tiers.
-  #
-  # `continue-on-error` EST LE POINT, pas une commodité. Une porte qui rougit
-  # sur un DNS qui hoquette apprend à être ignorée, et c'est la seule façon de
-  # perdre un outil pour de bon. Ce travail RAPPORTE ce que voit un visiteur ;
-  # il ne juge pas le commit.
-  #
-  # SUR `main` SEULEMENT, et après un délai : Vercel et Railway déploient tous
-  # deux sur la poussée, et interroger l'hôte avant qu'ils n'aient basculé
-  # mesurerait le déploiement PRÉCÉDENT — exactement l'erreur qui a laissé un
-  # fichier de remplissage servir la page d'accueil pendant qu'un build échouait
-  # en silence.
-  #
-  # SANS IDENTIFIANTS : la passe connectée reste à lancer à la main. Poser un
-  # mot de passe de production dans les secrets d'un dépôt pour qu'un robot le
-  # tape à chaque poussée est un prix qu'on ne paie pas pour de la mesure.
-  fumee:
-    name: fumée — l'hôte vivant (rapport, pas verdict)
-    if: github.ref == 'refs/heads/main'
-    needs: [rapide, serveur, complet]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      # Le temps que les deux hôtes basculent. Trois minutes est mesuré large :
-      # les déploiements observés tenaient entre 19 et 58 secondes.
-      - run: sleep 180
-      - run: npm run fumee
