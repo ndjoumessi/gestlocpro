@@ -1,6 +1,6 @@
 import { prisma } from '../db.js'
 import { leStockage } from '../stockage/stockage.js'
-import { DELAI_D_EFFACEMENT_JOURS } from './fermeture.js'
+import { DELAI_D_EFFACEMENT_JOURS, parcsEmportesParLEffacement } from './fermeture.js'
 
 /**
  * L'EFFACEMENT DES COMPTES FERMÉS — ce que la fermeture a promis.
@@ -57,21 +57,10 @@ export async function effacerLesComptesFermes(
   const stockage = leStockage()
 
   for (const compte of fermes) {
-    /* LES PARCS DONT IL EST LE SEUL PROPRIÉTAIRE. Le compte des propriétaires se
-       fait sur les adhésions ACTIVES : une adhésion révoquée ne tient pas un
-       parc debout, et la lire comme telle laisserait un parc sans personne. */
-    const siens = await prisma.park.findMany({
-      where: {
-        memberships: { some: { userId: compte.id, role: 'owner', status: 'active' } },
-      },
-      select: {
-        id: true,
-        memberships: { where: { role: 'owner', status: 'active' }, select: { userId: true } },
-      },
-    })
-    const aEffacer = siens
-      .filter((parc) => parc.memberships.every((adhesion) => adhesion.userId === compte.id))
-      .map((parc) => parc.id)
+    /* LE MÊME CALCUL QUE CELUI DE L'AVERTISSEMENT, et c'est tout l'intérêt de
+       l'avoir sorti d'ici : on efface exactement ce dont on a prévenu les
+       locataires et les gestionnaires trente jours plus tôt. */
+    const aEffacer = await parcsEmportesParLEffacement(compte.id)
 
     for (const parkId of aEffacer) {
       const photos = await prisma.inspectionPhoto.findMany({

@@ -14,6 +14,7 @@ import { prisma } from '../db.js'
 import { hashPassword, needsRehash, verifyPassword } from './password.js'
 import { fermerSession, lireSession, ouvrirSession } from './session.js'
 import { effacementPrevu } from './fermeture.js'
+import { avertirAvantLEffacement } from './avertirAvantLEffacement.js'
 import { semerParcDemonstration } from '../parks/demo.js'
 import { Currency } from '../generated/prisma/client.js'
 
@@ -537,7 +538,19 @@ authRouter.post('/me/closure', async (req: Request, res: Response) => {
     }),
   ])
   await fermerSession(req, res)
-  res.json({ effaceLe: effacementPrevu(maintenant).toISOString() })
+
+  /* LES TIERS SONT PRÉVENUS MAINTENANT, pas à l'effacement : ils ont alors les
+     trente jours pour emporter leurs pièces. L'avertissement ne peut pas faire
+     échouer la fermeture — c'est le droit de la personne qui demande, et il ne
+     dépend pas d'un fournisseur de courriels. */
+  const effaceLe = effacementPrevu(maintenant)
+  try {
+    await avertirAvantLEffacement(session.userId, effaceLe)
+  } catch (erreur) {
+    console.error('avertissement avant effacement — envoi impossible', erreur)
+  }
+
+  res.json({ effaceLe: effaceLe.toISOString() })
 })
 
 authRouter.get('/me', async (req: Request, res: Response) => {

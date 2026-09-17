@@ -1,0 +1,200 @@
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
+import request from 'supertest'
+import { createApp } from '../app.js'
+import { prisma } from '../db.js'
+import { NOM_COOKIE } from './session.js'
+import { remplacerMessagerie, type Messagerie } from '../messagerie/messagerie.js'
+
+/**
+ * QUI D'AUTRE PERD SON ESPACE QUAND UN COMPTE SE FERME.
+ *
+ * ═══ LA DETTE QUE CE LOT FERME ═══
+ *
+ * 935bf14 et 0c2a52a l'écrivaient noir sur blanc dans leur section « ce que je
+ * peux avoir raté » : « LES LOCATAIRES NE SONT PAS PRÉVENUS », « un compte qui
+ * se ferme en étant seul propriétaire d'un parc où travaille un gestionnaire
+ * emporte le travail de ce dernier ».
+ *
+ * Un locataire découvrait donc, un matin, que son portail n'existait plus — ses
+ * quittances, ses états des lieux, l'historique de sa caution. Sans avertissement,
+ * il n'avait eu aucune occasion d'en garder copie.
+ *
+ * ═══ PRÉVENIR À LA FERMETURE, PAS À L'EFFACEMENT ═══
+ *
+ * Choisi par Nelson le 2026-09-16 : prévenus le jour de la demande, ils ont les
+ * trente jours pour exporter. Prévenir à l'effacement serait annoncer une
+ * disparition déjà faite.
+ *
+ * ═══ CE QUE LES CAS TIENNENT ═══
+ *
+ *  1. CHAQUE LOCATAIRE ET CHAQUE GESTIONNAIRE du parc emporté est prévenu, avec
+ *     la DATE.
+ *  2. PERSONNE N'EST PRÉVENU POUR UN PARC QUI SURVIT — un parc à deux
+ *     propriétaires n'est pas effacé, et annoncer sa disparition serait une
+ *     fausse alerte adressée à des tiers.
+ *  3. UN ENVOI QUI ÉCHOUE NE FAIT PAS ÉCHOUER LA FERMETURE. Le droit de la
+ *     personne ne dépend pas de la santé d'un fournisseur de courriels.
+ */
+const app = createApp()
+const serveur = app.listen(0)
+const MDP = 'un-mot-de-passe-assez-long'
+
+function cookieDe(res: request.Response): string {
+  const entetes = res.headers['set-cookie']
+  const liste = Array.isArray(entetes) ? entetes : entetes ? [entetes] : []
+  const trouve = liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))
+  if (!trouve) throw new Error(`aucun cookie de session — ${res.status}`)
+  return trouve
+}
+
+let envois: { destinataire: string; sujet: string; texte: string }[] = []
+let rendre = true
+let retablir: () => void
+
+const messagerieDeSonde: Messagerie = {
+  async envoyerSms() {
+    return rendre
+  },
+  async envoyerEmail(destinataire, sujet, corps) {
+    envois.push({ destinataire, sujet, texte: corps.texte })
+    return rendre
+  },
+}
+
+/** Un parc avec un gestionnaire, un locataire relié à un compte, et un sans compte. */
+async function parcHabite() {
+  const inscription = await request(serveur).post('/api/auth/signup').send({
+    email: 'proprio@example.com',
+    password: MDP,
+    fullName: 'Djoumessi Nelson',
+    acceptTerms: true,
+    parkName: 'Parc Bonamoussadi',
+    countryCode: 'CM',
+  })
+  const cookie = cookieDe(inscription)
+  const moi = await request(serveur).get('/api/auth/me').set('Cookie', cookie)
+  const parkId = moi.body.memberships[0].parkId as string
+
+  const immeuble = await request(serveur)
+    .post(`/api/parks/${parkId}/buildings`)
+    .set('Cookie', cookie)
+    .send({ name: 'Résidence', district: 'Bastos' })
+  const unite = await request(serveur)
+    .post(`/api/parks/${parkId}/buildings/${immeuble.body.building.id}/units`)
+    .set('Cookie', cookie)
+    .send({ label: 'A1', type: 'T2', surfaceSqm: 50, baseRentMinor: 100000 })
+
+  const invitationGestion = await request(serveur)
+    .post(`/api/parks/${parkId}/invitations`)
+    .set('Cookie', cookie)
+    .send({ role: 'manager' })
+  await request(serveur).post('/api/auth/signup').send({
+    email: 'cabinet@example.com',
+    password: MDP,
+    fullName: 'Cabinet Njoya',
+    acceptTerms: true,
+    invitationCode: invitationGestion.body.code,
+  })
+
+  const invitationLocataire = await request(serveur)
+    .post(`/api/parks/${parkId}/invitations`)
+    .set('Cookie', cookie)
+    .send({ role: 'tenant', unitId: unite.body.unit.id })
+  const locataire = await request(serveur).post('/api/auth/signup').send({
+    email: 'locataire@example.com',
+    password: MDP,
+    fullName: 'Bekono Landry',
+    acceptTerms: true,
+    invitationCode: invitationLocataire.body.code,
+  })
+  expect(locataire.status, JSON.stringify(locataire.body)).toBe(201)
+
+  /* Une fiche SANS compte, avec une adresse : elle existe dans tout parc réel,
+     et son occupant perd le même portail que les autres. */
+  await request(serveur)
+    .post(`/api/parks/${parkId}/tenants`)
+    .set('Cookie', cookie)
+    .send({ unitId: unite.body.unit.id, fullName: 'Ondoa Pierre', email: 'ondoa@example.com' })
+
+  return { cookie, parkId }
+}
+
+const fermer = (cookie: string) =>
+  request(serveur).post('/api/auth/me/closure').set('Cookie', cookie)
+
+beforeEach(async () => {
+  await prisma.park.deleteMany()
+  await prisma.userAccount.deleteMany()
+  envois = []
+  rendre = true
+  retablir = remplacerMessagerie(messagerieDeSonde)
+})
+
+afterEach(() => {
+  retablir()
+})
+
+afterAll(async () => {
+  await prisma.park.deleteMany()
+  await prisma.userAccount.deleteMany()
+  await prisma.$disconnect()
+  await new Promise((resoudre) => serveur.close(resoudre))
+})
+
+describe('l’avertissement des tiers à la fermeture', () => {
+  it('prévient chaque locataire et chaque gestionnaire, avec la date', async () => {
+    const { cookie } = await parcHabite()
+
+    const res = await fermer(cookie).expect(200)
+    const jour = new Date(res.body.effaceLe).toISOString().slice(0, 10)
+
+    const destinataires = envois.map((e) => e.destinataire).sort()
+    /* TROIS : le gestionnaire, le locataire entré par un code — qui n'a PAS de
+       fiche, et que la première rédaction oubliait —, et la fiche sans compte. */
+    expect(destinataires).toEqual(
+      ['cabinet@example.com', 'locataire@example.com', 'ondoa@example.com'].sort(),
+    )
+    /* LE PROPRIÉTAIRE N'EST PAS PRÉVENU PAR COURRIEL : il vient de le demander,
+       et l'écran lui a déjà dit la date. Un courriel de plus ferait douter. */
+    expect(destinataires).not.toContain('proprio@example.com')
+
+    for (const envoi of envois) {
+      expect(envoi.texte, `${envoi.destinataire} n’a pas la date`).toContain(jour)
+      expect(envoi.texte).toContain('Parc Bonamoussadi')
+    }
+  })
+
+  it('ne prévient personne quand le parc va survivre', async () => {
+    const { cookie, parkId } = await parcHabite()
+    const associe = await request(serveur).post('/api/auth/signup').send({
+      email: 'associe@example.com',
+      password: MDP,
+      fullName: 'Associée',
+      acceptTerms: true,
+    })
+    await prisma.membership.create({
+      data: { parkId, userId: associe.body.user.id, role: 'owner', status: 'active' },
+    })
+
+    await fermer(cookie).expect(200)
+
+    /* Le parc a un second propriétaire : l'effacement ne l'emportera pas, donc
+       personne n'a à être alarmé. C'est le MÊME calcul que celui du balayage —
+       prévenir plus large que ce qui sera effacé serait une fausse alerte. */
+    expect(envois).toEqual([])
+  })
+
+  it('n’échoue pas quand le courriel ne part pas', async () => {
+    const { cookie } = await parcHabite()
+    rendre = false
+
+    const res = await fermer(cookie)
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    expect(typeof res.body.effaceLe).toBe('string')
+    /* La demande est enregistrée quoi qu'il arrive au fournisseur. */
+    expect(
+      (await prisma.userAccount.findUniqueOrThrow({ where: { email: 'proprio@example.com' } }))
+        .closureRequestedAt,
+    ).not.toBeNull()
+  })
+})
