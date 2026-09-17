@@ -222,7 +222,7 @@ describe('les montants sont des entiers', () => {
       data: { leaseId: bail.id, periodStart: new Date('2026-08-01'), dueOn: new Date('2026-08-05'), rentMinor: 30 },
     })
     const compte = await prisma.userAccount.create({
-      data: { email: 'proprio@example.com', passwordHash: 'x', fullName: 'Propriétaire', termsAcceptedAt: new Date() },
+      data: { email: 'proprio@example.com', passwordHash: 'x', fullName: 'Propriétaire', legalConfirmedAt: new Date(), legalConfirmation: 'readPrivacy' },
     })
 
     for (const montant of [10, 20]) {

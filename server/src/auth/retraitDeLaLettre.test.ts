@@ -30,7 +30,7 @@ beforeEach(async () => {
     email: 'lettre@example.com',
     password: 'un-mot-de-passe-assez-long',
     fullName: 'Awa Mbarga',
-    acceptTerms: true,
+    confirmLegal: true,
     newsletterOptIn: true,
   })
   cookie = cookieDe(inscription)

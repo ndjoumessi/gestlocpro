@@ -51,7 +51,7 @@ async function parcAvecUnLocataireEnPlace() {
       email: 'proprio@example.com',
       password: MDP,
       fullName: 'Djoumessi Nelson',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc Bastos',
       countryCode: 'CM',
     })
@@ -112,7 +112,7 @@ describe('le locataire qui s’inscrit avec son code', () => {
       email: 'romel.djoumessi@example.com',
       password: MDP,
       fullName: 'Djoumessi Martial',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: code,
     })
     const sien = cookieDe(locataire)
@@ -142,7 +142,7 @@ describe('le locataire qui s’inscrit avec son code', () => {
       email: 'romel.djoumessi@example.com',
       password: MDP,
       fullName: 'Djoumessi Martial',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: code,
     })
 
@@ -163,7 +163,7 @@ describe('le locataire qui a DÉJÀ un compte et rejoint par code', () => {
       email: 'deja-inscrit@example.com',
       password: MDP,
       fullName: 'Djoumessi Martial',
-      acceptTerms: true,
+      confirmLegal: true,
     })
     const sien = cookieDe(compte)
 

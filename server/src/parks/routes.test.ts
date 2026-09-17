@@ -45,7 +45,7 @@ const MDP = 'un-mot-de-passe-assez-long'
 async function inscrire(email: string, options: Record<string, unknown> = {}) {
   const res = await request(serveur)
     .post('/api/auth/signup')
-    .send({ email, password: MDP, fullName: 'Compte de test', acceptTerms: true, ...options })
+    .send({ email, password: MDP, fullName: 'Compte de test', confirmLegal: true, ...options })
   const entetes = res.headers['set-cookie']
   const liste = Array.isArray(entetes) ? entetes : entetes ? [entetes] : []
   const cookie = liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))
@@ -2003,7 +2003,7 @@ describe('codes d’invitation', () => {
       email: 'invite@example.com',
       password: MDP,
       fullName: 'Diane Fotso',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: code,
       role: 'owner',
     })
@@ -2022,7 +2022,7 @@ describe('codes d’invitation', () => {
       email: 'casse-invite@example.com',
       password: MDP,
       fullName: 'Test Casse',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: ` ${code.toLowerCase()} `,
     })
     expect(res.status).toBe(201)
@@ -2036,14 +2036,14 @@ describe('codes d’invitation', () => {
      */
     const { code } = await parcAvecCode('rejoue@example.com')
     await request(serveur).post('/api/auth/signup').send({
-      email: 'premier@example.com', password: MDP, fullName: 'Premier', acceptTerms: true, invitationCode: code,
+      email: 'premier@example.com', password: MDP, fullName: 'Premier', confirmLegal: true, invitationCode: code,
     })
 
     const second = await request(serveur).post('/api/auth/signup').send({
-      email: 'second@example.com', password: MDP, fullName: 'Second', acceptTerms: true, invitationCode: code,
+      email: 'second@example.com', password: MDP, fullName: 'Second', confirmLegal: true, invitationCode: code,
     })
     const inexistant = await request(serveur).post('/api/auth/signup').send({
-      email: 'tiers@example.com', password: MDP, fullName: 'Tiers', acceptTerms: true, invitationCode: 'GES-ZZZZ-ZZZZ',
+      email: 'tiers@example.com', password: MDP, fullName: 'Tiers', confirmLegal: true, invitationCode: 'GES-ZZZZ-ZZZZ',
     })
 
     expect(second.status).toBe(400)
@@ -2058,7 +2058,7 @@ describe('codes d’invitation', () => {
     })
 
     const res = await request(serveur).post('/api/auth/signup').send({
-      email: 'tard@example.com', password: MDP, fullName: 'Tard', acceptTerms: true, invitationCode: code,
+      email: 'tard@example.com', password: MDP, fullName: 'Tard', confirmLegal: true, invitationCode: code,
     })
     expect(res.status).toBe(400)
   })

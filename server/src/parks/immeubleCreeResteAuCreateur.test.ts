@@ -55,7 +55,7 @@ async function parcEtGestionnaireNeuf() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc du Mandat',
     countryCode: 'CM',
   })
@@ -70,7 +70,7 @@ async function parcEtGestionnaireNeuf() {
     email: 'gestion@example.com',
     password: MDP,
     fullName: 'Gestion Aire',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: code.body.code,
   })
   return { cookieProprio, cookieGestion: cookieDe(gestion), parkId }

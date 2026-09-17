@@ -58,7 +58,7 @@ async function parcSurDeuxMois() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })

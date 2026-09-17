@@ -62,7 +62,7 @@ async function parcLoue(email = 'proprio@example.com') {
     email,
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -290,7 +290,7 @@ describe('la consommation devient une somme appelée', () => {
       email: 'sanstarif@example.com',
       password: MDP,
       fullName: 'Sans Tarif',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc nu',
       countryCode: 'CM',
     })

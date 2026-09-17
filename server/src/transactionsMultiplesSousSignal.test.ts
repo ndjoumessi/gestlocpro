@@ -59,7 +59,7 @@ async function parcDeTaille(combien: number) {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -149,7 +149,7 @@ describe('une transaction à écritures multiples survit au signal', () => {
       email: 'multi@example.com',
       password: MDP,
       fullName: 'Djoumessi Nelson',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc Multi',
       countryCode: 'CM',
     })

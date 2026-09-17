@@ -46,7 +46,7 @@ async function parcAvecUneFicheOrpheline() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -79,7 +79,7 @@ async function parcAvecUneFicheOrpheline() {
     email: 'romel@example.com',
     password: MDP,
     fullName: 'Bekono Landry',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: inv.body.code,
   })
 
@@ -161,7 +161,7 @@ describe('relier une fiche à un compte', () => {
       email: 'etranger@example.com',
       password: MDP,
       fullName: 'Quelqu’un d’autre',
-      acceptTerms: true,
+      confirmLegal: true,
     })
 
     const lien = await request(serveur)

@@ -60,7 +60,7 @@ async function parcAvecUnLocataire() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -86,7 +86,7 @@ async function parcAvecUnLocataire() {
     email: 'romel@example.com',
     password: MDP,
     fullName: 'Bekono Landry',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: inv.body.code,
   })
   await request(serveur)
@@ -203,7 +203,7 @@ describe('l’abonné voisin', () => {
       email: 'cabinet@example.com',
       password: MDP,
       fullName: 'Cabinet Njoya',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: inv.body.code,
     })
     await request(serveur)
@@ -344,7 +344,7 @@ describe('la langue du courriel', () => {
       email: 'cabinet@example.com',
       password: MDP,
       fullName: 'Cabinet Njoya',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: inv.body.code,
     })
     await prisma.userAccount.update({

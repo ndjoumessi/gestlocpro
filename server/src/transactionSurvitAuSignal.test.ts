@@ -46,10 +46,11 @@ async function ecrireLentement(duree: number): Promise<void> {
           email: IDENTIFIANT,
           passwordHash: 'peu-importe',
           fullName: 'Écriture en vol',
-          /* `termsAcceptedAt` n'a pas de valeur par défaut au schéma : c'est un
+          /* Le couple n'a pas de valeur par défaut au schéma : c'est un
              CONSENTEMENT, et une base qui le daterait toute seule daterait un
              accord que personne n'a donné. Prisma me l'a rappelé. */
-          termsAcceptedAt: new Date(),
+          legalConfirmedAt: new Date(),
+          legalConfirmation: 'readPrivacy',
         },
       })
       /* LA PAUSE EST DANS LA TRANSACTION, et c'est tout l'objet du cas : le

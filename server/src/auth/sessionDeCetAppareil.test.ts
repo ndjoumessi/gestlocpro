@@ -30,7 +30,7 @@ const INSCRIPTION = {
   email: 'sarah@example.com',
   password: 'un-mot-de-passe-assez-long',
   fullName: 'Sarah Ngassa',
-  acceptTerms: true,
+  confirmLegal: true,
 }
 
 beforeEach(async () => {

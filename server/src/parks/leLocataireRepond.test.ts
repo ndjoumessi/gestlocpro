@@ -62,7 +62,7 @@ async function parcAvecUnSignalement() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -92,7 +92,7 @@ async function parcAvecUnSignalement() {
     email: 'diane@example.com',
     password: MDP,
     fullName: 'Diane Mballa',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: invGes.body.code,
   })
 
@@ -105,7 +105,7 @@ async function parcAvecUnSignalement() {
       email,
       password: MDP,
       fullName: nom,
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: inv.body.code,
     })
     await request(serveur)

@@ -51,7 +51,7 @@ async function unParcAvecUnImmeubleVide() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })

@@ -58,7 +58,7 @@ async function unProprietaire() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -92,7 +92,7 @@ async function unCompteEtranger(email: string) {
     email,
     password: MDP,
     fullName: 'Gestion Aire',
-    acceptTerms: true,
+    confirmLegal: true,
   })
   return cookieDe(res)
 }

@@ -48,7 +48,7 @@ async function unParcAvecUnLogement() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -178,7 +178,7 @@ describe('retirer un logement', () => {
       email: 'intrus@example.com',
       password: MDP,
       fullName: 'Autre Personne',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc Akwa',
       countryCode: 'CM',
     })

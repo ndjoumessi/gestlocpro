@@ -42,7 +42,7 @@ async function parcDeDemonstration() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bonamoussadi',
     countryCode: 'CM',
     seedDemo: true,
@@ -154,7 +154,7 @@ describe('l’export borné au périmètre du demandeur', () => {
       email: 'locataire@example.com',
       password: MDP,
       fullName: fiche.fullName,
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: invitation.body.code,
     })
 
@@ -209,7 +209,7 @@ describe('l’export borné au périmètre du demandeur', () => {
       email: 'cabinet2@example.com',
       password: MDP,
       fullName: 'Cabinet Njoya',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: inv.body.code,
     })
 
@@ -238,7 +238,7 @@ describe('l’export borné au périmètre du demandeur', () => {
       email: 'cabinet@example.com',
       password: MDP,
       fullName: 'Cabinet Njoya',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: inv.body.code,
     })
     const adhesion = await prisma.membership.findFirstOrThrow({

@@ -88,7 +88,7 @@ beforeAll(async () => {
     email: 'contrat@example.com',
     password: 'un-mot-de-passe-assez-long',
     fullName: 'Compte de contrat',
-    acceptTerms: true,
+    confirmLegal: true,
     countryCode: 'CM',
     parkName: 'Parc de contrat',
     seedDemo: true,

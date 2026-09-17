@@ -55,7 +55,7 @@ async function membreSansFicheEtUnCodePourSonLogement() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -87,7 +87,7 @@ async function membreSansFicheEtUnCodePourSonLogement() {
     email: 'romel@example.com',
     password: MDP,
     fullName: 'Bekono Landry',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: sansLogement.body.code,
   })
 
@@ -215,7 +215,7 @@ describe('rejoindre quand on est déjà membre', () => {
       email: 'charles@example.com',
       password: MDP,
       fullName: 'Eloundou Charles',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: autre.body.code,
     })
     const acces = await request(serveur).get(`/api/parks/${parkId}/access`).set('Cookie', cookie)

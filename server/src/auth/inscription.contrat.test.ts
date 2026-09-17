@@ -49,7 +49,7 @@ function inscription(champs: Record<string, unknown> = {}) {
     email: `contrat.pays.${n}@example.test`,
     password: 'MotDePasseAssezLong1',
     fullName: 'Contrat des pays',
-    acceptTerms: true,
+    confirmLegal: true,
     locale: 'fr',
     ...champs,
   }

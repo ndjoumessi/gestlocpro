@@ -68,6 +68,20 @@ const email = z
  */
 const motDePasse = z.string().min(10, 'Au moins 10 caractères').max(200)
 
+/**
+ * LE TEXTE QUE LA CASE DE L'INSCRIPTION FAIT CONFIRMER AUJOURD'HUI.
+ *
+ * Ici et non chez le client : ce qui a été montré est un fait du produit, pas
+ * une déclaration de l'appelant. Un client qui choisirait la valeur pourrait
+ * inscrire au registre qu'une personne a accepté des conditions générales
+ * qu'elle n'a jamais vues — c'est exactement le défaut que ce couple de colonnes
+ * répare.
+ *
+ * SE CHANGE ICI, LE JOUR OÙ LES CONDITIONS GÉNÉRALES EXISTERONT, en même temps
+ * que le libellé de `SignUp.tsx` et une valeur de plus à `LegalConfirmation`.
+ */
+const TEXTE_CONFIRME_A_L_INSCRIPTION = 'readPrivacy' as const
+
 const schemaInscription = z.object({
   email,
   password: motDePasse,
@@ -80,11 +94,18 @@ const schemaInscription = z.object({
   countryCode: z.string().length(2).toUpperCase().optional(),
   locale: z.enum(['fr', 'en']).default('fr'),
   /**
-   * L'acceptation doit être explicite : `true` littéral, pas « présent donc
-   * vrai ». C'est la première chose à conserver juridiquement, avec sa date, et
-   * le client la collecte déjà sans que rien ne l'enregistre.
+   * La confirmation doit être explicite : `true` littéral, pas « présent donc
+   * vrai ». C'est la première chose à conserver juridiquement, avec sa date.
+   *
+   * `confirmLegal` ET NON `acceptTerms`. L'ancien nom disait « conditions
+   * générales », que ce produit n'a jamais publiées : la case fait confirmer la
+   * LECTURE de la politique de confidentialité depuis `efd8654`. Le champ ne
+   * nomme donc plus le texte — il dit seulement que la case a été cochée, et
+   * c'est le SERVEUR qui sait laquelle (`TEXTE_CONFIRME_A_L_INSCRIPTION`). Le
+   * jour où les conditions générales existeront, le client n'aura rien à
+   * changer.
    */
-  acceptTerms: z.literal(true),
+  confirmLegal: z.literal(true),
   newsletterOptIn: z.boolean().default(false),
   /**
    * Nom du parc, collecté à l'étape « Votre contexte » de l'assistant et jeté
@@ -298,7 +319,8 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
             phoneE164: donnees.phoneE164 ?? null,
             countryCode: donnees.countryCode ?? null,
             locale: donnees.locale,
-            termsAcceptedAt: new Date(),
+            legalConfirmedAt: new Date(),
+            legalConfirmation: TEXTE_CONFIRME_A_L_INSCRIPTION,
             newsletterOptIn: donnees.newsletterOptIn,
           },
         })

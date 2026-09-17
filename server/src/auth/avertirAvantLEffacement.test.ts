@@ -67,7 +67,7 @@ async function parcHabite() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bonamoussadi',
     countryCode: 'CM',
   })
@@ -92,7 +92,7 @@ async function parcHabite() {
     email: 'cabinet@example.com',
     password: MDP,
     fullName: 'Cabinet Njoya',
-    acceptTerms: true,
+    confirmLegal: true,
     /* CE CABINET LIT L'ANGLAIS : c'est ce qui rend les cas de langue possibles,
        et le reste du parc n'en est pas affecté. */
     locale: 'en',
@@ -107,7 +107,7 @@ async function parcHabite() {
     email: 'locataire@example.com',
     password: MDP,
     fullName: 'Bekono Landry',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: invitationLocataire.body.code,
   })
   expect(locataire.status, JSON.stringify(locataire.body)).toBe(201)
@@ -183,7 +183,7 @@ describe('l’avertissement des tiers à la fermeture', () => {
       email: 'associe@example.com',
       password: MDP,
       fullName: 'Associée',
-      acceptTerms: true,
+      confirmLegal: true,
     })
     await prisma.membership.create({
       data: { parkId, userId: associe.body.user.id, role: 'owner', status: 'active' },

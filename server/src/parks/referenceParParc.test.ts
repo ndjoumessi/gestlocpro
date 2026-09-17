@@ -47,7 +47,7 @@ async function parcAvecUnLogement(email: string, nom: string) {
     email,
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: nom,
     countryCode: 'CM',
   })
@@ -117,7 +117,7 @@ describe('la référence d’un signalement', () => {
     const commun = {
       password: MDP,
       fullName: 'Djoumessi Nelson',
-      acceptTerms: true,
+      confirmLegal: true,
       countryCode: 'CM',
       seedDemo: true,
     }

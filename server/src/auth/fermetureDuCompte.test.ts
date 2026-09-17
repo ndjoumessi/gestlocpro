@@ -50,7 +50,7 @@ async function inscrire() {
     email: COURRIEL,
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bonamoussadi',
     countryCode: 'CM',
   })

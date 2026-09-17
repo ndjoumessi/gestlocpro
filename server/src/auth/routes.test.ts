@@ -26,7 +26,7 @@ const INSCRIPTION = {
   email: 'sarah@example.com',
   password: 'un-mot-de-passe-assez-long',
   fullName: 'Sarah Ngassa',
-  acceptTerms: true,
+  confirmLegal: true,
 }
 
 beforeEach(async () => {
@@ -99,23 +99,24 @@ describe('inscription', () => {
     expect(await prisma.userAccount.count()).toBe(1)
   })
 
-  it('exige une acceptation explicite des conditions', async () => {
+  it('exige une confirmation explicite de la case légale', async () => {
     // `false` et l'absence sont refusés tous les deux : c'est la première chose
     // à conserver juridiquement, et le client la collecte déjà sans que rien ne
     // l'enregistre.
-    for (const acceptTerms of [false, undefined]) {
+    for (const confirmLegal of [false, undefined]) {
       const res = await request(serveur)
         .post('/api/auth/signup')
-        .send({ ...INSCRIPTION, acceptTerms })
+        .send({ ...INSCRIPTION, confirmLegal })
       expect(res.status).toBe(400)
     }
     expect(await prisma.userAccount.count()).toBe(0)
   })
 
-  it('horodate l’acceptation', async () => {
+  it('horodate la confirmation, et nomme le texte confirmé', async () => {
     await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
     const compte = await prisma.userAccount.findFirstOrThrow()
-    expect(compte.termsAcceptedAt).toBeInstanceOf(Date)
+    expect(compte.legalConfirmedAt).toBeInstanceOf(Date)
+    expect(compte.legalConfirmation).toBe('readPrivacy')
   })
 
   it('nomme les champs fautifs plutôt qu’un message global', async () => {

@@ -51,7 +51,7 @@ async function parcAvecUnLogement() {
     email: 'proprio-courriel@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })

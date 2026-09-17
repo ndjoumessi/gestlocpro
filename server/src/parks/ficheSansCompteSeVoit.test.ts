@@ -44,7 +44,7 @@ async function parcAvecUneFicheReliableEtUneOrpheline() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -81,7 +81,7 @@ async function parcAvecUneFicheReliableEtUneOrpheline() {
     email: 'martial@example.com',
     password: MDP,
     fullName: 'Djoumessi Martial',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: inv.body.code,
   })
   await request(serveur)

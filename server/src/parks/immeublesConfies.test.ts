@@ -49,7 +49,7 @@ async function parcADeuxImmeubles() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -87,7 +87,7 @@ async function parcADeuxImmeubles() {
     email: 'cabinet@example.com',
     password: MDP,
     fullName: 'Cabinet Njoya',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: inv.body.code,
   })
 
@@ -268,7 +268,7 @@ describe('le geste de confier', () => {
       email: 'voisin@example.com',
       password: MDP,
       fullName: 'Diane Mballa',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc voisin',
       countryCode: 'CM',
     })

@@ -46,7 +46,7 @@ async function parcAvecUnGestionnaire() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bonamoussadi',
     countryCode: 'CM',
   })
@@ -62,7 +62,7 @@ async function parcAvecUnGestionnaire() {
     email: 'cabinet@example.com',
     password: MDP,
     fullName: 'Cabinet Njoya',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: invitation.body.code,
   })
 
@@ -112,7 +112,7 @@ describe('la fermeture vue depuis le parc', () => {
       email: 'associe@example.com',
       password: MDP,
       fullName: 'Associée',
-      acceptTerms: true,
+      confirmLegal: true,
     })
     await prisma.membership.create({
       data: { parkId, userId: associe.body.user.id, role: 'owner', status: 'active' },

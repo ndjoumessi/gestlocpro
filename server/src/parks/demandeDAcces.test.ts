@@ -57,7 +57,7 @@ async function unProprioEtUnInconnu() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -65,7 +65,7 @@ async function unProprioEtUnInconnu() {
     email: 'gestion@example.com',
     password: MDP,
     fullName: 'Gestion Aire',
-    acceptTerms: true,
+    confirmLegal: true,
   })
   return {
     cookieProprio: cookieDe(proprio),

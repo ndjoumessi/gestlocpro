@@ -149,8 +149,9 @@ export function SignUp() {
    * Crée réellement le compte.
    *
    * L'assistant validait neuf champs puis faisait `setDone(true)` : le mot de
-   * passe, l'acceptation des conditions, le pays, la langue, le nom du parc —
-   * tout était jeté à la dernière étape. Le succès affiché ne recouvrait rien.
+   * passe, la confirmation de la case légale, le pays, la langue, le nom du
+   * parc — tout était jeté à la dernière étape. Le succès affiché ne recouvrait
+   * rien.
    */
   const creerLeCompte = async () => {
     /**
@@ -190,7 +191,7 @@ export function SignUp() {
           ? { countryCode: state.country }
           : {}),
         locale,
-        acceptTerms: true,
+        confirmLegal: true,
         newsletterOptIn: state.newsletter,
         // Le nom du parc était saisi, validé, puis affiché au récapitulatif —
         // et jeté à l'envoi. Le compte se créait sans parc, et le propriétaire

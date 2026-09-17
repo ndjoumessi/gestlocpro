@@ -53,7 +53,7 @@ async function parcAvecUnMembreSansFiche() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -84,7 +84,7 @@ async function parcAvecUnMembreSansFiche() {
     email: 'romel@example.com',
     password: MDP,
     fullName: 'Bekono Landry',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: inv.body.code,
   })
 
@@ -169,7 +169,7 @@ describe('créer une fiche pour un compte déjà membre', () => {
       email: 'etranger@example.com',
       password: MDP,
       fullName: 'Diane Mballa',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc voisin',
       countryCode: 'CM',
     })

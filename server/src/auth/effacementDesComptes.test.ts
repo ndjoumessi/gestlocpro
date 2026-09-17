@@ -47,7 +47,7 @@ function cookieDe(res: request.Response): string {
 async function inscrire(email: string, options: Record<string, unknown> = {}) {
   const res = await request(serveur)
     .post('/api/auth/signup')
-    .send({ email, password: MDP, fullName: 'Djoumessi Nelson', acceptTerms: true, ...options })
+    .send({ email, password: MDP, fullName: 'Djoumessi Nelson', confirmLegal: true, ...options })
   expect(res.status, JSON.stringify(res.body)).toBe(201)
   return { cookie: cookieDe(res), id: res.body.user.id as string }
 }

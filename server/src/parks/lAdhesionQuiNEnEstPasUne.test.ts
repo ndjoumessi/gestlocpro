@@ -69,7 +69,7 @@ async function unParcAvecUneDemandeEtUnMembre() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -88,7 +88,7 @@ async function unParcAvecUneDemandeEtUnMembre() {
     email: 'demandeur@example.com',
     password: MDP,
     fullName: 'Demande Eur',
-    acceptTerms: true,
+    confirmLegal: true,
   })
   await request(serveur)
     .post('/api/access-requests')
@@ -105,7 +105,7 @@ async function unParcAvecUneDemandeEtUnMembre() {
     email: 'membre@example.com',
     password: MDP,
     fullName: 'Membre Vif',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: invitation.body.code,
   })
   const membre = await prisma.membership.findFirstOrThrow({

@@ -138,6 +138,19 @@ const AFFIRMATIONS: Record<string, string> = {
     'ne change de vue — aveugler les gestionnaires en place était précisément ce ' +
     'que la règle d’origine refusait, et ce refus reste juste. Les adhésions qui ' +
     'NAISSENT sont `declared`, où une liste vide veut dire vide.',
+  'UserAccount.legalConfirmation':
+    'AUCUN DÉFAUT, ET AUCUN NULL : la migration REMPLIT la colonne par une ' +
+    'date de coupure — l’horodatage de `efd8654`, le commit qui a changé le ' +
+    'texte de la case — avant de la rendre obligatoire. Elle affirme donc que ' +
+    'les comptes d’avant ont accepté « les conditions générales et la politique ' +
+    'de confidentialité », et ceux d’après qu’ils ont LU la politique. ' +
+    'VÉRIFIÉ AUX BORNES SEULEMENT, et le doute est nommé dans la migration : la ' +
+    'vraie frontière est l’instant du DÉPLOIEMENT, qui a suivi le commit de ' +
+    'quelques minutes et que rien en base ne connaît. Une inscription tombée ' +
+    'dans cet intervalle est classée `readPrivacy` alors qu’elle a vu l’ancien ' +
+    'texte : le sens de l’erreur est CHOISI — on lui prête moins que ce ' +
+    'qu’elle a fait, plutôt que de lui prêter l’acceptation de conditions ' +
+    'générales que ce produit n’a jamais publiées.',
   'WorkThreadEmail.notificationId':
     'NULL, et son sens est DOUBLE : « le signalement, qui EST le fil » et ' +
     '« écrit avant cette colonne ». Assumé et écrit dans la migration : le ' +
@@ -190,13 +203,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont VINGT, et le compte est écrit à la main', () => {
+  it('sont VINGT ET UNE, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(20)
+    ).toBe(21)
   })
 })

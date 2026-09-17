@@ -50,7 +50,7 @@ async function ficheReliieAuMauvaisCompte() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -79,7 +79,7 @@ async function ficheReliieAuMauvaisCompte() {
       .send({ role: 'tenant' })
     const compte = await request(serveur)
       .post('/api/auth/signup')
-      .send({ email, password: MDP, fullName, acceptTerms: true, invitationCode: inv.body.code })
+      .send({ email, password: MDP, fullName, confirmLegal: true, invitationCode: inv.body.code })
     return { cookie: cookieDe(compte), userId: compte.body.user.id as string }
   }
   const charles = await entrer('charles@example.com', 'Eloundou Charles')

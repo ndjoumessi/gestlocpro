@@ -72,7 +72,7 @@ async function remplirIdentite(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: /continuer/i }))
   await screen.findByRole('heading', { name: /tout est correct/i })
   // Sans cette case, l'assistant refuse de soumettre — et c'est le
-  // comportement voulu : l'acceptation est exigée avant toute création.
+  // comportement voulu : la confirmation est exigée avant toute création.
   await user.click(screen.getByLabelText(/j’ai lu la politique de confidentialité/i))
 }
 
@@ -257,9 +257,9 @@ describe('inscription', () => {
     expect(corps.fullName).toBe('Arsène Nkomo')
     // Le mot de passe partait nulle part : il n'existait aucun compte à créer.
     expect(corps.password).toBe('Bonamoussadi2026!')
-    // L'acceptation des conditions est la première chose à conserver
+    // La confirmation de la case légale est la première chose à conserver
     // juridiquement, et elle n'était enregistrée nulle part.
-    expect(corps.acceptTerms).toBe(true)
+    expect(corps.confirmLegal).toBe(true)
     // Le couple indicatif + numéro est recomposé en E.164, la seule forme qui
     // se lise sans ambiguïté.
     expect(corps.phoneE164).toBe('+237677889900')

@@ -47,7 +47,7 @@ async function parcAvecUnGestionnaireNeuf() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -62,7 +62,7 @@ async function parcAvecUnGestionnaireNeuf() {
     email: 'gestion@example.com',
     password: MDP,
     fullName: 'Gestion Aire',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: code.body.code,
   })
 

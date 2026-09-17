@@ -74,7 +74,7 @@ async function parcAvecUnGestionnaireBorne() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Nelson D',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -91,7 +91,7 @@ async function parcAvecUnGestionnaireBorne() {
     email: 'gestion@example.com',
     password: MDP,
     fullName: 'Gestion Aire',
-    acceptTerms: true,
+    confirmLegal: true,
     invitationCode: await codeDeGestionnaire(cookieProprio, parkId),
   })
   const cookieGestion = cookieDe(gestionnaire)
@@ -183,7 +183,7 @@ describe('le compte qui rejoint un parc sans y avoir jamais été', () => {
       email: 'proprio@example.com',
       password: MDP,
       fullName: 'Nelson D',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Parc Bastos',
       countryCode: 'CM',
     })
@@ -195,7 +195,7 @@ describe('le compte qui rejoint un parc sans y avoir jamais été', () => {
       email: 'autre@example.com',
       password: MDP,
       fullName: 'Autre Compte',
-      acceptTerms: true,
+      confirmLegal: true,
       parkName: 'Son propre parc',
       countryCode: 'CM',
     })
@@ -221,7 +221,7 @@ describe('le LOCATAIRE révoqué', () => {
        le défaut d'à côté. */
     const proprio = await request(serveur).post('/api/auth/signup').send({
       email: 'proprio@example.com', password: MDP, fullName: 'Nelson D',
-      acceptTerms: true, parkName: 'Parc Bastos', countryCode: 'CM',
+      confirmLegal: true, parkName: 'Parc Bastos', countryCode: 'CM',
     })
     const cookieProprio = cookieDe(proprio)
     const parkId = (await prisma.park.findFirstOrThrow()).id
@@ -246,7 +246,7 @@ describe('le LOCATAIRE révoqué', () => {
 
     const locataire = await request(serveur).post('/api/auth/signup').send({
       email: 'locataire@example.com', password: MDP, fullName: 'Paul Kamga',
-      acceptTerms: true, invitationCode: await codePourSonLogement(),
+      confirmLegal: true, invitationCode: await codePourSonLogement(),
     })
     const cookieLocataire = cookieDe(locataire)
     const adhesion = await prisma.membership.findFirstOrThrow({ where: { parkId, role: 'tenant' } })

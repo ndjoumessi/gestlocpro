@@ -55,7 +55,7 @@ async function unParcAvecUneFicheOrpheline() {
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -125,7 +125,7 @@ describe('relier une fiche par un code', () => {
       email: 'locataire@example.com',
       password: MDP,
       fullName: 'Bekono Landry',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: code,
     })
     expect(compte.status, `inscription refusée : ${String(compte.text).slice(0, 160)}`).toBe(201)
@@ -149,7 +149,7 @@ describe('relier une fiche par un code', () => {
         email: 'locataire@example.com',
         password: MDP,
         fullName: 'Bekono Landry',
-        acceptTerms: true,
+        confirmLegal: true,
       }),
     )
     const res = await rejoindre(cookie, await codeDe(cookieProprio, parkId, { role: 'tenant', unitId }))
@@ -167,7 +167,7 @@ describe('relier une fiche par un code', () => {
         email: 'locataire@example.com',
         password: MDP,
         fullName: 'Bekono Landry',
-        acceptTerms: true,
+        confirmLegal: true,
         invitationCode: await codeDe(cookieProprio, parkId, { role: 'tenant' }),
       }),
     )
@@ -186,7 +186,7 @@ describe('relier une fiche par un code', () => {
         email: 'locataire@example.com',
         password: MDP,
         fullName: 'Bekono Landry',
-        acceptTerms: true,
+        confirmLegal: true,
         invitationCode: await codeDe(cookieProprio, parkId, { role: 'tenant', unitId }),
       }),
     )
@@ -214,7 +214,7 @@ describe('ce qui ne relie rien ne consigne rien', () => {
         email: 'gestion@example.com',
         password: MDP,
         fullName: 'Gestion Aire',
-        acceptTerms: true,
+        confirmLegal: true,
       }),
     )
     expect((await rejoindre(cookie, await codeDe(cookieProprio, parkId, { role: 'manager' }))).status).toBe(201)

@@ -271,7 +271,14 @@ export interface DemandeInscription {
   phoneE164?: string
   countryCode?: string
   locale: 'fr' | 'en'
-  acceptTerms: true
+  /**
+   * La case obligatoire a été cochée — et rien de plus. Elle ne NOMME pas le
+   * texte : `acceptTerms` disait « conditions générales », que ce produit n'a
+   * jamais publiées, alors que la case fait confirmer la lecture de la politique
+   * de confidentialité. Le serveur sait lequel il a fait montrer, et c'est lui
+   * qui l'inscrit au registre.
+   */
+  confirmLegal: true
   newsletterOptIn?: boolean
   /** Nom du parc fondé — propriétaire seulement. */
   parkName?: string

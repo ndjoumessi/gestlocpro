@@ -65,7 +65,7 @@ async function parcAvecUnTarif(email = 'proprio@example.com') {
     email,
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })

@@ -48,7 +48,7 @@ const MDP = 'un-mot-de-passe-assez-long'
 async function inscrire(email: string, options: Record<string, unknown> = {}) {
   const res = await request(serveur)
     .post('/api/auth/signup')
-    .send({ email, password: MDP, fullName: 'Compte de test', acceptTerms: true, ...options })
+    .send({ email, password: MDP, fullName: 'Compte de test', confirmLegal: true, ...options })
   const entetes = res.headers['set-cookie']
   const liste = Array.isArray(entetes) ? entetes : entetes ? [entetes] : []
   const cookie = liste.find((c) => c.startsWith(`${NOM_COOKIE}=`))

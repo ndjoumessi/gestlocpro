@@ -52,7 +52,7 @@ async function bailAvecLocataire(options: { langue?: 'fr' | 'en'; avecCompte: bo
     email: 'proprio@example.com',
     password: MDP,
     fullName: 'Djoumessi Nelson',
-    acceptTerms: true,
+    confirmLegal: true,
     parkName: 'Parc Bastos',
     countryCode: 'CM',
   })
@@ -79,7 +79,7 @@ async function bailAvecLocataire(options: { langue?: 'fr' | 'en'; avecCompte: bo
       email: 'romel@example.com',
       password: MDP,
       fullName: 'Bekono Landry',
-      acceptTerms: true,
+      confirmLegal: true,
       invitationCode: inv.body.code,
     })
     userId = compte.body.user.id as string

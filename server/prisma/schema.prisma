@@ -110,9 +110,19 @@ model UserAccount {
   countryCode String? @db.Char(2)
   locale   Locale @default(fr)
 
-  /// Juridiquement la première chose à conserver, avec sa date. La case bloque
-  /// l'inscription et n'était enregistrée nulle part.
-  termsAcceptedAt DateTime
+  /// Juridiquement la première chose à conserver — et une DATE SEULE NE DIT
+  /// RIEN. `termsAcceptedAt` affirmait de chaque compte qu'il avait accepté des
+  /// conditions générales ; depuis `efd8654`, la case ne fait plus confirmer que
+  /// la LECTURE de la politique de confidentialité, et les conditions générales
+  /// n'existent toujours pas. Le nom disait donc faux de tout compte créé
+  /// depuis, et rien ne distinguait les deux textes.
+  ///
+  /// Le couple répare les deux : la date est nommée sans prétendre à un contenu,
+  /// et le contenu est nommé à côté. Le jour où les conditions générales
+  /// existeront, la case changera une troisième fois — et ce jour-là il suffira
+  /// d'ajouter une valeur à l'énumération.
+  legalConfirmedAt DateTime
+  legalConfirmation LegalConfirmation
   newsletterOptIn Boolean  @default(false)
   /// Les COPIES e-mail du fil d'un signalement. Vrai par défaut : un défaut à
   /// faux couperait tout le monde à la seconde du déploiement, alors que ces
@@ -1248,4 +1258,20 @@ enum NotificationChannel {
   in_app
   email
   sms
+}
+
+/// CE QU'UNE PERSONNE A CONFIRMÉ À L'INSCRIPTION — le texte, et le VERBE.
+///
+/// Le verbe est dans la valeur parce que c'est lui qui distingue les deux : on
+/// ACCEPTE des conditions générales, on LIT une politique de confidentialité.
+/// Une politique informe, elle ne se signe pas ; `efd8654` a corrigé la case
+/// pour cette raison même, et une énumération qui dirait seulement « politique »
+/// perdrait précisément ce que ce commit avait gagné.
+enum LegalConfirmation {
+  /// « J'accepte les conditions générales et la politique de confidentialité. »
+  /// La case d'avant `efd8654`, qui renvoyait à des conditions générales que ce
+  /// produit n'a jamais publiées. Aucun compte NOUVEAU ne peut plus la porter.
+  acceptedTermsAndPrivacy
+  /// « J'ai lu la politique de confidentialité. » La case d'aujourd'hui.
+  readPrivacy
 }
