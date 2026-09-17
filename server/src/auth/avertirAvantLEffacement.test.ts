@@ -93,6 +93,9 @@ async function parcHabite() {
     password: MDP,
     fullName: 'Cabinet Njoya',
     acceptTerms: true,
+    /* CE CABINET LIT L'ANGLAIS : c'est ce qui rend les cas de langue possibles,
+       et le reste du parc n'en est pas affecté. */
+    locale: 'en',
     invitationCode: invitationGestion.body.code,
   })
 
@@ -232,7 +235,9 @@ describe('l’annonce de l’annulation', () => {
       /* LE MESSAGE LÈVE L'ALERTE, en toutes lettres : « ne sera pas supprimé ».
          Un courriel qui se contenterait de ne plus parler de date laisserait le
          lecteur avec les deux messages et aucun moyen de les départager. */
-      expect(envoi.texte, envoi.destinataire).toMatch(/ne sera pas supprimé/)
+      /* Dans la langue de chacun — le cabinet lit l'anglais. La négation reste
+         EXIGÉE des deux côtés : c'est elle qui lève l'alerte. */
+      expect(envoi.texte, envoi.destinataire).toMatch(/ne sera pas supprimé|will not be deleted/)
       expect(envoi.texte).toContain('Parc Bonamoussadi')
     }
   })
@@ -261,5 +266,47 @@ describe('l’annonce de l’annulation', () => {
       (await prisma.userAccount.findUniqueOrThrow({ where: { email: 'proprio@example.com' } }))
         .closureRequestedAt,
     ).toBeNull()
+  })
+})
+
+/**
+ * CHACUN DANS SA LANGUE — le dernier couple de gabarits resté monolingue.
+ *
+ * Le fil d'un signalement et la relance de loyer parlent déjà la langue du
+ * destinataire (`relanceDansSaLangue.test.ts`). Les deux courriels de fermeture,
+ * eux, partaient en français à tout le monde, alors que `UserAccount.locale`
+ * porte la réponse depuis l'origine — et ces messages-là annoncent la
+ * disparition de documents : les envoyer dans une langue qu'on ne lit pas, c'est
+ * les envoyer pour rien.
+ *
+ * SANS COMPTE, LE FRANÇAIS. Une fiche de locataire ne porte pas de langue ; le
+ * défaut du produit s'applique, comme pour la relance.
+ */
+describe('la langue des courriels de fermeture', () => {
+  it('écrit à chacun dans la sienne, à la fermeture comme à l’annulation', async () => {
+    const { cookie } = await parcHabite()
+
+    await fermer(cookie).expect(200)
+    const anglais = envois.find((e) => e.destinataire === 'cabinet@example.com')!
+    const francais = envois.find((e) => e.destinataire === 'locataire@example.com')!
+    expect(anglais.sujet).toMatch(/will be deleted/)
+    expect(anglais.texte).toMatch(/will be deleted on/)
+    expect(francais.sujet).toMatch(/sera supprimé/)
+    expect(francais.texte).toMatch(/sera supprimé de GestLocPro le/)
+
+    envois = []
+    await seReconnecter()
+    const leveeAnglaise = envois.find((e) => e.destinataire === 'cabinet@example.com')!
+    const leveeFrancaise = envois.find((e) => e.destinataire === 'locataire@example.com')!
+    expect(leveeAnglaise.texte).toMatch(/will not be deleted/)
+    expect(leveeFrancaise.texte).toMatch(/ne sera pas supprimé/)
+  })
+
+  it('écrit en français à une fiche sans compte', async () => {
+    const { cookie } = await parcHabite()
+    await fermer(cookie).expect(200)
+
+    const sansCompte = envois.find((e) => e.destinataire === 'ondoa@example.com')!
+    expect(sansCompte.texte).toMatch(/sera supprimé de GestLocPro le/)
   })
 })

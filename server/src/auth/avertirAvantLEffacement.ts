@@ -43,23 +43,39 @@ import { parcsEmportesParLEffacement } from './fermeture.js'
  * LE MÊME CALCUL SERT À AVERTIR ET À DÉTROMPER : l'annulation doit atteindre
  * exactement ceux que la fermeture a alarmés.
  */
-async function destinatairesDuParc(parkId: string, userId: string): Promise<Set<string>> {
+async function destinatairesDuParc(
+  parkId: string,
+  userId: string,
+): Promise<Map<string, Langue>> {
   const membres = await prisma.membership.findMany({
     where: { parkId, status: 'active', userId: { not: userId } },
-    select: { user: { select: { email: true } } },
+    select: { user: { select: { email: true, locale: true } } },
   })
   const fiches = await prisma.tenant.findMany({
     where: { parkId },
-    select: { email: true, user: { select: { email: true } } },
+    select: { email: true, user: { select: { email: true, locale: true } } },
   })
 
-  const adresses = new Set<string>()
-  for (const membre of membres) if (membre.user?.email) adresses.add(membre.user.email)
+  /* LA LANGUE VIENT DU COMPTE, et une fiche n'en a pas : elle retombe sur le
+     français, le défaut du produit — c'est la règle que la relance de loyer a
+     déjà posée (`relanceDansSaLangue.test.ts`). */
+  const adresses = new Map<string, Langue>()
+  for (const membre of membres) {
+    if (membre.user?.email) adresses.set(membre.user.email, langueDe(membre.user.locale))
+  }
   for (const fiche of fiches) {
-    const adresse = fiche.user?.email ?? fiche.email
-    if (adresse) adresses.add(adresse)
+    const compte = fiche.user
+    if (compte?.email) adresses.set(compte.email, langueDe(compte.locale))
+    else if (fiche.email) adresses.set(fiche.email, 'fr')
   }
   return adresses
+}
+
+/** La langue d'un gabarit : celle du compte, ou le français. */
+type Langue = 'fr' | 'en'
+
+function langueDe(locale: string | null | undefined): Langue {
+  return locale === 'en' ? 'en' : 'fr'
 }
 
 export interface BilanDAvertissement {
@@ -68,18 +84,76 @@ export interface BilanDAvertissement {
   partis: number
 }
 
-function corps(parc: string, jour: string): { texte: string; html: string } {
-  const texte =
-    `Le parc « ${parc} » sera supprimé de GestLocPro le ${jour}.\n\n` +
-    'Tout ce qu’il contient disparaîtra alors : baux, quittances, états des lieux et photos. ' +
-    'Si vous avez un compte, vous pouvez emporter vos données depuis « Mes données », ' +
-    'dans le menu de votre compte. Sinon, demandez vos pièces à votre bailleur avant cette date.\n'
-  const html =
-    `<p>Le parc « ${parc} » sera supprimé de GestLocPro le <strong>${jour}</strong>.</p>` +
-    '<p>Tout ce qu’il contient disparaîtra alors : baux, quittances, états des lieux et photos.</p>' +
-    '<p>Si vous avez un compte, vous pouvez emporter vos données depuis « Mes données », dans le ' +
-    'menu de votre compte. Sinon, demandez vos pièces à votre bailleur avant cette date.</p>'
-  return { texte, html }
+/**
+ * DEUX LANGUES, DEUX FONCTIONS COURTES qui rendent la même forme — la
+ * disposition que `gabaritDuFilEmail` a déjà retenue. Un gabarit paramétré par
+ * des fragments traduits produirait des phrases que personne n'a relues en
+ * entier ; deux textes écrits se relisent.
+ */
+function sujetDAvertissement(parc: string, jour: string, langue: Langue): string {
+  return langue === 'en'
+    ? `GestLocPro — the portfolio “${parc}” will be deleted on ${jour}`
+    : `GestLocPro — le parc « ${parc} » sera supprimé le ${jour}`
+}
+
+function corps(parc: string, jour: string, langue: Langue): { texte: string; html: string } {
+  if (langue === 'en') {
+    return {
+      texte:
+        `The portfolio “${parc}” will be deleted on ${jour}.\n\n` +
+        'Everything it holds will go with it: leases, rent receipts, inspections and photos. ' +
+        'If you have an account, you can take your data with you from “My data”, in your account ' +
+        'menu. Otherwise, ask your landlord for your documents before that date.\n',
+      html:
+        `<p>The portfolio “${parc}” will be deleted on <strong>${jour}</strong>.</p>` +
+        '<p>Everything it holds will go with it: leases, rent receipts, inspections and photos.</p>' +
+        '<p>If you have an account, you can take your data with you from “My data”, in your ' +
+        'account menu. Otherwise, ask your landlord for your documents before that date.</p>',
+    }
+  }
+  return {
+    texte:
+      `Le parc « ${parc} » sera supprimé de GestLocPro le ${jour}.\n\n` +
+      'Tout ce qu’il contient disparaîtra alors : baux, quittances, états des lieux et photos. ' +
+      'Si vous avez un compte, vous pouvez emporter vos données depuis « Mes données », ' +
+      'dans le menu de votre compte. Sinon, demandez vos pièces à votre bailleur avant cette date.\n',
+    html:
+      `<p>Le parc « ${parc} » sera supprimé de GestLocPro le <strong>${jour}</strong>.</p>` +
+      '<p>Tout ce qu’il contient disparaîtra alors : baux, quittances, états des lieux et photos.</p>' +
+      '<p>Si vous avez un compte, vous pouvez emporter vos données depuis « Mes données », dans le ' +
+      'menu de votre compte. Sinon, demandez vos pièces à votre bailleur avant cette date.</p>',
+  }
+}
+
+function sujetDAnnulation(parc: string, langue: Langue): string {
+  return langue === 'en'
+    ? `GestLocPro — the portfolio “${parc}” will not be deleted`
+    : `GestLocPro — le parc « ${parc} » ne sera pas supprimé`
+}
+
+function corpsDAnnulation(parc: string, langue: Langue): { texte: string; html: string } {
+  if (langue === 'en') {
+    return {
+      texte:
+        `Good news: the portfolio “${parc}” will not be deleted from GestLocPro.\n\n` +
+        'The deletion announced in our previous message has been cancelled. Your space and your ' +
+        'documents stay where they are; there is nothing for you to do.\n',
+      html:
+        `<p>Good news: the portfolio “${parc}” <strong>will not be deleted</strong> from GestLocPro.</p>` +
+        '<p>The deletion announced in our previous message has been cancelled. Your space and ' +
+        'your documents stay where they are; there is nothing for you to do.</p>',
+    }
+  }
+  return {
+    texte:
+      `Bonne nouvelle : le parc « ${parc} » ne sera pas supprimé de GestLocPro.\n\n` +
+      'La demande de suppression annoncée dans notre précédent message a été annulée. ' +
+      'Votre espace et vos documents restent en place ; vous n’avez rien à faire.\n',
+    html:
+      `<p>Bonne nouvelle : le parc « ${parc} » <strong>ne sera pas supprimé</strong> de GestLocPro.</p>` +
+      '<p>La demande de suppression annoncée dans notre précédent message a été annulée. ' +
+      'Votre espace et vos documents restent en place ; vous n’avez rien à faire.</p>',
+  }
 }
 
 export async function avertirAvantLEffacement(
@@ -100,12 +174,12 @@ export async function avertirAvantLEffacement(
 
     const adresses = await destinatairesDuParc(parkId, userId)
 
-    for (const adresse of adresses) {
+    for (const [adresse, langue] of adresses) {
       bilan.prevenus++
       const parti = await laMessagerie().envoyerEmail(
         adresse,
-        `GestLocPro — le parc « ${parc.name} » sera supprimé le ${jour}`,
-        corps(parc.name, jour),
+        sujetDAvertissement(parc.name, jour, langue),
+        corps(parc.name, jour, langue),
       )
       if (parti) bilan.partis++
     }
@@ -136,21 +210,12 @@ export async function annoncerLAnnulation(userId: string): Promise<BilanDAvertis
       where: { id: parkId },
       select: { name: true },
     })
-    for (const adresse of await destinatairesDuParc(parkId, userId)) {
+    for (const [adresse, langue] of await destinatairesDuParc(parkId, userId)) {
       bilan.prevenus++
       const parti = await laMessagerie().envoyerEmail(
         adresse,
-        `GestLocPro — le parc « ${parc.name} » ne sera pas supprimé`,
-        {
-          texte:
-            `Bonne nouvelle : le parc « ${parc.name} » ne sera pas supprimé de GestLocPro.\n\n` +
-            'La demande de suppression annoncée dans notre précédent message a été annulée. ' +
-            'Votre espace et vos documents restent en place ; vous n’avez rien à faire.\n',
-          html:
-            `<p>Bonne nouvelle : le parc « ${parc.name} » <strong>ne sera pas supprimé</strong> de GestLocPro.</p>` +
-            '<p>La demande de suppression annoncée dans notre précédent message a été annulée. ' +
-            'Votre espace et vos documents restent en place ; vous n’avez rien à faire.</p>',
-        },
+        sujetDAnnulation(parc.name, langue),
+        corpsDAnnulation(parc.name, langue),
       )
       if (parti) bilan.partis++
     }
