@@ -125,6 +125,11 @@ async function parcHabite() {
 const fermer = (cookie: string) =>
   request(serveur).post('/api/auth/me/closure').set('Cookie', cookie)
 
+const seConnecter = () =>
+  request(serveur)
+    .post('/api/auth/login')
+    .send({ email: 'proprio@example.com', password: MDP })
+
 const seReconnecter = () =>
   request(serveur)
     .post('/api/auth/login')
@@ -308,5 +313,97 @@ describe('la langue des courriels de fermeture', () => {
 
     const sansCompte = envois.find((e) => e.destinataire === 'ondoa@example.com')!
     expect(sansCompte.texte).toMatch(/sera supprimé de GestLocPro le/)
+  })
+})
+
+/**
+ * ON DÉTROMPE CEUX QU'ON A PRÉVENUS — pas ceux qui sont là au moment où l'on
+ * se ravise.
+ *
+ * 8495f18 recalculait la liste à l'annulation, et le nommait dans sa section
+ * « ce que je peux avoir raté » : « un locataire parti entre la fermeture et
+ * l'annulation ne sera pas détrompé — il gardera l'annonce d'une suppression qui
+ * n'a pas eu lieu ».
+ *
+ * C'est la personne la plus mal placée pour deviner : elle a quitté le parc,
+ * elle ne peut plus ouvrir le produit pour vérifier, et le seul message qu'elle
+ * possède annonce la disparition de ses quittances.
+ *
+ * LA LISTE EST DONC ÉCRITE À LA FERMETURE, et relue à l'annulation.
+ */
+describe('la liste des prévenus', () => {
+  it('détrompe un locataire retiré du parc entre-temps', async () => {
+    const { cookie, parkId } = await parcHabite()
+    await fermer(cookie).expect(200)
+    expect(envois.map((e) => e.destinataire)).toContain('ondoa@example.com')
+
+    /* La fiche s'en va — le bailleur la retire pendant le délai. */
+    const fiche = await prisma.tenant.findFirstOrThrow({
+      where: { parkId, email: 'ondoa@example.com' },
+      select: { id: true },
+    })
+    await prisma.lease.deleteMany({ where: { tenantId: fiche.id } })
+    await prisma.tenant.delete({ where: { id: fiche.id } })
+
+    envois = []
+    await seReconnecter()
+
+    expect(envois.map((e) => e.destinataire)).toContain('ondoa@example.com')
+  })
+
+  it('ne détrompe pas un arrivant que personne n’avait prévenu', async () => {
+    const { cookie, parkId } = await parcHabite()
+    await fermer(cookie).expect(200)
+
+    /* Une fiche créée APRÈS la fermeture : elle n'a reçu aucune alerte, et lui
+       annoncer qu'un parc « ne sera pas supprimé » serait lui apprendre qu'on a
+       failli le faire. */
+    await prisma.tenant.create({
+      data: { parkId, fullName: 'Arrivée Tardive', email: 'tardive@example.com' },
+    })
+
+    envois = []
+    await seReconnecter()
+
+    expect(envois.map((e) => e.destinataire)).not.toContain('tardive@example.com')
+  })
+
+  it('ne redit rien à une seconde connexion, et ne garde pas la liste', async () => {
+    const { cookie } = await parcHabite()
+    await fermer(cookie).expect(200)
+    await seReconnecter()
+
+    envois = []
+    await seReconnecter()
+    expect(envois).toEqual([])
+    /* LA LISTE EST CONSOMMÉE. Le cas ci-dessus ne le prouve PAS — c'est le
+       drapeau d'annulation qui l'empêche de repartir, mesuré par mutation. Ce
+       qu'une liste laissée derrière soi produirait se voit à la fermeture
+       SUIVANTE : elle porterait encore des adresses d'une fermeture révolue. */
+    expect(await prisma.closureWarning.count()).toBe(0)
+  })
+
+  it('repart d’une liste neuve à la fermeture suivante', async () => {
+    const { cookie, parkId } = await parcHabite()
+    await fermer(cookie).expect(200)
+    await seReconnecter()
+
+    /* La fiche part APRÈS la première fermeture, donc après avoir été prévenue
+       puis détrompée : la fermeture suivante ne la concerne plus. */
+    const fiche = await prisma.tenant.findFirstOrThrow({
+      where: { parkId, email: 'ondoa@example.com' },
+      select: { id: true },
+    })
+    await prisma.lease.deleteMany({ where: { tenantId: fiche.id } })
+    await prisma.tenant.delete({ where: { id: fiche.id } })
+
+    const cookieNeuf = cookieDe(await seConnecter())
+    envois = []
+    await fermer(cookieNeuf).expect(200)
+    expect(envois.map((e) => e.destinataire)).not.toContain('ondoa@example.com')
+
+    envois = []
+    await seReconnecter()
+    expect(envois.map((e) => e.destinataire)).not.toContain('ondoa@example.com')
   })
 })

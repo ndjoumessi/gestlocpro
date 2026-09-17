@@ -176,6 +176,14 @@ export async function avertirAvantLEffacement(
 
     for (const [adresse, langue] of adresses) {
       bilan.prevenus++
+      /* LA LISTE EST ÉCRITE AVANT L'ENVOI, et elle l'est même si l'envoi
+         échoue : ce qu'elle retient est « cette personne devait être prévenue »,
+         et c'est à elle qu'on devra dire que la suppression n'a pas lieu. */
+      await prisma.closureWarning.upsert({
+        where: { userId_parkId_email: { userId, parkId, email: adresse } },
+        create: { userId, parkId, email: adresse, locale: langue },
+        update: { locale: langue, sentAt: new Date() },
+      })
       const parti = await laMessagerie().envoyerEmail(
         adresse,
         sujetDAvertissement(parc.name, jour, langue),
@@ -202,24 +210,45 @@ export async function avertirAvantLEffacement(
  * premier est nommé dans le message de ce lot.
  */
 export async function annoncerLAnnulation(userId: string): Promise<BilanDAvertissement> {
-  const parcs = await parcsEmportesParLEffacement(userId)
-  const bilan: BilanDAvertissement = { parcs: parcs.length, prevenus: 0, partis: 0 }
+  /* ON RELIT, ON NE RECALCULE PAS. Recalculer s'adresse à ceux qui sont là au
+     moment où l'on se ravise ; la liste, elle, porte ceux qu'on a alarmés — dont
+     le locataire retiré du parc entre-temps, qui n'a aucun autre moyen
+     d'apprendre que ses quittances ne disparaîtront pas. */
+  const prevenus = await prisma.closureWarning.findMany({
+    where: { userId },
+    select: { id: true, parkId: true, email: true, locale: true },
+  })
+  const parcs = new Set(prevenus.map((p) => p.parkId))
+  const bilan: BilanDAvertissement = { parcs: parcs.size, prevenus: 0, partis: 0 }
+  if (prevenus.length === 0) return bilan
 
-  for (const parkId of parcs) {
-    const parc = await prisma.park.findUniqueOrThrow({
-      where: { id: parkId },
-      select: { name: true },
-    })
-    for (const [adresse, langue] of await destinatairesDuParc(parkId, userId)) {
-      bilan.prevenus++
-      const parti = await laMessagerie().envoyerEmail(
-        adresse,
-        sujetDAnnulation(parc.name, langue),
-        corpsDAnnulation(parc.name, langue),
-      )
-      if (parti) bilan.partis++
-    }
+  const noms = new Map(
+    (
+      await prisma.park.findMany({
+        where: { id: { in: [...parcs] } },
+        select: { id: true, name: true },
+      })
+    ).map((parc) => [parc.id, parc.name]),
+  )
+
+  for (const ligne of prevenus) {
+    const nom = noms.get(ligne.parkId)
+    /* Le parc a disparu depuis — il n'a plus de nom à annoncer, et sa ligne
+       serait partie avec lui par cascade. On ne devine pas. */
+    if (!nom) continue
+    const langue = langueDe(ligne.locale)
+    bilan.prevenus++
+    const parti = await laMessagerie().envoyerEmail(
+      ligne.email,
+      sujetDAnnulation(nom, langue),
+      corpsDAnnulation(nom, langue),
+    )
+    if (parti) bilan.partis++
   }
+
+  /* CONSOMMÉE. Une liste qu'on laisse derrière soi ferait détromper deux fois à
+     la connexion suivante, pour une fermeture qui n'existe plus. */
+  await prisma.closureWarning.deleteMany({ where: { userId } })
 
   return bilan
 }

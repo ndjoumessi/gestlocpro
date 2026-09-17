@@ -77,6 +77,10 @@ const MODELES_VECUS = [
 /** Ce dont la disparition ne retire rien à personne. */
 const MODELES_SANS_ENJEU = [
   'AuditEvent',
+  /* La liste de ceux qu'on a prévenus d'une fermeture : elle EXISTE pour être
+     consommée à l'annulation, et sa disparition ne retire rien à personne —
+     elle ne documente aucun fait vécu, elle porte un envoi encore dû. */
+  'ClosureWarning',
   'MembershipBuilding',
   'MembershipUnit',
   'Notification',

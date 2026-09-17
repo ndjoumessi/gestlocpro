@@ -148,6 +148,7 @@ model UserAccount {
   passwordResets PasswordReset[]
   invitationsSent Invitation[]  @relation("InvitationIssuer")
   auditEvents   AuditEvent[]
+  closureWarnings ClosureWarning[]
   approvedWorks WorkOrder[]     @relation("WorkApprover")
   reportedWorks WorkOrder[]     @relation("WorkReporterAccount")
   settledDeposits Deposit[]     @relation("DepositSettler")
@@ -287,6 +288,7 @@ model Park {
   /// Les interventions du parc, reliées en direct pour que leur RÉFÉRENCE soit
   /// unique ici — voir `WorkOrder.parkId`, qui dit ce que cette recopie paie.
   workOrders WorkOrder[]
+  closureWarnings ClosureWarning[]
   /// Compteur de références lisibles, par année. Voir `WorkOrder.reference`.
   workCounters WorkReferenceCounter[]
 }
@@ -1007,6 +1009,35 @@ model RentReminderEmail {
 /// Valider un devis engage une dépense ; arbitrer une caution retient l'argent
 /// de quelqu'un. Ces deux droits séparent le propriétaire du gestionnaire, et
 /// le client les appliquait par un `canApprove` qui masquait un bouton.
+/// QUI A ÉTÉ PRÉVENU D'UNE FERMETURE, et dans quelle langue.
+///
+/// Écrite à la fermeture, relue à l'annulation, effacée quand la fermeture est
+/// levée ou que le compte s'en va. Sans elle, l'annulation s'adressait à ceux
+/// qui étaient là au moment où l'on se ravise — pas à ceux qu'on avait alarmés.
+/// Le cas qui l'a imposée : un locataire retiré du parc pendant le délai gardait
+/// l'annonce de la disparition de ses quittances, sans jamais apprendre qu'elle
+/// n'aurait pas lieu.
+///
+/// L'ADRESSE EST COPIÉE, et non reliée à un compte : une fiche sans compte en
+/// porte une, et c'est justement celle qui n'a aucun autre moyen d'être
+/// rejointe.
+model ClosureWarning {
+  id     String @id @default(uuid()) @db.Uuid
+  /// Le compte dont la fermeture a déclenché l'avertissement.
+  userId String @db.Uuid
+  user   UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Le parc annoncé disparaissant. CASCADE : effacé avec lui, la ligne n'a plus
+  /// rien à détromper.
+  parkId String @db.Uuid
+  park   Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+  email  String
+  locale Locale @default(fr)
+  sentAt DateTime @default(now())
+
+  @@unique([userId, parkId, email])
+  @@index([userId])
+}
+
 model AuditEvent {
   id      String @id @default(uuid()) @db.Uuid
   parkId  String @db.Uuid
