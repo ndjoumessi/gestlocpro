@@ -33,6 +33,7 @@ import { ResetPassword } from './routes/ResetPassword'
 import { NotFound } from './routes/NotFound'
 import { MentionsLegales } from './routes/MentionsLegales'
 import { Confidentialite } from './routes/Confidentialite'
+import { ConditionsGenerales } from './routes/ConditionsGenerales'
 import { useT } from './i18n/I18nProvider'
 import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
 
@@ -152,6 +153,8 @@ export function App() {
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         {/* La deuxième — voir `Confidentialite.tsx`. */}
         <Route path="/confidentialite" element={<Confidentialite />} />
+        {/* La troisième — voir `ConditionsGenerales.tsx`. */}
+        <Route path="/conditions-generales" element={<ConditionsGenerales />} />
 
         {/*
           `/*` sur les deux : ce sont désormais des ROUTES DESCENDANTES.

@@ -205,6 +205,18 @@ export function PublicFooter() {
             >
               {t('privacy.footerLink')}
             </Link>
+            {/* LA TROISIÈME PAGE JURIDIQUE, et elle DOIT être ici : un texte
+                qu'on s'engage à respecter et qu'aucun lien n'atteint n'est pas
+                publié. Son libellé est le plus court des trois — « Conditions »,
+                « Terms » — parce que la rangée déborde déjà à 360 px et passe à
+                la ligne : un troisième libellé long y aurait ajouté une rangée
+                entière plutôt qu'un mot. */}
+            <Link
+              to="/conditions-generales"
+              className="-my-[14px] inline-flex min-h-11 min-w-11 items-center px-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
+            >
+              {t('terms.footerLink')}
+            </Link>
           </div>
         </div>
       </div>

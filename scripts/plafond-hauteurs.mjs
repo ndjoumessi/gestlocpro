@@ -391,6 +391,18 @@ const HORS_PORTEE = {
 
   COLONNE LARGE RELEVÉE SUR LE CI (exécution 35239036485, travail `polices`) :
   1945 et 1520. Les 48 autres points n'ont pas bougé d'un pixel.
+
+  DEUX POINTS DE PLUS LE 2026-09-18 : `/conditions-generales`, la troisième page
+  juridique. 4778 px à 360 et 3336 px à 1280 sur la machine de développement ;
+  4679 et 3250 sur le CI (exécution 35286501059, branche `mesure-conditions`),
+  soit UNE COLONNE LARGE PLUS BASSE QUE LA LOCALE — DejaVu compose ce texte plus
+  serré que la police de ce portable, et c'est pourquoi la colonne large ne se
+  déduit jamais de l'autre.
+
+  LA VITRINE N'A PAS BOUGÉ, et c'était la question : le pied de page public a
+  gagné un TROISIÈME lien, et la rangée déborde déjà à 360 px. Les 50 points
+  d'avant sont identiques au pixel, dans les deux colonnes — le libellé le plus
+  court des trois (« Conditions », « Terms ») tient sur la ligne déjà repliée.
 */
 const PLAFONDS = [
   /* 360 px — 23 écrans */
@@ -400,6 +412,7 @@ const PLAFONDS = [
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mentions-legales', largeur: 360, plafond: 1971, plafondLarge: 1945 },
   { adresse: '/confidentialite', largeur: 360, plafond: 3383, plafondLarge: 3297 },
+  { adresse: '/conditions-generales', largeur: 360, plafond: 4778, plafondLarge: 4679 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
@@ -426,6 +439,7 @@ const PLAFONDS = [
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mentions-legales', largeur: 1280, plafond: 1520, plafondLarge: 1520 },
   { adresse: '/confidentialite', largeur: 1280, plafond: 2414, plafondLarge: 2371 },
+  { adresse: '/conditions-generales', largeur: 1280, plafond: 3336, plafondLarge: 3250 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
@@ -481,12 +495,13 @@ const ADRESSES = routes.map((r) => r.adresse)
   vider l'inventaire, et l'inspection comparerait 0 à 0 puis se déclarerait
   verte. La même mutation a trouvé ce piège quatre fois dans ce dépôt.
 
-  50 = (27 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
+  52 = (28 adresses du routeur − 2 hors portée) × 2 largeurs — la 25e est
        `/mentions-legales`, le 2026-09-12 ; la 26e `/confidentialite`, le
-       2026-09-13 ; la 27e `/demo/mes-donnees`, le 2026-09-16.
+       2026-09-13 ; la 27e `/demo/mes-donnees`, le 2026-09-16 ; la 28e
+       `/conditions-generales`, le 2026-09-18.
    4 = les deux adresses hors portée, à leurs deux largeurs.
 */
-const ATTENDUS = 50
+const ATTENDUS = 52
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.
@@ -526,6 +541,9 @@ const SANS_ATTENTE_DECLARES = new Set([
   '/mentions-legales',
   // La politique de confidentialité, pour la même raison.
   '/confidentialite',
+  // Les conditions générales, pour la même raison : des faits écrits dans le
+  // paquet, et le délai d'effacement vient d'une constante, pas d'un appel.
+  '/conditions-generales',
   '/adresse-qui-n-existe-pas',
   // L'écran de l'export n'appelle rien au montage : le dossier ne part qu'au geste.
   '/demo/mes-donnees',

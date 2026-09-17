@@ -296,17 +296,18 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   trouvé ce piège trois lots de suite. Ajouter un écran ou une largeur oblige
   donc à toucher ce nombre, et le diff le montre.
 
-  78 = (27 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
+  81 = (28 écrans déduits du routeur − 1 sans écran) × 3 largeurs.
   3  = la route `/app`, redirection sans `<main>`, à ses trois largeurs.
 
   Passé de 66 à 69 avec le registre des décisions, de 69 à 72 avec les mentions
   légales (2026-09-12), de 72 à 75 avec la politique de confidentialité
   (2026-09-13), de 75 à 78 avec « Mes données » (2026-09-16), l'écran qui rend
-  le droit à la portabilité. Ce nombre doit être touché à
+  le droit à la portabilité, et de 78 à 81 avec les conditions générales
+  (2026-09-18), la troisième page juridique. Ce nombre doit être touché à
   la main, et c'est le but : le diff montre alors qu'un écran est apparu, là où
   un compte dérivé de l'inventaire se serait mis d'accord avec lui-même.
 */
-const ATTENDUS = 78
+const ATTENDUS = 81
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

@@ -205,8 +205,13 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * PUIS DE 26 À 27 LE 2026-09-16 : `/demo/mes-donnees`, l'écran qui rend le
  * droit à la portabilité — le premier que le produit doit à une LOI plutôt
  * qu'à un besoin de gestion.
+ *
+ * ET DE 27 À 28 LE 2026-09-18 : `/conditions-generales`, la troisième page
+ * juridique. C'est le CI qui l'a exigé, pas cette machine : la porte serveur
+ * n'avait pas été relancée pour un lot qui ne touche que le client — alors que
+ * deux PORTES avaient bougé, ce qui suffit à l'exiger.
  */
-export const ROUTES_ATTENDUES = 27
+export const ROUTES_ATTENDUES = 28
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}
