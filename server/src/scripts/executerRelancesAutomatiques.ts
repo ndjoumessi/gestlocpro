@@ -266,4 +266,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else {
     console.log(compteRenduDEffacement(await effacerLesComptesFermes()))
   }
+
+  /*
+    LE PASSAGE SE TERMINE — et c'est le service Railway qui l'exige.
+
+    Le pool Prisma garde des sockets ouvertes : sans `$disconnect()`, la boucle
+    d'événements reste occupée et le process NE REND JAMAIS LA MAIN. Un service
+    cron Railway qui ne rend pas la main reste facturé à l'heure au lieu de la
+    seconde, et Railway SAUTE l'exécution suivante tant que la précédente tourne
+    — mesuré : 198 Mo occupés en continu, pour un passage censé durer quelques
+    secondes.
+
+    `process.exit(0)` APRÈS le `$disconnect()`, en filet : une dépendance qui
+    laisserait un handle ouvert (client HTTP, timer) ne doit pas pouvoir
+    ressusciter le symptôme.
+  */
+  await prisma.$disconnect()
+  process.exit(0)
 }
