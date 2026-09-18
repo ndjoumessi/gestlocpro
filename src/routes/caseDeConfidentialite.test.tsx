@@ -4,14 +4,30 @@ import { renderApp, screen } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
 
 /**
- * LA CASE DE L'INSCRIPTION NE FAIT PLUS ACCEPTER UN DOCUMENT ABSENT.
+ * LA CASE DE L'INSCRIPTION CITE LES DEUX DOCUMENTS, ET LES DEUX EXISTENT.
+ *
+ * ═══ SON HISTOIRE, PARCE QU'ELLE EXPLIQUE SA FORME ═══
  *
  * Elle disait « J'accepte les conditions générales et la politique de
- * confidentialité », obligatoire, sans lien. Les conditions générales n'existent
- * pas ; la politique existe depuis 6acfd05. Nelson a choisi le 2026-09-14 de
- * retirer les conditions générales de la case jusqu'à ce qu'elles existent, et
- * de faire confirmer la LECTURE de la politique — on s'informe d'une politique
- * de confidentialité, on ne l'accepte pas.
+ * confidentialité », obligatoire, SANS LIEN — et les conditions générales
+ * n'existaient pas. `efd8654` les a retirées le 2026-09-14 plutôt que de faire
+ * accepter un document absent, en notant qu'elles « reviendront dans cette case
+ * le jour où elles existeront ». `51daf49` les a publiées le 2026-09-18 ; elles
+ * reviennent donc ici.
+ *
+ * ═══ DEUX VERBES, ET CE N'EST PAS UNE COQUETTERIE ═══
+ *
+ * On ACCEPTE des conditions générales : elles engagent, et c'est un contrat. On
+ * LIT une politique de confidentialité : elle informe, et rien ne s'y signe. La
+ * case porte donc les deux verbes plutôt qu'un seul, et le registre du
+ * consentement enregistre `acceptedTermsReadPrivacy` — une valeur qui dit les
+ * deux gestes, et non « l'utilisateur a coché ».
+ *
+ * ═══ CE QUE CES CAS TIENNENT ═══
+ *
+ * Que la case cite les DEUX documents, que chacun soit ATTEIGNABLE par son
+ * propre lien, et que le refus nomme les deux. Sans le dernier, un utilisateur
+ * qui ne coche pas lirait un reproche à moitié.
  */
 async function allerAuRecapitulatif(user: ReturnType<typeof userEvent.setup>) {
   installerFauxServeur()
@@ -30,17 +46,40 @@ async function allerAuRecapitulatif(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('heading', { name: /tout est correct/i })
 }
 
-describe('la case de confidentialité de l’inscription', () => {
-  it('fait confirmer la lecture de la politique, et ne cite plus de conditions générales', async () => {
+describe('la case légale de l’inscription', () => {
+  it('fait ACCEPTER les conditions et CONFIRMER la lecture de la politique', async () => {
     const user = userEvent.setup()
     await allerAuRecapitulatif(user)
 
-    const cases = screen.getAllByRole('checkbox')
-    const obligatoire = screen.getByRole('checkbox', { name: /^J’ai lu la politique de confidentialité/ })
-    expect(cases).toContain(obligatoire)
-    for (const c of cases) {
-      expect(c.closest('label')?.textContent).not.toMatch(/conditions générales/i)
-    }
+    /* LE NOM ACCESSIBLE PORTE DEUX FOIS « (s'ouvre dans un nouvel onglet) », une
+       par lien : la recherche ne peut donc pas exiger la phrase d'un seul
+       tenant. Ce n'est pas un défaut — chaque lien doit annoncer ce qu'il fait —
+       et c'est précisément pourquoi les deux moitiés sont vérifiées séparément
+       plus bas. */
+    const obligatoire = screen.getByRole('checkbox', {
+      name: /J’accepte les conditions générales/,
+    })
+    expect(screen.getAllByRole('checkbox')).toContain(obligatoire)
+    /* LES DEUX VERBES, ET DANS CET ORDRE. Un libellé qui dirait « j'accepte »
+       des deux ferait signer une politique qui ne se signe pas ; un libellé qui
+       dirait « j'ai lu » des deux ne ferait accepter aucun contrat. */
+    const libelle = obligatoire.closest('label')?.textContent ?? ''
+    expect(libelle).toMatch(/J’accepte les conditions générales/)
+    expect(libelle).toMatch(/j’ai lu la politique de confidentialité/)
+  })
+
+  it('mène aux conditions générales par leur propre lien', async () => {
+    const user = userEvent.setup()
+    await allerAuRecapitulatif(user)
+
+    /* DEUX DOCUMENTS, DEUX LIENS. Un seul lien vers une page qui renverrait à
+       l'autre ferait dépendre l'accès à un contrat d'un clic de plus, sur une
+       case qu'on ne peut pas décocher après coup. */
+    const lien = screen.getByRole('link', { name: /conditions générales/i })
+    expect(lien).toHaveAttribute('href', '/conditions-generales')
+    expect(lien).toHaveAttribute('target', '_blank')
+    expect(lien.getAttribute('rel')).toMatch(/noopener/)
+    expect(lien).toHaveTextContent(/nouvel onglet/)
   })
 
   /* Le lien ouvre un NOUVEL ONGLET, et le dit : l'inscription est au dernier
@@ -64,13 +103,16 @@ describe('la case de confidentialité de l’inscription', () => {
     expect(lien).toHaveTextContent(/nouvel onglet/)
   })
 
-  it('refuse la création tant que la lecture n’est pas confirmée, et dit laquelle', async () => {
+  it('refuse la création tant que la case n’est pas cochée, et nomme les DEUX documents', async () => {
     const user = userEvent.setup()
     await allerAuRecapitulatif(user)
 
     await user.click(screen.getByRole('button', { name: /créer mon espace/i }))
     const alertes = await screen.findAllByRole('alert')
     expect(alertes.length).toBeGreaterThan(0)
+    /* Un refus qui ne citerait que la politique laisserait croire que les
+       conditions, elles, étaient facultatives. */
+    expect(alertes.every((a) => /conditions générales/i.test(a.textContent ?? ''))).toBe(true)
     expect(alertes.every((a) => /politique de confidentialité/i.test(a.textContent ?? ''))).toBe(true)
   })
 })

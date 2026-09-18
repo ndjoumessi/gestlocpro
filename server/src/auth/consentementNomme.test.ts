@@ -77,11 +77,44 @@ describe('le registre du consentement', () => {
 
     const compte = await prisma.userAccount.findFirstOrThrow()
     expect(compte.legalConfirmedAt).toBeInstanceOf(Date)
-    /* `readPrivacy` et non `acceptedTermsAndPrivacy` : la case dit « J'ai lu la
-       politique de confidentialité », et une politique de confidentialité
-       informe — elle ne se signe pas. Le verbe est DANS la valeur, parce que
-       c'est lui qui distingue les deux textes. */
-    expect(compte.legalConfirmation).toBe('readPrivacy')
+    /* LES VERBES SONT DANS LA VALEUR, parce que ce sont eux qui distinguent les
+       textes : on ACCEPTE des conditions générales, on LIT une politique de
+       confidentialité. `acceptedTermsReadPrivacy` depuis le 2026-09-18, date à
+       laquelle les conditions ont été publiées et la case rouverte. */
+    expect(compte.legalConfirmation).toBe('acceptedTermsReadPrivacy')
+  })
+
+  /**
+   * CE QUE LA TROISIÈME RÉDACTION NE DOIT PAS FAIRE : relire le passé.
+   *
+   * C'est pour cela que `legalConfirmation` existe. Sans elle, rouvrir la case
+   * aurait laissé croire que tout compte du produit avait accepté des conditions
+   * générales — y compris les 
+   * comptes créés entre le 2026-09-14 et le 2026-09-18, à qui la case ne parlait
+   * que de la politique. La dette que `consentement_nomme` venait d'éteindre se
+   * serait rallumée à la rédaction suivante.
+   */
+  it('laisse aux comptes d’avant le texte qu’ils ont vu', async () => {
+    const res = await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
+    expect(res.status).toBe(201)
+    /* Un compte de l'époque `readPrivacy`, posé à la main : le produit ne sait
+       plus en créer, et c'est précisément ce qu'on veut éprouver. */
+    const avant = await prisma.userAccount.create({
+      data: {
+        email: 'avant@example.com',
+        passwordHash: 'peu-importe',
+        fullName: 'Compte d’avant',
+        legalConfirmedAt: new Date('2026-09-15'),
+        legalConfirmation: 'readPrivacy',
+      },
+    })
+
+    const relu = await prisma.userAccount.findUniqueOrThrow({ where: { id: avant.id } })
+    expect(relu.legalConfirmation).toBe('readPrivacy')
+    const neuf = await prisma.userAccount.findFirstOrThrow({
+      where: { email: INSCRIPTION.email },
+    })
+    expect(neuf.legalConfirmation).toBe('acceptedTermsReadPrivacy')
   })
 
   it('refuse l’ancien nom, qui disait « conditions »', async () => {
@@ -115,7 +148,7 @@ describe('le registre du consentement', () => {
       .set('Cookie', cookie)
     expect(dossier.status, JSON.stringify(dossier.body)).toBe(200)
 
-    expect(dossier.body.compte.legalConfirmation).toBe('readPrivacy')
+    expect(dossier.body.compte.legalConfirmation).toBe('acceptedTermsReadPrivacy')
     expect(typeof dossier.body.compte.legalConfirmedAt).toBe('string')
     /* Le dossier rend les colonnes telles quelles : un `termsAcceptedAt` qui
        survivrait ici prouverait que la colonne n'a pas bougé. */

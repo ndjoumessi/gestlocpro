@@ -341,10 +341,14 @@ export const en: Dictionary = {
       tenantNotice:
         'A tenant does not create a space alone: it is attached to an existing lease. Without a code, ask your manager for one.',
 
-      termsLead: 'I have read the',
+      // Voir le bloc français : deux verbes, et c'est la règle qui les sépare.
+      termsAcceptLead: 'I accept the',
+      termsAcceptLink: 'terms of use',
+      termsReadLead: 'and I have read the',
       termsLink: 'privacy policy',
       termsNewTab: '(opens in a new tab)',
-      termsError: 'Confirm you have read the privacy policy to create your account.',
+      termsError:
+        'Accept the terms of use and confirm you have read the privacy policy to create your account.',
       emailTaken: 'An account already exists for this address. Sign in, or use another one.',
       errorOffline: 'The server is unreachable. Your answers are kept: try again.',
       errorUnexpected: 'Account creation failed. Your answers are kept: try again.',

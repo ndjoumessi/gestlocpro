@@ -164,13 +164,31 @@ const EXEMPTIONS: Exemption[] = [
   },
   {
     fichier: 'routes/SignUp.tsx',
-    marqueur: 'href="/confidentialite"',
+    marqueur: 'href="/conditions-generales"',
     raison:
-      'Lien en pleine phrase — « J’ai lu la politique de confidentialité. » —, et DANS ' +
-      'le libellé d’une case. WCAG 2.5.8 exempte la phrase ; la case ajoute une raison : ' +
-      'le libellé entier fait déjà 44 px et coche la case, et un lien agrandi à 44 px ' +
-      'en couvrirait le haut et le bas, si bien qu’un doigt qui vise la case ouvrirait ' +
-      'la politique. Mesuré le 2026-09-14 : lien de 17 px dans un libellé de 44.',
+      'Lien en pleine phrase — « J’accepte les conditions générales et j’ai lu la ' +
+      'politique de confidentialité. » —, et DANS le libellé d’une case. Même ' +
+      'exemption que celui de la politique juste en dessous, et pour les mêmes deux ' +
+      'raisons : WCAG 2.5.8 exempte la cible située dans une phrase, et un lien ' +
+      'agrandi à 44 px dans un libellé qui coche la case ferait ouvrir le document ' +
+      'à un doigt qui visait la case. Il est arrivé le 2026-09-18, avec les ' +
+      'conditions générales elles-mêmes.',
+  },
+  {
+    fichier: 'routes/SignUp.tsx',
+    marqueur: 'href="/confidentialite"',
+    /* CETTE RAISON CITAIT UN LIBELLÉ QUI N’EXISTE PLUS — « J’ai lu la politique
+       de confidentialité. » — depuis que la case a repris les conditions
+       générales le 2026-09-18. Une prose de motivation qui cite un texte périmé
+       fait croire à une relecture qui n’a pas eu lieu. */
+    raison:
+      'Lien en pleine phrase — « J’accepte les conditions générales et j’ai lu la ' +
+      'politique de confidentialité. » —, et DANS le libellé d’une case. WCAG 2.5.8 ' +
+      'exempte la phrase ; la case ajoute une raison : le libellé coche la case, et un ' +
+      'lien agrandi à 44 px en couvrirait le haut et le bas, si bien qu’un doigt qui ' +
+      'vise la case ouvrirait la politique. Mesuré le 2026-09-14 : lien de 17 px dans ' +
+      'un libellé de 44. Le libellé a grandi depuis — il porte deux liens — mais la ' +
+      'hauteur du LIEN, elle, est celle d’une ligne de texte et n’a pas bougé.',
   },
   {
     fichier: 'components/layout/LienEvitement.tsx',

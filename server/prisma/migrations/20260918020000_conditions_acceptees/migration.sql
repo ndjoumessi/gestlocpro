@@ -1,0 +1,17 @@
+-- LA CASE DE L'INSCRIPTION FAIT DE NOUVEAU ACCEPTER LES CONDITIONS GÉNÉRALES.
+--
+-- `efd8654` les avait retirées le 2026-09-14 parce qu'elles n'existaient pas ;
+-- `51daf49` les a publiées le 2026-09-18. La case cite donc les deux documents,
+-- avec les deux verbes qui leur reviennent — on ACCEPTE un contrat, on LIT une
+-- information —, et le registre a besoin d'une valeur pour le dire.
+--
+-- AUCUNE LIGNE EXISTANTE NE CHANGE, et c'est tout l'intérêt de la colonne
+-- `legalConfirmation` : les comptes créés entre le 2026-09-14 et aujourd'hui ont
+-- vu la case qui ne parlait que de la politique, et gardent `readPrivacy`. Sans
+-- cette colonne, cette troisième rédaction aurait recontracté la dette que la
+-- migration `consentement_nomme` venait d'éteindre.
+--
+-- `ADD VALUE` ET NON UN NOUVEAU TYPE : l'énumération s'étend, elle ne se
+-- remplace pas. La valeur est ajoutée à la FIN — PostgreSQL n'a pas d'ordre
+-- sémantique ici, et rien dans le produit ne trie sur elle.
+ALTER TYPE "LegalConfirmation" ADD VALUE 'acceptedTermsReadPrivacy';

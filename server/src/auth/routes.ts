@@ -77,10 +77,12 @@ const motDePasse = z.string().min(10, 'Au moins 10 caractères').max(200)
  * qu'elle n'a jamais vues — c'est exactement le défaut que ce couple de colonnes
  * répare.
  *
- * SE CHANGE ICI, LE JOUR OÙ LES CONDITIONS GÉNÉRALES EXISTERONT, en même temps
- * que le libellé de `SignUp.tsx` et une valeur de plus à `LegalConfirmation`.
+ * CHANGÉ ICI LE 2026-09-18, le jour où les conditions générales ont existé —
+ * exactement comme cette prose l'annonçait : une valeur de plus à
+ * `LegalConfirmation`, le libellé de `SignUp.tsx`, et cette ligne. Les comptes
+ * d'avant gardent `readPrivacy` : ils ont vu l'autre case.
  */
-const TEXTE_CONFIRME_A_L_INSCRIPTION = 'readPrivacy' as const
+const TEXTE_CONFIRME_A_L_INSCRIPTION = 'acceptedTermsReadPrivacy' as const
 
 const schemaInscription = z.object({
   email,

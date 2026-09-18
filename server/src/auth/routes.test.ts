@@ -116,7 +116,9 @@ describe('inscription', () => {
     await request(serveur).post('/api/auth/signup').send(INSCRIPTION)
     const compte = await prisma.userAccount.findFirstOrThrow()
     expect(compte.legalConfirmedAt).toBeInstanceOf(Date)
-    expect(compte.legalConfirmation).toBe('readPrivacy')
+    /* `acceptedTermsReadPrivacy` depuis le 2026-09-18 : la case fait accepter les
+       conditions générales et confirmer la lecture de la politique. */
+    expect(compte.legalConfirmation).toBe('acceptedTermsReadPrivacy')
   })
 
   it('nomme les champs fautifs plutôt qu’un message global', async () => {

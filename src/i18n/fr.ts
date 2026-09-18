@@ -441,14 +441,18 @@ export const fr = {
       tenantNotice:
         'Un locataire ne crée pas son espace seul : il est rattaché à un bail existant. Sans code, demandez-le à votre gestionnaire.',
 
-      // « J’ai lu », et non « J’accepte » : une politique de confidentialité
-      // informe, elle ne se signe pas. Les conditions générales reviendront
-      // dans cette case le jour où elles existeront — voir
-      // `caseDeConfidentialite.test.tsx`.
-      termsLead: 'J’ai lu la',
+      // DEUX VERBES, ET C'EST LA RÈGLE QUI LES SÉPARE. On ACCEPTE des conditions
+      // générales — elles engagent. On LIT une politique de confidentialité —
+      // elle informe, et rien ne s'y signe. `efd8654` avait retiré les
+      // conditions parce qu'elles n'existaient pas ; `51daf49` les a publiées,
+      // elles reviennent ici. Voir `caseDeConfidentialite.test.tsx`.
+      termsAcceptLead: 'J’accepte les',
+      termsAcceptLink: 'conditions générales',
+      termsReadLead: 'et j’ai lu la',
       termsLink: 'politique de confidentialité',
       termsNewTab: '(s’ouvre dans un nouvel onglet)',
-      termsError: 'Confirmez avoir lu la politique de confidentialité pour créer votre compte.',
+      termsError:
+        'Acceptez les conditions générales et confirmez avoir lu la politique de confidentialité pour créer votre compte.',
       // Posée sur le champ e-mail, à l'étape « Vos informations » : l'afficher
       // sur le récapitulatif la mettrait là où le champ n'existe pas.
       emailTaken: 'Un compte existe déjà avec cette adresse. Connectez-vous, ou utilisez-en une autre.',

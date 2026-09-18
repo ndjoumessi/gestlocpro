@@ -180,8 +180,30 @@ const PLAFONDS = [
     `plafondLarge` reste le relevé précédent. Pourquoi — la rangée y passait
     peut-être déjà à la ligne avec le seul « Mentions légales » — n'est pas
     mesuré.
+
+    +24 px (fr@360, POLICE LARGE SEULEMENT), LE 2026-09-18 : LE LIEN
+    « CONDITIONS ». La troisième page juridique entre dans la même rangée.
+
+    ET CELA RÉPOND À LA QUESTION LAISSÉE OUVERTE JUSTE AU-DESSUS. Le deuxième
+    lien ne coûtait rien en police large ; le troisième coûte exactement une
+    ligne. La rangée y tenait donc bien DEUX libellés sur sa seconde ligne, et
+    c'est le troisième qui en ouvre une troisième — ce que la rédaction de
+    septembre soupçonnait sans pouvoir le trancher.
+
+    LOCALEMENT, RIEN NE BOUGE : `plafond` reste 10247, mesuré vert sur la
+    machine de développement avec les trois liens. C'est l'inverse du 2026-09-13,
+    où le local bougeait et le CI non — et c'est pourquoi les deux colonnes
+    existent.
+
+    RELEVÉ SUR LE CI (exécution 35289264991, travail `complet`) : 10247 px. Les
+    trois autres points mesurent EXACTEMENT leur plafond inscrit — 9997, 7272 et
+    7248 —, c'est-à-dire qu'ils n'ont pas bougé d'un pixel.
+
+    CE QUE J'AI RATÉ, ET QUI A COÛTÉ UN DÉPLOIEMENT REFUSÉ : la branche de
+    mesure `mesure-conditions` exécutait DÉJÀ ce script, et je n'ai lu que le
+    relevé de `plafond-hauteurs`. Le travail `polices` rend les DEUX.
   */
-  { largeur: 360, langue: 'fr', plafond: 10247, plafondLarge: 10223, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'fr', plafond: 10247, plafondLarge: 10247, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
   { largeur: 360, langue: 'en', plafond: 10105, plafondLarge: 9997, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.

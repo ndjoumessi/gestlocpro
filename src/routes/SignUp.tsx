@@ -1198,7 +1198,21 @@ function ReviewStep({
              coche, d'où un cas qui ne tient que la première moitié. */
           label={
             <>
-              {t("auth.signup.termsLead")}{" "}
+              {t("auth.signup.termsAcceptLead")}{" "}
+              {/* DEUX DOCUMENTS, DEUX LIENS. Un seul lien vers une page qui
+                  renverrait à l'autre ferait dépendre l'accès à un CONTRAT d'un
+                  clic de plus, sur une case qu'on ne peut plus décocher une fois
+                  le compte créé. */}
+              <a
+                href="/conditions-generales"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent-ink underline underline-offset-4"
+              >
+                {t("auth.signup.termsAcceptLink")}
+                <span className="sr-only"> {t("auth.signup.termsNewTab")}</span>
+              </a>{" "}
+              {t("auth.signup.termsReadLead")}{" "}
               <a
                 href="/confidentialite"
                 target="_blank"

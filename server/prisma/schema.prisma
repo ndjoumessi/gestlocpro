@@ -1272,6 +1272,13 @@ enum LegalConfirmation {
   /// La case d'avant `efd8654`, qui renvoyait à des conditions générales que ce
   /// produit n'a jamais publiées. Aucun compte NOUVEAU ne peut plus la porter.
   acceptedTermsAndPrivacy
-  /// « J'ai lu la politique de confidentialité. » La case d'aujourd'hui.
+  /// « J'ai lu la politique de confidentialité. » La case de `efd8654`, entre le
+  /// 2026-09-14 et le 2026-09-18 : les conditions générales n'existaient pas, et
+  /// on ne fait pas accepter un document absent.
   readPrivacy
+  /// « J'accepte les conditions générales et j'ai lu la politique de
+  /// confidentialité. » La case d'aujourd'hui, depuis que `51daf49` a publié les
+  /// conditions. DEUX VERBES, et c'est la règle qui les sépare : on accepte un
+  /// contrat, on lit une information.
+  acceptedTermsReadPrivacy
 }
