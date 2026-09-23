@@ -629,6 +629,15 @@
   /* ---- Mouvement ------------------------------------------------------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  /* Le tiroir de navigation glisse sur cette courbe, et non sur `--ease-out`.
+     C'est celle d'iOS, reprise telle quelle par Ionic pour ses panneaux
+     latéraux : un départ franc, puis une longue décélération qui tient jusqu'au
+     bord. `--ease-out` est calibré pour de petits déplacements — 6 px pour
+     `animate-rise` — où la fin de course ne se voit pas ; sur les 288 px du
+     panneau, elle se voit, et le panneau semble s'arrêter avant d'être arrivé.
+     Valeurs à ne pas arrondir : le zéro en troisième position est ce qui rend
+     l'arrivée aussi plate. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* ---- Empilement ------------------------------------------------------ */
   --z-sticky: 20;
@@ -1453,12 +1462,73 @@
   }
 }
 
+/* Le tiroir de navigation mobile, et le voile qui l'accompagne. Le panneau est
+   `fixed` et RECOUVRE la page : `translateX` ne déplace donc aucun voisin et ne
+   coûte pas de remise en page — c'est l'inverse exact du rail de bureau, qui
+   pousse le contenu et se replie pour cette raison d'un seul bloc. */
+@keyframes gl-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gl-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes gl-voile-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gl-voile-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @utility animate-rise {
   animation: gl-rise var(--duration-slow) var(--ease-out) both;
 }
 
 @utility animate-pop {
   animation: gl-pop var(--duration-base) var(--ease-out) both;
+}
+
+/* La sortie est plus courte que l'entrée : 200 ms contre 300, soit les ~70 %
+   que `docs/PLAN.md:119` demande. Une surface qui arrive se présente, une
+   surface qui part ne doit plus retenir le regard. Le voile et le panneau
+   partagent exactement les mêmes durées pour qu'ils voyagent ENSEMBLE ; seule
+   la courbe diffère, l'opacité n'ayant pas de distance à parcourir. */
+@utility animate-drawer-in {
+  animation: gl-drawer-in var(--duration-slow) var(--ease-drawer) both;
+}
+
+@utility animate-drawer-out {
+  animation: gl-drawer-out var(--duration-base) var(--ease-drawer) both;
+}
+
+@utility animate-voile-in {
+  animation: gl-voile-in var(--duration-slow) var(--ease-out) both;
+}
+
+@utility animate-voile-out {
+  animation: gl-voile-out var(--duration-base) var(--ease-out) both;
 }
 
 /* Entrée d'une barre de progression : un seul élément par jauge, aucun décalage

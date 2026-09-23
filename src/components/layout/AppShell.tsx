@@ -27,11 +27,18 @@ import { useT } from '@/i18n/I18nProvider'
 import type { Role } from '@/features/auth/signupState'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useDates } from '@/lib/useDates'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
 import { partiesDeDateISO } from '@/lib/dates'
 import { api } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { lien, useBase } from '@/lib/base'
 import { CadreDuParc } from '@/components/feedback/CadreDuParc'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. Le dépôt emploie déjà l'attribut
+   nu, impérativement — `PublicHeader.tsx:173`. En JSX, la forme équivalente est
+   un étalement conditionnel de cet objet. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
 
 
 /* -------------------------------------------------------------------------- */
@@ -401,6 +408,14 @@ export function AppShell() {
   const drawerRef = useRef<HTMLElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
+  /* Le tiroir reste MONTÉ le temps de sortir : 200 ms, la valeur de
+     `--duration-base` que portent `animate-drawer-out` et `animate-voile-out`.
+     `tiroirMonte` ne pilote que la présence des nœuds ; tout le reste — la
+     fermeture au passage en grand écran, le focus, le lien d'évitement — reste
+     accroché à `drawerOpen`. Le focus surtout : le poser sur `tiroirMonte`
+     l'enverrait dans un panneau en train de partir. */
+  const { monte: tiroirMonte, sortant: tiroirSortant } = useSortieDifferee(drawerOpen, 200)
+
   // La navigation mobile se referme au changement de page : sans cela, le
   // panneau reste ouvert par-dessus l'écran qu'on vient de demander.
   useEffect(() => setDrawerOpen(false), [location.pathname])
@@ -595,13 +610,30 @@ export function AppShell() {
           className="hidden lg:flex"
         />
 
-        {drawerOpen && (
+        {/*
+          PENDANT LA SORTIE, LES DEUX NŒUDS SONT DÉJÀ PARTIS POUR TOUT LE MONDE
+          SAUF L'ŒIL. Le voile est un bouton nommé, le panneau une fenêtre de
+          dialogue : l'un et l'autre comptent dans l'arbre d'accessibilité, et
+          c'est le PANNEAU qu'une requête par rôle va chercher. `aria-hidden` et
+          `inert` les en retirent dès la fermeture, avant que les pixels aient
+          fini leur course — plusieurs cas existants affirment l'absence sans
+          attendre, et une surface qui s'attarde 200 ms les ferait rougir sans
+          avoir trouvé le moindre défaut. Le panneau reçoit les siens par
+          `sortant`, sa liste de propriétés étant close. `pointer-events-none`
+          dit la même chose à la souris.
+        */}
+        {tiroirMonte && (
           <>
             <button
               type="button"
               aria-label={t('common.close')}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 cursor-default bg-scrim lg:hidden"
+              aria-hidden={tiroirSortant || undefined}
+              {...(tiroirSortant ? INERTE : {})}
+              className={cn(
+                'fixed inset-0 cursor-default bg-scrim lg:hidden',
+                tiroirSortant ? 'animate-voile-out pointer-events-none' : 'animate-voile-in',
+              )}
               style={{ zIndex: 'var(--z-overlay)' }}
             />
             <Sidebar
@@ -609,9 +641,13 @@ export function AppShell() {
               setRole={setRole}
               railed={false}
               onToggleRail={() => setDrawerOpen(false)}
-              className="fixed inset-y-0 left-0 flex w-72 lg:hidden"
+              className={cn(
+                'fixed inset-y-0 left-0 flex w-72 lg:hidden',
+                tiroirSortant ? 'animate-drawer-out pointer-events-none' : 'animate-drawer-in',
+              )}
               style={{ zIndex: 'var(--z-overlay)' }}
               dialogLabel={t('nav.primaryNav')}
+              sortant={tiroirSortant}
               innerRef={drawerRef}
             />
           </>
@@ -1109,6 +1145,7 @@ function Sidebar({
   className,
   style,
   dialogLabel,
+  sortant,
   innerRef,
 }: {
   role: Role
@@ -1123,6 +1160,14 @@ function Sidebar({
    * technologies d'assistance et non seulement le paraître.
    */
   dialogLabel?: string
+  /**
+   * Vrai pendant que la variante tiroir FINIT DE SORTIR. Le panneau est encore
+   * peint, mais il est déjà parti pour qui lit le document ou navigue au
+   * clavier. Cette propriété existe parce que les attributs ne peuvent pas
+   * venir du dehors : la liste ci-dessus est close, sans étalement, et c'est
+   * l'`<aside>` — pas le voile — que va chercher une requête par rôle.
+   */
+  sortant?: boolean
   innerRef?: Ref<HTMLElement>
 }) {
   const sansParc = useSansParc()
@@ -1161,6 +1206,8 @@ function Sidebar({
       role={dialogLabel ? 'dialog' : undefined}
       aria-modal={dialogLabel ? true : undefined}
       aria-label={dialogLabel}
+      aria-hidden={sortant || undefined}
+      {...(sortant ? INERTE : {})}
       // `h-dvh` vaut la hauteur ENTIÈRE de l'écran depuis `viewport-fit=cover` :
       // le logo se rangeait donc sous la barre d'état, et les deux dernières
       // entrées — portail locataire, système — sous la barre de gestes.
