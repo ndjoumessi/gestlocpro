@@ -695,10 +695,16 @@ export const PLANCHERS_DE_LECTURE = {
   'sites interactifs': 281,
   'champs de formulaire': 127,
   'titres composés': 390,
-  // 176 et non 151, le 2026-09-07 : quatorze gardes ajoutées en neuf lots (audit
-  // UI/UX puis parc en fiches) ont porté le réel à 196, et `planchersDeLecture`
-  // refuse plus de 20 % d'écart — il a demandé ce nombre.
-  'fichiers de test écartés': 176,
+  // 198 et non 176, le 2026-09-24 : le lot du MOUVEMENT a ajouté cinq gardes —
+  // sortie différée, sortie de modale, seconde ouverture de l'invitation et des
+  // prix, sortie des panneaux ancrés — et porté le réel à 221.
+  // `planchersDeLecture` refuse plus de 20 % d'écart ; il a demandé ce nombre.
+  //
+  // CE PLANCHER-CI EST LE SEUL QUE `check:rapide` NE VOIT PAS : il se lit depuis
+  // `server/src/planchersDeLecture.test.ts`, donc sous `check:server`. Ajouter
+  // une garde au CLIENT fait rougir la porte du SERVEUR, un tour plus tard et
+  // sur une autre machine. C'est ce qui est arrivé le 2026-09-24.
+  'fichiers de test écartés': 198,
 }
 
 export function releverLesSources() {
