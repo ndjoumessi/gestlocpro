@@ -20,6 +20,17 @@ interface Toast {
   message: string
   tone: ToastTone
   action?: { label: string; onClick: () => void }
+  /** Renvoyé : le nœud ne reste que pour l'œil, le temps de sa sortie. */
+  sortant?: boolean
+  /**
+   * Gelé AU RENVOI : ce toast était-il le dernier en flux à cet instant ?
+   *
+   * Gelé, et non recalculé à chaque rendu — c'est le piège de ce champ. Un toast
+   * déjà sorti du flux qu'un rendu ultérieur jugerait « plus le dernier »
+   * (parce qu'un voisin vient de sortir à son tour) retomberait DANS la colonne
+   * au milieu de son propre fondu.
+   */
+  horsFlux?: boolean
 }
 
 interface ToastContextValue {
@@ -29,6 +40,15 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null)
 
 const DURATION = 4500
+
+/**
+ * Miroir de `animate-rise-out` (`--duration-fast`), en millisecondes.
+ *
+ * Elle NE SE PAIE PAS sur les 4 500 ms de lecture : le message reste lisible et
+ * intact tout ce temps, la sortie s'ajoute après. `sortieDeToast.test.tsx` mesure
+ * l'état à 4 499 ms pour cette seule raison.
+ */
+const SORTIE_MS = 150
 
 const TONE_ICON: Record<ToastTone, IconName> = {
   neutral: 'info',
@@ -46,8 +66,60 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const nextId = useRef(0)
 
+  /*
+    LA SORTIE DIFFÉRÉE VIT ICI, DANS LE FOURNISSEUR, ET PAS DANS L'ÉLÉMENT.
+
+    `useSortieDifferee` ne pouvait pas servir, et ce n'est pas un détail de
+    plomberie. Le crochet retient un nœud que SON APPELANT continue de rendre :
+    il prend un `ouvert` booléen, garde `monte` vrai un moment de plus et laisse
+    l'appelant décider de la présence. Un toast n'a pas d'`ouvert` — son
+    EXISTENCE DANS LE TABLEAU est son ouverture. Placé dans `ToastItem`, le
+    crochet ne pourrait rien retenir : c'est le fournisseur qui démonte
+    l'élément, et un enfant ne se maintient pas monté contre son parent. Le motif
+    est donc le même, à deux temps — marquer, puis retirer — mais écrit là où vit
+    l'état.
+
+    ET UNE SECONDE RAISON, PLUS FORTE : la décision « ce toast peut-il quitter le
+    flux ? » demande de connaître SES VOISINS. Seul le fournisseur les a. Voir
+    `sortieDeToast.test.tsx` pour la géométrie mesurée qui fixe cette règle.
+
+    LA MINUTERIE EST ARMÉE ICI, PAS DANS UN EFFET, et c'est ce qui garde vertes
+    les trois gardes de `etatsAccessibles.test.tsx`. Elles avancent l'horloge
+    d'un bond (`vi.advanceTimersByTime(5_000)`) et affirment l'absence juste
+    après. Une minuterie de sortie créée dans un effet naîtrait APRÈS le bond —
+    les effets sont vidés en fin d'`act` — donc resterait pendante, et le toast
+    serait encore là. Armée dans le corps du renvoi, elle naît DANS le bond, à
+    4 500, et s'achève à 4 650 : avant les 5 000 du saut.
+  */
+  const sorties = useRef(new Map<number, number>())
+
   const dismiss = useCallback((id: number) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
+    // Déjà en train de sortir : ni double marquage, ni seconde minuterie. La
+    // croix, la minuterie de 4,5 s et le bouton d'action peuvent viser le même
+    // toast dans la même image.
+    if (sorties.current.has(id)) return
+
+    setToasts((current) => {
+      const dernierEnFlux = [...current].reverse().find((toast) => !toast.sortant)
+      const horsFlux = dernierEnFlux?.id === id
+      return current.map((toast) => (toast.id === id ? { ...toast, sortant: true, horsFlux } : toast))
+    })
+
+    sorties.current.set(
+      id,
+      window.setTimeout(() => {
+        sorties.current.delete(id)
+        setToasts((current) => current.filter((toast) => toast.id !== id))
+      }, SORTIE_MS),
+    )
+  }, [])
+
+  useEffect(() => {
+    const minuteries = sorties.current
+    return () => {
+      for (const minuterie of minuteries.values()) window.clearTimeout(minuterie)
+      minuteries.clear()
+    }
   }, [])
 
   const notify = useCallback<ToastContextValue['notify']>((message, options) => {
@@ -88,7 +160,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           // coquille de gestion monte une barre de 4 rem et élève cette variable ;
           // un toast à `bottom-0` la recouvrait 4,5 s, juste quand on veut changer
           // d'écran. Même décalage que `BandeauVersion`, pour la même raison.
-          'pointer-events-none fixed inset-x-0 bottom-[var(--h-barre-basse,0px)] flex flex-col items-center gap-2',
+          // `justify-end` NE CHANGE RIEN AUX TOASTS EN FLUX — le conteneur est
+          // haut de son contenu, il n'y a aucun espace libre à distribuer
+          // (mesuré : positions identiques avec et sans). Il commande la
+          // POSITION STATIQUE du toast qui SORT du flux, laquelle suit
+          // `justify-content` : sans lui, le toast sortant se reposerait au HAUT
+          // de la colonne, 54 px plus bas que sa place quand il y en a deux,
+          // 108 avec trois. La classe et le `absolute` de `ToastItem` sont un
+          // seul mécanisme en deux morceaux ; `sortieDeToast.test.tsx` les tient
+          // ensemble.
+          'pointer-events-none fixed inset-x-0 bottom-[var(--h-barre-basse,0px)] flex flex-col items-center justify-end gap-2',
           'pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]',
           'pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]',
           'sm:items-end sm:pt-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]',
@@ -135,24 +216,85 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
   const t = useT()
   const [suspendu, setSuspendu] = useState(false)
+  const sortant = toast.sortant === true
 
+  /*
+    LA MINUTERIE EST CELLE DU RENVOI, JAMAIS CELLE DE LA PEINTURE. Elle compte
+    4 500 ms pleines, la sortie s'ajoute après, et elle s'arrête une fois le
+    renvoi prononcé — un toast qui s'efface n'a plus rien à demander. `dismiss`
+    est de toute façon idempotent ; ce `sortant` évite simplement d'armer une
+    minuterie de 4,5 s pour un nœud qui vit 150 ms.
+  */
   useEffect(() => {
-    if (suspendu) return
+    if (suspendu || sortant) return
     const timer = window.setTimeout(onDismiss, DURATION)
     return () => window.clearTimeout(timer)
-  }, [onDismiss, suspendu])
+  }, [onDismiss, suspendu, sortant])
 
   return (
     <div
       data-toast
+      /* La pause au survol et au focus reste branchée pendant la sortie sans y
+         rien changer : le nœud ne prend plus le pointeur et a quitté l'arbre
+         d'accessibilité, aucun de ces deux événements ne peut donc plus
+         l'atteindre. Rien à débrancher, rien à cas particulier. */
       onMouseEnter={() => setSuspendu(true)}
       onMouseLeave={() => setSuspendu(false)}
       // `onFocus`/`onBlur` et non `onFocusIn`/`onFocusOut` : en React, ces deux
       // événements-là remontent déjà depuis les boutons enfants.
       onFocus={() => setSuspendu(true)}
       onBlur={() => setSuspendu(false)}
+      /*
+        PENDANT LA SORTIE, LE TOAST N'EXISTE PLUS QUE POUR L'ŒIL — même règle
+        qu'au conteneur de la modale, et pour les mêmes gardes : un nœud qui
+        s'attarde 150 ms resterait sinon lisible, cliquable et tabulable.
+
+        PAS D'`inert`, ET C'EST DÉLIBÉRÉ. `inert` retirerait en plus la
+        FOCALISABILITÉ des deux boutons — ce qu'`aria-hidden` ne fait pas. Le
+        gain se chiffre à 150 ms pendant lesquelles une tabulation pourrait
+        encore atteindre une croix devenue invisible ; or qui a le focus DANS le
+        toast suspend l'effacement (voir la minuterie ci-dessus), donc ce cas
+        suppose de tabuler VERS un toast qu'on ne voit plus, dans la fenêtre de
+        son fondu. Le risque en face porte sur la seule chose que le toast sache
+        faire : annoncer. Cette région est `aria-live="polite"`, et les
+        techniques d'assistance y suivent les mutations du sous-arbre ; poser
+        `inert` — qui implique la sémantique d'`aria-hidden` sur toute la
+        descendance — sur un nœud d'une région vivante est un geste dont l'effet
+        sur une annonce EN COURS n'a pas été mesuré ici. Entre 150 ms de
+        focalisabilité résiduelle et le risque d'étouffer l'annonce, on garde
+        l'annonce. `aria-hidden` seul ne le menace pas : `aria-relevant` vaut par
+        défaut `additions text`, une disparition ne s'annonce pas.
+      */
+      aria-hidden={sortant || undefined}
       className={cn(
-        'animate-rise on-dark pointer-events-auto flex w-full max-w-sm items-start gap-3',
+        sortant ? 'animate-rise-out' : 'animate-rise',
+        // Conditionnel, jamais deux classes de la même propriété côte à côte :
+        // `pointer-events-none` et `-auto` ne se départagent que par l'ordre de
+        // la feuille produite par Tailwind, que rien ici ne contrôle.
+        sortant ? 'pointer-events-none' : 'pointer-events-auto',
+        /*
+          IL QUITTE LE FLUX À L'INSTANT OÙ IL COMMENCE À PARTIR, pas à la fin.
+
+          C'est tout l'objet de la manœuvre. Le retirer du flux SEULEMENT au
+          démontage donnerait deux événements là où il y en avait un : 150 ms de
+          fondu, puis le même replacement sec de la colonne — et la pause
+          désigne le saut à l'œil. Hors flux dès le départ, la colonne se replace
+          UNE fois, aussitôt, pendant que le toast glisse par-dessus elle.
+
+          SEULEMENT S'IL ÉTAIT LE DERNIER EN FLUX, et cette borne est mesurée,
+          pas prudentielle : la position statique d'un enfant absolu d'une boîte
+          flexible se calcule comme s'il était le seul élément, donc au bord que
+          `justify-content` désigne — et ce conteneur, ancré par le bas et haut
+          de son contenu, rétrécit à l'instant même où l'enfant le quitte. Pour
+          le dernier en flux, ce bord EST sa place : boîte inchangée au pixel
+          (relevé dans Chrome). Pour les autres, c'est un saut de 54 px vers le
+          bas, 108 pour le premier de trois. Ceux-là s'effacent donc sur place :
+          leur voisin du dessus attend la fin du fondu pour descendre, ce qui est
+          le défaut qu'on vient de décrire — mais une pause vaut mieux qu'un
+          saut, et rien en CSS statique ne sait dire « la place que j'occupais ».
+        */
+        sortant && toast.horsFlux && 'absolute',
+        'on-dark flex w-full max-w-sm items-start gap-3',
         'rounded-lg border border-on-dark-border bg-ink px-4 py-3 text-on-dark shadow-e3',
       )}
     >

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act } from '@testing-library/react'
-import { renderWithProviders, screen, userEvent } from '@/test/render'
+import { renderWithProviders, screen, userEvent, waitFor } from '@/test/render'
 import { IconButton } from './Button'
 import { useToast } from './Toast'
 
@@ -77,7 +77,30 @@ describe('Toast', () => {
     expect(document.activeElement).toBe(declencheur)
 
     await user.click(screen.getByRole('button', { name: 'Fermer la notification' }))
-    expect(screen.queryByText('Quittance enregistrée')).toBeNull()
+
+    /*
+      DEUX CONSTATS LÀ OÙ IL Y EN AVAIT UN — même substitution qu'à
+      `src/features/dashboard/clavierDesModales.test.tsx:395`, dont le docbloc
+      porte le raisonnement complet et n'est pas recopié ici.
+
+      Le toast renvoyé s'attarde 150 ms, peint, le temps de sortir ; il est DÉJÀ
+      parti pour qui lit le document, parce qu'il porte alors `aria-hidden`. Or
+      `queryByText` n'a pas de filtre `hidden` : il lit le TEXTE du DOM, pas
+      l'arbre d'accessibilité. Seul, il ne sait donc pas distinguer « le message
+      est encore ouvert » de « il finit de s'effacer, déjà inatteignable ».
+
+      1. CE QUE L'UTILISATEUR PERÇOIT, TOUT DE SUITE : une requête par RÔLE, qui
+         respecte `aria-hidden` là où une requête par texte l'ignore. Ce constat
+         n'existait pas avant.
+      2. QUE RIEN NE RESTE DERRIÈRE : la garantie d'origine, conservée et non
+         abandonnée — simplement attendue, puisqu'elle arrive désormais à la fin
+         de la sortie et non à son début.
+    */
+    expect(
+      screen.queryByRole('button', { name: 'Fermer la notification' }),
+      'le toast renvoyé doit quitter l’arbre d’accessibilité dès le clic',
+    ).toBeNull()
+    await waitFor(() => expect(screen.queryByText('Quittance enregistrée')).toBeNull())
   })
 
   it('suspend l’effacement automatique tant que le pointeur reste dessus', async () => {

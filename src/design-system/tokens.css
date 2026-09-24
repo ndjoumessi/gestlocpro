@@ -1239,6 +1239,21 @@
   }
 }
 
+/* Le miroir de `gl-rise`, et les 6 px sont les MÊMES qu'à l'entrée : le toast
+   monte de sous le bord bas, il y redescend. Il ne part ni de côté ni en
+   rétrécissant — un message qui se retire reprend le chemin par lequel il est
+   venu, c'est la seule cohérence spatiale qu'un coin d'écran permet. */
+@keyframes gl-rise-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 @keyframes gl-pop {
   from {
     opacity: 0;
@@ -1547,6 +1562,15 @@
 
 @utility animate-rise {
   animation: gl-rise var(--duration-slow) var(--ease-out) both;
+}
+
+/* MOITIÉ DE LA DURÉE DE L'ENTRÉE, comme partout ailleurs ici — `pop` fait
+   200/150, la feuille et le tiroir 300/200. Un toast entre pour être lu, il sort
+   pour libérer le coin : personne n'attend la fin d'un départ. `--duration-fast`
+   est aussi la borne que `SORTIE_MS` recopie dans `Toast.tsx` ; les deux nombres
+   se lisent ensemble. */
+@utility animate-rise-out {
+  animation: gl-rise-out var(--duration-fast) var(--ease-out) both;
 }
 
 @utility animate-pop {
