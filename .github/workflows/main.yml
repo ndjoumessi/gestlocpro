@@ -224,11 +224,32 @@ jobs:
 
   complet:
     name: complet — les portes au navigateur
-    # SEULEMENT SUR `main`, et seulement après les deux autres. Un quart d'heure
-    # de Chromium à chaque poussée de branche coûterait plus que ce qu'il
-    # rapporte : ces portes gardent la mise en page, qui ne bouge qu'aux lots de
-    # refonte, et `main` est ce qui part en production.
-    if: github.ref == 'refs/heads/main'
+    # SUR `main`, et seulement après les deux autres. Un quart d'heure de
+    # Chromium à chaque poussée de branche coûterait plus que ce qu'il rapporte :
+    # ces portes gardent la mise en page, qui ne bouge qu'aux lots de refonte, et
+    # `main` est ce qui part en production.
+    #
+    # ET À LA DEMANDE, DEPUIS N'IMPORTE QUELLE BRANCHE — c'est le seul ajout.
+    #
+    # L'exemption repose sur une prémisse : « la mise en page ne bouge qu'aux
+    # lots de refonte ». Elle est juste la plupart du temps, et c'est ce qui la
+    # rend coûteuse quand elle est fausse : un lot qui déplace des panneaux, des
+    # modales et des jetons est PRÉCISÉMENT celui dont le verdict arrive après la
+    # fusion, sur ce qui part en production. Le lot du mouvement, en septembre,
+    # a dû lancer ces portes à la main quinze fois sur une machine locale — et
+    # `modales` est connue pour diverger entre le local et l'intégration, dans
+    # les deux sens.
+    #
+    # Le même remède existait déjà un travail plus haut : `polices` porte un
+    # relevé côté branche « parce que `complet` ne tourne que sur `main`, donc
+    # APRÈS la poussée qui change la page », et trois lots de septembre avaient
+    # ajouté ce pas à la main avant qu'il n'y reste. On généralise ce remède au
+    # lieu de le recopier une quatrième fois.
+    #
+    # Le compromis de coût est INTACT : rien ne change pour une poussée
+    # ordinaire, `workflow_dispatch` est un geste délibéré, et `needs` tient
+    # toujours — on ne paie Chromium qu'après deux portes vertes.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     needs: [rapide, serveur]
     runs-on: ubuntu-latest
     timeout-minutes: 40

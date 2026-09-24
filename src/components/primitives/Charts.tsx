@@ -1561,7 +1561,14 @@ export function DonutChart({
                   strokeWidth={exterieur - interieur}
                   strokeDasharray={`${fraction * c} ${(1 - fraction) * c}`}
                   strokeDashoffset={-debut * c}
-                  className="transition-all duration-150"
+                  /* Seul l'épaississement de la part visée est animé : `r` et
+                     `stroke-width`, qui varient au survol et au focus par
+                     `croissance`. Le balayage des arcs au changement de donnée
+                     (`stroke-dasharray` / `stroke-dashoffset`) n'a jamais été
+                     voulu, et `transition: all` l'animait. `ease-out` est dit
+                     explicitement : sans lui Tailwind applique sa propre courbe,
+                     qu'aucun jeton de ce dépôt ne nomme. */
+                  className="transition-[r,stroke-width] duration-150 ease-out"
                   // -90° pour démarrer à midi plutôt qu'à 3 h.
                   transform="rotate(-90 50 50)"
                 />

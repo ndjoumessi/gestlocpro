@@ -4,6 +4,15 @@ import { useI18n } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { CURRENCIES, CURRENCY_DEFS, type CurrencyCode } from '@/currency/currencies'
 import { Icon } from '@/components/primitives/Icon'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. En JSX, la forme équivalente est
+   un étalement conditionnel de cet objet — voir `Modal.tsx:14`. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
+
+/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+const SORTIE_MS = 150
 
 export interface CurrencySwitcherProps {
   tone?: 'light' | 'dark'
@@ -24,6 +33,13 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+
+  /* La liste reste PEINTE le temps de sa sortie, puis se démonte. `monte`
+     commande la présence dans l'arbre, `open` commande tout le reste — et
+     l'effet ci-dessous garde `open` pour cette raison : une liste qui s'en va
+     ne doit plus écouter Échap ni le clic extérieur, sans quoi elle refermerait
+     ce qu'on vient d'ouvrir à sa place. */
+  const { monte, sortant } = useSortieDifferee(open, SORTIE_MS)
 
   useEffect(() => {
     if (!open) return
@@ -103,18 +119,28 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
         />
       </button>
 
-      {open && (
+      {monte && (
         <ul
           role="listbox"
           aria-label={t('common.currency')}
+          // Pendant la sortie, la liste n'existe plus que pour l'œil : elle
+          // quitte l'arbre d'accessibilité et cesse de prendre le pointeur. Une
+          // liste d'options qui s'attarde 150 ms en restant cliquable
+          // changerait la devise sur un clic destiné à ce qu'il y a dessous.
+          aria-hidden={sortant || undefined}
+          {...(sortant ? INERTE : {})}
           className={cn(
+            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
             // 52 → 64 : la ligne porte désormais un nom et non plus un code,
             // et « Dollar américain ($) » suivi de « USD » ne tenait pas dans
             // 208 px sans se couper.
-            'animate-pop absolute right-0 mt-1.5 min-w-64 overflow-hidden rounded-md',
+            'absolute right-0 mt-1.5 min-w-64 overflow-hidden rounded-md',
             'border border-divider bg-surface p-1 shadow-e2',
           )}
-          style={{ zIndex: 'var(--z-dropdown)' }}
+          /* `right-0` sous le bouton, sans renversement : l'origine est le coin
+             haut-droit. `gl-pop` n'en pose aucune, et la liste grandissait donc
+             depuis son centre — elle venait de nulle part. */
+          style={{ zIndex: 'var(--z-dropdown)', transformOrigin: 'top right' }}
         >
           {CURRENCIES.map((code) => {
             const active = code === currency

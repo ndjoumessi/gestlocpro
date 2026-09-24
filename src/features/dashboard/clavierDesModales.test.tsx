@@ -389,7 +389,42 @@ async function parcoursClavier(modale: Modale) {
   expect(evasions, 'le focus est sorti de la modale ouverte').toEqual([])
 
   await user.keyboard('{Escape}')
-  expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull()
+
+  /*
+    ÉCHAP FERME, ET « FERMÉE » SE CONSTATE DÉSORMAIS EN DEUX TEMPS.
+
+    Ce qu'il y avait ici était UN constat, brut :
+
+        expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull()
+
+    Il prenait le DÉMONTAGE pour preuve de la FERMETURE, ce qui était exact tant
+    que les deux tombaient sur la même image. Le contrat a changé à dessein : une
+    modale fermée s'attarde 150 ms, peinte, le temps de sortir — mais elle est
+    DÉJÀ partie pour qui lit le document ou navigue au clavier, parce que le
+    conteneur du portail porte alors `aria-hidden` et `inert`.
+
+    Or `querySelector` interroge le DOCUMENT, et `aria-hidden` ne touche pas le
+    document : il touche l'ARBRE D'ACCESSIBILITÉ. Le constat brut ne sait donc
+    pas distinguer « la modale est encore ouverte » de « elle finit de s'effacer,
+    déjà inaccessible » — et dans un fichier dont le sujet EST le clavier (voir
+    son en-tête, ligne 17), c'est précisément la distinction qui compte.
+
+    D'où deux constats, et ils ne disent pas la même chose :
+
+    1. CE QUE L'UTILISATEUR PERÇOIT, TOUT DE SUITE. Une requête par RÔLE, qui
+       respecte `aria-hidden` là où `querySelector` l'ignore. Ce constat n'existait
+       pas avant. Il attrape la régression que `aria-hidden` posé sur le VOILE au
+       lieu du conteneur produit : le voile est un FRÈRE de la boîte de dialogue,
+       pas son parent, donc la masquer par lui ne la masque pas.
+    2. QUE RIEN NE RESTE DERRIÈRE. La garantie de démontage d'origine, conservée
+       et non abandonnée — simplement attendue, puisqu'elle arrive maintenant à
+       la fin de la sortie et non à son début.
+  */
+  expect(screen.queryByRole('dialog'), 'la modale doit quitter l’arbre d’accessibilité dès Échap').toBeNull()
+  expect(screen.queryByRole('alertdialog'), 'idem pour une confirmation').toBeNull()
+  await waitFor(() =>
+    expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull(),
+  )
   /*
     LE FOCUS REVIENT LÀ OÙ L'ON PEUT ENCORE ALLER.
 

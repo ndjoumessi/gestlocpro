@@ -629,6 +629,15 @@
   /* ---- Mouvement ------------------------------------------------------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  /* Le tiroir de navigation glisse sur cette courbe, et non sur `--ease-out`.
+     C'est celle d'iOS, reprise telle quelle par Ionic pour ses panneaux
+     latéraux : un départ franc, puis une longue décélération qui tient jusqu'au
+     bord. `--ease-out` est calibré pour de petits déplacements — 6 px pour
+     `animate-rise` — où la fin de course ne se voit pas ; sur les 288 px du
+     panneau, elle se voit, et le panneau semble s'arrêter avant d'être arrivé.
+     Valeurs à ne pas arrondir : le zéro en troisième position est ce qui rend
+     l'arrivée aussi plate. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* ---- Empilement ------------------------------------------------------ */
   --z-sticky: 20;
@@ -1241,6 +1250,20 @@
   }
 }
 
+/* Le miroir de `gl-pop`, et `0.96` est le MÊME nombre qu'à l'entrée : rien, dans
+   le monde réel, ne se réduit à néant. Une sortie vers `scale(0)` ferait
+   s'effondrer la fenêtre sur un point, ce qu'aucun objet ne fait en partant. */
+@keyframes gl-pop-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
 @keyframes gl-grow-x {
   from {
     transform: scaleX(0);
@@ -1453,12 +1476,109 @@
   }
 }
 
+/* Le tiroir de navigation mobile, et le voile qui l'accompagne. Le panneau est
+   `fixed` et RECOUVRE la page : `translateX` ne déplace donc aucun voisin et ne
+   coûte pas de remise en page — c'est l'inverse exact du rail de bureau, qui
+   pousse le contenu et se replie pour cette raison d'un seul bloc. */
+@keyframes gl-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gl-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes gl-voile-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gl-voile-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @utility animate-rise {
   animation: gl-rise var(--duration-slow) var(--ease-out) both;
 }
 
 @utility animate-pop {
   animation: gl-pop var(--duration-base) var(--ease-out) both;
+}
+
+/* La sortie est plus courte que l'entrée — 150 ms contre 200, soit les ~70 % que
+   `docs/PLAN.md:119` demande. Même courbe qu'à l'entrée : c'est le même geste
+   rejoué à l'envers, pas un second geste. */
+@utility animate-pop-out {
+  animation: gl-pop-out var(--duration-fast) var(--ease-out) both;
+}
+
+/* La sortie est plus courte que l'entrée : 200 ms contre 300, soit les ~70 %
+   que `docs/PLAN.md:119` demande. Une surface qui arrive se présente, une
+   surface qui part ne doit plus retenir le regard. Le voile et le panneau
+   partagent exactement les mêmes durées pour qu'ils voyagent ENSEMBLE ; seule
+   la courbe diffère, l'opacité n'ayant pas de distance à parcourir. */
+@utility animate-drawer-in {
+  animation: gl-drawer-in var(--duration-slow) var(--ease-drawer) both;
+}
+
+@utility animate-drawer-out {
+  animation: gl-drawer-out var(--duration-base) var(--ease-drawer) both;
+}
+
+/*
+  UN VOILE PAR SURFACE, ET SON NOM DIT LAQUELLE.
+
+  Un voile doit démarrer ET finir sur la MÊME image que ce pour quoi il
+  assombrit : c'est un seul geste rendu par deux nœuds, pas deux événements. Sa
+  durée n'appartient donc pas au voile, elle appartient à la SURFACE qu'il
+  accompagne — et comme les surfaces n'ont pas toutes le même tempo, un voile
+  générique ne peut pas être juste pour toutes.
+
+  Mesuré : `animate-voile-in`/`-out`, écrits pour le tiroir (300/200 ms), ont été
+  adoptés tels quels par la modale, qui court en 200/150. Le fond de la modale
+  continuait donc de noircir 100 ms APRÈS que le panneau se soit posé, et sa
+  sortie était tranchée à 150 ms sur une disparition prévue pour 200. Le défaut
+  ne venait pas d'une valeur fausse mais d'un NOM trop large : rien, dans
+  `animate-voile-in`, ne disait à quel tempo il appartenait.
+
+  D'où le suffixe de surface. Les images clés, elles, restent partagées — une
+  opacité de 0 à 1 n'a qu'une façon de s'écrire. Seules les enveloppes diffèrent.
+*/
+@utility animate-voile-drawer-in {
+  animation: gl-voile-in var(--duration-slow) var(--ease-out) both;
+}
+
+@utility animate-voile-drawer-out {
+  animation: gl-voile-out var(--duration-base) var(--ease-out) both;
+}
+
+/* Le tempo de `animate-pop` / `animate-pop-out`, à la milliseconde : la modale
+   et son voile doivent partir et arriver ensemble. */
+@utility animate-voile-pop-in {
+  animation: gl-voile-in var(--duration-base) var(--ease-out) both;
+}
+
+@utility animate-voile-pop-out {
+  animation: gl-voile-out var(--duration-fast) var(--ease-out) both;
 }
 
 /* Entrée d'une barre de progression : un seul élément par jauge, aucun décalage

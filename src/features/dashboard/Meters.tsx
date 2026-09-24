@@ -406,7 +406,12 @@ export function Meters() {
       />
 
 
-      {tarifsOuverts && <TariffsModal open onClose={() => setTarifsOuverts(false)} />}
+      {/* MONTÉE EN PERMANENCE, et `open` seul décide. Le `&&` d'avant démontait
+          la modale à la fermeture : elle n'avait donc pas de SORTIE à animer, et
+          sa remise à zéro était faite en silence par le démontage. Voir le
+          `useLayoutEffect` d'ouverture de `TariffsModal`, qui reprend ce travail
+          à son compte. */}
+      <TariffsModal open={tarifsOuverts} onClose={() => setTarifsOuverts(false)} />
       {saisieOuverte && <RecordReadingModal onClose={() => setSaisieOuverte(false)} />}
       {ligneACorriger && (
         <RecordReadingModal aCorriger={ligneACorriger} onClose={() => setLigneACorriger(null)} />

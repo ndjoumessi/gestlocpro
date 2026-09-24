@@ -8,6 +8,16 @@ import { ListeDeReglages } from '@/components/controls/ListeDeReglages'
 import { useT } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
 import { AU_DELA_LG, AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. Ce fichier emploie déjà l'attribut
+   nu, impérativement, sur les frères de l'en-tête ; en JSX, la forme équivalente
+   est un étalement conditionnel de cet objet. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
+
+/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+const SORTIE_MS = 150
 
 const SECTIONS = [
   { id: 'features', key: 'marketing.nav.features' },
@@ -62,6 +72,13 @@ export function PublicHeader() {
     boutons, soit un menu plein écran qu'on ne peut plus quitter.
   */
   const ancre = barrePorteLesLiens
+
+  /* Le panneau reste PEINT le temps de sa sortie, puis se démonte. `monte`
+     commande la présence dans l'arbre ; `menuOpen` commande tout le reste — les
+     deux effets ci-dessous gardent `menuOpen`, et c'est ce qui fait que le
+     focus revient au déclencheur à la FERMETURE et non 150 ms plus tard, et que
+     l'arrière-plan redevient tabulable au même instant. */
+  const { monte, sortant } = useSortieDifferee(menuOpen, SORTIE_MS)
 
   /*
     LA HAUTEUR DE L'EN-TÊTE SE MESURE, elle ne se recopie pas.
@@ -438,7 +455,7 @@ export function PublicHeader() {
         </div>
       </header>
 
-      {menuOpen && (
+      {monte && (
         <div
           ref={coucheRef}
           /*
@@ -459,6 +476,12 @@ export function PublicHeader() {
             ancre
               ? cn('pointer-events-none mx-auto max-w-7xl', GOUTTIERE_LATERALE)
               : 'bottom-0 flex',
+            /* En feuille, la couche couvre tout ce qui reste sous l'en-tête et
+               prend donc le clic pour elle. Pendant la sortie, elle le laisse
+               passer — sinon la page entière serait 150 ms sourde derrière un
+               panneau qu'on vient de fermer. En mode ancré elle le laisse déjà
+               passer en permanence, et cette ligne n'y change rien. */
+            sortant && 'pointer-events-none',
           )}
           style={{ zIndex: 'var(--z-overlay)' }}
         >
@@ -469,7 +492,23 @@ export function PublicHeader() {
             // à l'ouverture : la tabulation suivante repartirait du début du
             // document, c'est-à-dire de l'en-tête, et non des liens du menu.
             tabIndex={-1}
+            /*
+              L'ORIGINE BASCULE AVEC LA PEAU, et c'est le seul panneau du lot
+              dont l'ancre change d'AXE. Ancré, il est collé au bord droit de la
+              bande, sous le bouton qui l'ouvre : il part du coin haut-droit. En
+              feuille, il va d'un bord à l'autre sous l'en-tête et n'a plus de
+              côté — il part du milieu de son bord haut, c'est-à-dire de la
+              barre entière dont il descend.
+            */
+            style={{ transformOrigin: ancre ? 'top right' : 'top center' }}
+            // Pendant la sortie, le panneau n'existe plus que pour l'œil : il
+            // quitte l'arbre d'accessibilité et cesse de prendre le pointeur.
+            // C'est LUI que les requêtes cherchent — les réglages et la
+            // navigation pendent dessous —, pas la couche qui le porte.
+            aria-hidden={sortant || undefined}
+            {...(sortant ? INERTE : {})}
             className={cn(
+              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
               ancre
                 ? /*
                     ANCRÉ ET DIMENSIONNÉ À SON CONTENU. `w-max` prend la largeur
@@ -502,7 +541,7 @@ export function PublicHeader() {
                     pas une carte : c'est une des deux peaux d'un panneau.
                   */
                   cn(
-                    'pointer-events-auto ml-auto mt-2 w-max max-w-full',
+                    'ml-auto mt-2 w-max max-w-full',
                     'rounded-lg border border-divider bg-surface p-4 shadow-e3',
                   )
                 : /*
@@ -515,6 +554,18 @@ export function PublicHeader() {
                     'pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
                     GOUTTIERE_LATERALE,
                   ),
+              /*
+                UNE SEULE CLASSE `pointer-events-*` SUR CE NŒUD, ET ELLE EST
+                ÉCRITE ICI.
+
+                Le mode ancré a besoin de `auto` — la couche qui le porte est
+                `none` sur toute la page —, et la sortie a besoin de `none`. Les
+                poser toutes les deux les ferait départager par l'ordre de la
+                feuille de style, que rien dans ce fichier ne garantit et que
+                `cn` — simple concaténation, sans `tailwind-merge` — ne décide
+                pas non plus. Elles s'excluent donc ici, en clair.
+              */
+              sortant ? 'pointer-events-none' : ancre && 'pointer-events-auto',
             )}
           >
             <nav aria-label={t('nav.primaryNav')} className="flex flex-col gap-1">

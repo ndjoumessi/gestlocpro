@@ -610,12 +610,23 @@ function niveauExplicite(attrs) {
 /**
  * Les composants montés mais NON RENDUS AU REPOS.
  *
- * `Modal` rend `null` tant qu'`open` est faux — la lecture de son fichier le
- * confirme, et la garde plus bas le vérifie. Un écran monte ses cinq modales en
- * bas de son arbre ; les compter dans la hiérarchie au repos ferait apparaître
- * cinq `h2` qu'aucun utilisateur ne voit tant qu'il n'a rien ouvert. Leur
- * hiérarchie propre est comptée à part : une modale est un `dialog` étiqueté
- * par son propre titre, donc un document dans le document.
+ * `Modal` rend `null` AU REPOS — la lecture de son fichier le confirme, et la
+ * garde plus bas le vérifie. Un écran monte ses cinq modales en bas de son
+ * arbre ; les compter dans la hiérarchie au repos ferait apparaître cinq `h2`
+ * qu'aucun utilisateur ne voit tant qu'il n'a rien ouvert. Leur hiérarchie
+ * propre est comptée à part : une modale est un `dialog` étiqueté par son propre
+ * titre, donc un document dans le document.
+ *
+ * « AU REPOS » ET NON « TANT QU'`open` EST FAUX », ET LA NUANCE EST NOUVELLE.
+ * Depuis la sortie différée, `Modal` reste RENDU pendant les 150 ms où il
+ * s'efface : `open` est déjà faux, la fenêtre est encore là. La condition de
+ * rendu n'est donc plus `open` mais `monte`, qui vaut « ouvert, OU en train de
+ * partir ». L'hypothèse tient quand même, et ce n'est pas par chance : cet
+ * inventaire lit l'arbre AU REPOS, c'est-à-dire une fois que plus rien ne bouge —
+ * et au repos, rien n'est en train de sortir. Les 150 ms sont un état de
+ * TRANSITION, que la lecture ne rencontre jamais. Ce qu'il ne faut pas laisser
+ * passer, c'est que `monte` cesse un jour de dériver d'`open` : la garde plus bas
+ * vérifie les DEUX maillons pour cette raison.
  */
 const HORS_REPOS = /Modal$/
 
@@ -684,10 +695,16 @@ export const PLANCHERS_DE_LECTURE = {
   'sites interactifs': 281,
   'champs de formulaire': 127,
   'titres composés': 390,
-  // 176 et non 151, le 2026-09-07 : quatorze gardes ajoutées en neuf lots (audit
-  // UI/UX puis parc en fiches) ont porté le réel à 196, et `planchersDeLecture`
-  // refuse plus de 20 % d'écart — il a demandé ce nombre.
-  'fichiers de test écartés': 176,
+  // 198 et non 176, le 2026-09-24 : le lot du MOUVEMENT a ajouté cinq gardes —
+  // sortie différée, sortie de modale, seconde ouverture de l'invitation et des
+  // prix, sortie des panneaux ancrés — et porté le réel à 221.
+  // `planchersDeLecture` refuse plus de 20 % d'écart ; il a demandé ce nombre.
+  //
+  // CE PLANCHER-CI EST LE SEUL QUE `check:rapide` NE VOIT PAS : il se lit depuis
+  // `server/src/planchersDeLecture.test.ts`, donc sous `check:server`. Ajouter
+  // une garde au CLIENT fait rougir la porte du SERVEUR, un tour plus tard et
+  // sur une autre machine. C'est ce qui est arrivé le 2026-09-24.
+  'fichiers de test écartés': 198,
 }
 
 export function releverLesSources() {
@@ -785,14 +802,49 @@ export function releverLesSources() {
     }
   }
 
+  /*
+    DEUX MAILLONS, ET LA PLAINTE DIT LEQUEL A CÉDÉ.
+
+    L'hypothèse de HORS_REPOS est « au repos, `Modal` ne rend rien ». Avant la
+    sortie différée, une seule chaîne la portait — `if (!open) return null` — et
+    une seule sonde suffisait. Elle ne suffit plus : la condition de rendu est
+    désormais `monte`, et `monte` n'est sûr QUE s'il dérive d'`open`. Lire le
+    premier maillon sans le second laisserait passer un `monte` branché sur autre
+    chose — une prop, un contexte, un état local — qui rendrait la modale au repos
+    sans que le motif cherché ait bougé d'un caractère.
+
+    Les deux sont donc lus séparément, et nommés séparément dans la plainte : un
+    refus qui dit seulement « ça ne va plus » fait relire tout le fichier, alors
+    que le script sait parfaitement lequel des deux il n'a pas trouvé.
+  */
   {
     const modal = fichiers.get('src/components/primitives/Modal.tsx')
-    if (!modal || !/if \(!open\) return null/.test(modal.brut)) {
+    const MAILLONS = [
+      {
+        sonde: /if \(!monte\) return null/,
+        rompu:
+          'il ne rend plus `null` hors montage (motif `if (!monte) return null` introuvable)',
+      },
+      {
+        sonde: /useSortieDifferee\(open,/,
+        rompu:
+          '`monte` ne dérive plus d’`open` (motif `useSortieDifferee(open,` introuvable) : ' +
+          'la condition de rendu est branchée sur autre chose',
+      },
+    ]
+    if (!modal) {
       plaintes.push(
-        'titres · `Modal` ne rend plus `null` quand il est fermé (motif `if (!open) return null` ' +
-          'introuvable). Les modales entrent alors dans la hiérarchie AU REPOS, et l’exclusion ' +
-          'posée par HORS_REPOS devient fausse.',
+        'titres · src/components/primitives/Modal.tsx introuvable : l’exclusion posée par ' +
+          'HORS_REPOS ne peut plus être vérifiée.',
       )
+    } else {
+      for (const maillon of MAILLONS) {
+        if (maillon.sonde.test(modal.brut)) continue
+        plaintes.push(
+          `titres · \`Modal\` : ${maillon.rompu}. Les modales entrent alors dans la ` +
+            'hiérarchie AU REPOS, et l’exclusion posée par HORS_REPOS devient fausse.',
+        )
+      }
     }
   }
 

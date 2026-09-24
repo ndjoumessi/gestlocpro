@@ -648,7 +648,7 @@ export function Access() {
         }
       />
 
-      {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
+      <InviteModal open={inviteOuverte} onClose={() => setInviteOuverte(false)} />
 
       {/* Le gestionnaire voit le registre mais n'en retire personne. Comme sur
           les devis et les cautions, on lui dit pourquoi le bouton lui manque

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
@@ -94,7 +94,88 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
    */
   const [prisParUnCode, setPrisParUnCode] = useState<{ id: string; label: string }[]>([])
 
-  useEffect(() => {
+  /**
+   * LE LOGEMENT QU'UN FORMULAIRE NEUF PROPOSE : le premier du parc.
+   *
+   * `units` et non `logements` : à l'instant qui compte — l'ouverture, avant
+   * que le registre ne réponde — rien n'a encore été retiré, les deux listes
+   * sont donc la même. C'est aussi une valeur PRIMITIVE, ce dont l'effet
+   * ci-dessous a besoin pour la prendre en dépendance sans se rejouer à chaque
+   * rendu du fournisseur de parc : l'identité d'un tableau change, l'identifiant
+   * du premier logement ne change qu'à l'arrivée du parc.
+   */
+  const logementParDefaut = units[0]?.id ?? ''
+
+  useLayoutEffect(() => {
+    /**
+     * LE FORMULAIRE NAÎT À L'OUVERTURE, ET NON AU MONTAGE.
+     *
+     * Les deux appelants montaient cette modale SOUS CONDITION —
+     * `{inviteOuverte && <InviteModal open …>}` — et fermer la démontait. Chaque
+     * état repartait donc de sa valeur initiale et cet effet se rejouait, non
+     * parce que la modale savait se remettre à zéro, mais parce qu'il n'en
+     * restait rien. Il n'y avait aucun défaut à l'écran : le montage faisait en
+     * silence le travail que le composant ne faisait pas, et le `&&` qui le
+     * cachait est exactement ce que la sortie en animation demande de retirer.
+     *
+     * DEUX CHOSES FUYAIENT, et elles sont réparées ici ensemble parce qu'elles
+     * ont la même cause — une valeur établie une fois pour toutes au montage :
+     *
+     *  1. La fermeture remettait `code`, `envoye` et `envoi`, mais ni le rôle ni
+     *     le logement. On rouvrait sur « Gestionnaire délégué » choisi la fois
+     *     d'avant, sans le champ du logement, que ce rôle efface.
+     *  2. Le registre, keyé `[parkId, estDemo]`, n'était lu qu'UNE fois par
+     *     chargement de page. Un code émis pour A1 laissait A1 dans le menu à
+     *     l'ouverture suivante — le 409 que l'en-tête ci-dessus raconte, et que
+     *     cette lecture existe pour éviter.
+     *
+     * RIEN NE SE REMET À ZÉRO À LA FERMETURE, ET C'EST DÉLIBÉRÉ. Deux raisons,
+     * et la seconde est celle qui se voit :
+     *
+     *  — Une remise à zéro à la fermeture ne couvre pas la PREMIÈRE ouverture,
+     *    et celle-ci en a besoin : montée avec la page, la modale naît avant que
+     *    le parc ne soit arrivé — `Access` ne retient son rendu que sur SA
+     *    lecture du registre, pas sur celle du parc. Le `useState` du logement
+     *    valait alors « aucun », définitivement, et la modale s'ouvrait sur
+     *    « Aucun logement pour l'instant » là où elle proposait le premier
+     *    logement du parc. Mesuré à l'écriture de la garde de ce lot.
+     *
+     *  — CE QUI S'EN VA DOIT RESSEMBLER À CE QU'IL ÉTAIT. La modale reste peinte
+     *    150 ms pour sortir. Vider `code` sur le chemin de la fermeture
+     *    remplaçait donc le code par un formulaire vide PENDANT que le panneau
+     *    s'en allait : la personne regardait partir autre chose que ce qu'elle
+     *    lisait. Une sortie anime un départ, pas une transformation. Tant que
+     *    fermer démontait le composant, il n'y avait plus rien à repeindre et
+     *    cela ne se voyait pas — c'est `open={…}` qui l'a rendu visible.
+     *
+     * Le prix est une image à l'ENTRÉE : le rôle, le logement et le code
+     * d'avant peuvent rester peints le temps d'une trame pendant que la modale
+     * entre. C'est la contrepartie assumée d'un seul point de remise à zéro, et
+     * en écrire un second sur le chemin de la fermeture serait une mutation
+     * qu'aucune garde ne tient, puisque celle-ci la couvre déjà.
+     *
+     * ET C'EST POURQUOI CET EFFET EST `useLayoutEffect`. `useEffect` s'exécute
+     * APRÈS la peinture : à la seconde ouverture, le rôle, le logement et —
+     * celui qui compte — le CODE émis la fois d'avant restent peints le temps
+     * d'une trame environ. Sur le rôle ce serait du désordre ; sur le code
+     * c'est autre chose, car cet écran promet lui-même qu'il « n'est plus
+     * lisible ensuite, même par vous ». Le repeindre, si brièvement que ce
+     * soit, contredit la promesse au lieu de la salir. `useLayoutEffect` court
+     * avant que le navigateur ne peigne : la remise à zéro tombe dans la même
+     * trame.
+     *
+     * CE CHANGEMENT N'EST PAS MESURÉ. Aucune garde de ce dépôt ne peut rougir
+     * sur cette trame : sous jsdom il n'y a pas de peinture à observer, et les
+     * cas de `secondeOuvertureDeLInvitation` lisent l'arbre une fois les effets
+     * vidés — ce qu'ils voient ne distingue pas les deux formes d'effet. La
+     * mesure dit une trame ; on agit par prudence non mesurée.
+     */
+    if (!open) return
+    setRoleInvite('tenant')
+    setUnitId(logementParDefaut)
+    setCode(null)
+    setEnvoye(false)
+    setEnvoi(false)
     if (estDemo) {
       setPrisParUnCode(logementsDesCodes(ACCES_DEMO.invitations))
       return
@@ -114,7 +195,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
     return () => {
       vivant = false
     }
-  }, [parkId, estDemo])
+  }, [open, logementParDefaut, parkId, estDemo])
 
   /**
    * TOUS LES LOGEMENTS DU PARC, ET NON LES SEULS VACANTS.
@@ -174,12 +255,9 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   const [envoye, setEnvoye] = useState(false)
   const [envoi, setEnvoi] = useState(false)
 
-  const fermer = () => {
-    setCode(null)
-    setEnvoye(false)
-    setEnvoi(false)
-    onClose()
-  }
+  /* `onClose` PART DIRECTEMENT, sans intermédiaire : depuis que la remise à
+     zéro vit à l'ouverture, fermer ne fait plus que fermer. Un `fermer()` qui se
+     contenterait de rappeler `onClose()` serait un nom sans rien derrière. */
 
   const emettre = () => {
     if (!parkId) return
@@ -203,7 +281,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <Modal
       open={open}
-      onClose={fermer}
+      onClose={onClose}
       /*
         UNE FOIS LE CODE AFFICHÉ, LE VOILE NE FERME PLUS.
 
@@ -221,10 +299,10 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
       description={code ? t('app.invite.codeOnce') : t('app.invite.description')}
       footer={
         code ? (
-          <Button onClick={fermer}>{t('common.close')}</Button>
+          <Button onClick={onClose}>{t('common.close')}</Button>
         ) : (
           <>
-            <Button variant="secondary" onClick={fermer}>
+            <Button variant="secondary" onClick={onClose}>
               {t('common.cancel')}
             </Button>
             <Button type="submit" form="invitation" loading={envoi}>
