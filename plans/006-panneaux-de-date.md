@@ -120,3 +120,22 @@ dépendance qu'on vient de retirer.
 
 Portes : check:rapide (304 fichiers, 2097 cas), modales, mesure-ui
 (2924 textes, 518 cibles ; calendrier à 188/10 dans les deux thèmes).
+
+
+## CORRECTION du 2026-09-24 — la raison donnée pour écarter le `Combobox` ÉTAIT FAUSSE
+
+Ce plan écrit que la liste « s'ouvre sur `onChange`, donc à CHAQUE FRAPPE », et
+en conclut qu'une animation arriverait toujours en retard sur la lettre
+suivante. C'est faux, et le lot suivant l'a mesuré dans le code : `{ouvert &&
+<ul>}` garde la liste MONTÉE tant qu'elle est ouverte, et `setOuvert(true)` sur
+une frappe ultérieure ne fait rien — React abandonne le rendu sur un état
+identique. L'entrée joue donc UNE FOIS PAR OUVERTURE, pas une fois par
+caractère.
+
+Ce qui survit est plus étroit : l'une des trois façons d'ouvrir cette liste est
+de taper le premier caractère, et c'est un geste au CLAVIER, où l'on veut les
+options filtrées tout de suite. Cela justifie une entrée COURTE — 150 ms,
+`animate-pop-fast` — et non pas l'absence d'entrée.
+
+La liste est donc animée depuis le lot du `Combobox`. Cette section reste pour
+que la mauvaise raison ne soit pas relue comme une bonne.

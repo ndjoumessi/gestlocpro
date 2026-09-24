@@ -1524,6 +1524,31 @@
   animation: gl-pop var(--duration-base) var(--ease-out) both;
 }
 
+/*
+  LA MÊME ENTRÉE, EN 150 ms AU LIEU DE 200 — ET C'EST DÉLIBÉRÉMENT PLUS COURT
+  QUE SES VOISINES.
+
+  `animate-pop` sert les panneaux qu'on ouvre d'un geste et qu'on regarde
+  arriver : une modale, un menu, un calendrier. La LISTE CHERCHABLE de
+  `Combobox` a un troisième mode d'ouverture que ceux-là n'ont pas — la
+  PREMIÈRE FRAPPE ouvre la liste en même temps qu'elle la filtre
+  (`Combobox.tsx`, `onChange`). Là, ce qu'on attend n'est pas une surface qui se
+  présente, ce sont les options qui répondent à ce qu'on vient de taper. Cent
+  cinquante millisecondes restent dans la bande des menus déroulants et sont le
+  plus court que les jetons de ce dépôt offrent : on ne descend pas plus bas
+  faute de jeton, et on ne remonte pas à 200 pour « harmoniser » — l'écart de
+  50 ms EST le réglage, pas un oubli.
+
+  Aucune image clé nouvelle, aucun jeton nouveau : c'est `gl-pop`, à la durée
+  `--duration-fast` que `animate-pop-out` emploie déjà. La sortie de cette liste
+  reste `animate-pop-out`, donc entrée et sortie y courent à la même vitesse —
+  ce qui est la conséquence du raccourcissement de l'entrée, et non un second
+  choix.
+*/
+@utility animate-pop-fast {
+  animation: gl-pop var(--duration-fast) var(--ease-out) both;
+}
+
 /* La sortie est plus courte que l'entrée — 150 ms contre 200, soit les ~70 % que
    `docs/PLAN.md:119` demande. Même courbe qu'à l'entrée : c'est le même geste
    rejoué à l'envers, pas un second geste. */

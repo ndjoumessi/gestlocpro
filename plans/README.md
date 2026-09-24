@@ -77,6 +77,14 @@ morts dans ce que reçoit l'utilisateur, et `poids-ecrans.mjs` les pèserait san
 jamais dire d'où ils viennent. Deux réponses possibles — ignorer `plans/`, ou
 borner explicitement les sources de Tailwind. Aucune n'a été prise.
 
+## Correction — la raison d'écarter le `Combobox` était fausse
+
+Les lots 005 et 006 l'écartaient au motif qu'il « se rouvre à chaque frappe ».
+Mesuré depuis dans le code : la liste reste MONTÉE tant qu'elle est ouverte, et
+l'entrée joue une fois par ouverture. Elle est animée depuis, en 150 ms plutôt
+qu'en 200 — parce que taper le premier caractère est l'une de ses trois
+ouvertures, et que c'est un geste au clavier.
+
 ## Non traité ici
 
 L'audit a relevé onze autres constats — modale-feuille sous `sm`, huit panneaux

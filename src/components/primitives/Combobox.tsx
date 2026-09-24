@@ -1,8 +1,20 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
 import { Icon } from './Icon'
 import { controlClasses } from './Field'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. En JSX, la forme équivalente est
+   un étalement conditionnel de cet objet. Déclaré ici plutôt qu'importé
+   d'`AppShell` : une primitive ne dépend pas d'une coquille d'application —
+   c'est le raisonnement de `Modal.tsx:14`, de `MenuDeDebordement.tsx:20` et de
+   `DatePicker.tsx:16`, et la même ligne. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
+
+/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+const SORTIE_MS = 150
 
 export interface OptionCombobox {
   value: string
@@ -133,6 +145,13 @@ export function Combobox({
   const idTroncature = `${idChamp}-troncature`
 
   const [ouvert, setOuvert] = useState(false)
+  /* La liste reste PEINTE le temps de sa sortie, puis se démonte. `monte`
+     commande la seule présence dans l'arbre ; `ouvert` commande TOUT le reste —
+     Échap, le clic extérieur, le départ du focus, la sélection, le libellé
+     affiché dans le champ, `aria-expanded`, `aria-activedescendant`, la mention
+     de troncature, et la logique d'`ouvertParFocus` plus bas. Une liste qui s'en
+     va ne retient ni le focus, ni le pointeur, ni l'annonce. */
+  const { monte, sortant } = useSortieDifferee(ouvert, SORTIE_MS)
   const [saisie, setSaisie] = useState('')
   /**
    * LA LISTE S'EST-ELLE OUVERTE TOUTE SEULE ?
@@ -378,7 +397,7 @@ export function Combobox({
         />
       </div>
 
-      {ouvert && (
+      {monte && (
         <ul
           ref={listeRef}
           id={idListe}
@@ -388,7 +407,44 @@ export function Combobox({
           // produit, pas de composant. `--z-dropdown` est déjà celle du menu de
           // devise, qui est la même chose sous un autre nom.
           style={{ zIndex: 'var(--z-dropdown)' }}
-          className="absolute mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg"
+          // Pendant la sortie, la liste n'existe plus que pour l'œil : elle
+          // quitte l'arbre d'accessibilité et cesse de prendre le pointeur.
+          // Sans cela elle resterait 150 ms lisible, cliquable et comptée par
+          // une requête par rôle. LES ATTRIBUTS VONT SUR LE `<ul>` LUI-MÊME,
+          // parce que c'est LUI qui porte `role="listbox"` — et parce que ses
+          // `<li role="option">` en héritent en tant que descendants, ce dont
+          // dépend `echapDansUneModale.test.tsx:54`, qui affirme zéro option
+          // immédiatement après Échap, sans `waitFor`.
+          aria-hidden={sortant || undefined}
+          {...(sortant ? INERTE : {})}
+          className={cn(
+            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop-fast',
+            /*
+              ELLE GRANDIT DEPUIS SON BORD HAUT, ET C'EST UNE LECTURE DES
+              CLASSES, PAS UNE SUPPOSITION.
+
+              La liste est `absolute` SANS aucune propriété d'inset — ni `top`,
+              ni `bottom`, ni `left`, ni `right` : elle se pose donc à sa
+              position statique, c'est-à-dire juste sous le bloc du champ, que
+              `mt-1` écarte de 4 px. Elle est `w-full`, donc exactement aussi
+              large que lui. Et RIEN, dans ce fichier, ne la bascule au-dessus :
+              il n'y a ni mesure de la fenêtre, ni portail, ni variante
+              `bottom-full` — contrairement à `MenuDeDebordement`, qui se
+              renverse et doit donc calculer son origine, et aux panneaux de
+              date, qui glissent dans `body`. Le seul côté par lequel elle
+              touche le champ est son bord HAUT, à toutes les tailles d'écran.
+
+              `origin-top` et non `origin-top-left` : le bord haut entier touche
+              le champ, puisque les deux ont la même largeur. Aucun coin n'est
+              plus proche qu'un autre.
+
+              Sans origine, `gl-pop` fait grandir depuis le CENTRE : la liste
+              débordait alors vers le haut en s'ouvrant, par-dessus le champ
+              qu'on vient de cliquer.
+            */
+            'origin-top',
+            'absolute mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg',
+          )}
         >
           {visibles.length === 0 && (
             // Une liste vide sans un mot laisse croire à une panne.
