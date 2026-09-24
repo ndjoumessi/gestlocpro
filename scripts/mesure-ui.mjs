@@ -599,6 +599,25 @@ async function ouvrirUneActionDEnTete(page, nom) {
   }
   await page.locator('[data-en-tete-de-page] [aria-haspopup="menu"]').first().click()
   await page.getByRole('menuitem', { name: nom }).first().click()
+  /*
+    LE GESTE N'EST PAS FINI QUAND LE MENU EST CLIQUÉ : IL EST FINI QUAND LE MENU
+    EST PARTI.
+
+    Depuis que les panneaux ancrés SORTENT au lieu de disparaître, le menu reste
+    dans le document 150 ms de plus, `inert` et `aria-hidden`, pendant que la
+    modale s'ouvre. Les deux sondes partaient alors sur une page à deux états.
+    MESURÉ le 2026-09-24 sur `prix-de-refacturation` : 150 textes et 6 cibles en
+    clair, 157 et 10 en sombre — LA MÊME page, dans LA MÊME exécution, selon qui
+    gagnait la course.
+
+    On attend donc le détachement plutôt qu'une durée : une attente en
+    millisecondes redeviendrait fausse au premier réglage de la sortie.
+  */
+  await page
+    .locator('[role="menu"]')
+    .first()
+    .waitFor({ state: 'detached', timeout: 2000 })
+    .catch(() => {})
 }
 
 const SURFACES_INTERACTIVES = [
