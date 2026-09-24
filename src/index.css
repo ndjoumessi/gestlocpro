@@ -1,6 +1,18 @@
 @import 'tailwindcss';
 @import './design-system/tokens.css';
 
+/* LA PROSE DU DÉPÔT N'EST PAS UNE SOURCE DE CLASSES.
+
+   Tailwind v4 balaie la RACINE du projet, pas `src/`. Tout Markdown posé ici
+   nourrit donc son détecteur : mesuré le 2026-09-24, le seul fichier
+   `plans/004-anneau-transition-all.md` suffisait à faire émettre
+   `.transition-all{transition-property:all}` dans le paquet servi, alors
+   qu'aucune source ne l'employait plus — 239 octets de règle morte, et
+   `poids-ecrans.mjs` les aurait pesés sans jamais dire d'où ils venaient.
+
+   La documentation décrit des classes, elle n'en pose aucune. */
+@source not "../plans";
+
 /*
  * PLUS DE FEUILLE `@media print`, et c'est un retrait, pas un oubli.
  *
