@@ -2,11 +2,18 @@
 
 Issus de l'audit d'animation du 2026-09-24, sur `f1d9aab`. Le constat d'ensemble
 est que le mouvement de ce produit est déjà juste sur presque tous les points
-qu'un audit cherche : `--ease-out` est bien câblé vers la courbe forte du dépôt
-(vérifié dans `dist/`, la courbe faible de Tailwind n'y apparaît pas une fois),
-aucun `ease-in` ne traîne sur une commande, aucune transition ponctuelle ne
-dépasse 300 ms, aucun `scale(0)` n'existe, aucun JS ne pilote de style image par
-image, et `prefers-reduced-motion` n'a aucune échappatoire.
+qu'un audit cherche : l'utilitaire `ease-out` est bien câblé vers la courbe forte
+du dépôt, aucun `ease-in` ne traîne sur une commande, aucune transition ponctuelle
+ne dépasse 300 ms, aucun `scale(0)` n'existe, aucun JS ne pilote de style image
+par image, et `prefers-reduced-motion` n'a aucune échappatoire.
+
+> **Correction du 2026-09-25.** Cette phrase disait aussi, entre parenthèses, que
+> « la courbe faible de Tailwind n'apparaît pas une fois dans `dist/` ». C'est faux,
+> et la mesure d'origine avait cherché la mauvaise chaîne : le paquet contient
+> `--default-transition-timing-function:cubic-bezier(.4, 0, .2, 1)`, avec des
+> espaces, et TOUTE transition qui ne nomme pas sa courbe y retombe — une
+> cinquantaine de `transition-colors` sont dans ce cas. Ce qui est vrai, et qui
+> était le point, c'est que l'utilitaire `ease-out` ne la porte pas.
 
 Ce qui manque n'est pas un réglage : c'est un MÉCANISME. Rien, dans `src/`, ne
 peut s'animer en sortant — et cette absence se voit à neuf endroits.
@@ -15,7 +22,7 @@ peut s'animer en sortant — et cette absence se voit à neuf endroits.
 | --- | --- | --- | --- | --- |
 | [001](001-sortie-differee.md) | Donner au produit un mécanisme de sortie | HIGH | — | **DONE** |
 | [002](002-tiroir-mobile.md) | Faire entrer et sortir le tiroir de navigation mobile | HIGH | 001 | **DONE** |
-| [003](003-voile-et-sortie-de-modale.md) | Faire du voile et de la fenêtre un seul geste | HIGH | 001, 002 | TODO |
+| [003](003-voile-et-sortie-de-modale.md) | Faire du voile et de la fenêtre un seul geste | HIGH | 001, 002 | **DONE** |
 | [004](004-anneau-transition-all.md) | Nommer ce que l'anneau anime | HIGH | — | **DONE** |
 | [005](005-panneaux-ancres.md) | Donner aux menus ancrés une entrée, une sortie et la bonne origine | MEDIUM | 001, 003 | **DONE** |
 | [006](006-panneaux-de-date.md) | Les deux panneaux de date viennent de leur champ | MEDIUM | 001, 003, 005 | **DONE** |
@@ -74,8 +81,12 @@ production alors que plus aucune source ne l'employait. Mesuré :
 239 octets ici, et sans conséquence. Mais le mécanisme, lui, vaut pour toute
 documentation posée dans le dépôt : de la prose peut injecter des utilitaires
 morts dans ce que reçoit l'utilisateur, et `poids-ecrans.mjs` les pèserait sans
-jamais dire d'où ils viennent. Deux réponses possibles — ignorer `plans/`, ou
-borner explicitement les sources de Tailwind. Aucune n'a été prise.
+jamais dire d'où ils viennent.
+
+**Tranché depuis :** `src/index.css` porte `@source not "../plans";`. C'est la
+première des deux réponses — ignorer ce dossier — et non la seconde, qui aurait
+demandé d'énumérer les sources et de maintenir cette liste. Le piège reste ouvert
+pour tout AUTRE dossier de prose qu'on ajouterait à la racine.
 
 ## Correction — la raison d'écarter le `Combobox` était fausse
 
@@ -85,11 +96,46 @@ l'entrée joue une fois par ouverture. Elle est animée depuis, en 150 ms plutô
 qu'en 200 — parce que taper le premier caractère est l'une de ses trois
 ouvertures, et que c'est un geste au clavier.
 
-## Non traité ici
+## Les constats sans plan — tous fermés au 2026-09-25, sauf un
 
-L'audit a relevé onze autres constats — modale-feuille sous `sm`, huit panneaux
-ancrés sans entrée, `gl-pop` sans `transform-origin`, pile de toasts qui se
-téléporte, onglets qui s'animent au clavier, `IconButton` dont l'enfoncement
-n'est pas minuté, colonnes de graphe qui rejouent selon la donnée, jeton
-`--ease-in-out` absent, `transition-colors` mort sur chaque `<tr>`, `--duration-*`
-invisible de Tailwind. Aucun n'a de plan : ils attendent d'être choisis.
+L'audit avait relevé onze autres constats, exécutés sans passer par un plan écrit.
+Ils sont tous refermés :
+
+| Constat | Sort |
+| --- | --- |
+| modale-feuille sous `sm` | faite — `animate-feuille`, et le voile suit le tempo du tiroir |
+| huit panneaux ancrés sans entrée | faits — entrée, sortie et origine prise du déclencheur |
+| `gl-pop` sans `transform-origin` | fait — l'origine vient du déclencheur, calculée après le bornage |
+| onglets qui s'animent au clavier | fait — la transition retirée ; le fondu du survol s'en va avec elle, c'est déclaré |
+| `IconButton` dont l'enfoncement n'est pas minuté | fait — même liste, même durée, même courbe que `Button` |
+| `transition-colors` mort sur chaque `<tr>` | retiré — aucune rangée ne change jamais de couleur |
+| pile de toasts qui se téléporte | **à MOITIÉ** — voir ci-dessous |
+| colonnes de graphe qui rejouent selon la donnée | fait — la clé porte la période, plus le libellé traduit |
+| jeton `--ease-in-out` absent | fait — quintique, pour rester dans la famille du dépôt |
+| `--duration-*` invisible de Tailwind | mesuré, et la remède supposé ne marchait pas : voir ci-dessous |
+
+### Ce qui reste : le toast qui n'est pas le dernier
+
+Le toast a maintenant une sortie, et il quitte le flux à l'instant où il commence
+à partir — donc la colonne se replace UNE fois, pendant le fondu, au lieu de deux.
+Mais cela ne vaut que pour le DERNIER en flux : la position statique d'un enfant
+absolu d'une boîte flexible se calcule comme s'il était seul, et pour les autres
+c'est un saut de 54 px (108 pour le premier de trois). Ceux-là s'effacent donc sur
+place, et leur voisin du dessus attend la fin du fondu pour descendre.
+
+Rien en CSS statique ne sait dire « la place que j'occupais ». Il faut la
+réécriture de l'empilement avec décalages mesurés — c'est le seul reliquat de
+l'audit, et le seul qui demande un plan.
+
+### Ce que la mesure a corrigé sur `--duration-*`
+
+Le constat disait « invisible de Tailwind », en supposant qu'un déplacement dans
+`@theme` rendrait `duration-slow` écrivable en classe. Mesuré le 2026-09-25 :
+**c'est faux.** `--duration-*` n'est pas un espace de noms de thème Tailwind, et
+aucun `.duration-fast{…}` n'est généré dans `@theme` non plus. La forme qui
+marche — et qui marchait déjà sans rien déplacer — est `duration-(--duration-slow)`.
+
+Les jetons ont tout de même été déplacés dans `@theme`, pour une autre raison : la
+justification écrite du contraire (« réutilisées en CSS brut ») était fausse,
+`--ease-drawer` la contredisant six lignes plus haut. Coût mesuré du déplacement :
+74 660 octets avant, 74 660 après, à l'octet près.

@@ -351,6 +351,26 @@ function Graduation({ valeur, hauteur, texte }: { valeur: number; hauteur: numbe
 }
 
 export interface StackedBar {
+  /**
+   * L'IDENTITÉ REACT DE LA COLONNE, SÉPARÉE DE CE QU'ELLE AFFICHE.
+   *
+   * `label` est un mois TRADUIT : « Oct » en anglais, « oct » en français. Servir
+   * d'identité React à une chaîne localisée faisait démonter les douze colonnes
+   * au changement de langue, et `animate-grow-y` — échelonné de 35 ms — rejouait
+   * la cascade entière : mesuré dans Chromium sur `/demo`, aucune des 24 colonnes
+   * ne survivait, et près de sept dixièmes de seconde de mouvement se déclenchaient
+   * pour un changement qui ne touche aucune donnée. `identiteDesColonnes.test.tsx`
+   * tient la règle.
+   *
+   * Un second motif, celui que `MiniBarChart` avait déjà rencontré : douze
+   * périodes peuvent s'étaler sur quatorze mois, et « août » revient alors deux
+   * fois. Deux clés identiques figent une colonne à la mauvaise hauteur sans rien
+   * casser ni prévenir.
+   *
+   * Optionnel, et le repli reste `label` : un appelant dont la série tient dans
+   * une année et qui n'affiche aucun mois traduit n'a rien à fournir.
+   */
+  key?: string
   label: string
   segments: { key: string; value: number }[]
 }
@@ -924,7 +944,7 @@ export function StackedBarChart({
               /* Le bouton occupe toute la colonne, pas la seule barre : la
                  cible reste confortable même quand un mois est bas. */
               <button
-                key={bar.label}
+                key={bar.key ?? bar.label}
                 type="button"
                 /*
                   LARGEUR PORTÉE PAR LA DONNÉE, et c'est pour cela qu'elle est
@@ -1074,7 +1094,7 @@ export function StackedBarChart({
               const totalBas = totalsSecondaires[index]
               const isLast = index === bars.length - 1
               return (
-                <span key={bar.label} className="flex min-w-0 flex-1 items-end justify-center">
+                <span key={bar.key ?? bar.label} className="flex min-w-0 flex-1 items-end justify-center">
                   <span
                     className="animate-grow-y flex w-full flex-col-reverse rounded-t-bar transition-shadow duration-150"
                     style={{
@@ -1113,7 +1133,7 @@ export function StackedBarChart({
         >
           {bars.map((bar, index) => (
             <span
-              key={bar.label}
+              key={bar.key ?? bar.label}
               className={cn(
                 // PAS de plancher ici, et c'est mesuré. Les deux rangées vivent
                 // dans le même conteneur `min-w-max` : elles ont donc la même
@@ -1242,7 +1262,7 @@ export function StackedBarChart({
           </thead>
           <tbody>
             {bars.map((bar) => (
-              <tr key={bar.label}>
+              <tr key={bar.key ?? bar.label}>
                 <th scope="row">{bar.label}</th>
                 {bar.segments.map((segment) => (
                   <td key={segment.key}>{money(segment.value)}</td>

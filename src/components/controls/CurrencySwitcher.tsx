@@ -115,7 +115,10 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
         <Icon
           name="chevronDown"
           size={14}
-          className={cn('transition-transform duration-150', open && 'rotate-180')}
+          /* Même raison qu'au plus de la FAQ : un demi-tour sur place n'est ni
+             une entrée ni une sortie, et sans courbe nommée il prenait celle de
+             Tailwind. */
+          className={cn('transition-transform duration-150 ease-in-out', open && 'rotate-180')}
         />
       </button>
 

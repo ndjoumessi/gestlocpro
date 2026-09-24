@@ -118,6 +118,11 @@ function HeroPreview({
   // inventées : ce que le visiteur survole ici est ce qu'il retrouvera après
   // inscription.
   const bars = COLLECTIONS.map((month) => ({
+    // La clé porte la PÉRIODE, pas le libellé — `MiniBarChart` la prévoit, et
+    // la vitrine ne la donnait pas. `monthShort` est traduit : sans clé, les
+    // douze colonnes se remontaient au changement de langue et rejouaient leur
+    // cascade, sur la page même qui porte le sélecteur de langue.
+    key: `${month.year}-${month.month}`,
     label: d.monthShort(month),
     value: month.rent + month.water + month.power,
   }))

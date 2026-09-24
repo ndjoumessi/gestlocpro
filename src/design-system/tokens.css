@@ -628,7 +628,40 @@
 
   /* ---- Mouvement ------------------------------------------------------- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+
+  /* CE QUI SE DÉFORME SUR PLACE, ET RIEN D'AUTRE. Une entrée ou une sortie
+     prend `--ease-out` : ce qu'on regarde est le départ, et une courbe qui
+     démarre lentement le retarde. Un élément DÉJÀ LÀ qui change de forme n'a pas
+     de départ privilégié — il accélère puis ralentit, comme une chose qu'on
+     pousse et qui s'arrête. Deux surfaces sont dans ce cas : le plus de la FAQ
+     qui pivote en croix, et le chevron du sélecteur de devise.
+
+     LA FAMILLE EST CELLE DU DÉPÔT, ET C'EST POUR CELA QUE LA VALEUR N'EST PAS
+     CELLE DE LA RÉFÉRENCE. `--ease-out` ci-dessus est l'easeOutQuint d'easings.net
+     et le `--ease-in` qui vivait ici en était l'easeInQuint : ce dépôt a choisi la
+     quintique. L'easeInOutQuint en est le pendant exact. La référence de l'audit
+     nommait `cubic-bezier(0.77, 0, 0.175, 1)`, qui est une QUARTIQUE — même
+     intention, autre famille, donc deux courbes censées se lire « de même force »
+     qui ne le sont pas. On prend la quintique et on écrit pourquoi.
+
+     CE JETON REDÉFINIT L'UTILITAIRE `ease-in-out` DE TAILWIND, qui vaut
+     `cubic-bezier(0.4, 0, 0.2, 1)` — la courbe faible. Elle reste servie, et sur
+     bien plus de surfaces qu'on ne croit : `--default-transition-timing-function`
+     la porte, et TOUTE transition qui ne nomme pas sa courbe y retombe. Mesuré
+     dans le paquet du 2026-09-25, une cinquantaine de `transition-colors` sont
+     dans ce cas. On ne les touche pas — un fondu de couleur ne demande pas une
+     courbe forte —, mais le paquet contient bien cette courbe, contrairement à ce
+     qu'affirmait `plans/README.md`. */
+  --ease-in-out: cubic-bezier(0.83, 0, 0.17, 1);
+
+  /* `--ease-in` A ÉTÉ RETIRÉ LE 2026-09-25, et ce n'est pas un nettoyage : c'est
+     une décision de mouvement. `docs/PLAN.md` prescrivait « ease-out entrée,
+     ease-in sortie » ; les lots de sortie ont tranché l'inverse — une sortie
+     prend aussi `--ease-out`, et sa durée raccourcie (~70 %) dit déjà « ça s'en
+     va ». Le jeton n'était plus cité nulle part. Conséquence à connaître : écrire
+     `ease-in` dans une classe ne rougit pas et retombe désormais sur la courbe de
+     Tailwind. Aucune garde ne l'interdit — personne ne l'écrit, et une garde
+     née verte ne prouve rien. */
   /* Le tiroir de navigation glisse sur cette courbe, et non sur `--ease-out`.
      C'est celle d'iOS, reprise telle quelle par Ionic pour ses panneaux
      latéraux : un départ franc, puis une longue décélération qui tient jusqu'au
@@ -638,6 +671,34 @@
      Valeurs à ne pas arrondir : le zéro en troisième position est ce qui rend
      l'arrivée aussi plate. */
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ---- Durées ----------------------------------------------------------- */
+  /* ELLES VIVAIENT HORS DE `@theme`, « parce qu'elles sont réutilisées en CSS
+     brut ». LA RAISON ÉTAIT FAUSSE, et son contre-exemple était six lignes plus
+     haut : `--ease-drawer` est dans `@theme`, ne sert QUE dans du CSS brut
+     (`animation: gl-drawer-in var(--duration-slow) var(--ease-drawer)`), et est
+     bien émis. Tailwind v4 n'élague pas un jeton que la feuille elle-même cite.
+
+     MESURÉ avant de les déplacer, le 2026-09-25 : paquet de 74 660 octets avant
+     comme après, à l'octet près ; les trois déclarations passent du `:root` non
+     calqué à `@layer theme{:root,:host{…}}` et rien d'autre ne bouge. Le
+     déplacement ne coûte donc rien — il retire une raison qui n'en était pas une,
+     et remet les durées à côté des courbes avec lesquelles chaque `@utility` les
+     emploie.
+
+     CE QU'IL NE FAIT PAS, ET C'ÉTAIT LA PREMIÈRE IDÉE : rendre `duration-slow`
+     écrivable en classe. `--duration-*` n'est PAS un espace de noms de thème
+     Tailwind — mesuré, aucun `.duration-fast{…}` n'est généré dans `@theme` non
+     plus. La forme qui marche, et qui marchait déjà sans rien déplacer, est
+     `duration-(--duration-slow)`.
+
+     UNE SEULE DIFFÉRENCE RÉELLE : `@layer theme` est la couche de PLUS FAIBLE
+     précédence, là où un `:root` non calqué battait tout. Rien ne redéfinit ces
+     trois jetons ; si un jour une règle calquée le fait, elle gagnera là où elle
+     perdait. */
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
 
   /* ---- Empilement ------------------------------------------------------ */
   --z-sticky: 20;
@@ -655,13 +716,8 @@
   --z-toast: 100;
 }
 
-/* ---- Durées (hors @theme : réutilisées en CSS brut) --------------------- */
+/* ---- Pastilles du chrome de navigateur ---------------------------------- */
 :root {
-  --duration-fast: 150ms;
-  --duration-base: 200ms;
-  --duration-slow: 300ms;
-
-  /* ---- Pastilles du chrome de navigateur --------------------------------- */
   /* Le feu tricolore du cadre de prévisualisation du portail locataire :
      décor `aria-hidden`, qui ne porte aucune information et n'a donc aucun
      seuil de contraste à tenir. Les teintes rappellent le trio de statut sans

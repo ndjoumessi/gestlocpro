@@ -575,6 +575,11 @@ export function Dashboard() {
                elles rendaient 9 px contre 171 — voir la prop dans `Charts`. */
             secondaires={['water', 'power']}
             bars={COLLECTIONS.map((month) => ({
+              // La clé porte la PÉRIODE, pas le libellé : `monthShort` rend un
+              // mois TRADUIT, et une identité React posée sur une chaîne
+              // localisée faisait remonter les douze colonnes à chaque
+              // changement de langue. Même règle qu'au graphe du locataire.
+              key: `${month.year}-${month.month}`,
               label: d.monthShort(month),
               segments: [
                 { key: 'rent', value: month.rent },

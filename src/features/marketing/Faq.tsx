@@ -88,7 +88,11 @@ export function Faq() {
                 className={cn(
                   'flex size-9 shrink-0 items-center justify-center rounded-full',
                   'bg-accent text-on-accent',
-                  'transition-transform duration-200 group-open:rotate-45',
+                  // `ease-in-out` : le rond ne fait ni entrée ni sortie, il
+                  // PIVOTE sur place. Sans courbe nommée, Tailwind applique la
+                  // sienne — `cubic-bezier(0.4, 0, 0.2, 1)`, mesurée dans le
+                  // paquet servi — qu'aucun jeton de ce dépôt ne nomme.
+                  'transition-transform duration-200 ease-in-out group-open:rotate-45',
                 )}
               >
                 <Icon name="plus" size={18} />

@@ -221,7 +221,11 @@ const EXEMPTIONS: Exemption[] = [
   },
   {
     fichier: 'components/primitives/Charts.tsx',
-    marqueur: 'key={bar.label}',
+    /* Le marqueur a suivi la clé, qui porte désormais la période et non le
+       libellé traduit. C'est ce cas-ci qui l'a signalé, comme il avait signalé
+       le déplacement de `MiniBarChart` : une exemption repérée par une chaîne du
+       code se sait périmée dès que la chaîne bouge. */
+    marqueur: 'key={bar.key ?? bar.label}',
     raison:
       'La barre de `StackedBarChart`. Même partage que sa voisine : la hauteur est la ' +
       'donnée, la largeur est un pas de grille, et seul le compromis entre 24 et 44 px ' +

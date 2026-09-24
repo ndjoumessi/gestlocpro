@@ -21,7 +21,13 @@ import { useSortieDifferee } from './useSortieDifferee'
  * réelle ne saurait prouver.
  */
 
-/** Miroir de `--duration-base` (`src/design-system/tokens.css:652`). */
+/**
+ * Miroir de `--duration-base`, dans `src/design-system/tokens.css`.
+ *
+ * SANS NUMÉRO DE LIGNE, et c'est délibéré : celui qui était écrit ici — 652 —
+ * désignait déjà autre chose avant qu'on ne déplace le jeton. Un renvoi chiffré
+ * vers un fichier de 1 600 lignes se périme au premier ajout et ne le dit pas.
+ */
 const DUREE = 200
 
 /**
