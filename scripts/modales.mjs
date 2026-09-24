@@ -5,9 +5,12 @@
  * TROIS DÉFAUTS MESURÉS, ET LE PLUS GRAVE NE VENAIT PAS DU CONTENU.
  *
  * 1. LE BLOC CONTENEUR VOLÉ. Le conteneur de la modale est `fixed inset-0` : il
- *    devrait couvrir la fenêtre. Il ne le faisait pas. `<main>` porte
+ *    devrait couvrir la fenêtre. Il ne le faisait pas. `<main>` PORTAIT ALORS
  *    `animate-rise`, et une animation de `transform` laisse au repos une matrice
- *    IDENTITÉ — qui est une transformation. Un ancêtre transformé devient le
+ *    IDENTITÉ — qui est une transformation. (`animate-rise` a été retiré de
+ *    `<main>` le 2026-09-24 ; cette porte ne s'en trouve pas désarmée — voir
+ *    plus bas, elle mesure la STRUCTURE du portail et non ce que `<main>`
+ *    décide.) Un ancêtre transformé devient le
  *    bloc conteneur de ses descendants `position: fixed`. Relevé sur « Ajouter
  *    un immeuble », fenêtre de 900 px : la boîte se posait à y = 554 et
  *    finissait à 941, quarante et un pixels SOUS le bord. Le pied — donc

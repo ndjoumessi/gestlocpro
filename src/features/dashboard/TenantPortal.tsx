@@ -181,7 +181,19 @@ export function TenantPortal() {
                     onKeyDown={(e) => auClavier(e, index)}
                     className={cn(
                       'inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-t-lg border-b-2 px-4',
-                      'text-label font-semibold transition-colors duration-150',
+                      /* PAS DE TRANSITION ICI, ET L'ABSENCE EST DÉLIBÉRÉE.
+
+                         `useOngletsAuClavier` fige « LA SÉLECTION SUIT LE
+                         FOCUS » : chaque ArrowLeft/ArrowRight/Home/End change
+                         d'onglet, donc repeint la bordure d'accent et le fond.
+                         Un repère piloté au clavier doit se poser NET — sur une
+                         touche maintenue, 150 ms de fondu le font traîner
+                         derrière la frappe au lieu de la suivre.
+
+                         CE QU'ON PERD : le survol des onglets inactifs ne fond
+                         plus, il prend sa couleur d'un coup. Un fondu de survol
+                         ne vaut pas un indicateur qui retarde sur la flèche. */
+                      'text-label font-semibold',
                       active
                         ? /* Cette barre est le SEUL repère de l'onglet courant :
                              c'est de la DONNÉE, elle doit tenir 3:1.

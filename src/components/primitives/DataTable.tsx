@@ -491,7 +491,7 @@ export function DataTable<T>({
   const rangee = (row: T) => (
     <tr
       key={rowKey(row)}
-      className="border-b border-divider transition-colors duration-150 last:border-0"
+      className="border-b border-divider last:border-0"
     >
       {colonnes.map((column, rang) => (
         <td

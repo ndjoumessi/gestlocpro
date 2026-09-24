@@ -276,7 +276,13 @@ export function IconButton({
     /* Rond, et non arrondi : un bouton icône est un bouton, donc une
        gélule — et une gélule carrée est un cercle. */
     'inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full',
-    'transition-colors duration-150 ease-out',
+    /* LA MÊME LISTE DE PROPRIÉTÉS QUE `Button`, et c'est `VARIANTS` qui l'exige :
+       les deux composants tirent leur apparence du MÊME jeu de variantes, dont
+       chacune porte `active:translate-y-px`. Un `transition-colors` ne timait
+       pas cette propriété : l'enfoncement claquait ici et se déroulait là, pour
+       un geste identique. Même jeton, même durée, même courbe — les deux
+       doivent rester au pas tant qu'ils partagent `VARIANTS`. */
+    'transition-[background-color,border-color,transform,box-shadow] duration-150 ease-out',
     VARIANTS[variant],
     disabled && ETEINT,
     className,

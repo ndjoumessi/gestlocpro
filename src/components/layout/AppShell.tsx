@@ -582,7 +582,7 @@ export function AppShell() {
             ref={mainRef}
             tabIndex={-1}
             className={cn(
-              'animate-rise flex-1',
+              'flex-1',
               // Aucune barre basse à réserver — d'où un simple rembourrage de
               // fin de défilement, zone de gestes comprise.
               'pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]',
@@ -692,7 +692,19 @@ export function AppShell() {
             ref={mainRef}
             tabIndex={-1}
             className={cn(
-              'animate-rise flex-1',
+              /* `animate-rise` A ÉTÉ RETIRÉ DES DEUX `<main>`, et il ne JOUAIT
+                 QU'UNE FOIS. Ce nœud n'a pas de `key` : React le réutilise d'une
+                 route à l'autre, donc l'animation courait au montage de la
+                 coquille et jamais plus, pendant que le contenu de la route
+                 changeait sèchement. Personne ne voyait ce mouvement passé le
+                 premier écran.
+
+                 LUI DONNER UNE `key` DE ROUTE A ÉTÉ ENVISAGÉ ET REFUSÉ : ce serait
+                 AJOUTER un mouvement là où il n'a jamais été vu, pas en rétablir
+                 un. On navigue des dizaines de fois par jour dans cette coquille
+                 — à cette fréquence, la règle d'audit dit « retirer ou réduire
+                 fortement », pas « faire rejouer ». */
+              'flex-1',
               // Le bas réserve EN PLUS la hauteur de la barre basse, qui est
               // `fixed` et ne pousse donc rien : sans cette réserve elle
               // recouvrirait la dernière ligne de chaque page — exactement le

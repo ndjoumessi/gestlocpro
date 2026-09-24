@@ -160,9 +160,16 @@ export function Modal({
     LA MODALE EST PORTÉE DANS `document.body`, ET C'EST UN CORRECTIF MESURÉ.
 
     LE DÉFAUT. Le conteneur est `fixed inset-0` — il devrait donc couvrir la
-    FENÊTRE. Il ne le faisait pas : `<main>` porte `animate-rise`, et une
+    FENÊTRE. Il ne le faisait pas : `<main>` PORTAIT ALORS `animate-rise`, et une
     animation de `transform` laisse au repos une matrice IDENTITÉ, qui est une
-    transformation quand même. Un ancêtre transformé devient le bloc conteneur
+    transformation quand même.
+
+    AU PASSÉ DEPUIS LE 2026-09-24, et la nuance compte : `animate-rise` a été
+    retiré de `<main>` — il ne jouait qu'au montage de la coquille, jamais à la
+    navigation. LA RAISON DE PORTER DANS `body` N'A PAS DISPARU AVEC LUI. Elle
+    est même plus forte : le correctif ne tient plus à ce que `<main>` s'abstient
+    de porter une transformation, ce qu'un lot futur pourrait défaire sans le
+    savoir. Le portail rend la question sans objet. Un ancêtre transformé devient le bloc conteneur
     de tous ses descendants `position: fixed` : le conteneur de la modale
     mesurait donc 1251 px de haut à partir de y = 122, au lieu de 900 px à
     partir de 0.
