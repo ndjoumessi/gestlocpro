@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Notice } from '@/components/primitives/Notice'
 import { Button } from '@/components/primitives/Button'
@@ -106,7 +106,7 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
    */
   const logementParDefaut = units[0]?.id ?? ''
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     /**
      * LE FORMULAIRE NAÎT À L'OUVERTURE, ET NON AU MONTAGE.
      *
@@ -153,6 +153,22 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
      * entre. C'est la contrepartie assumée d'un seul point de remise à zéro, et
      * en écrire un second sur le chemin de la fermeture serait une mutation
      * qu'aucune garde ne tient, puisque celle-ci la couvre déjà.
+     *
+     * ET C'EST POURQUOI CET EFFET EST `useLayoutEffect`. `useEffect` s'exécute
+     * APRÈS la peinture : à la seconde ouverture, le rôle, le logement et —
+     * celui qui compte — le CODE émis la fois d'avant restent peints le temps
+     * d'une trame environ. Sur le rôle ce serait du désordre ; sur le code
+     * c'est autre chose, car cet écran promet lui-même qu'il « n'est plus
+     * lisible ensuite, même par vous ». Le repeindre, si brièvement que ce
+     * soit, contredit la promesse au lieu de la salir. `useLayoutEffect` court
+     * avant que le navigateur ne peigne : la remise à zéro tombe dans la même
+     * trame.
+     *
+     * CE CHANGEMENT N'EST PAS MESURÉ. Aucune garde de ce dépôt ne peut rougir
+     * sur cette trame : sous jsdom il n'y a pas de peinture à observer, et les
+     * cas de `secondeOuvertureDeLInvitation` lisent l'arbre une fois les effets
+     * vidés — ce qu'ils voient ne distingue pas les deux formes d'effet. La
+     * mesure dit une trame ; on agit par prudence non mesurée.
      */
     if (!open) return
     setRoleInvite('tenant')
