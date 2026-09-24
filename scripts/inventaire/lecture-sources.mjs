@@ -685,7 +685,15 @@ export const PLANCHERS_DE_LECTURE = {
      lignes d'éditeur et quatre d'hébergeur, qui a franchi le seuil. Le nombre
      est celui que la suite a demandé. */
   'balises JSX lues': 2594,
-  'composants indexés': 285,
+  /* 285 → 321, le 2026-09-24 : DEUXIÈME plancher que le lot du mouvement fait
+     monter, et par un chemin que le premier n'avait pas montré. Les gardes
+     ajoutées DÉFINISSENT des composants — la surface montée en permanence, les
+     enveloppes qui basculent une propriété —, et `lecture-sources` compte tout
+     ce qu'il trouve, fichiers de test compris. Écrire une garde fait donc
+     monter ce compteur-ci autant qu'un écran neuf.
+     Le réel est à 357 ; l'ancien plancher tenait à six dixièmes de point près
+     (357 × 0,8 = 285,6 contre 285). `planchersDeLecture` a demandé 321. */
+  'composants indexés': 321,
   /* 245 → 281 et 113 → 127, le 2026-09-07 : l'écran des locataires est passé du
      tableau aux fiches, et une fiche porte plus de sites qu'une rangée — un
      menu, deux boutons, un lien d'appel par personne —, plus la recherche et
