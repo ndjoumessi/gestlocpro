@@ -1498,6 +1498,35 @@
   }
 }
 
+/* LA FEUILLE DU BAS, sous `sm`, et c'est la MÊME CLASSE DE GESTE que le tiroir :
+   un panneau qui entre par un bord de la fenêtre. Seul le bord change — le bas
+   au lieu de la gauche —, d'où les mêmes durées et la même courbe. La modale
+   sous `sm` est déjà une feuille de mise en page (`items-end`, `rounded-t-lg`
+   seul) ; elle s'animait pourtant en `gl-pop`, un `scale` CENTRÉ, qui n'a aucun
+   bord d'où venir ni où retomber.
+
+   `translateY` et non `bottom` : la feuille est dans un conteneur `fixed` qu'elle
+   recouvre, rien ne se remet en page derrière elle. `100%` est sa propre hauteur,
+   qui varie d'une modale à l'autre — c'est précisément ce qu'on veut, la feuille
+   part de juste sous le bord quelle que soit sa taille. */
+@keyframes gl-feuille {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes gl-feuille-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
 @keyframes gl-voile-in {
   from {
     opacity: 0;
@@ -1567,6 +1596,19 @@
 
 @utility animate-drawer-out {
   animation: gl-drawer-out var(--duration-base) var(--ease-drawer) both;
+}
+
+/* Le tempo du TIROIR, à la milliseconde, et pas celui de `pop` : 300 ms à
+   l'entrée, 200 à la sortie — les ~70 % que `docs/PLAN.md:119` demande. Ce n'est
+   pas un alignement décoratif, c'est la même distance parcourue par le même
+   genre de surface. Le voile qui l'accompagne emprunte pour cette raison la
+   paire `animate-voile-drawer-*`, voir le docbloc des voiles plus bas. */
+@utility animate-feuille {
+  animation: gl-feuille var(--duration-slow) var(--ease-drawer) both;
+}
+
+@utility animate-feuille-out {
+  animation: gl-feuille-out var(--duration-base) var(--ease-drawer) both;
 }
 
 /*

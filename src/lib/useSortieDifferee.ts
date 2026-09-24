@@ -59,35 +59,13 @@ import { useEffect, useRef, useState } from 'react'
  * réglage système demande d'éviter. On court-circuite donc la minuterie plutôt
  * que de la raccourcir.
  *
- * `typeof matchMedia !== 'function'` : jsdom fournit bien la fonction et répond
- * `false` à cette requête, ce qui est le comportement voulu sous le harnais — la
- * sortie différée doit y être observable. Le garde-fou vise les environnements
- * qui ne la fournissent pas du tout, et il est ÉCRIT DANS L'EFFET et non dans un
- * initialiseur d'état : la préférence peut changer entre deux fermetures, et la
- * lire au montage la figerait pour la vie du composant.
- *
- * LE MONTAGE EST SYNCHRONE — AJUSTEMENT EN PHASE DE RENDU, PAS EFFET. Monter
- * depuis l'effet coûtait une image : à celle où `ouvert` devient vrai, la
- * surface n'était pas encore rendue, `ref.current` valait donc `null` pour
- * l'appelant, et son effet de focus ne se rejouait pas puisque `ouvert`, lui,
- * n'avait plus changé. Mesuré le 2026-09-24 : trois cas existants rouges d'un
- * coup, le focus jamais posé à l'ouverture du tiroir. Le défaut n'est pas propre
- * au focus, il frappe tout appelant qui doit toucher le nœud à peine monté —
- * verrou de défilement, mesure, piège de tabulation. D'où la condition écrite
- * dans le corps du composant : React relance le rendu avant de valider, et elle
- * devient fausse aussitôt, ce qui referme la boucle. La FERMETURE, elle, reste
- * dans l'effet : personne n'a besoin de toucher un nœud qui s'en va.
- *
- * RÉOUVRIR PENDANT LA SORTIE ANNULE LA MINUTERIE, et c'est le cas qui compte.
- * Ouvrir, fermer, rouvrir en moins de `dureeMs` est un geste ordinaire — une
- * main hésitante sur un menu. Sans annulation, la minuterie de la première
- * fermeture arriverait à terme après la seconde ouverture et démonterait une
- * surface que l'utilisateur vient de rouvrir : un nœud fantôme, qui disparaît
- * tout seul sans que personne ne l'ait demandé. L'annulation est portée par le
- * NETTOYAGE de l'effet, que React exécute avant de le rejouer au changement de
- * `ouvert` : la branche d'ouverture n'a donc rien à annuler elle-même. D'où la
- * `ref` : le nettoyage et la passe suivante doivent viser la MÊME minuterie, et
- * elle survit aux rendus là où une variable locale ne survivrait qu'à une passe.
+ * `typeof matchMedia !== 'function'` : CORRIGÉ le 2026-09-24. Il était écrit ici
+ * que jsdom fournit la fonction ; mesuré, il ne la fournit pas du tout. Sous le
+ * harnais, c'est `src/test/render.tsx:273` qui en pose une fausse, répondant à
+ * la largeur (1280 px par défaut). La requête du mouvement réduit n'y trouve
+ * aucune `min-width`, reçoit donc un seuil infini et rend faux — le
+ * comportement voulu, mais pour une raison qui n'était pas la bonne. Le
+ * garde-fou vise les environnements sans `matchMedia`, ce qu'est jsdom nu.
  */
 export function useSortieDifferee(ouvert: boolean, dureeMs: number) {
   const [monte, setMonte] = useState(ouvert)

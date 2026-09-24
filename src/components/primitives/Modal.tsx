@@ -5,6 +5,7 @@ import { usePiegeDeFocus } from './piegeDeFocus'
 import { IconButton } from './Button'
 import { useT } from '@/i18n/I18nProvider'
 import { useSortieDifferee } from '@/lib/useSortieDifferee'
+import { AU_DELA_SM, useAuDela } from '@/lib/useAuDela'
 
 /* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
    avertissement et l'attribut n'est PAS posé. Le dépôt emploie déjà l'attribut
@@ -13,8 +14,19 @@ import { useSortieDifferee } from '@/lib/useSortieDifferee'
    d'`AppShell` : une primitive ne dépend pas d'une coquille d'application. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
-/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
-const SORTIE_MS = 150
+/*
+  DEUX SORTIES, PARCE QU'IL Y A DEUX GESTES.
+
+  Sous `sm` la modale est une FEUILLE collée au bas de l'écran : elle monte de ce
+  bord et y retombe, au tempo du tiroir — même classe de geste, un panneau qui
+  entre par un bord (`animate-feuille` / `-out`, 300/200 ms). Dès `sm` elle se
+  recentre et reprend `animate-pop` / `-out`, 200/150.
+*/
+/** Miroir de `animate-pop-out` (`--duration-fast`), dès `sm`. */
+const SORTIE_POP_MS = 150
+
+/** Miroir de `animate-feuille-out` (`--duration-base`), sous `sm`. */
+const SORTIE_FEUILLE_MS = 200
 
 export interface ModalProps {
   open: boolean
@@ -64,7 +76,28 @@ export function Modal({
   /* La modale reste PEINTE le temps de sa sortie, puis se démonte. `monte`
      commande la présence dans l'arbre, `open` commande tout le reste — voir le
      piège de focus plus bas, qui garde `open` pour une raison mesurée. */
-  const { monte, sortant } = useSortieDifferee(open, SORTIE_MS)
+  /*
+    LA DURÉE DOIT SUIVRE LA VARIANTE DE CLASSE, et c'est le SEUL endroit où un
+    point de rupture est lu en JS — parce qu'un crochet prend un NOMBRE, pas une
+    requête média. Les classes, elles, restent entre les mains de Tailwind
+    (`max-sm:` / `sm:` plus bas) : rien ne recopie `40rem` ici, la constante
+    vient de `useAuDela`, dont le docbloc explique pourquoi ces seuils s'écrivent
+    en `rem` — une fenêtre dont la police de base est agrandie doit basculer au
+    même instant que la feuille de style.
+
+    Sans cela le nœud serait coupé 50 ms trop tôt sous `sm` : la feuille prend
+    200 ms à redescendre, `SORTIE_POP_MS` en démonterait le support à 150.
+
+    SOUS LE HARNAIS, C'EST LA BRANCHE LARGE QUI JOUE, et il faut le savoir pour
+    lire les gardes. jsdom ne fournit pas `matchMedia` du tout ici ; c'est
+    `renderWithProviders` qui la remplace par une fonction répondant à la LARGEUR
+    déclarée, dont le défaut est 1280 px (`src/test/render.tsx:333`). Les cas qui
+    ne demandent rien mesurent donc les 150 ms de `pop` — ainsi
+    `sortieDeModale.test.tsx`, qui reste juste sans y toucher. La branche de la
+    feuille se demande par `largeur`, et `feuilleSousSm.test.tsx` la garde.
+  */
+  const large = useAuDela(AU_DELA_SM)
+  const { monte, sortant } = useSortieDifferee(open, large ? SORTIE_POP_MS : SORTIE_FEUILLE_MS)
 
   /*
     RESTE-T-IL QUELQUE CHOSE AU-DESSUS, EN DESSOUS ?
@@ -238,9 +271,16 @@ export function Modal({
         disabled={!dismissible}
         className={cn(
           'absolute inset-0 cursor-default bg-scrim',
-          // Le voile de la MODALE : 200/150 ms, le tempo de `animate-pop`. Pas
-          // celui du tiroir, qui court en 300/200.
-          sortant ? 'animate-voile-pop-out' : 'animate-voile-pop-in',
+          // UN VOILE PAR TEMPO, ET LA MODALE EN A DEUX. Il doit démarrer et
+          // finir sur la même image que ce pour quoi il assombrit : sous `sm`
+          // c'est la feuille, qui court au tempo du tiroir (300/200), donc la
+          // paire du tiroir ; dès `sm` c'est `animate-pop` (200/150), donc la
+          // paire `pop`. Un voile resté sur un seul des deux tempos est
+          // exactement le défaut qu'un lot antérieur a refermé — voir le docbloc
+          // des voiles dans `tokens.css`.
+          sortant
+            ? 'max-sm:animate-voile-drawer-out sm:animate-voile-pop-out'
+            : 'max-sm:animate-voile-drawer-in sm:animate-voile-pop-in',
         )}
       />
 
@@ -255,7 +295,11 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          sortant ? 'animate-pop-out' : 'animate-pop',
+          // Le point de rupture reste à Tailwind : sous `sm` la feuille monte
+          // du bord bas et y retombe, dès `sm` la fenêtre se pose au centre.
+          sortant
+            ? 'max-sm:animate-feuille-out sm:animate-pop-out'
+            : 'max-sm:animate-feuille sm:animate-pop',
           'relative flex max-h-[92dvh] w-full flex-col overflow-hidden',
           'rounded-t-lg border border-divider bg-surface shadow-e3 sm:rounded-lg',
           SIZES[size],
