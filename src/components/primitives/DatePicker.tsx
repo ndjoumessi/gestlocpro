@@ -5,6 +5,18 @@ import { Icon } from './Icon'
 import { cn } from '@/lib/cn'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. En JSX, la forme équivalente est
+   un étalement conditionnel de cet objet. Déclaré ici plutôt qu'importé
+   d'`AppShell` : une primitive ne dépend pas d'une coquille d'application —
+   c'est le raisonnement de `Modal.tsx:14` et de `MenuDeDebordement.tsx:20`, et
+   la même ligne. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
+
+/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+const SORTIE_MS = 150
 
 /**
  * Sélecteur de date.
@@ -147,6 +159,38 @@ function premierJourSemaine(tag: string): number {
 function usePanneauAncre(hauteur: number, largeur: number) {
   const [ouvert, setOuvert] = useState(false)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
+  /**
+   * LE POINT DU PANNEAU DEPUIS LEQUEL IL GRANDIT, CALCULÉ ET NON NOMMÉ.
+   *
+   * Le lot 005 a donné une origine aux cinq menus ancrés et a ÉCARTÉ ces deux
+   * panneaux-ci, pour une raison qui tenait : ils ne basculent pas, ils
+   * GLISSENT. Portés dans `body` à une position calculée puis BORNÉE à la
+   * fenêtre, leur rapport au déclencheur varie continûment, et aucun mot-clé
+   * fixe — `top left`, `bottom right` — n'est juste plus d'une fois sur deux.
+   *
+   * Ce qu'une origine fixe ne pouvait pas suivre, une origine CALCULÉE le suit
+   * par construction : elle se dérive de la même géométrie que la position, au
+   * même instant, dans `placer()`. Le bornage compris — c'est justement le cas
+   * que le lot 005 ne savait pas traiter.
+   *
+   * Jamais `null`, contrairement à `position` : les deux sont posées ensemble
+   * par `placer()`, et un panneau ne se peint pas sans position. Une valeur par
+   * défaut évite à ses deux lecteurs une garde qui ne pourrait pas se mesurer.
+   *
+   * `y` EST UNE CHAÎNE AVEC SON UNITÉ, ET CE N'EST PAS DE LA COMMODITÉ. Deux de
+   * ses trois cas désignent un BORD du panneau, que `0` et `100%` nomment
+   * exactement ; le troisième seul désigne un point à l'intérieur, et lui seul a
+   * besoin d'un pixel. Porter l'unité dans la valeur est ce qui permet de ne
+   * payer l'approximation que là où elle a un sens — voir `placer()`.
+   */
+  const [origine, setOrigine] = useState<{ x: number; y: string }>({ x: 0, y: '0' })
+
+  /* Le panneau reste PEINT le temps de sa sortie, puis se démonte. `monte`
+     commande la seule présence dans l'arbre ; `ouvert` commande tout le reste —
+     Échap, le clic extérieur, le retour du focus au déclencheur, le focus de la
+     cellule au curseur et le repositionnement au défilement restent accrochés à
+     lui. Un panneau qui s'en va ne retient ni le focus ni le pointeur. */
+  const { monte, sortant } = useSortieDifferee(ouvert, SORTIE_MS)
 
   const racine = useRef<HTMLDivElement>(null)
   const declencheur = useRef<HTMLButtonElement>(null)
@@ -173,12 +217,54 @@ function usePanneauAncre(hauteur: number, largeur: number) {
     const dessous = window.innerHeight - cadre.bottom
     const enHaut = dessous < hauteur && cadre.top > dessous
     const souhaite = enHaut ? cadre.top - hauteur - 4 : cadre.bottom + 4
-    setPosition({
-      top: Math.max(MARGE, Math.min(souhaite, window.innerHeight - hauteur - MARGE)),
-      // Calé à gauche du champ, ramené dans la fenêtre quand le champ est
-      // lui-même contre le bord droit — le cas des colonnes étroites.
-      left: Math.max(MARGE, Math.min(cadre.left, window.innerWidth - largeur - MARGE)),
-    })
+    const top = Math.max(MARGE, Math.min(souhaite, window.innerHeight - hauteur - MARGE))
+    // Calé à gauche du champ, ramené dans la fenêtre quand le champ est
+    // lui-même contre le bord droit — le cas des colonnes étroites.
+    const left = Math.max(MARGE, Math.min(cadre.left, window.innerWidth - largeur - MARGE))
+    setPosition({ top, left })
+
+    /*
+      L'ORIGINE EST LE POINT DU PANNEAU LE PLUS PROCHE DU CHAMP, et elle se
+      calcule APRÈS le bornage — jamais avant, sinon elle décrirait la position
+      SOUHAITÉE et non la position OBTENUE, c'est-à-dire précisément le cas où
+      elle sert à quelque chose.
+
+      Trois situations, et la troisième est celle qui a fait ajourner ce lot :
+
+        - panneau SOUS le champ → `'0'`, son bord haut ;
+        - panneau AU-DESSUS → `'100%'`, son bord bas ;
+        - panneau BORNÉ, donc CHEVAUCHANT le champ → le milieu du champ ramené
+          dans le panneau, en pixels. Il n'y a plus de bord à désigner : le
+          champ est derrière lui, et seul un décalage le situe.
+
+      `'100%'` ET NON `hauteur`, ET C'EST UNE MESURE QUI L'IMPOSE. `hauteur` est
+      une ESTIMATION DE PLACEMENT, écrite en dur par les deux appelants — 430 et
+      260 — et lue AVANT que le panneau n'existe, pour décider de quel côté le
+      poser. Elle n'est pas sa géométrie réelle : relevé au navigateur le
+      2026-09-24, le calendrier rendu mesure 412 px pour 430 déclarés. Employée
+      comme origine, elle aurait placé le point de croissance 18 px SOUS le bord
+      inférieur du panneau — hors de lui. `100%` désigne ce bord quelle que soit
+      la hauteur obtenue : le défaut ne se corrige pas, il cesse d'être
+      atteignable. La branche n'a pas pu être atteinte depuis la modale de
+      paiement — à toutes les largeurs essayées le panneau tombe encore vers le
+      bas — donc elle est vraie, non mesurée, et elle était fausse de 18 px.
+
+      Le cas BORNÉ garde `hauteur` pour seule BORNE SUPÉRIEURE d'un décalage qui,
+      lui, est réel : il vaut mieux une borne large qu'un bord inventé.
+
+      `x` suit le bord gauche du champ, borné à la largeur : un champ contre le
+      bord droit de la fenêtre ne fait pas grandir le panneau depuis un point
+      situé hors de lui. Il reste en pixels : aux trois cas mesurés il valait 0,
+      et aucun ne désigne un bord que `100%` nommerait mieux.
+    */
+    const x = Math.max(0, Math.min(cadre.left - left, largeur))
+    const y =
+      top >= cadre.bottom
+        ? '0'
+        : top + hauteur <= cadre.top
+          ? '100%'
+          : `${Math.max(0, Math.min(cadre.top + cadre.height / 2 - top, hauteur))}px`
+    setOrigine({ x, y })
   }
 
   const ouvrir = () => {
@@ -237,7 +323,19 @@ function usePanneauAncre(hauteur: number, largeur: number) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ouvert])
 
-  return { ouvert, setOuvert, ouvrir, fermer, position, racine, declencheur, panneau }
+  return {
+    ouvert,
+    setOuvert,
+    ouvrir,
+    fermer,
+    position,
+    origine,
+    monte,
+    sortant,
+    racine,
+    declencheur,
+    panneau,
+  }
 }
 
 
@@ -327,7 +425,7 @@ export function DatePicker({
     return { annee: n.getFullYear(), mois: n.getMonth(), jour: n.getDate() }
   }, [])
 
-  const { ouvert, ouvrir, fermer, position, racine, declencheur, panneau } =
+  const { ouvert, ouvrir, fermer, position, origine, monte, sortant, racine, declencheur, panneau } =
     usePanneauAncre(430, 360)
   /**
    * Le jour qui porte le focus dans la grille, distinct du jour CHOISI.
@@ -496,7 +594,7 @@ export function DatePicker({
         <Icon name="calendar" size={16} className="shrink-0 text-muted" />
       </button>
 
-      {ouvert &&
+      {monte &&
         position &&
         createPortal(
           <div
@@ -504,8 +602,24 @@ export function DatePicker({
             role="dialog"
             aria-label={t('common.dateCalendar')}
             ref={panneau}
-            style={{ top: position.top, left: position.left, zIndex: 'var(--z-popover)' }}
-            className="fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
+            style={{
+              top: position.top,
+              left: position.left,
+              zIndex: 'var(--z-popover)',
+              // L'origine vient de `placer()`, donc de la géométrie obtenue
+              // après bornage : le panneau grandit du point qui touche le champ.
+              transformOrigin: `${origine.x}px ${origine.y}`,
+            }}
+            // Pendant la sortie, le panneau n'existe plus que pour l'œil : il
+            // quitte l'arbre d'accessibilité et cesse de prendre le pointeur.
+            // Sans cela il resterait 150 ms lisible, tabulable et CLIQUABLE, et
+            // c'est LUI que cherche une requête par rôle — pas son conteneur.
+            aria-hidden={sortant || undefined}
+            {...(sortant ? INERTE : {})}
+            className={cn(
+              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              'fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3',
+            )}
           >
           <div className="mb-2 flex items-center justify-between gap-2">
             <button
@@ -745,7 +859,7 @@ export function MonthPicker({
   const idDeLaValeur = `${idDuDeclencheur}-valeur`
   const d = useDates()
 
-  const { ouvert, ouvrir, fermer, position, racine, declencheur, panneau } =
+  const { ouvert, ouvrir, fermer, position, origine, monte, sortant, racine, declencheur, panneau } =
     usePanneauAncre(260, 300)
 
   const courant = useMemo(() => {
@@ -825,7 +939,7 @@ export function MonthPicker({
         <Icon name="calendar" size={16} className="shrink-0 text-muted" />
       </button>
 
-      {ouvert &&
+      {monte &&
         position &&
         createPortal(
           <div
@@ -833,8 +947,23 @@ export function MonthPicker({
             role="dialog"
             aria-label={t('common.monthCalendar')}
             ref={panneau}
-            style={{ top: position.top, left: position.left, zIndex: 'var(--z-popover)' }}
-            className="fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3"
+            style={{
+              top: position.top,
+              left: position.left,
+              zIndex: 'var(--z-popover)',
+              // Même origine calculée que le calendrier, et pour la même raison :
+              // le panneau glisse, donc aucun mot-clé fixe ne le décrit.
+              transformOrigin: `${origine.x}px ${origine.y}`,
+            }}
+            // Pendant la sortie, le panneau quitte l'arbre d'accessibilité et
+            // cesse de prendre le pointeur : c'est lui que cherche une requête
+            // par rôle, et un panneau qui s'en va n'avale pas le clic suivant.
+            aria-hidden={sortant || undefined}
+            {...(sortant ? INERTE : {})}
+            className={cn(
+              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              'fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3',
+            )}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <button

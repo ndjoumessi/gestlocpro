@@ -17,7 +17,8 @@ peut s'animer en sortant — et cette absence se voit à neuf endroits.
 | [002](002-tiroir-mobile.md) | Faire entrer et sortir le tiroir de navigation mobile | HIGH | 001 | **DONE** |
 | [003](003-voile-et-sortie-de-modale.md) | Faire du voile et de la fenêtre un seul geste | HIGH | 001, 002 | TODO |
 | [004](004-anneau-transition-all.md) | Nommer ce que l'anneau anime | HIGH | — | **DONE** |
-| [005](005-panneaux-ancres.md) | Donner aux menus ancrés une entrée, une sortie et la bonne origine | MEDIUM | 001, 003 | TODO |
+| [005](005-panneaux-ancres.md) | Donner aux menus ancrés une entrée, une sortie et la bonne origine | MEDIUM | 001, 003 | **DONE** |
+| [006](006-panneaux-de-date.md) | Les deux panneaux de date viennent de leur champ | MEDIUM | 001, 003, 005 | **DONE** |
 
 ## Ordre d'exécution
 
