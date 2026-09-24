@@ -1033,7 +1033,7 @@ export function Portfolio() {
         }
       />
 
-      {ajoutOuvert && <AddBuildingModal open onClose={() => setAjoutOuvert(false)} />}
+      <AddBuildingModal open={ajoutOuvert} onClose={() => setAjoutOuvert(false)} />
 
       {correctionOuverte && (
         <ParkSettingsModal open onClose={() => setCorrectionOuverte(false)} />

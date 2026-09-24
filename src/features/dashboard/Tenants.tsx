@@ -598,7 +598,7 @@ export function Tenants() {
       />
 
       {inviteOuverte && <InviteModal open onClose={() => setInviteOuverte(false)} />}
-      {annonceOuverte && <AnnounceModal open onClose={() => setAnnonceOuverte(false)} />}
+      <AnnounceModal open={annonceOuverte} onClose={() => setAnnonceOuverte(false)} />
 
       {/*
         L'ÉCRAN COMPTAIT TROIS CHOSES ET N'EN MONTRAIT AUCUNE.
