@@ -702,6 +702,26 @@ const SURFACES_INTERACTIVES = [
     temoin: '[role="dialog"] form#tarif',
     ouvrir: async (page) => {
       await ouvrirUneActionDEnTete(page, /^Prix de refacturation$|^Rebilling prices$/)
+      /*
+        LE FORMULAIRE PROUVE LE GESTE, L'HISTORIQUE PROUVE LA DONNÉE, et ce ne
+        sont pas le même instant.
+
+        Le témoin de cette surface est `form#tarif` : il naît avec la modale,
+        donc il ne dit que « le geste a ouvert quelque chose ». Sous le
+        formulaire vit l'historique des prix, nourri par une lecture réseau ;
+        vide, il rend un seul `<p>` (« aucun prix posé »), rempli, une liste de
+        lignes. La garde auditait donc l'un ou l'autre au hasard : douze passes
+        ont rendu 149 ou 156 textes, et le clair et le sombre se sont
+        CONTREDITS À L'INTÉRIEUR D'UNE MÊME passe — signature d'une course,
+        jamais d'un changement. L'écart, toujours de 7 textes, est exactement
+        le message vide contre la liste.
+
+        On attend donc la PREMIÈRE LIGNE, sans `.catch()` et sans délai court :
+        le parc de démonstration sert toujours des prix (`TARIFS_DEMO` pose
+        l'eau et l'électricité). Si cette ligne n'arrive pas, l'audit ne mesure
+        rien et la passe DOIT rougir bruyamment.
+      */
+      await page.locator('[role="dialog"] [data-mesure="historique-des-prix"] li').first().waitFor({ state: 'visible' })
     },
   },
   {
@@ -4641,9 +4661,22 @@ try {
         })
         ouverte = true
       } catch (e) {
+        /*
+          ON NOMME L'ATTENTE QUI A EXPIRÉ, ET PLUS SEULEMENT LE TÉMOIN.
+
+          Tant que le témoin était la SEULE attente d'une ouverture, l'accuser
+          était juste. Depuis qu'un `ouvrir` peut en porter une seconde — celle
+          de la DONNÉE, voir `prix-de-refacturation` —, cette phrase désignait
+          le mauvais coupable : elle envoyait chercher `form#tarif`, présent,
+          quand c'est la ligne d'historique qui manquait. Playwright met le
+          sélecteur fautif dans son journal d'appel ; `split('\n')[0]` le jetait.
+        */
+        const lignes = String(e).split('\n')
+        const attendu = lignes.find((l) => l.includes('waiting for'))?.trim()
         plaintesDeSurface.push(
-          `${nom} : la surface ne s'est pas ouverte — témoin « ${surface.temoin} » absent.\n` +
-            `   ${String(e).split('\n')[0]}\n` +
+          `${nom} : la surface ne s'est pas ouverte.\n` +
+            `   ${lignes[0]}\n` +
+            (attendu ? `   ${attendu}\n` : `   témoin attendu : « ${surface.temoin} »\n`) +
             "   Une surface non ouverte n'est pas une surface sans défaut : le geste qui\n" +
             '   l’ouvre a changé, et les deux sondes auraient mesuré la page nue.',
         )

@@ -470,7 +470,20 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
             lexicographique EST l'ordre chronologique — c'est la propriété de ce
             format, et elle évite de fabriquer des dates pour les comparer.
           */
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul
+            /* Marqueur de mesure, PAS une décoration : c'est le TÉMOIN d'ARRIVÉE
+               DE LA DONNÉE que `mesure-ui` attend au point de contact de la
+               surface « prix-de-refacturation ». Le témoin de cette surface est
+               le FORMULAIRE, qui se rend tout de suite ; l'historique, lui,
+               dépend de l'effet de lecture ci-dessus. Tant qu'il n'est pas
+               revenu, cette branche n'existe pas et c'est le message « aucun
+               prix posé » qui est audité à sa place : 149 textes au lieu de 156,
+               au hasard de la course — clair et sombre se sont contredits DANS
+               UNE MÊME passe. Retirer cet attribut rouvre exactement ce défaut,
+               en silence, puisque la porte resterait verte sur l'état vide. */
+            data-mesure="historique-des-prix"
+            className="mt-3 flex flex-col gap-2"
+          >
             {tarifs.map((tarif) => (
               <li key={tarif.id} className="flex items-baseline justify-between gap-3 text-body">
                 <span>
