@@ -109,23 +109,41 @@ Ils sont tous refermés :
 | onglets qui s'animent au clavier | fait — la transition retirée ; le fondu du survol s'en va avec elle, c'est déclaré |
 | `IconButton` dont l'enfoncement n'est pas minuté | fait — même liste, même durée, même courbe que `Button` |
 | `transition-colors` mort sur chaque `<tr>` | retiré — aucune rangée ne change jamais de couleur |
-| pile de toasts qui se téléporte | **à MOITIÉ** — voir ci-dessous |
+| pile de toasts qui se téléporte | fait — hauteurs mesurées, décalages calculés, plus aucune place devinée |
 | colonnes de graphe qui rejouent selon la donnée | fait — la clé porte la période, plus le libellé traduit |
 | jeton `--ease-in-out` absent | fait — quintique, pour rester dans la famille du dépôt |
 | `--duration-*` invisible de Tailwind | mesuré, et la remède supposé ne marchait pas : voir ci-dessous |
 
-### Ce qui reste : le toast qui n'est pas le dernier
+### Le dernier constat, fermé le 2026-09-25 : la pile est mesurée
 
-Le toast a maintenant une sortie, et il quitte le flux à l'instant où il commence
-à partir — donc la colonne se replace UNE fois, pendant le fondu, au lieu de deux.
-Mais cela ne vaut que pour le DERNIER en flux : la position statique d'un enfant
-absolu d'une boîte flexible se calcule comme s'il était seul, et pour les autres
-c'est un saut de 54 px (108 pour le premier de trois). Ceux-là s'effacent donc sur
-place, et leur voisin du dessus attend la fin du fondu pour descendre.
+Le toast avait reçu une sortie, mais elle ne valait que pour le DERNIER de la
+pile : un enfant absolu d'une boîte flexible se place « comme s'il était seul »,
+donc au bord, et pour les autres cela faisait un saut de 54 px. Ceux-là
+s'effaçaient sur place, leur voisin attendant la fin du fondu pour descendre.
 
-Rien en CSS statique ne sait dire « la place que j'occupais ». Il faut la
-réécriture de l'empilement avec décalages mesurés — c'est le seul reliquat de
-l'audit, et le seul qui demande un plan.
+La réponse n'était pas une règle de plus : c'était d'arrêter de DEVINER la place.
+Les hauteurs sont désormais lues (`offsetHeight`, en `useLayoutEffect` — avant
+peinture, sans quoi la pile clignoterait à plat), chaque toast est posé à un
+décalage calculé, et un partant cesse de compter dans le cumul à l'instant du
+renvoi tout en gelant le sien. Deux nœuds par toast, parce que l'entrée est une
+animation et le replacement une transition, toutes deux sur `transform` : sur un
+seul élément, l'animation écrase l'autre.
+
+MESURÉ dans Chromium, trois toasts, renvoi de CELUI DU MILIEU — le cas
+qu'aucune version précédente ne savait traiter :
+
+| | toast du haut | le partant | le bas |
+| --- | --- | --- | --- |
+| au repos | 744 | 810 | 876 |
+| +0 ms | 744 | 810, sortant | 876 |
+| +75 ms | 806, en vol | 810, gelé | 876 |
+| +150 ms | 810, arrivé | démonté | 876 |
+
+Le voisin descend PENDANT le fondu et atterrit quand il se termine. À l'arrivée
+d'un toast, symétriquement, ses aînés montent en 300 ms (876 → 860 → 814 → 810)
+au lieu de sauter.
+
+**L'audit du mouvement est clos.**
 
 ### Ce que la mesure a corrigé sur `--duration-*`
 

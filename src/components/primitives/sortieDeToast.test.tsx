@@ -35,9 +35,21 @@ import { useToast } from './Toast'
  *     conteneur, ancré par le BAS et haut de son contenu, rétrécit au moment
  *     même où l'enfant le quitte.
  *
- * D'où la règle que ce fichier fixe : le toast quitte le flux SI ET SEULEMENT SI
- * il était le dernier en flux. Sinon il se contente de s'effacer sur place, ce
- * qui est moins bien et reste de loin préférable à un saut de 54 px.
+ * ═══ CE QUI A CHANGÉ LE 2026-09-25 : LA PILE EST MESURÉE ═══
+ *
+ * Ce fichier fixait donc une règle BOITEUSE — quitter le flux si et seulement si
+ * l'on était le dernier —, et son unique justification était qu'aucune règle
+ * statique ne sait dire « la place que j'occupais ». C'est vrai, et c'est pourquoi
+ * il n'y a plus de règle statique : les hauteurs sont LUES, et chaque toast est
+ * posé à un décalage calculé. Tous quittent la pile à l'instant du renvoi, quel
+ * que soit leur rang, et les 54 px de saut n'existent plus — ils étaient la
+ * différence entre une place devinée et une place mesurée.
+ *
+ * jsdom ne calcule aucune disposition : `offsetHeight` y vaut zéro partout, donc
+ * tous les décalages vaudraient zéro et les cas seraient vrais à vide. On POSE
+ * donc une hauteur, la vraie — 46 px relevés dans Chrome, plus les 8 de l'écart,
+ * d'où les 54 de l'en-tête. Le mécanisme est alors intégralement vérifiable ici ;
+ * ce que jsdom ne dira jamais, c'est que 46 est encore la bonne hauteur.
  *
  * ═══ LES MINUTERIES SONT FAUSSES ET NUES ═══
  *
@@ -60,8 +72,38 @@ const EFFACEMENT_MS = 4500
   entrerait dans la feuille livrée au seul titre d'avoir servi d'assertion.
 */
 const RISE_OUT = ['animate', 'rise', 'out'].join('-')
-const HORS_FLUX = ['abso', 'lute'].join('')
-const VERS_LE_BAS = ['justify', 'end'].join('-')
+
+/** Miroir de `ECART` dans `Toast.tsx`. */
+const ECART = 8
+
+/** La hauteur qu'on POSE sous jsdom : celle d'un toast d'une ligne, dans Chrome. */
+const HAUTEUR = 46
+
+/** Un cran de pile : une hauteur de toast plus l'écart. Les 54 px de l'en-tête. */
+const CRAN = HAUTEUR + ECART
+
+const HAUTEUR_ORIGINALE = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
+
+/**
+ * Le décalage qu'un toast occupe, lu sur la coquille qui le place.
+ *
+ * Sur la COQUILLE et non sur le toast : le partage des deux nœuds est justement
+ * ce qui permet à l'entrée et au replacement de porter tous deux sur `transform`
+ * sans s'écraser. Lire le mauvais des deux rendrait la transformation de
+ * `gl-rise`, qui ne dit rien de la pile.
+ */
+function coquille(toast: HTMLElement) {
+  return toast.closest('[data-toast-place]') as HTMLElement
+}
+
+function decalage(toast: HTMLElement) {
+  const place = coquille(toast)
+  const trouve = /translate3d\(\s*0[a-z%]*\s*,\s*(-?[\d.]+)px/.exec(place.style.transform)
+  if (!trouve) throw new Error(`aucun décalage lisible dans « ${place.style.transform} »`)
+  // `0 - x` et non `-x` : le second rend `-0` pour un décalage nul, que
+  // `toBe(0)` refuse — `Object.is(-0, 0)` est faux.
+  return 0 - Number(trouve[1])
+}
 
 /*
   UN MESSAGE DIFFÉRENT À CHAQUE APPEL, et ce n'est pas de la coquetterie : le cas
@@ -95,10 +137,21 @@ function croix(toast: HTMLElement) {
 beforeEach(() => {
   rang = 0
   vi.useFakeTimers()
+  // Seules les coquilles de placement répondent : c'est ce que le fournisseur
+  // mesure, et poser une hauteur sur TOUT élément fausserait d'autres gardes.
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return this.hasAttribute('data-toast-place') ? HAUTEUR : 0
+    },
+  })
 })
 
 afterEach(() => {
   vi.useRealTimers()
+  if (HAUTEUR_ORIGINALE) {
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', HAUTEUR_ORIGINALE)
+  }
 })
 
 describe('sortie du toast', () => {
@@ -138,37 +191,80 @@ describe('sortie du toast', () => {
     expect(toast).toBeInTheDocument()
   })
 
-  it('cesse d’occuper le flux pendant qu’il sort', () => {
-    const { container } = renderWithProviders(<Notificateur />)
-    const toast = notifier()
-
-    fireEvent.click(croix(toast))
-
-    // Le nœud quitte le flux À L'INSTANT du renvoi, pas à la fin du fondu : la
-    // colonne se replace une fois, PENDANT le mouvement, et non après.
-    expect(toast.className).toContain(HORS_FLUX)
-
-    /* ET LE CONTENEUR POUSSE SES ENFANTS VERS LE BAS. Les deux vont ensemble ou
-       ne valent rien : la position statique d'un enfant absolu suit
-       `justify-content`. En `flex-start` — le défaut — le toast sortant se
-       reposerait en HAUT de la colonne, soit 54 px plus bas que sa place quand
-       il y en a deux, 108 avec trois (mesuré dans Chrome, cf. l'en-tête). */
-    const pile = container.parentElement!.querySelector('[aria-live="polite"]')!
-    expect(pile.className).toContain(VERS_LE_BAS)
-  })
-
-  it('laisse en flux un toast qui n’est pas le dernier', () => {
+  it('empile ses toasts sur des hauteurs mesurées', () => {
     renderWithProviders(<Notificateur />)
     const premier = notifier()
-    notifier()
+    const deuxieme = notifier()
+    const troisieme = notifier()
+
+    // Ancrée EN BAS : le plus récent est au ras du bord, ses aînés au-dessus.
+    expect(decalage(troisieme), 'le plus récent est au ras du bord').toBe(0)
+    expect(decalage(deuxieme), 'un cran au-dessus').toBe(CRAN)
+    expect(decalage(premier), 'deux crans au-dessus').toBe(2 * CRAN)
+  })
+
+  it('libère sa place à l’instant du renvoi, même au milieu de la pile', () => {
+    renderWithProviders(<Notificateur />)
+    const premier = notifier()
+    const deuxieme = notifier()
+    const troisieme = notifier()
+
+    /*
+      CELUI DU MILIEU, ET C'EST TOUT L'OBJET DE LA RÉÉCRITURE. Avant elle, un
+      toast qui n'était pas le dernier ne pouvait pas quitter la colonne : il
+      s'effaçait sur place et son voisin du dessus attendait la fin du fondu pour
+      descendre. Le mécanisme ne connaît plus de rang.
+    */
+    fireEvent.click(croix(deuxieme))
+
+    expect(deuxieme.className, 'il sort').toContain(RISE_OUT)
+    expect(decalage(deuxieme), 'et il sort SUR PLACE, au décalage gelé').toBe(CRAN)
+    expect(decalage(premier), 'son aîné descend d’un cran AUSSITÔT').toBe(CRAN)
+    expect(decalage(troisieme), 'son cadet ne bouge pas').toBe(0)
+  })
+
+  it('ne redescend pas avec la pile une fois qu’il est parti', () => {
+    renderWithProviders(<Notificateur />)
+    const premier = notifier()
+    const deuxieme = notifier()
+    const troisieme = notifier()
 
     fireEvent.click(croix(premier))
+    fireEvent.click(croix(deuxieme))
 
-    // Il sort — pour l'œil, c'est la même sortie.
-    expect(premier.className).toContain(RISE_OUT)
-    /* Mais il GARDE sa place : hors flux, sa position statique serait celle du
-       dernier de la colonne, 54 px plus bas. Un saut vaut moins qu'une pause. */
-    expect(premier.className).not.toContain(HORS_FLUX)
+    /*
+      LE GEL EST CE QUI TIENT ICI. Sans lui, le décalage du premier se
+      recalculerait au départ du deuxième et le ferait GLISSER vers le bas au
+      milieu de son propre fondu — un toast qui s'en va ne doit plus bouger.
+    */
+    expect(decalage(premier), 'le premier reste où on l’a vu').toBe(2 * CRAN)
+    expect(decalage(deuxieme), 'le deuxième aussi').toBe(CRAN)
+    expect(decalage(troisieme), 'et le seul survivant garde le bord').toBe(0)
+  })
+
+  it('accorde le glissement des voisins à ce qui l’a provoqué', () => {
+    renderWithProviders(<Notificateur />)
+    const premier = notifier()
+
+    /*
+      LES VOISINS NE BOUGENT JAMAIS POUR EUX-MÊMES. Leur glissement appartient à
+      l'arrivée ou au départ qui l'a causé, et en prend la durée — sans quoi un
+      seul geste se lirait en deux temps, le partant ayant fini de s'effacer quand
+      ses voisins finissent de descendre, ou l'inverse.
+
+      Constat écrit après une MUTATION : supprimer la durée en ligne laissait les
+      six autres cas au vert. Le tempo n'était tenu par rien.
+    */
+    const deuxieme = notifier()
+    expect(coquille(premier).style.transitionDuration, 'une arrivée dure comme `animate-rise`').toBe(
+      '300ms',
+    )
+
+    fireEvent.click(croix(deuxieme))
+    expect(
+      coquille(premier).style.transitionDuration,
+      'un départ dure comme `animate-rise-out`',
+    ).toBe('150ms')
   })
 
   it('garde l’effacement automatique sur le renvoi réel, pas sur la peinture', () => {
