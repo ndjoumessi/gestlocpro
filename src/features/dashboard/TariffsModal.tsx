@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useState, type FormEvent } from 'react'
 import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -112,6 +112,69 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
    * déplacent aucun focus.
    */
   const [aRetirer, setARetirer] = useState<string | null>(null)
+
+  useLayoutEffect(() => {
+    /**
+     * LE FORMULAIRE NAÎT À L'OUVERTURE, ET NON AU MONTAGE.
+     *
+     * `Meters.tsx` montait cette modale SOUS CONDITION —
+     * `{tarifsOuverts && <TariffsModal open …>}` — et fermer la démontait.
+     * Chaque `useState` repartait donc de sa valeur initiale, non parce que la
+     * modale savait se remettre à zéro, mais parce qu'il n'en restait rien. Il
+     * n'y avait aucun défaut à l'écran : le montage faisait en silence le
+     * travail que le composant ne faisait pas, et le `&&` qui le cachait est
+     * exactement ce que la sortie en animation demande de retirer.
+     *
+     * SEPT ÉTATS FUYAIENT, et le pire n'est pas une valeur restée dans un
+     * champ : `enCorrection` change ce que la modale EST. On rouvrait sur un
+     * formulaire prérempli, l'énergie figée sans qu'un mot le justifie, le pied
+     * disant « Corriger ce prix » là où l'on venait en poser un, et le bouton
+     * secondaire ne fermant plus rien — il quitte une correction dont celui qui
+     * rouvre n'a pas connaissance. Un `aRetirer` fuité, lui, rouvrait droit sur
+     * une confirmation de retrait armée.
+     *
+     * RIEN NE SE REMET À ZÉRO À LA FERMETURE, ET C'EST DÉLIBÉRÉ. La modale
+     * reste peinte 150 ms pour sortir : vider le formulaire sur le chemin de la
+     * fermeture ferait regarder partir autre chose que ce qu'on lisait — une
+     * sortie anime un départ, pas une transformation. Un seul point
+     * d'écriture, à l'ouverture ; c'est la règle qu'`InviteModal` a posée pour
+     * le même défaut, et elle vaut ici mot pour mot.
+     *
+     * LA DATE SE RECALCULE, ELLE NE SE RESTAURE PAS. `effet` naît d'un
+     * initialiseur paresseux — le premier du mois COURANT, et l'en-tête du
+     * `useState` dit pourquoi ce jour-là. Rejouer la valeur capturée au montage
+     * tiendrait tous les autres états tout en restant faux : une modale montée
+     * avec la page le 31 août et rouverte le 1er septembre proposerait encore
+     * août, exactement le mois qu'on ne veut pas sur une refacturation
+     * mensuelle. On recalcule donc, on ne restaure pas.
+     *
+     * LES TROIS SETTERS DE `quitterLaCorrection` SONT RÉÉCRITS ICI plutôt
+     * qu'appelés. La fonction est recréée à chaque rendu : la prendre en
+     * dépendance rejouerait cette remise à zéro sur chaque rendu de la modale
+     * ouverte — elle effacerait la saisie en cours — et l'omettre laisserait
+     * une dépendance tue. Les setters, eux, sont stables, et `[open]` est alors
+     * une liste complète.
+     *
+     * ET C'EST POURQUOI CET EFFET EST `useLayoutEffect`. `useEffect` s'exécute
+     * APRÈS la peinture : à la seconde ouverture, le prix, l'énergie et le pied
+     * de la correction d'avant resteraient peints le temps d'une trame. CE
+     * CHANGEMENT N'EST PAS MESURÉ — sous jsdom il n'y a pas de peinture à
+     * observer, et les cas de `secondeOuvertureDesPrix` lisent l'arbre une fois
+     * les effets vidés : ce qu'ils voient ne distingue pas les deux formes
+     * d'effet. La mesure dit une trame ; on agit par prudence non mesurée.
+     *
+     * LA LECTURE DES PRIX RESTE DANS SON PROPRE EFFET, juste en dessous. Elle
+     * part au réseau, et une requête n'a rien à faire avant la peinture.
+     */
+    if (!open) return
+    setUtility('water')
+    setPrix('')
+    setEffet(new Date().toISOString().slice(0, 8) + '01')
+    setErreurPrix(undefined)
+    setEnvoi(false)
+    setEnCorrection(null)
+    setARetirer(null)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
