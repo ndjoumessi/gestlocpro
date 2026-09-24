@@ -409,7 +409,8 @@ export function AppShell() {
   const contentRef = useRef<HTMLDivElement>(null)
 
   /* Le tiroir reste MONTÉ le temps de sortir : 200 ms, la valeur de
-     `--duration-base` que portent `animate-drawer-out` et `animate-voile-out`.
+     `--duration-base` que portent `animate-drawer-out` et
+     `animate-voile-drawer-out` — le voile du TIROIR, qui partage son tempo.
      `tiroirMonte` ne pilote que la présence des nœuds ; tout le reste — la
      fermeture au passage en grand écran, le focus, le lien d'évitement — reste
      accroché à `drawerOpen`. Le focus surtout : le poser sur `tiroirMonte`
@@ -632,7 +633,9 @@ export function AppShell() {
               {...(tiroirSortant ? INERTE : {})}
               className={cn(
                 'fixed inset-0 cursor-default bg-scrim lg:hidden',
-                tiroirSortant ? 'animate-voile-out pointer-events-none' : 'animate-voile-in',
+                tiroirSortant
+                  ? 'animate-voile-drawer-out pointer-events-none'
+                  : 'animate-voile-drawer-in',
               )}
               style={{ zIndex: 'var(--z-overlay)' }}
             />

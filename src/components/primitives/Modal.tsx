@@ -4,6 +4,17 @@ import { cn } from '@/lib/cn'
 import { usePiegeDeFocus } from './piegeDeFocus'
 import { IconButton } from './Button'
 import { useT } from '@/i18n/I18nProvider'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. Le dépôt emploie déjà l'attribut
+   nu, impérativement — `PublicHeader.tsx:173`. En JSX, la forme équivalente est
+   un étalement conditionnel de cet objet. Déclaré ici plutôt qu'importé
+   d'`AppShell` : une primitive ne dépend pas d'une coquille d'application. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
+
+/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+const SORTIE_MS = 150
 
 export interface ModalProps {
   open: boolean
@@ -47,8 +58,13 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const t = useT()
-  // Avant le retour anticipé de `!open` : un crochet ne se saute pas.
+  // Avant le retour anticipé de `!monte` : un crochet ne se saute pas.
   const id = useId()
+
+  /* La modale reste PEINTE le temps de sa sortie, puis se démonte. `monte`
+     commande la présence dans l'arbre, `open` commande tout le reste — voir le
+     piège de focus plus bas, qui garde `open` pour une raison mesurée. */
+  const { monte, sortant } = useSortieDifferee(open, SORTIE_MS)
 
   /*
     RESTE-T-IL QUELQUE CHOSE AU-DESSUS, EN DESSOUS ?
@@ -115,6 +131,18 @@ export function Modal({
     touche reste arrêtée dans les deux cas — sinon elle remonterait à ce qui
     entoure et fermerait l'écran d'à côté.
   */
+  /*
+    ET IL REÇOIT `open`, JAMAIS `monte`. La distinction n'est pas cosmétique :
+
+    — le focus se retient et se rend à l'ouverture et à la FERMETURE réelles,
+      pas sur la durée de peinture. Keyé sur `monte`, le piège garderait la
+      tabulation prisonnière d'une fenêtre qui s'efface, et ne rendrait le focus
+      à l'ouvreur que 150 ms plus tard ;
+    — `verrouillerLeDefilement` restaure `document.body.style.overflow` dans son
+      NETTOYAGE. Sur `monte`, la page resterait bloquée 150 ms après la
+      fermeture — un défilement qui ne répond pas est plus visible qu'un voile
+      qui s'attarde.
+  */
   const renvoyableRef = useRef(dismissible)
   renvoyableRef.current = dismissible
   usePiegeDeFocus(
@@ -126,7 +154,7 @@ export function Modal({
     { verrouillerLeDefilement: true, focusInitial: 'premier-non-bouton' },
   )
 
-  if (!open) return null
+  if (!monte) return null
 
   /*
     LA MODALE EST PORTÉE DANS `document.body`, ET C'EST UN CORRECTIF MESURÉ.
@@ -179,7 +207,17 @@ export function Modal({
         'fixed inset-0 flex items-end justify-center p-0 sm:items-center',
         'sm:pt-6 sm:pb-6',
         'sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]',
+        // Pendant la sortie, la fenêtre n'existe plus que pour l'œil : elle
+        // quitte l'arbre d'accessibilité et cesse de prendre le pointeur. Sans
+        // cela elle resterait 150 ms lisible, tabulable et CLIQUABLE, et les
+        // cas qui affirment l'absence sans attendre — ainsi
+        // `echapDansUneModale.test.tsx:53` — rougiraient.
+        sortant && 'pointer-events-none',
       )}
+      // C'est bien le CONTENEUR qui sort, pas seulement le voile : la boîte de
+      // dialogue en descend, donc une requête par rôle ne la trouve plus.
+      aria-hidden={sortant || undefined}
+      {...(sortant ? INERTE : {})}
       style={{ zIndex: 'var(--z-modal)' }}
     >
       {/* Le voile signale que l'arrière-plan est écarté, pas décoratif. */}
@@ -191,7 +229,12 @@ export function Modal({
         // l'arrière-plan est écarté, ce qui est vrai dans les deux cas. Seul son
         // geste disparaît.
         disabled={!dismissible}
-        className="absolute inset-0 cursor-default bg-scrim"
+        className={cn(
+          'absolute inset-0 cursor-default bg-scrim',
+          // Le voile de la MODALE : 200/150 ms, le tempo de `animate-pop`. Pas
+          // celui du tiroir, qui court en 300/200.
+          sortant ? 'animate-voile-pop-out' : 'animate-voile-pop-in',
+        )}
       />
 
       <div
@@ -205,7 +248,8 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          'animate-pop relative flex max-h-[92dvh] w-full flex-col overflow-hidden',
+          sortant ? 'animate-pop-out' : 'animate-pop',
+          'relative flex max-h-[92dvh] w-full flex-col overflow-hidden',
           'rounded-t-lg border border-divider bg-surface shadow-e3 sm:rounded-lg',
           SIZES[size],
         )}

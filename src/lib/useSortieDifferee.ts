@@ -23,15 +23,15 @@ import { useEffect, useRef, useState } from 'react'
  * course qu'il espère gagner.
  *
  * MAIS `setTimeout` SEUL NE SUFFIT PAS, ET L'APPELANT DOIT PAYER SA PART.
- * Plusieurs cas existants affirment l'ABSENCE immédiatement après la fermeture,
- * sans `waitFor` — ainsi
- * `src/components/primitives/echapDansUneModale.test.tsx:54` :
+ * Des cas existants affirment l'ABSENCE immédiatement après la fermeture, sans
+ * `waitFor`. Le cas TÉMOIN, celui qui a été MESURÉ rouge et non supposé tel, est
+ * `src/features/dashboard/etatDesLieux.test.tsx:128` :
  *
- *     expect(screen.queryAllByRole('option')).toHaveLength(0)
+ *     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
  *
- * Un nœud encore monté 200 ms de plus ferait rougir ces cas, qui n'ont pourtant
+ * Un nœud encore monté 150 ms de plus fait rougir ce cas, qui n'a pourtant
  * découvert aucun défaut. La réponse n'est pas de raccourcir la durée ni de
- * réécrire ces gardes : c'est que PENDANT `sortant`, l'appelant sorte le nœud de
+ * réécrire la garde : c'est que PENDANT `sortant`, l'appelant sorte le nœud de
  * l'arbre d'accessibilité — `aria-hidden`, `inert`, `pointer-events-none`.
  * Testing Library ignore par défaut ce que porte `aria-hidden="true"` : une
  * requête par rôle rend donc `null` dès la fermeture, pendant que les pixels,
@@ -39,6 +39,16 @@ import { useEffect, useRef, useState } from 'react'
  * qui navigue au clavier ; il ne s'attarde que pour l'œil. Un appelant qui
  * oublierait ces attributs ne casserait pas l'animation — il casserait les tests
  * des autres, ce qui est bien plus long à diagnostiquer.
+ *
+ * ET C'EST LE CONTENEUR DU PORTAIL QUI PORTE CES ATTRIBUTS, PAS LE VOILE. La
+ * distinction est la seule chose vraiment piégeuse ici, et elle a déjà coûté un
+ * cycle rouge sur le tiroir : le nœud que la requête par rôle trouve doit
+ * LUI-MÊME quitter l'arbre. Dans `Modal.tsx`, la boîte `role="dialog"` est un
+ * DESCENDANT du conteneur porté par `createPortal` et un FRÈRE du voile.
+ * `aria-hidden` posé sur le voile ne la couvre donc pas — mesuré : la même garde
+ * meurt exactement pareil dans les deux cas, attributs absents ou attributs posés
+ * au mauvais étage. Posés sur le conteneur, ils couvrent tout ce qui pend
+ * dessous, voile et dialogue ensemble.
  *
  * MOUVEMENT RÉDUIT : DÉMONTAGE IMMÉDIAT, `sortant` JAMAIS VRAI. La règle globale
  * de `src/design-system/tokens.css:1163` ramène toute durée d'animation et de
