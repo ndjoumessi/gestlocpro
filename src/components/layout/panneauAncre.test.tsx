@@ -1,5 +1,33 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within } from '@/test/render'
+
+/**
+ * « FERMÉ » SE CONSTATE EN DEUX TEMPS, et ce fichier le fait trois fois.
+ *
+ * Le panneau ne porte aucun RÔLE — c'est une boîte, et lui en donner un la
+ * ferait annoncer comme une fenêtre. Le constat brut par `data-testid` ne
+ * distingue donc pas « le panneau est encore ouvert » de « il finit de
+ * s'effacer, déjà inatteignable » : depuis le lot 005 il s'attarde 150 ms,
+ * peint, en portant `aria-hidden` et `inert` — que `queryByTestId` ignore,
+ * puisqu'il interroge le DOCUMENT et non l'ARBRE D'ACCESSIBILITÉ.
+ *
+ * On lit donc le panneau par son CONTENU : le groupe « Langue », qu'il est seul
+ * à porter à ces largeurs — `menuMobile.test.tsx` le garantit du côté de la
+ * barre, dans « porte les trois réglages, et la barre ne les porte plus ».
+ * Une requête par rôle respecte `aria-hidden`, et ce premier constat
+ * n'existait pas avant ce lot. Le second — que rien ne reste dans le document —
+ * est la garantie d'origine, conservée et simplement attendue.
+ *
+ * Le raisonnement complet est écrit une seule fois, dans
+ * `clavierDesPanneaux.test.tsx`, au-dessus du même changement.
+ */
+const panneauFerme = async () => {
+  expect(
+    screen.queryByRole('group', { name: 'Langue' }),
+    'le panneau fermé est encore dans l’arbre d’accessibilité',
+  ).toBeNull()
+  await waitFor(() => expect(screen.queryByTestId('menu-mobile')).not.toBeInTheDocument())
+}
 
 /**
  * LE PANNEAU DE LA VITRINE, DES DEUX CÔTÉS DU SEUIL.
@@ -130,7 +158,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     const { user } = await ouvrirLesReglages()
     await user.click(screen.getByRole('main'))
 
-    expect(screen.queryByTestId('menu-mobile')).not.toBeInTheDocument()
+    await panneauFerme()
   })
 
   it('rend le focus au déclencheur quand on sort par Échap', async () => {
@@ -139,7 +167,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     const { user, declencheur } = await ouvrirLesReglages()
     await user.keyboard('{Escape}')
 
-    expect(screen.queryByTestId('menu-mobile')).not.toBeInTheDocument()
+    await panneauFerme()
     expect(declencheur).toHaveFocus()
   })
 
@@ -155,7 +183,7 @@ describe('panneau de la vitrine au-delà de lg', () => {
     const { user } = await ouvrirLesReglages()
     await user.click(screen.getByRole('button', { name: 'Fermer les réglages' }))
 
-    expect(screen.queryByTestId('menu-mobile')).not.toBeInTheDocument()
+    await panneauFerme()
   })
 })
 

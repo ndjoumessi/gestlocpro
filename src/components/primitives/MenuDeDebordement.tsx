@@ -10,6 +10,17 @@ import {
 import { cn } from '@/lib/cn'
 import { Icon } from './Icon'
 import { usePiegeDeFocus } from './piegeDeFocus'
+import { useSortieDifferee } from '@/lib/useSortieDifferee'
+
+/* React 18 ne connaît pas `inert` comme propriété JSX : `inert={vrai}` y vaut un
+   avertissement et l'attribut n'est PAS posé. En JSX, la forme équivalente est
+   un étalement conditionnel de cet objet. Déclaré ici plutôt qu'importé
+   d'`AppShell` : une primitive ne dépend pas d'une coquille d'application —
+   c'est le raisonnement de `Modal.tsx:14`, et la même ligne. */
+const INERTE = { inert: '' } as unknown as { inert?: string }
+
+/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+const SORTIE_MS = 150
 
 /**
  * LE MENU DE DÉBORDEMENT — trois points, un panneau, et rien d'autre.
@@ -80,6 +91,12 @@ export function MenuDeDebordement({
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
   const panneau = useRef<HTMLDivElement>(null)
+
+  /* Le panneau reste PEINT le temps de sa sortie, puis se démonte. `monte`
+     commande la présence dans l'arbre, `ouvert` commande tout le reste — le
+     piège de focus et la mesure de renversement plus bas gardent `ouvert`, et
+     la raison est écrite à chacun des deux. */
+  const { monte, sortant } = useSortieDifferee(ouvert, SORTIE_MS)
   /**
    * LE PANNEAU SE RENVERSE QUAND IL N'A PAS LA PLACE DE TOMBER.
    *
@@ -112,16 +129,27 @@ export function MenuDeDebordement({
    */
   const [versLeHaut, setVersLeHaut] = useState(false)
   useLayoutEffect(() => {
-    if (!ouvert) {
+    /*
+      LA REMISE À ZÉRO SUIT LE DÉMONTAGE, PAS LA FERMETURE.
+
+      Écrite sur `!ouvert`, elle retournait le panneau PENDANT sa sortie : à
+      l'image où on le ferme, il sautait de `bottom-full` à `top-full` — donc
+      d'au-dessus du déclencheur à en dessous — puis s'effaçait depuis le
+      mauvais bord. Sur `!monte`, elle a lieu quand il n'y a plus rien à
+      peindre, et l'ouverture suivante repart bien de la position par défaut que
+      la mesure ci-dessous corrige aussitôt.
+    */
+    if (!monte) {
       setVersLeHaut(false)
       return
     }
+    if (!ouvert) return
     const p = panneau.current
     if (!p) return
     const barre = document.querySelector('[data-barre-basse]')
     const recouvert = barre ? barre.getBoundingClientRect().height : 0
     setVersLeHaut(p.getBoundingClientRect().bottom > window.innerHeight - recouvert)
-  }, [ouvert])
+  }, [ouvert, monte])
 
   /* `focusInitial: 'premier'` : le panneau ne contient QUE des commandes, la
      première est donc la bonne première étape. C'est le même réglage que le
@@ -166,7 +194,7 @@ export function MenuDeDebordement({
         <Icon name="more" size={18} />
       </button>
 
-      {ouvert && (
+      {monte && (
         <div
           role="menu"
           aria-label={libelle}
@@ -174,9 +202,26 @@ export function MenuDeDebordement({
              lui-même collant. Le barreau est celui des panneaux ancrés du
              dépôt, et `altitudes.test.ts` refuse tout niveau écrit à la main. */
           ref={panneau}
-          style={{ zIndex: 'var(--z-popover)' }}
+          /*
+            L'ORIGINE SUIT LE RENVERSEMENT, ce qui est toute la raison d'écrire
+            une origine ici. `gl-pop` n'en pose aucune : le panneau grandissait
+            depuis son propre CENTRE, donc depuis nulle part. Ancré à droite, il
+            part du coin haut-droit quand il tombe et du coin bas-droit quand il
+            se renverse — dans les deux cas du déclencheur, qui est juste là.
+          */
+          style={{
+            zIndex: 'var(--z-popover)',
+            transformOrigin: versLeHaut ? 'bottom right' : 'top right',
+          }}
+          // Pendant la sortie, le menu n'existe plus que pour l'œil : il quitte
+          // l'arbre d'accessibilité et cesse de prendre le pointeur. Sans cela
+          // il resterait 150 ms lisible, tabulable et CLIQUABLE — un menu qui
+          // s'en va retiendrait le focus et avalerait le clic suivant.
+          aria-hidden={sortant || undefined}
+          {...(sortant ? INERTE : {})}
           className={cn(
-            'animate-pop absolute right-0 flex w-64 max-w-[calc(100vw-2.5rem)] flex-col gap-1',
+            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+            'absolute right-0 flex w-64 max-w-[calc(100vw-2.5rem)] flex-col gap-1',
             'rounded-md border border-border bg-paper p-2 shadow-lg',
             /* Le renversement ne change QUE l'ancrage vertical : la marge suit
                le sens, sans quoi le panneau collerait au déclencheur d'un côté

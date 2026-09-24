@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { renderApp, screen, userEvent, waitFor, within } from '@/test/render'
 
 /**
  * LA LARGEUR QUE CES CAS ÉPROUVENT, déclarée plutôt que supposée.
@@ -121,7 +121,19 @@ describe('menu mobile de la vitrine', () => {
 
     await user.keyboard('{Escape}')
 
-    expect(screen.queryByTestId('menu-mobile')).not.toBeInTheDocument()
+    /* « Fermé » se constate en DEUX temps : l'arbre d'accessibilité d'abord,
+       le document ensuite — le panneau s'attarde 150 ms pour sortir, et
+       `queryByTestId` ne sait pas voir l'`aria-hidden` qui l'a déjà rendu
+       inatteignable. Le raisonnement complet est dans
+       `clavierDesPanneaux.test.tsx`. Ici, le panneau se lit par le groupe
+       « Langue », que le cas « porte les trois réglages, et la barre ne les
+       porte plus » ci-dessus prouve absent de la barre. */
+    expect(
+      screen.queryByRole('group', { name: 'Langue' }),
+      'le panneau fermé est encore dans l’arbre d’accessibilité',
+    ).toBeNull()
+    await waitFor(() => expect(screen.queryByTestId('menu-mobile')).not.toBeInTheDocument())
+
     expect(declencheur).toHaveFocus()
     expect(screen.getByRole('main')).not.toHaveAttribute('inert')
   })

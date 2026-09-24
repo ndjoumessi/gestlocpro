@@ -40,6 +40,17 @@ import { CadreDuParc } from '@/components/feedback/CadreDuParc'
    un étalement conditionnel de cet objet. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
+/**
+ * Durée de sortie des deux PANNEAUX ANCRÉS de la barre, en miroir de
+ * `animate-pop-out` (`--duration-fast`).
+ *
+ * Ce n'est PAS le tempo du tiroir, qui court en 300/200 (`:418`) : un panneau
+ * de 256 px qui traverserait la même durée qu'un tiroir pleine hauteur
+ * paraîtrait lent. La durée passée au crochet doit refléter l'animation
+ * réellement posée sur le nœud, et il n'y en a qu'une ici.
+ */
+const SORTIE_PANNEAU_MS = 150
+
 
 /* -------------------------------------------------------------------------- */
 /* Rôle actif — pilote ce que la barre latérale montre et ce que les écrans
@@ -1543,10 +1554,18 @@ function MenuReglages() {
     `verrouillerLeDefilement: false` : un panneau ancré à son bouton n'arrête
     pas la page derrière lui. Une modale le fait ; celui-ci n'en est pas une.
   */
+  /* ET IL REÇOIT `ouvert`, JAMAIS `monte` — même distinction que dans la
+     modale : le focus se retient et se rend aux ouvertures et fermetures
+     RÉELLES, pas sur la durée de peinture. Keyé sur `monte`, le piège garderait
+     la tabulation prisonnière d'un panneau qui s'efface et ne rendrait le focus
+     au déclencheur que 150 ms plus tard. */
   usePiegeDeFocus(ouvert, boite, () => setOuvert(false), {
     fermerAuClicExterieur: true,
     focusInitial: 'premier',
   })
+
+  /* Le panneau reste PEINT le temps de sa sortie, puis se démonte. */
+  const { monte, sortant } = useSortieDifferee(ouvert, SORTIE_PANNEAU_MS)
 
   return (
     <div className="relative" ref={boite}>
@@ -1566,16 +1585,27 @@ function MenuReglages() {
         data-declencheur-reglages=""
       />
 
-      {ouvert && (
+      {monte && (
         <div
           role="dialog"
           aria-label={t('nav.settings')}
-          style={{ zIndex: 'var(--z-popover)' }}
+          /* `right-0` + `mt-2` : ancré sous son bouton, aligné à droite. Il ne
+             se renverse pas — la barre est en haut de l'écran — donc l'origine
+             est fixe, et c'est le coin haut-droit. Sans elle, `gl-pop` le
+             faisait grandir depuis son centre. */
+          style={{ zIndex: 'var(--z-popover)', transformOrigin: 'top right' }}
+          // Pendant la sortie, le panneau n'existe plus que pour l'œil : il
+          // quitte l'arbre d'accessibilité et cesse de prendre le pointeur.
+          aria-hidden={sortant || undefined}
+          {...(sortant ? INERTE : {})}
           /* `w-max` plutôt qu'une largeur fixe : le panneau prenait 256 px quel
              que soit son contenu, ce qui serrait le libellé de la devise en
              anglais et laissait du vide en français. La liste réclame ce qu'il
              lui faut, entre un plancher lisible et le filet du bord d'écran. */
-          className="absolute right-0 mt-2 w-max min-w-60 max-w-[calc(100vw-2.5rem)] rounded-md border border-border bg-paper p-4 shadow-lg"
+          className={cn(
+            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+            'absolute right-0 mt-2 w-max min-w-60 max-w-[calc(100vw-2.5rem)] rounded-md border border-border bg-paper p-4 shadow-lg',
+          )}
         >
           {/* TROIS SECTIONS ÉCRITES À LA MAIN EN MOINS. Elles portaient chacune
               leur intitulé en capitales au-dessus de sa commande, et l'avis de
@@ -1698,10 +1728,16 @@ function MenuCompte() {
     focalisable puis un bouton de déconnexion. Le premier focalisable est donc
     ce bouton, et c'est la bonne première étape.
   */
+  /* `ouvert` et non `monte`, pour les raisons écrites au panneau des réglages :
+     un menu qui s'en va ne doit plus retenir le focus. */
   usePiegeDeFocus(ouvert, boite, () => setOuvert(false), {
     fermerAuClicExterieur: true,
     focusInitial: 'premier',
   })
+
+  /* Le menu reste PEINT le temps de sa sortie, puis se démonte. Avant le retour
+     anticipé de `!connecte` : un crochet ne se saute pas. */
+  const { monte, sortant } = useSortieDifferee(ouvert, SORTIE_PANNEAU_MS)
 
   if (etat.statut !== 'connecte') return null
 
@@ -1738,14 +1774,26 @@ function MenuCompte() {
         {initiales(nom)}
       </button>
 
-      {ouvert && (
+      {monte && (
         <>
           <div
             // Troisième site du même 50 écrit à la main, et le même remède : un
             // menu ancré à son bouton est un panneau flottant, il se nomme
             // comme les deux autres.
-            style={{ zIndex: 'var(--z-popover)' }}
-            className="absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg"
+            /* `right-0` + `mt-2` : ancré sous l'avatar, aligné à droite, et sans
+               renversement possible — origine fixe au coin haut-droit. Ce menu
+               n'avait AUCUNE entrée : il apparaissait d'une image pendant que
+               le menu de débordement, lui, grandissait. */
+            style={{ zIndex: 'var(--z-popover)', transformOrigin: 'top right' }}
+            /* C'est bien la BOÎTE qui sort, et pas le seul `role="menu"`
+               qu'elle contient : le pavé d'identité en descend aussi, et une
+               requête par rôle cherche le menu, qui pend dessous. */
+            aria-hidden={sortant || undefined}
+            {...(sortant ? INERTE : {})}
+            className={cn(
+              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              'absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg',
+            )}
           >
             {/*
               L'IDENTITÉ EST SORTIE DU `role="menu"`, ET C'EST TOUT LE LOT.
