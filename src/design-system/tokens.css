@@ -754,10 +754,24 @@
    flotter le bandeau 64 px au-dessus du bord sur tout écran de bureau — ou
    obligé JavaScript à redire le point de rupture, qui aurait alors dérivé.
 
-   4rem — la barre mesurée, libellés sur deux lignes compris — est ici et nulle
-   part ailleurs. `main` réservait la même valeur en toutes lettres à deux
-   points de rupture, sans que rien ne relie les deux écritures ni ne les
-   expose au bandeau. */
+   4rem est ici et nulle part ailleurs : `main` réservait la même valeur en
+   toutes lettres à deux points de rupture, sans que rien ne relie les deux
+   écritures ni ne les expose au bandeau.
+
+   CE QUE CES 4 REM COUVRENT — la raison écrite ici avait vieilli. Elle disait
+   « la barre mesurée, libellés sur deux lignes compris ». Les libellés sont
+   d'un mot court depuis qu'ils passent par `shortLabelKey`, et
+   `libellesDeLaBarreBasse.test.tsx` les y tient ; aucun ne passe à la ligne.
+
+   MESURÉ LE 2026-09-25 sur le paquet servi, à 320, 360, 375 et 414 px, dans les
+   deux langues : barre à 60 px partout, tous les libellés sur UNE ligne, aucun
+   débordement. Le nombre reste donc juste — quatre pixels de marge —, c'est sa
+   justification qui était fausse.
+
+   Ce qu'il couvre est la barre d'UNE ligne. Un libellé qui repasserait à deux
+   ajouterait les 15 px de sa seconde ligne, soit 75 : au-delà de la réserve, et
+   rien ne le dirait — le contenu passerait sous la barre. La marge est mince et
+   assumée ; c'est ce nombre-ci qu'il faut relever si les libellés s'allongent. */
 :root {
   --h-barre-basse-montee: 4rem;
   --h-barre-basse: 0px;

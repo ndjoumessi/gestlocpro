@@ -117,7 +117,7 @@ e1  0 1px 2px rgba(20,32,30,.04), 0 6px 18px -12px rgba(20,32,30,.10)   cartes
 e2  0 2px 6px rgba(20,32,30,.06), 0 12px 32px -16px rgba(20,32,30,.16)  popovers
 e3  0 8px 24px rgba(20,32,30,.12), 0 32px 64px -24px rgba(20,32,30,.28) modales
 motion  fast 150 · base 200 · slow 300 ; ease-out entrée ET sortie (~70 %), ease-in-out sur place
-z       base 0 · sticky 20 · dropdown 40 · overlay 60 · modal 70 · toast 100
+z       base 0 · sticky 20 · dropdown 40 · overlay 60 · modal 70 · popover 80 · toast 100
 touch   cible minimale 44×44, écart minimal 8
 ```
 
