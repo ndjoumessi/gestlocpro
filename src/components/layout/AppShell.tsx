@@ -2127,7 +2127,17 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
            silence. Voir `renversementDuMenu`. */
         'fixed inset-x-0 bottom-0 grid grid-flow-col auto-cols-fr items-stretch gap-1 lg:hidden',
         'border-t border-border bg-paper',
-        'pt-1 pb-[calc(0.25rem+env(safe-area-inset-bottom))]',
+        /* `pt-2` CONTRE `pb-1`, et l'asymétrie est voulue deux fois. D'abord
+           parce qu'une barre ancrée au bord doit s'écarter du trait qui la
+           sépare du contenu plus qu'elle ne s'écarte du bord physique, qui n'a
+           pas de trait. Ensuite parce que la pastille de compte se pose au coin
+           haut de la cible : à `pt-1`, elle affleurait le `border-t` au pixel
+           près — mesuré, son bord haut tombait exactement sur la bordure. Les
+           quatre pixels lui rendent son air.
+
+           Mesuré après : barre à 60 px, contre les 64 que `--h-barre-basse-montee`
+           réserve. */
+        'pt-2 pb-[calc(0.25rem+env(safe-area-inset-bottom))]',
         'pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]',
       )}
       style={{ zIndex: 'var(--z-sticky)' }}
@@ -2144,18 +2154,109 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
       <button
         type="button"
         onClick={onOpenDrawer}
-        className={cn(
-          'flex min-h-11 cursor-pointer flex-col items-center justify-center gap-0.5',
-          'rounded-md px-1 text-muted transition-colors duration-150',
-          'hover:bg-surface-sunken hover:text-ink',
-        )}
+        className={CIBLE_DE_PLUS}
       >
-        <Icon name="menu" size={19} />
+        {/* Le même gabarit que ses quatre voisines, pastille comprise : elle ne
+            s'allume jamais — « Plus » n'est pas une destination et ne peut donc
+            pas être l'entrée courante — mais elle porte le survol et
+            l'enfoncement, sans quoi la cinquième cible serait la seule muette au
+            doigt. */}
+        <span className={cn(PASTILLE, 'group-hover:bg-surface-sunken')}>
+          <Icon name="menu" size={TAILLE_DU_GLYPHE} />
+        </span>
         <span className="text-label leading-tight">{t('nav.more')}</span>
       </button>
     </nav>
   )
 }
+
+/*
+  LE GABARIT D'UNE CIBLE DE LA BARRE BASSE, écrit une fois pour les cinq.
+
+  Les quatre destinations et « Plus » ne sont pas la même chose — quatre liens et
+  un bouton qui déplie — mais l'œil les lit comme une seule rangée, et une rangée
+  dont un élément a l'icône plus petite ou l'enfoncement plus mou se voit tout de
+  suite. Le gabarit est donc partagé, et seul l'état actif distingue.
+
+  `group` : l'enfoncement et le survol se peignent sur la PASTILLE, à l'intérieur,
+  alors que l'événement arrive sur la cible entière. Sans le groupe, presser le
+  libellé n'enfoncerait rien.
+*/
+const CIBLE_DE_BARRE = cn(
+  // 44 px de haut minimum, et la colonne donne la largeur : c'est le plancher de
+  // cible tactile, sous lequel on tape à côté.
+  'group flex min-h-11 cursor-pointer flex-col items-center justify-center gap-0.5',
+  'rounded-md px-1 text-center no-underline transition-colors duration-150',
+)
+
+/**
+ * La pastille qui porte l'icône, et qui porte aussi l'état.
+ *
+ * ── POURQUOI UNE PASTILLE, ET PLUS UN FILET ─────────────────────────────────
+ *
+ * L'entrée courante se signalait par `shadow-[inset_0_2px_0_…]`, un filet de 2 px
+ * au sommet de la cible. Mesuré à 375 px : ce filet tombait 4 px sous le
+ * `border-t` de la barre, donc DEUX traits horizontaux parallèles, de largeurs
+ * différentes, à quatre pixels l'un de l'autre. Le second se lisait comme un
+ * défaut de rendu plutôt que comme un repère.
+ *
+ * Et un trait de 2 px est ce qui disparaît le premier en plein soleil sur un
+ * écran bon marché — c'est-à-dire exactement la condition d'usage que ce produit
+ * se donne. Une SURFACE pleine tient là où une ligne fine s'efface : ce n'est pas
+ * une question de teinte mais d'aire.
+ *
+ * ── POURQUOI L'ENCRE, ET PAS L'ACCENT ───────────────────────────────────────
+ *
+ * `--color-accent` est déclaré « L'ACTION : fond de bouton » dans `tokens.css`.
+ * Une pastille d'accent dans la navigation emprunterait la couleur du geste pour
+ * dire un ÉTAT, et entrerait en concurrence avec le bouton principal de l'écran —
+ * « Enregistrer un paiement » est à l'accent, à 400 px de là.
+ *
+ * L'encre n'est pas un choix neuf : `LanguageSwitcher` marque déjà de cette
+ * façon l'option retenue parmi ses pairs (`bg-ink text-on-dark` en clair). Une
+ * barre d'onglets est le même problème — choisir un élément dans une rangée — et
+ * reçoit donc la même réponse. C'est aussi le repère le plus robuste qui soit
+ * pour un daltonien : la différence est de LUMINANCE, pas de teinte.
+ *
+ * ── CE QUI N'A PAS CHANGÉ ───────────────────────────────────────────────────
+ *
+ * L'entrée courante se signale toujours TROIS fois : `aria-current` que `NavLink`
+ * pose seul, la pastille, et la graisse du libellé. La couleur seule ne se lit ni
+ * dehors ni pour un daltonien, et ce lot ne retire aucun des trois — il remplace
+ * le plus faible des repères visuels par le plus fort.
+ */
+const PASTILLE = cn(
+  'relative flex items-center justify-center rounded-full px-3 py-1',
+  /*
+    L'ENFONCEMENT EST UNE MISE À L'ÉCHELLE, et non le `active:translate-y-px` des
+    boutons. Ces derniers sont des surfaces peintes posées dans le flux : les
+    descendre d'un pixel se lit. Une cible de barre basse est déjà collée au bord
+    inférieur de l'écran, et un pixel de plus vers le bas n'a nulle part où aller
+    — le geste ne se verrait pas. La pastille se resserre à la place, ce qui est
+    le retour que la règle demande : l'interface a entendu.
+  */
+  'transition-[background-color,color,transform] duration-150 ease-out',
+  'group-active:scale-95',
+)
+
+/** Le glyphe passe de 19 à 22 px : voir `PASTILLE`, même raison d'aire. */
+const TAILLE_DU_GLYPHE = 22
+
+/**
+ * Les classes de « Plus », assemblées ici et NON dans la balise.
+ *
+ * `cibles.test.ts` refuse un `className={cn(…)}` qui ne montre pas son plancher
+ * de 44 px : `cn` ne délègue rien, il fusionne des classes écrites sous les yeux
+ * du lecteur, et une cible dont le plancher vit ailleurs échappait à la règle.
+ * L'exception que la garde prévoit est la DÉLÉGATION À UN NOM — le précédent est
+ * `controlClasses()` de `Field.tsx`, qui porte le plancher de tous les champs.
+ * C'est exactement le cas ici : la géométrie n'est pas l'affaire de ce bouton,
+ * elle est celle du gabarit que ses quatre voisines partagent.
+ *
+ * Les liens, eux, échappent à la garde pour une raison qui n'est pas la nôtre :
+ * son motif ne reconnaît que `<button`, `<Link` et `<a`, jamais `<NavLink`.
+ */
+const CIBLE_DE_PLUS = cn(CIBLE_DE_BARRE, 'text-muted hover:text-ink')
 
 function BottomLink({ item }: { item: NavItem }) {
   const t = useT()
@@ -2169,31 +2270,35 @@ function BottomLink({ item }: { item: NavItem }) {
       to={lien(base, item.to)}
       end={item.to === ''}
       className={({ isActive }) =>
-        cn(
-          // 44 px de haut minimum, et la colonne donne la largeur : c'est le
-          // plancher de cible tactile, sous lequel on tape à côté.
-          'flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-md px-1',
-          'text-center no-underline transition-colors duration-150',
-          // L'entrée courante se signale TROIS fois : `aria-current` que
-          // `NavLink` pose seul, un filet doré au-dessus de la cible, et la
-          // graisse du libellé. La couleur seule ne se lit ni en plein soleil
-          // ni pour un daltonien — et c'est précisément dehors, sur un écran
-          // bon marché, que ce produit est utilisé.
-          isActive
-            ? 'font-semibold text-ink shadow-[inset_0_2px_0_var(--color-accent)]'
-            : 'text-muted hover:bg-surface-sunken hover:text-ink',
-        )
+        cn(CIBLE_DE_BARRE, isActive ? 'font-semibold text-ink' : 'text-muted hover:text-ink')
       }
     >
+      {({ isActive }) => (
+        <>
       {/* Icône ET libellé : une barre en icônes seules se devine, elle ne se
           lit pas — et le vocabulaire métier (« relevés », « cautions ») n'a
           aucun pictogramme évident. */}
-      <span className="relative">
-        <Icon name={item.icon} size={19} />
+      <span
+        className={cn(
+          PASTILLE,
+          isActive ? 'bg-ink text-on-dark' : 'group-hover:bg-surface-sunken',
+        )}
+      >
+        <Icon name={item.icon} size={TAILLE_DU_GLYPHE} />
         {valeur > 0 && item.badge && (
+          /* ANCRÉ SUR LA PASTILLE, et non plus sur le glyphe : sa place ne
+             dépend donc pas de l'état, et il ne vient pas se poser SUR l'encre
+             quand l'entrée est celle qu'on regarde. */
           <Badge
             tone={item.badge.tone}
-            className="absolute -top-1.5 -right-2.5 px-1 py-0 leading-tight"
+            /* `ring-2 ring-paper` : un halo de la couleur de la barre, pour que
+               la pastille de compte se lise comme un objet POSÉ par-dessus et
+               non comme une morsure dans ce qu'elle recouvre. Sans lui, sur
+               l'entrée courante, le fond clair du compte découpait un cran dans
+               l'encre de la pastille — visible d'un coup d'œil sur la capture.
+               Le halo vaut pour les deux états, ce qui évite d'avoir à traiter
+               l'actif à part. */
+            className="absolute -top-1 -right-1 px-1 py-0 leading-tight ring-2 ring-paper"
           >
             {valeur}
           </Badge>
@@ -2247,6 +2352,8 @@ function BottomLink({ item }: { item: NavItem }) {
       >
         {label}
       </span>
+        </>
+      )}
     </NavLink>
   )
 }
