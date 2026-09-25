@@ -119,14 +119,54 @@ function routesInternes(tousLesRoles) {
 
   for (const m of source.matchAll(/<Route\s+path="([^"]+)"([\s\S]*?)\/>\s*(?:\n|$)/g)) {
     const [, chemin, corps] = m
-    const garde = corps.match(/<(?:Restricted|Locataire)\s+adresse="([^"]+)"/)
+    /*
+      LE GARDE SE RECONNAÎT À SA FORME, PLUS À SON NOM.
+
+      Le motif énumérait `Restricted|Locataire`. La liste était juste — ce sont
+      les deux seules enveloppes de rôles du produit —, mais une TROISIÈME serait
+      tombée dans la branche du dessous, celle qui ouvre à tous les rôles, et
+      cette route se serait annoncée publique sans un mot. C'est la forme de
+      défaut trouvée le 2026-09-25 dans `cibles.test.ts`, où `<NavLink` manquait à
+      une énumération de balises : une liste qui décide de ce qui est CONTRÔLÉ, et
+      qu'une graphie absente traverse en silence.
+
+      Ce qui fait un garde n'est pas de s'appeler `Restricted`, c'est de DÉCLARER
+      UNE ADRESSE — celle que `ROLES_PAR_ADRESSE` sait résoudre. On lit donc cela.
+      Le nom reste non capturé : `garde[1]` est l'adresse, comme avant.
+    */
+    const garde = corps.match(/<[A-Z]\w*\s+adresse="([^"]+)"/)
     const vitrine = /<Vitrine[\s>]/.test(corps)
+    const composants = [...corps.matchAll(/<([A-Z]\w*)/g)].map(([, nom]) => nom)
 
     if (garde && !table.has(garde[1])) {
       throw new Error(
         `routes : la route « ${chemin} » est gardée sur l'adresse « ${garde[1]} », que ` +
           "`ROLES_PAR_ADRESSE` ne connaît pas. Un écran absent de la table n'ouvre à personne " +
           "dans le produit, et s'annoncerait ouvert à TOUS ici.",
+      )
+    }
+
+    /*
+      FERMÉ PAR DÉFAUT, et c'est la moitié qui compte.
+
+      Lire le garde par sa forme couvre l'enveloppe qui suit la convention. Reste
+      celle qui ne la suivrait pas — un garde sans `adresse`, un `Vitrine`
+      renommé : sans ce refus, elle retomberait encore silencieusement sur « tous
+      les rôles ». Or le défaut d'une lecture de gardes ne doit jamais être
+      OUVERT ; entre se taire et refuser, une garde refuse.
+
+      Le signe d'une enveloppe est structurel : le corps d'une `element=` porte
+      UN composant quand c'est un écran nu, DEUX quand quelque chose l'entoure.
+      Aucune autre forme n'existe dans ce fichier — vérifié sur les dix-neuf
+      routes.
+    */
+    if (!garde && !vitrine && composants.length > 1) {
+      throw new Error(
+        `routes : la route « ${chemin} » est enveloppée dans <${composants[0]}>, que cette ` +
+          "lecture ne connaît pas. Un garde se déclare par `adresse=\"…\"` et la démonstration " +
+          'par `<Vitrine>` ; sans l\'un des deux, impossible de dire à qui cet écran est ouvert. ' +
+          "Ajouter l'attribut, ou enseigner l'enveloppe ici — mais pas la laisser passer pour " +
+          'un écran ouvert à tous les rôles.',
       )
     }
 
