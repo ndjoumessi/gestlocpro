@@ -123,6 +123,34 @@ export async function servirLaPrevisualisation(nom, port) {
   process.once('SIGINT', emporter)
   process.once('SIGTERM', emporter)
 
+  /*
+    LE FILS MEURT AVEC SON PÈRE, QUEL QUE SOIT LE CHEMIN DE SORTIE.
+
+    Les deux signaux ci-dessus couvraient l'interruption au clavier. Ils ne
+    couvraient PAS le cas courant : une sonde dont le corps échoue. Node sort
+    alors normalement — le rejet d'un `await` de premier niveau suffit —, mais
+    personne n'a tué `vite preview`, qui SURVIT à son parent et garde le port.
+
+    REPRODUIT le 2026-09-25 avant d'écrire ce correctif : une sonde qui lève
+    juste après avoir obtenu le serveur laisse le port tenu, node ayant déjà
+    rendu la main. Deux orphelins de ce genre tenaient 4322 et 4323 depuis douze
+    heures ; c'est aussi ce que `port-libre.mjs` appelle « un orphelin d'un
+    passage interrompu » dans son message de refus, sans jamais dire d'où il
+    vient.
+
+    `exit` attrape TOUS les chemins — fin normale, exception non rattrapée,
+    `process.exit()` explicite — et il ne peut rien faire d'asynchrone, ce qui
+    tombe bien : `kill` est synchrone. Le `catch` couvre le fils déjà mort, qui
+    n'est pas une erreur.
+  */
+  process.once('exit', () => {
+    try {
+      fils.kill()
+    } catch {
+      /* déjà parti */
+    }
+  })
+
   if (await attendreUneReponse(base)) return fils
 
   fils.kill()
