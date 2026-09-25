@@ -97,6 +97,38 @@ export interface AdresseDeLecture {
 export type TypeImage = 'image/jpeg' | 'image/png' | 'image/webp'
 
 /**
+ * Ce qui n'est PAS une image et qu'on sert tout de même.
+ *
+ * Le dépôt ne gardait que des photos de réserve. Une pièce fournie par le
+ * gestionnaire est normalement un PDF — un scan d'attestation, une quittance
+ * reçue d'ailleurs —, et la refuser reviendrait à demander qu'on la
+ * PHOTOGRAPHIE, ce qui est une pièce de moins bonne qualité pour le même
+ * stockage.
+ *
+ * CE TYPE EST SÉPARÉ DE `TypeImage`, ET CE N'EST PAS DU RANGEMENT. Ce qui suit
+ * n'est pas affichable en ligne sans conséquence : un PDF rendu par le
+ * visualiseur du navigateur exécute SON PROPRE JavaScript, dans le contexte de
+ * l'origine qui le sert. Une image, non. Les deux familles ne se servent donc
+ * pas de la même façon, et le type le dit avant que quiconque l'oublie — voir
+ * `enPieceJointe` et l'en-tête `Content-Disposition` de `stockage/routes.ts`.
+ */
+export type TypeDocument = 'application/pdf'
+
+/** Tout ce que le dépôt sait reconnaître, image ou non. */
+export type TypeServi = TypeImage | TypeDocument
+
+/**
+ * Ce type doit-il être TÉLÉCHARGÉ plutôt qu'affiché ?
+ *
+ * La question se pose une fois, ici, et non à chaque route : une famille qui
+ * s'ajouterait sans passer par cette fonction serait servie en ligne par
+ * défaut, c'est-à-dire du mauvais côté du choix.
+ */
+export function enPieceJointe(type: TypeServi): boolean {
+  return type === 'application/pdf'
+}
+
+/**
  * Le refus porte un MOTIF, et l'appelant doit le regarder.
  *
  * Rendre `null` en cas de refus aurait suffi à ne pas mentir, mais l'écran ne
@@ -104,7 +136,7 @@ export type TypeImage = 'image/jpeg' | 'image/png' | 'image/webp'
  * réduire sa photo ou en choisir une autre.
  */
 export type Confirmation =
-  | { accepte: true; cle: string; octets: number; typeMime: TypeImage }
+  | { accepte: true; cle: string; octets: number; typeMime: TypeServi }
   | { accepte: false; motif: MotifDeRefus }
 
 export type MotifDeRefus =
@@ -217,8 +249,14 @@ export function verifierLaCle(cle: string): void {
  * illisible pour qui l'ouvre depuis autre chose qu'un appareil Apple. Le refus
  * tombe ici, au dépôt, où l'utilisateur peut encore reprendre la photo, plutôt
  * qu'à l'affichage, des mois plus tard.
+ *
+ * LE PDF EST ENTRÉ LE 2026-09-25, et il n'entre pas comme les autres. Les trois
+ * images se servent en ligne sans risque ; lui non — voir `TypeDocument`. Le
+ * reconnaître ICI ne suffit donc pas à le rendre sûr : c'est `enPieceJointe`,
+ * lue par la route qui sert les octets, qui fait le reste du travail. Les deux
+ * vont ensemble, et l'une sans l'autre est un défaut de sécurité.
  */
-export function typeDesOctets(entete: Uint8Array): TypeImage | null {
+export function typeDesOctets(entete: Uint8Array): TypeServi | null {
   const a = (i: number, v: number) => entete[i] === v
 
   if (a(0, 0xff) && a(1, 0xd8) && a(2, 0xff)) return 'image/jpeg'
@@ -231,6 +269,10 @@ export function typeDesOctets(entete: Uint8Array): TypeImage | null {
   const texte = (debut: number, attendu: string) =>
     attendu.split('').every((c, i) => entete[debut + i] === c.charCodeAt(0))
   if (texte(0, 'RIFF') && texte(8, 'WEBP')) return 'image/webp'
+
+  // « %PDF- ». La version qui suit (1.4, 1.7, 2.0) ne change rien à ce qu'on en
+  // fait : le fichier est servi en pièce jointe quelle qu'elle soit.
+  if (texte(0, '%PDF-')) return 'application/pdf'
 
   return null
 }

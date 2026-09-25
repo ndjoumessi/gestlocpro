@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { StockageLocal } from './local.js'
 import { choisirLeStockage, leStockage, remplacerStockage } from './stockage.js'
 import {
+  enPieceJointe,
   typeDesOctets,
   type AdresseDeLecture,
   type Confirmation,
@@ -108,5 +109,32 @@ describe('la lecture du type dans les octets', () => {
   it('ne se laisse pas prendre par une entête tronquée', () => {
     expect(typeDesOctets(new Uint8Array([0xff, 0xd8]))).toBeNull()
     expect(typeDesOctets(new Uint8Array(0))).toBeNull()
+  })
+
+  /*
+    LE PDF, ET LA MOITIÉ QUI LE REND SÛR.
+
+    Il est entré le 2026-09-25 pour les pièces fournies par le gestionnaire : un
+    scan d'attestation est un PDF, et le refuser revenait à demander qu'on le
+    photographie. Mais il ne se sert PAS comme une image — le visualiseur du
+    navigateur exécute le JavaScript qu'un PDF contient, dans le contexte de
+    l'origine qui le sert.
+
+    Les deux cas ci-dessous vont donc ensemble, et c'est pour cela qu'ils sont
+    écrits l'un sous l'autre : reconnaître sans télécharger serait un défaut de
+    sécurité, pas une fonctionnalité.
+  */
+  it('reconnaît un PDF à sa signature', () => {
+    const pdf = new Uint8Array(16)
+    pdf.set([...'%PDF-1.7'].map((c) => c.charCodeAt(0)), 0)
+
+    expect(typeDesOctets(pdf)).toBe('application/pdf')
+  })
+
+  it('range le PDF parmi ce qui se télécharge, et les images parmi ce qui s’affiche', () => {
+    expect(enPieceJointe('application/pdf'), 'un PDF ne s’affiche pas en ligne').toBe(true)
+    expect(enPieceJointe('image/jpeg')).toBe(false)
+    expect(enPieceJointe('image/png')).toBe(false)
+    expect(enPieceJointe('image/webp')).toBe(false)
   })
 })

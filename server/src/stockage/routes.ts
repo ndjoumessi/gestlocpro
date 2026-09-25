@@ -1,6 +1,6 @@
 import express, { Router, type ErrorRequestHandler, type Request, type Response } from 'express'
 import { z } from 'zod'
-import { PLAFOND_PAR_OBJET_OCTETS, typeDesOctets } from './contrat.js'
+import { PLAFOND_PAR_OBJET_OCTETS, enPieceJointe, typeDesOctets } from './contrat.js'
 import { StockageLocal } from './local.js'
 import { leStockage } from './stockage.js'
 
@@ -159,6 +159,28 @@ stockageLocalRouter.get('/:cle', async (req: Request, res: Response) => {
   // `nosniff` : le navigateur ne doit pas ré-interpréter ce que nous venons de
   // reconnaître. Sans lui, notre lecture d'entête serait une opinion parmi deux.
   res.setHeader('X-Content-Type-Options', 'nosniff')
+  /*
+    CE QUI N'EST PAS UNE IMAGE SE TÉLÉCHARGE, ET NE S'AFFICHE PAS.
+
+    Les trois images se rendent en ligne sans conséquence. Un PDF, non : le
+    visualiseur du navigateur exécute le JavaScript qu'il contient, et il
+    l'exécute dans le contexte de L'ORIGINE QUI LE SERT. Servi en ligne d'ici,
+    un PDF déposé par un tiers lirait donc ce que cette origine peut lire.
+
+    `attachment` coupe court — le fichier descend sur le disque et rien ne
+    s'exécute. C'est la moitié sans laquelle reconnaître le PDF dans
+    `typeDesOctets` serait un défaut de sécurité et non une fonctionnalité ; les
+    deux ont été écrites ensemble, le 2026-09-25.
+
+    LE NOM N'EST PAS REPRIS DU DÉPÔT : aucun nom d'origine n'y entre — voir
+    `reserver` —, et en fabriquer un ici rouvrirait l'échappement de guillemets
+    que ce champ traîne depuis toujours. La clé fait un nom parfaitement
+    utilisable, et elle ne contient par construction que ce que `FORME_DE_CLE`
+    autorise.
+  */
+  if (enPieceJointe(type)) {
+    res.setHeader('Content-Disposition', `attachment; filename="${cle.data}"`)
+  }
   // `no-store` : l'adresse est courte par construction, un cache qui la survit
   // rendrait la photo lisible après l'expiration de l'autorisation.
   res.setHeader('Cache-Control', 'no-store')

@@ -4,7 +4,7 @@ import { createApp } from '../app.js'
 import { prisma } from '../db.js'
 import { NOM_COOKIE } from '../auth/session.js'
 import { remplacerMessagerie } from '../messagerie/messagerie.js'
-import { remplacerStockage } from '../stockage/stockage.js'
+import { leStockage, remplacerStockage } from '../stockage/stockage.js'
 import { StockageLocal } from '../stockage/local.js'
 import { PLAFOND_PAR_OBJET_OCTETS } from '../stockage/contrat.js'
 import { env } from '../env.js'
@@ -6349,6 +6349,49 @@ describe('les photos de réserve', () => {
     // Le navigateur ne doit pas ré-interpréter ce que le serveur a reconnu.
     expect(octets.headers['x-content-type-options']).toBe('nosniff')
     expect(octets.body.length).toBe(taille)
+    /* UNE IMAGE S'AFFICHE, et c'est l'autre moitié de la règle du PDF : le
+       téléchargement forcé ne doit pas déborder sur ce qui n'en a pas besoin,
+       sans quoi toute photo de réserve descendrait sur le disque au lieu de se
+       montrer. Voir le cas du PDF plus bas. */
+    expect(octets.headers['content-disposition']).toBeUndefined()
+  })
+
+  /*
+    UN PDF SE TÉLÉCHARGE, IL NE S'AFFICHE PAS.
+
+    Le visualiseur du navigateur exécute le JavaScript que contient un PDF, et
+    il l'exécute dans le contexte de L'ORIGINE QUI LE SERT. Servi en ligne
+    depuis la nôtre, un PDF déposé par un tiers lirait donc ce que cette origine
+    peut lire. `Content-Disposition: attachment` coupe court.
+
+    CE CAS EST NÉ D'UNE MUTATION. Le retrait de l'en-tête dans
+    `stockage/routes.ts` laissait les trente-neuf cas du dépôt au vert : la
+    moitié SÛRE du support des PDF n'était tenue par rien, alors que c'est elle
+    qui fait la différence entre une fonctionnalité et un défaut.
+
+    IL PASSE PAR LE DÉPÔT, ET NON PAR LA ROUTE DES PHOTOS : celle-ci n'accepte
+    que trois types d'image, à dessein. C'est donc `leStockage()` qu'on réserve,
+    exactement comme le fera la route des pièces fournies.
+  */
+  it('sert un PDF en pièce jointe, jamais en ligne', async () => {
+    const pdf = Buffer.from('%PDF-1.7\n' + 'x'.repeat(64))
+    const reservation = await leStockage().reserver('application/pdf', pdf.length)
+
+    const depot = await request(serveur)
+      .put(reservation.url)
+      .set(reservation.entetes)
+      .send(pdf)
+    expect(depot.status, JSON.stringify(depot.body)).toBe(204)
+
+    const adresse = await leStockage().lire(reservation.cle)
+    const octets = await request(serveur).get(adresse.url)
+
+    expect(octets.status).toBe(200)
+    expect(octets.headers['content-type']).toContain('application/pdf')
+    expect(
+      octets.headers['content-disposition'],
+      'un PDF servi en ligne exécuterait son JavaScript sur notre origine',
+    ).toMatch(/^attachment/)
   })
 
   /**
