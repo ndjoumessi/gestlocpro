@@ -51,8 +51,13 @@ import { useEffect, useRef, useState } from 'react'
  * dessous, voile et dialogue ensemble.
  *
  * MOUVEMENT RÉDUIT : DÉMONTAGE IMMÉDIAT, `sortant` JAMAIS VRAI. La règle globale
- * de `src/design-system/tokens.css:1163` ramène toute durée d'animation et de
- * transition à 0,001 ms sous `prefers-reduced-motion: reduce`. Garder le nœud
+ * de `src/design-system/tokens.css` — cherchée par `prefers-reduced-motion`, et
+ * SANS numéro de ligne : celui qui était écrit ici disait 1163 quand la règle
+ * vivait à 1242, soixante-dix-neuf lignes plus bas. Un renvoi chiffré vers un
+ * fichier de mille six cents lignes se périme au premier ajout et ne le dit pas —
+ * `renvoisMorts.test.ts` vérifie que le FICHIER cité existe, jamais la ligne.
+ * Même correction qu'à `sortieDifferee.test.ts` — ramène toute durée d'animation
+ * et de transition à 0,001 ms sous `prefers-reduced-motion: reduce`. Garder le nœud
  * peint 200 ms de plus la contredirait exactement : l'animation serait bien
  * supprimée, mais la surface resterait à l'écran le temps d'une animation qui
  * n'a pas lieu — une attente sans rien à regarder, c'est-à-dire le défaut que le
