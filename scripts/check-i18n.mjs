@@ -25,8 +25,35 @@ import { pathToFileURL } from 'node:url'
 const ROOT = new URL('..', import.meta.url).pathname
 const SRC = join(ROOT, 'src')
 
-/** Attributs dont la valeur est lue ou entendue par l'utilisateur. */
-const ATTRIBUTES = ['aria-label', 'placeholder', 'title', 'alt', 'aria-description']
+/**
+ * Attributs dont la valeur est lue ou entendue par l'utilisateur.
+ *
+ * LES TROIS DERNIERS ONT ÉTÉ AJOUTÉS LE 2026-09-25, en cherchant dans les autres
+ * gardes le défaut que `cibles.test.ts` venait de révéler : une énumération qui
+ * décide de ce qui est CONTRÔLÉ, et où une graphie absente passe en silence.
+ *
+ * `aria-valuetext` était le cas vivant. Un lecteur d'écran l'annonce À LA PLACE
+ * de la valeur numérique — il entre donc mot pour mot dans la définition
+ * ci-dessus — et le curseur de tarification s'en sert. Sa chaîne y était bien
+ * traduite, mais par la seule discipline de qui l'a écrite : rien ne le
+ * vérifiait. C'est exactement la situation des quatre `<NavLink>` de la barre
+ * basse, qui portaient leur plancher tactile sans qu'aucune règle le sache.
+ *
+ * `aria-roledescription` et `aria-placeholder` n'ont aucun emploi aujourd'hui, et
+ * c'est dit : on ne peut pas les prouver par mutation. Ils répondent à la même
+ * définition, et les inscrire coûte une chaîne chacun — la liste est un
+ * périmètre d'inspection, pas un inventaire de l'existant.
+ */
+const ATTRIBUTES = [
+  'aria-label',
+  'placeholder',
+  'title',
+  'alt',
+  'aria-description',
+  'aria-valuetext',
+  'aria-roledescription',
+  'aria-placeholder',
+]
 
 /**
  * Exemptions.

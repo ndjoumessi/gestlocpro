@@ -56,10 +56,40 @@ function corps(source: string, entete: string): string {
   throw new Error(`accolade non refermée : ${entete}`)
 }
 
-const ETATS = ['paid', 'partial', 'overdue'] as const
-
 const TABLE_PARTS = corps(CHARTS, 'const PARTS')
 const TABLE_JAUGES = corps(PILL, 'const JAUGES')
+
+/**
+ * LES ÉTATS SONT LUS DANS LA TABLE, PLUS RECOPIÉS À CÔTÉ D'ELLE.
+ *
+ * Ils étaient écrits ici en toutes lettres — `['paid', 'partial', 'overdue']` —
+ * et la liste était JUSTE : `JAUGES` en porte exactement trois. Mais elle était
+ * juste par coïncidence entretenue, pas par construction. `JAUGES` est un
+ * `Record<EtatDePoste, string>` : ajouter un état au type force une ligne dans
+ * la table, et TypeScript s'en charge — tandis que cette liste-ci, personne ne
+ * la rappelle. Le nouvel état aurait donc eu sa jauge et sa part SANS que leur
+ * accord soit vérifié une seule fois.
+ *
+ * C'est la forme exacte du défaut trouvé le 2026-09-25 dans `cibles.test.ts`,
+ * où `<NavLink` manquait à une énumération de balises : une liste qui décide de
+ * ce qui est CONTRÔLÉ, et qu'une graphie absente traverse en silence. Le remède
+ * général est celui-ci — DÉRIVER l'énumération de ce qu'elle garde, au lieu de
+ * la redire.
+ *
+ * LE COMPTE EST AFFIRMÉ, et ce n'est pas une politesse : une expression qui ne
+ * trouve rien rend une liste VIDE, et toutes les boucles ci-dessous passeraient
+ * alors au vert sans rien mesurer. Le piège est documenté ailleurs dans ce dépôt
+ * sous le nom de cas négatif vrai à vide.
+ */
+const ETATS = [...TABLE_JAUGES.matchAll(/^\s*(\w+):/gm)].map(([, etat]) => etat)
+
+if (ETATS.length < 3) {
+  throw new Error(
+    `anneauEtJauge : ${ETATS.length} état(s) lu(s) dans \`JAUGES\`, au moins trois attendus. ` +
+      "La table a changé de forme et la dérivation ne la lit plus — sans ce refus, chaque cas " +
+      'de ce fichier passerait au vert sans comparer quoi que ce soit.',
+  )
+}
 
 /** Le ton nommé par la variable CSS d'une part : `var(--color-XXX)` → `XXX`. */
 function tonDeLaPart(etat: string): string | undefined {
