@@ -12,8 +12,13 @@ Une quatrième liste ce qu'il ne faut PAS construire tel quel.
 
 ## 1. Ce que la maquette révèle en creux — trois défauts, déjà en production
 
-Ces trois-là ne sont pas des fonctionnalités manquantes. Ce sont des promesses que le
-produit fait déjà et ne tient pas. Ils passent avant tout le reste.
+> **SECTION CLOSE — les trois sont corrigés.** Vérifiés un par un dans le code le
+> 2026-09-25, à `ef51cd3`. Le constat d'origine est conservé sous chacun : une
+> trouvaille dont on efface l'énoncé ne s'apprend plus, et une trouvaille dont on
+> tait le sort se relit comme un arriéré. Chacune porte donc les deux.
+
+Ces trois-là n'étaient pas des fonctionnalités manquantes. C'étaient des promesses que le
+produit faisait déjà et ne tenait pas. Ils passaient avant tout le reste.
 
 ### 1.1 Une relance s'affiche en clé technique — DÉFAUT VISIBLE
 
@@ -41,6 +46,12 @@ fuites du jeu de démonstration dans le portail locataire.
 Correctif : deux entrées dans `app.alerts.msg` (fr + en), et un cas dans un test qui monte
 un parc servi par l'API. Une heure, tout compris.
 
+**FERMÉ.** Et par l'autre bout que celui proposé : le serveur a cessé de préfixer. Il écrit
+`CLE_RELANCE = 'rentReminder'` et `CLE_MISE_EN_DEMEURE = 'formalNotice'`
+(`server/src/parks/routes.ts`), donc les mêmes clés que le jeu de démonstration. Les deux
+entrées existent par ailleurs sous `app.alerts.msg`, dans les deux dictionnaires. La clé
+construite par `Alerts.tsx` résout dans les deux cas.
+
 ### 1.2 « Le locataire recevra sa quittance par e-mail et par SMS » — il ne reçoit rien
 
 `fr.ts` → `app.payments.modalDescription`. La route d'émission des quittances
@@ -52,6 +63,10 @@ envoyé ») ; cette phrase-ci est la seule qui affirme le contraire.
 Correctif : réécrire la phrase, ou brancher un fournisseur SMS. La première est immédiate et
 gratuite ; la seconde est un vrai chantier (voir §3.2).
 
+**FERMÉ** par la première branche. `app.payments.modalDescription` dit désormais « La
+quittance est disponible dans l'espace du locataire dès l'enregistrement. » — ce que le
+produit FAIT, sans promettre d'envoi.
+
 ### 1.3 « Le gestionnaire dépose la pièce dans cet espace » — il ne dépose rien
 
 `fr.ts` → `app.documents.requestHint`, sous le formulaire de demande de document que nous
@@ -61,6 +76,10 @@ l'entité et n'a pas suivi.
 
 Correctif : une phrase, cinq minutes. C'est la même règle que celle qui gouverne l'écran —
 on annonce la case vide plutôt que d'inventer la pièce.
+
+**FERMÉ.** `app.documents.requestHint` dit désormais « Le gestionnaire reçoit la demande et
+vous répond dans cet espace. » : la demande et la réponse, qui existent, sans le dépôt de
+fichier, qui n'existe pas.
 
 ---
 
