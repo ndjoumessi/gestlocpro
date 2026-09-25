@@ -2258,6 +2258,17 @@ const TAILLE_DU_GLYPHE = 22
  */
 const CIBLE_DE_PLUS = cn(CIBLE_DE_BARRE, 'text-muted hover:text-ink')
 
+/**
+ * Les classes d'une destination, l'état en plus — et nommées pour la même raison.
+ *
+ * `NavLink` prend une FONCTION de son état actif. Écrite en ligne, elle rouvrait
+ * sur le lien le trou qu'on vient de fermer sur le bouton : le plancher de 44 px
+ * vit dans `CIBLE_DE_BARRE`, et une flèche anonyme ne délègue à aucun nom que la
+ * garde puisse suivre. Nommée, elle délègue.
+ */
+const classesDuLienDeBarre = ({ isActive }: { isActive: boolean }) =>
+  cn(CIBLE_DE_BARRE, isActive ? 'font-semibold text-ink' : 'text-muted hover:text-ink')
+
 function BottomLink({ item }: { item: NavItem }) {
   const t = useT()
   const label = t((item.shortLabelKey ?? item.labelKey) as 'nav.dashboard')
@@ -2269,9 +2280,7 @@ function BottomLink({ item }: { item: NavItem }) {
     <NavLink
       to={lien(base, item.to)}
       end={item.to === ''}
-      className={({ isActive }) =>
-        cn(CIBLE_DE_BARRE, isActive ? 'font-semibold text-ink' : 'text-muted hover:text-ink')
-      }
+      className={classesDuLienDeBarre}
     >
       {({ isActive }) => (
         <>

@@ -98,8 +98,26 @@ const LARGEUR = new RegExp(`\\b(?:${W}|w|size)-(\\d+(?:\\.\\d+)?)\\b`, 'g')
  */
 const RECOUVREMENT = new RegExp(['inset', '0'].join('-'))
 
-/** Un contrôle : ce qui se clique ou se tape, écrit en clair dans le JSX. */
-const CONTROLE = /<(button|Link|a)\b/g
+/**
+ * Un contrôle : ce qui se clique ou se tape, écrit en clair dans le JSX.
+ *
+ * `NavLink` A ÉTÉ AJOUTÉ LE 2026-09-25, et son absence était un TROU, pas un
+ * choix. Le motif s'ancre sur `<` : `Link` n'y attrape donc jamais `<NavLink`,
+ * dont les quatre occurrences — toutes dans la barre basse — n'ont jamais été
+ * mesurées par cette règle. Elles portaient le plancher, mais parce que celui
+ * qui les a écrites y a pensé, pas parce que quelque chose le vérifiait.
+ *
+ * Le trou s'est vu en refondant la barre : la garde a refusé le bouton « Plus »
+ * et laissé passer, dans la même rangée et avec exactement le même défaut, les
+ * quatre liens à côté de lui. Une règle qui n'attrape qu'un élément sur cinq
+ * d'une même rangée ne garde pas la rangée.
+ *
+ * Sa place ici se justifie comme celle de `Link` : `NavLink` rend un `<a>` et lui
+ * passe la classe qu'on lui donne. Sa géométrie est donc l'affaire de l'appelant,
+ * au contraire des primitives du dépôt — `Button`, `IconButton`, `Choice` — qui
+ * portent la leur et se gardent là où elles sont définies.
+ */
+const CONTROLE = /<(button|NavLink|Link|a)\b/g
 
 /**
  * `className={identifiant}` ou `className={fabrique(…)}` — la balise DÉLÈGUE.
