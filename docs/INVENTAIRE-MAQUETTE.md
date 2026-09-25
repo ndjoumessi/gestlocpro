@@ -85,6 +85,12 @@ fichier, qui n'existe pas.
 
 ## 2. Ce qui manque et se construit sur des données DÉJÀ présentes
 
+> **SECTION CLOSE — les SEPT sont construits.** Vérifiés un par un le 2026-09-25 à
+> `ef25ef1`. Le constat d'origine reste sous chacun ; le verdict s'ajoute en fin
+> de point. Deux écarts avec la maquette sont assumés et écrits sur place : la
+> grille porte SIX périodes et non douze, et l'origine d'une intervention a DEUX
+> valeurs et non quatre.
+
 Par ordre de valeur rendue par unité d'effort.
 
 ### 2.1 L'écran Paiements du gestionnaire, en grille par période ★★★
@@ -105,11 +111,23 @@ gestionnaire, en le faisant tenir sur douze colonnes.
 
 Zéro ligne de serveur. C'est le meilleur rapport de toute la liste.
 
+**CONSTRUIT.** `Payments.tsx` porte la grille : `periodes` rend les périodes CONNUES,
+`JaugesDePeriode` les trois postes par cellule (`rentMinor` / `waterMinor` / `powerMinor`),
+et une cellule hors bail affiche un tiret plutôt qu'une pastille grise. DEUX ÉCARTS
+ASSUMÉS : six colonnes et non douze — « ce que la grille peut porter sans devenir
+illisible » —, et les périodes tirées de la DONNÉE et non de l'horloge, pour qu'un parc dont
+les échéances s'arrêtent en juin montre juin. Les colonnes de période portent
+`hideOnMobile`.
+
 ### 2.2 Le solde cumulé par bail ★★★
 
 Corollaire du précédent, et il vaut d'être nommé à part : « Paul K. · −258 000 » se lit d'un
 coup d'œil quand « impayé ce mois-ci » ne dit pas si la dette est ancienne. La somme de
 `receiptDue() − paidMinor` sur toutes les périodes du bail, rien de plus.
+
+**CONSTRUIT.** `soldeCumule` dans `Payments.tsx`, exactement cette somme, et son
+commentaire porte l'argument de ce point : « Paul K. · 120 000 » ne disait pas si la dette
+datait de ce mois-ci ou de deux ans.
 
 ### 2.3 Le dossier d'un logement ★★★
 
@@ -125,6 +143,8 @@ C'est l'écran qui manque le plus au métier : la question « que s'est-il pass�
 logement ? » n'a aujourd'hui aucune réponse. Une route, un écran, et une requête serveur qui
 lit par unité au lieu de par parc.
 
+**CONSTRUIT.** Route `parc/:unitId` dans `EspaceApplicatif.tsx`, écran `UnitFile.tsx`.
+
 ### 2.4 Le détail chiffré d'un état des lieux, et sa comparaison entrée/sortie ★★
 
 **La maquette** montre les deux constats côte à côte, élément par élément, avec la retenue
@@ -138,6 +158,10 @@ en regard de chaque écart : « Vitre fenêtre chambre 2 · Bon état → Cassé
 La retenue proposée sur la caution est déjà calculée à partir de ces coûts (`billableMinor`).
 Il ne manque que la lecture détaillée et la mise en regard. Le gain est direct : c'est la
 pièce qu'on oppose au locataire dans un litige.
+
+**CONSTRUIT.** `Inspections.tsx` met `reservesEntree` et `reservesSortie` en regard et somme
+la `retenue` sur les `costMinor` de la sortie. Les réserves portent en outre des PHOTOS
+(`InspectionPhoto`, composant `Preuves`) — voir §3.1, dont ce point a emporté une part.
 
 ### 2.5 Les indicateurs de travaux, et l'origine d'une intervention ★★
 
@@ -154,6 +178,14 @@ ceux-là.
 Coût : un champ `origin` sur `WorkOrder` (migration + enum), une route de création ouverte
 au bailleur, trois `StatCard`. Les montants existent déjà.
 
+**CONSTRUIT, les trois.** `WorkOrigin` est en base, la création est ouverte au bailleur
+(`routes.ts` : l'origine vaut `ownerInitiative` dès que l'auteur n'est pas un locataire, et
+`reportedById` nomme le compte qui a ouvert le chantier), et `Works.tsx` porte trois
+`StatCard`. ÉCART ASSUMÉ : l'énumération a DEUX valeurs — `tenantReport` et
+`ownerInitiative` — là où la maquette en montrait quatre. L'entretien planifié et la remise
+en location sont l'un et l'autre une initiative du bailleur ; les distinguer demanderait un
+geste de saisie que rien ne réclame encore.
+
 ### 2.6 Le journal des relances ★★
 
 **La maquette** : « Rappel #4 envoyé à Paul K. · SMS + notification · 240 000 dus », daté,
@@ -166,6 +198,9 @@ pourtant en une requête sur les `AuditEvent` du bail.
 
 Corriger §1.1 puis ajouter le décompte : le journal existe déjà, il ne sait pas se dire.
 
+**CONSTRUIT**, dans l'ordre annoncé — §1.1 d'abord. Le rang est tenu par
+`journalDesRelances.test.tsx`.
+
 ### 2.7 La consommation du locataire sur douze mois ★
 
 **La maquette** donne au locataire un histogramme eau/électricité sur douze mois, avec une
@@ -176,9 +211,27 @@ rapport à mai. »
 période depuis l'origine : douze mois d'index existent en base dès que le parc tourne depuis
 un an. Le composant d'histogramme existe (`StackedBarChart`).
 
+**CONSTRUIT.** `TenantDashboard` porte `app.tenant.consumptionTrend` sur un `MiniBarChart`,
+par fluide, avec la moyenne. La clé de chaque colonne porte la PÉRIODE et non le libellé —
+douze relevés peuvent s'étaler sur quatorze mois.
+
 ---
 
 ## 3. Ce qui demande une brique que le produit n'a pas
+
+> **SECTION PARTIELLEMENT DÉPASSÉE — vérifiée le 2026-09-25 à `ef25ef1`.** Deux
+> des cinq briques ont été posées pour partie, et la prémisse commune de ce
+> chapitre — « le produit ne sait recevoir aucun fichier », « rien ne part » —
+> n'est plus vraie telle quelle. Le verdict de chaque point est en fin de point ;
+> aucun n'est entièrement clos.
+>
+> | | état au 2026-09-25 |
+> | --- | --- |
+> | 3.1 fichiers | PARTIEL — les photos d'état des lieux, et elles seules |
+> | 3.2 envois | PARTIEL — l'e-mail part pour de vrai, le SMS n'existe pas |
+> | 3.3 message groupé | OUVERT — rien dans le code |
+> | 3.4 collectif + réponse | PARTIEL — la réponse existe, le collectif non |
+> | 3.5 mobile / hors ligne | PARTIEL — le bandeau hors ligne existe, l'application non |
 
 Ces points ne sont pas plus « difficiles » : ils demandent une décision d'infrastructure, et
 tant qu'elle n'est pas prise, aucune quantité de code d'écran ne les rapproche.
@@ -273,6 +326,18 @@ La maquette contient des éléments qui, portés à l'identique, feraient régre
 ---
 
 ## 5. L'ordre que je propose
+
+> **CET ORDRE EST EXÉCUTÉ JUSQU'AU POINT 5, vérifié le 2026-09-25 à `ef25ef1`.**
+> Les points 1, 2, 3 et 5 sont faits ; le 4 (§3.1) l'est pour les photos d'état
+> des lieux seulement ; le 6 l'est à moitié (l'e-mail part, le message groupé
+> n'existe pas) ; le 7 se réduit au bandeau hors ligne. Les deux points nommés en
+> fin de section — §2.6 et §2.7 — sont faits eux aussi.
+>
+> CE QUI RESTE, ET RIEN D'AUTRE : recevoir un fichier AILLEURS que sur un état
+> des lieux (§3.1), le SMS (§3.2), le message groupé (§3.3), le signalement
+> collectif (§3.4), l'application mobile (§3.5). Cinq points, tous dans le
+> chapitre des briques manquantes — c'est-à-dire tous des décisions
+> d'infrastructure, aucune n'étant un défaut du produit.
 
 1. **Les trois défauts du §1** — une demi-journée, et le produit cesse de mentir. §1.1 est le
    seul vrai bug, les deux autres sont des phrases.
