@@ -99,6 +99,20 @@ const EXEMPT_TEXT_DIRS = ['src/i18n/', 'src/data/']
  */
 const HARMLESS = /^(\s*|[-–—·|/\\]+|\d+|#[0-9a-fA-F]{3,8}|[^a-z\s]+)$/
 
+/** Les attributs du régime strict, en jeu pour l'interrogation. */
+const ATTRIBUTS_STRICTS = new Set(ATTRIBUTES)
+
+/**
+ * Tout attribut à valeur entre guillemets.
+ *
+ * Ne repère que les valeurs littérales : `aria-label={t('…')}` et
+ * `aria-label={label}` passent, puisque la chaîne vient d'ailleurs.
+ */
+const ATTRIBUT = /\b([a-zA-Z][a-zA-Z0-9-]*)\s*=\s*"([^"]*)"/g
+
+/** La marque d'une chaîne française — même critère que `TEXTE_ACCENTUE`. */
+const ACCENT = /[àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/
+
 /**
  * Texte français resté dans le JSX.
  *
@@ -201,15 +215,53 @@ export function analyser(rel, source) {
       }
     }
 
-    for (const attribute of ATTRIBUTES) {
-      // Ne repère que les valeurs entre guillemets : `aria-label={t('…')}` et
-      // `aria-label={label}` passent, puisque la chaîne vient d'ailleurs.
-      const pattern = new RegExp(`${attribute}\\s*=\\s*"([^"]*)"`, 'g')
-      for (const match of line.matchAll(pattern)) {
-        const value = match[1]
-        if (HARMLESS.test(value)) continue
-        trouves.push({ file: rel, line: index + 1, attribute, value })
-      }
+    /*
+      DEUX RÉGIMES, ET LE SECOND EXISTE POUR QUE L'INCONNU NE PASSE PLUS.
+
+      La boucle parcourait la LISTE des attributs contrôlés. Tout ce qui n'y
+      figurait pas était invisible — c'est ainsi qu'`aria-valuetext` a vécu sans
+      garde, et c'est la forme de défaut trouvée dans `cibles.test.ts` puis dans
+      la lecture des routes. On ne peut pas DÉRIVER la liste des attributs qui
+      portent du texte : elle est ouverte, ce dépôt ajoute ses propres props
+      (`titre`, `hint`, `legend`, `corps`…) au gré des composants. Alors on
+      renverse, comme pour les routes : la boucle balaie TOUT, et c'est ce qu'on
+      laisse passer qui est déclaré.
+
+        — STRICT (`ATTRIBUTES`) : aucun littéral, accentué ou non. `alt="Photo"`
+          est refusé, parce qu'on SAIT que cet attribut se lit ou s'entend.
+        — ACCENTUÉ (tout le reste) : refusé seulement si la valeur porte un
+          accent français. `variant="primary"` passe, `titre="Écran interrompu"`
+          non.
+
+      POURQUOI L'ACCENT ICI, ET PAS LE ZÉRO LITTÉRAL. Parce que le reste, c'est
+      aussi `role="dialog"`, `type="button"`, `d="M0 0…"` : exiger d'eux qu'ils
+      passent par le dictionnaire n'a aucun sens, et la liste d'exemptions
+      nécessaire — quatre-vingts noms relevés dans ce dépôt — serait à son tour
+      une énumération à tenir à jour, donc le défaut qu'on répare.
+
+      MESURÉ AVANT D'ÉCRIRE, sur tout `src/` hors cas et hors exemptions : ce
+      second régime rend UN signalement, dans un commentaire de `piegeDeFocus`,
+      et sur un `data-`. Zéro une fois les `data-` écartés. Le contraste avec la
+      tentative documentée plus haut — 114 signalements pour deux vrais défauts,
+      en cherchant l'accent dans les littéraux de chaîne — tient à la surface :
+      une valeur d'attribut est déjà du texte d'interface, un littéral JS est
+      n'importe quoi.
+
+      CE QU'IL NE VOIT PAS, ET C'EST DIT : le français sans accent.
+      `label="Calendrier"`, `caption="Douze mois"` passeraient. Le régime
+      accentué est un filet, pas une preuve — il vaut mieux que l'absence totale
+      de contrôle qui le précédait, et il ne remplace pas l'inscription d'un
+      attribut dans `ATTRIBUTES` dès qu'on sait qu'il porte du texte.
+    */
+    for (const match of line.matchAll(ATTRIBUT)) {
+      const [, attribute, value] = match
+      if (HARMLESS.test(value)) continue
+      // `data-*` ne se lit ni ne s'entend : c'est de l'accroche pour les gardes
+      // et les sondes. Le seul signalement de la mesure était l'un d'eux, cité
+      // dans un commentaire.
+      if (attribute.startsWith('data-')) continue
+      if (!ATTRIBUTS_STRICTS.has(attribute) && !ACCENT.test(value)) continue
+      trouves.push({ file: rel, line: index + 1, attribute, value })
     }
   })
 
