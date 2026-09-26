@@ -773,8 +773,27 @@ function SerieFluide({
           </span>
         )}
       </div>
+      {/*
+        CHAQUE FLUIDE SA COULEUR, ET CE SONT CELLES DU PROPRIÉTAIRE.
+
+        Les deux graphes de cette carte sont côte à côte et portaient exactement
+        la même encre — relevé au DOM, `rgb(19, 26, 34)` des deux côtés. Seul le
+        titre les distinguait, et il est au-dessus : à mi-hauteur, plus rien ne
+        disait lequel on lisait.
+
+        Les jetons ne sont pas choisis ici : ce sont ceux que le graphe empilé du
+        tableau de bord emploie depuis toujours pour les mêmes deux quantités —
+        `data-4` pour l'eau, `data-3` pour l'électricité. Un locataire qui
+        deviendrait propriétaire, ou un gestionnaire qui passe d'un écran à
+        l'autre, retrouve le même code. L'inverse — inventer une paire ici —
+        aurait fait du produit deux produits.
+
+        LA COULEUR NE PORTE PAS SEULE : le libellé est écrit juste au-dessus,
+        avec la moyenne, et `couleur-non-seule` le vérifie au navigateur.
+      */}
       <MiniBarChart
         caption={`${libelle} — ${t('app.tenant.consumptionTrend')}`}
+        serie={fluide === 'water' ? 'var(--color-data-4)' : 'var(--color-data-3)'}
         format={lire}
         emptyLabel={t('app.tenant.noReading')}
         bars={points.map((point) => ({

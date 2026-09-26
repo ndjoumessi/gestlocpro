@@ -58,6 +58,7 @@ export function MiniBarChart({
   openPeriodNote,
   format,
   emptyLabel = '—',
+  serie = 'var(--color-data-1)',
 }: {
   /**
    * `value: null` — la barre est ABSENTE, non nulle.
@@ -83,6 +84,38 @@ export function MiniBarChart({
   format?: (value: number) => string
   /** Ce qu'annonce une période sans valeur dérivable. */
   emptyLabel?: string
+  /**
+   * LA COULEUR DE LA SÉRIE, quand ce graphe en côtoie un autre.
+   *
+   * ═══ CE QUE LE DÉFAUT DONNAIT À LIRE ═══
+   *
+   * Toutes les barres étaient peintes `--color-data-1`, sans réglage possible.
+   * Sur l'espace du locataire, cela met CÔTE À CÔTE deux graphes de douze
+   * colonnes — son eau et son électricité — strictement identiques : relevé au
+   * DOM, `rgb(19, 26, 34)` des deux côtés. Seul le titre les distingue, et il
+   * est au-dessus : à mi-hauteur, plus rien ne dit lequel on lit.
+   *
+   * ET LE PRODUIT SE CONTREDISAIT D'UN RÔLE À L'AUTRE. Le tableau de bord du
+   * propriétaire encode les mêmes deux quantités depuis toujours — l'eau en
+   * `--color-data-4`, l'électricité en `--color-data-3`, relevé au DOM :
+   * `rgb(74, 127, 134)` et `rgb(138, 90, 59)`. Un gestionnaire qui passe d'un
+   * écran à l'autre change donc de code couleur pour la même chose, sans que
+   * rien ne l'annonce.
+   *
+   * ═══ CE QUE CE RÉGLAGE N'AUTORISE PAS ═══
+   *
+   * La couleur ne porte JAMAIS seule : chaque graphe garde son titre écrit, et
+   * `couleur-non-seule` le vérifie au navigateur. Ce jeton distingue deux séries
+   * voisines, il ne remplace pas leur nom.
+   *
+   * Le défaut reste `--color-data-1` : les appelants d'une série UNIQUE — la
+   * vitrine, la carte du tableau de bord — ne changent pas d'un pixel.
+   *
+   * LA PÉRIODE OUVERTE GARDE SA HACHURE D'ACCENT, quelle que soit la série :
+   * elle ne dit pas QUELLE quantité on lit, elle dit que le mois n'est pas
+   * clos. Deux faits, deux encodages.
+   */
+  serie?: string
 }) {
   const { money } = useCurrency()
   const titleId = useId()
@@ -191,7 +224,7 @@ export function MiniBarChart({
                       ? 'var(--color-muted-soft)'
                       : isLast
                         ? hachureOuverte('var(--color-accent-ink)')
-                        : 'var(--color-data-1)',
+                        : serie,
                   animationDelay: `${index * 40}ms`,
                   // Même arbitrage que chez la voisine empilée : la colonne
                   // visée reçoit un liseré, les autres ne perdent rien. À 0,40
