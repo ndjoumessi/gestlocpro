@@ -4,13 +4,46 @@ import { Section } from '@/components/layout/Section'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { useT } from '@/i18n/I18nProvider'
 
-const FEATURES: { key: string; icon: IconName }[] = [
-  { key: 'rent', icon: 'card' },
-  { key: 'utilities', icon: 'droplet' },
-  { key: 'reminders', icon: 'bell' },
-  { key: 'inspections', icon: 'clipboard' },
-  { key: 'works', icon: 'wrench' },
-  { key: 'deposits', icon: 'shield' },
+/*
+  ═══ SIX CARTES IDENTIQUES NE SONT PAS UNE LISTE DE PRIORITÉS ═══
+
+  La grille était `sm:grid-cols-2 lg:grid-cols-3` : six tuiles de même largeur,
+  de même hauteur, de même poids typographique. Une telle grille dit « voici six
+  choses » et rien de plus — or ces six chantiers ne valent pas la même chose
+  pour un visiteur. Le suivi des loyers est la raison pour laquelle on ouvre le
+  produit ; les cautions sont ce qu'on découvre au troisième mois.
+
+  ═══ ET LA HAUTEUR N'EST PAS NÉGOCIABLE ═══
+
+  La première version de ce lot posait un pas de SIX colonnes, en trois rangées
+  de deux tuiles. Elle dessinait bien la hiérarchie et coûtait 230 px : trois
+  rangées là où il y en avait deux. `plafond-vitrine` l'a refusée, et il a
+  raison de le faire — la vitrine est le seul écran que voit un visiteur sans
+  compte, et une page de vente qui s'allonge d'un dixième pour mieux se
+  présenter s'est trompée de compromis.
+
+  Le pas de DOUZE colonnes rend les deux à la fois. Trois tuiles par rangée dont
+  les largeurs diffèrent — 5, 4 et 3 douzièmes —, donc DEUX rangées comme avant,
+  et une asymétrie que six colonnes ne pouvaient pas produire : une rangée de
+  trois tuiles sur six colonnes ne peut valoir que 2+2+2.
+
+  Les largeurs suivent la LONGUEUR DU PROPOS, jamais l'inverse. Les deux tuiles
+  de cinq douzièmes ouvrent chacune leur rangée et portent les deux chantiers
+  qu'on vient chercher — les loyers, les états des lieux ; les tuiles de trois
+  portent les deux textes les plus courts, qui seraient creux plus larges.
+
+  `large` n'est pas « plus large » : c'est le fait de conception qui autorise la
+  mise en page horizontale — pastille à gauche, texte à droite — sur les tuiles
+  qui ont la place de la porter. Une règle qui le déduirait de `span` se
+  tromperait le jour où une tuile de quatre douzièmes doit rester verticale.
+*/
+const FEATURES: { key: string; icon: IconName; span: string; large: boolean }[] = [
+  { key: 'rent', icon: 'card', span: 'lg:col-span-5', large: true },
+  { key: 'reminders', icon: 'bell', span: 'lg:col-span-4', large: false },
+  { key: 'utilities', icon: 'droplet', span: 'lg:col-span-3', large: false },
+  { key: 'inspections', icon: 'clipboard', span: 'lg:col-span-5', large: true },
+  { key: 'works', icon: 'wrench', span: 'lg:col-span-4', large: false },
+  { key: 'deposits', icon: 'shield', span: 'lg:col-span-3', large: false },
 ]
 
 export function FeatureGrid() {
@@ -37,14 +70,14 @@ export function FeatureGrid() {
           Ce qui a changé par rapport à la version d'origine : le rembourrage
           passe de 24 à 32px, l'élévation est plus discrète au repos, et le
           survol soulève la carte au lieu de seulement changer sa bordure. */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-12">
         {/* `Card` avec `as="article"` : ces six cartes portent chacune un titre
               et un corps, donc un rôle `article` qu'un `<div>` leur retirerait.
               `flush` plus un rembourrage explicite, et jamais `className="p-7"`
               seul : `cn` concatène sans fusionner, le `sm:p-5` de la primitive
               serait émis APRÈS et ferait tomber le rembourrage à 20 px au-delà
               de 640. Mesuré par l'audit, pas supposé. */}
-        {FEATURES.map(({ key, icon }) => (
+        {FEATURES.map(({ key, icon, span, large }) => (
           <Card
             as="article"
             flush
@@ -52,6 +85,7 @@ export function FeatureGrid() {
             key={key}
             className={cn(
               'group p-7 sm:p-8',
+              span,
               'transition-[transform,box-shadow,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',
             )}
@@ -77,9 +111,28 @@ export function FeatureGrid() {
               assombrit donc l'accent lui-même — `accent-hover`, le jeton qui
               existe précisément pour cela — et la carte continue de se soulever.
             */}
+            {/*
+                LA TUILE LARGE CENTRE SON CONTENU, ET C'EST UNE CORRECTION
+                MESURÉE. La hauteur d'une rangée est dictée par sa tuile la plus
+                HAUTE — donc par la plus étroite, dont le texte se replie sur
+                trois lignes. Alignée en haut, la tuile large laissait alors
+                jusqu'à 110 px de blanc sous son paragraphe (relevé à 1440 px
+                sur la rangée « Suivi des loyers / Relances ») : pas
+                une respiration, un trou, et le trou tombait sur la tuile que la
+                grille désigne comme la plus importante.
+
+                Centrer ne comble pas le vide, il le RÉPARTIT : la paire pastille
+                + texte retrouve un axe, et le blanc devient une marge haute et
+                basse au lieu d'un fond de carte.
+
+                Rien de tout cela sous 640 px, où toutes les tuiles ont la même
+                largeur : une pastille posée à gauche d'un titre de deux lignes y
+                reprendrait la place que la rangée venait de rendre.
+            */}
+            <div className={cn(large && 'sm:flex sm:h-full sm:items-center sm:gap-6')}>
             <span
               className={cn(
-                'flex size-12 items-center justify-center rounded-lg',
+                'flex size-12 shrink-0 items-center justify-center rounded-lg',
                 'bg-accent text-on-accent transition-colors duration-200',
                 /* CE QUI ÉTAIT ÉCRIT ICI RESTE VRAI, et vaut d'être gardé : le
                    survol basculait vers `bg-ink`, dont la teinte s'inverse avec
@@ -100,12 +153,15 @@ export function FeatureGrid() {
               <Icon name={icon} size={22} />
             </span>
 
-            <h3 className="mt-6 title-l text-balance">
-              {t(`marketing.features.${key}.title` as 'marketing.features.rent.title')}
-            </h3>
-            <p className="mt-3 text-body text-pretty text-muted">
-              {t(`marketing.features.${key}.body` as 'marketing.features.rent.body')}
-            </p>
+            <div className={cn('min-w-0', large ? 'mt-6 sm:mt-0' : 'mt-6')}>
+              <h3 className="title-l text-balance">
+                {t(`marketing.features.${key}.title` as 'marketing.features.rent.title')}
+              </h3>
+              <p className="mt-3 max-w-[58ch] text-body text-pretty text-muted">
+                {t(`marketing.features.${key}.body` as 'marketing.features.rent.body')}
+              </p>
+            </div>
+            </div>
           </Card>
         ))}
       </div>

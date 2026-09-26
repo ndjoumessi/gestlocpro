@@ -11,6 +11,13 @@ import { useDates } from '@/lib/useDates'
 import { Icon } from '@/components/primitives/Icon'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
+import { HeroProof } from './HeroProof'
+
+/**
+ * Pastilles du chrome de l'aperçu — mêmes jetons que `TenantPortal`, et pour la
+ * même raison : voir `--chrome-dot-*` dans `tokens.css`.
+ */
+const CHROME_DOTS = ['var(--chrome-dot-1)', 'var(--chrome-dot-2)', 'var(--chrome-dot-3)'] as const
 
 export function Hero() {
   const t = useT()
@@ -30,7 +37,20 @@ export function Hero() {
           deux colonnes, il n'avait que la moitié de l'écran et venait buter
           contre la carte d'aperçu. */}
       <div className="relative mx-auto max-w-7xl">
-        <p className="eyebrow flex items-center gap-2 text-accent-ink">
+        {/*
+          L'AMORCE DEVIENT UN OBJET, ET C'EST LE PREMIER PIXEL DE LA PAGE.
+
+          Elle était un surtitre nu — douze pixels d'accent posés sur le fond,
+          au-dessus d'un titre de cinquante-deux. Rien ne la tenait : à cette
+          échelle, un texte seul se lit comme une légende oubliée plutôt que
+          comme l'étiquette du produit.
+
+          La pastille lui rend un contour. Elle emploie le trio de l'accent —
+          teinte de fond, bordure, encre — déjà employé par les cartes de ton
+          `accent` : la page ouvre sur le vocabulaire qu'elle tiendra ensuite,
+          au lieu d'inventer une forme pour sa première ligne.
+        */}
+        <p className="eyebrow inline-flex items-center gap-2 rounded-full border border-accent-border bg-accent-tint px-3 py-1.5 text-accent-ink">
           <Icon name="globe" size={14} />
           {t('marketing.hero.eyebrow')}
         </p>
@@ -90,6 +110,8 @@ export function Hero() {
               {t('marketing.hero.trust')}
             </p>
 
+            <HeroProof />
+
             {/* Les sélecteurs de langue et de devise vivaient aussi ici. Ils
                 étaient les deuxièmes de quatre copies sur la même page —
                 en-tête, hero, section internationale, pied de page. L'en-tête
@@ -147,7 +169,46 @@ function HeroPreview({
           seconde écriture laisserait `shadow-e1 shadow-e3` dans le balisage et
           s'en remettrait à l'ordre d'émission de la feuille. Une règle morte à
           côté d'une vivante n'est pas une décision. */}
-      <Card flush elevation="e3" className="animate-rise p-5 sm:p-6">
+      {/*
+        ═══ LA CARTE DEVIENT UNE FENÊTRE ═══
+
+        Elle montrait les bons chiffres — ceux de `/demo`, et le commentaire
+        ci-dessous raconte ce qu'il a fallu pour qu'ils le soient — mais elle
+        les montrait HORS DE TOUT : quatre nombres et un graphe sur une surface
+        blanche, qui pouvaient aussi bien être une infographie que le produit.
+        Un visiteur qui n'a pas de compte n'a que cette image pour savoir à quoi
+        ressemble l'outil.
+
+        Le chrome dit « ceci est un écran ». Il reprend les pastilles et la
+        barre de `TenantPortal`, qui fait déjà ce geste dans l'application, et
+        les jetons `--chrome-dot-*` existent précisément pour ce décor — ils
+        ressemblent au trio de statut sans en être des alias, de sorte qu'une
+        correction de contraste sur `--color-ok` ne repeint pas un ornement.
+
+        `overflow-hidden` : la barre est à fleur du bord haut, et ce sont les
+        coins arrondis de la carte qui portent la forme.
+      */}
+      <Card flush elevation="e3" className="animate-rise overflow-hidden p-0">
+        <div
+          aria-hidden="true"
+          className="flex items-center gap-2 border-b border-divider bg-surface-sunken px-4 py-3"
+        >
+          {CHROME_DOTS.map((couleur) => (
+            <span
+              key={couleur}
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: couleur }}
+            />
+          ))}
+          {/* La barre porte un libellé plutôt qu'une URL inventée : une adresse
+              affichée dans un chrome doit être vraie, et celle de cet aperçu
+              n'existe pas. La clé vivait au dictionnaire sans être rendue nulle
+              part depuis la passe qui a retiré le titre de la carte. */}
+          <span className="ml-2 truncate text-caption text-muted">
+            {t('marketing.metrics.title')}
+          </span>
+        </div>
+        <div className="p-5 sm:p-6">
         {/*
           LA RANGÉE SE REPLIE, ET LE MONTANT A UN PLANCHER.
 
@@ -244,6 +305,7 @@ function HeroPreview({
             value={money(kpis.outstanding, { compact: true })}
             note={t('marketing.metrics.overdueNote', { count: doivent.length })}
           />
+        </div>
         </div>
       </Card>
 

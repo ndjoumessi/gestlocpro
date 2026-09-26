@@ -203,8 +203,37 @@ const PLAFONDS = [
     mesure `mesure-conditions` exécutait DÉJÀ ce script, et je n'ai lu que le
     relevé de `plafond-hauteurs`. Le travail `polices` rend les DEUX.
   */
-  { largeur: 360, langue: 'fr', plafond: 10247, plafondLarge: 10247, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 10105, plafondLarge: 9997, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  /*
+    +124 px (fr@360), +114 (en@360), +28 ET +31 AU BUREAU, LE 2026-09-26 :
+    TROIS CHIFFRES SOUS L'ACCROCHE, ET UN CHROME AUTOUR DE L'APERÇU.
+
+    CE QUI A GROSSI, ligne par ligne, mesuré au DOM à 360 px :
+      — `HeroProof`, la rangée de preuves sous les actions : 243 px en une
+        colonne, ramenés à ~150 en deux (voir le commentaire de ce composant,
+        qui rend les mesures). Trois nombres DÉRIVÉS du code — devises, langues,
+        pays — sous la promesse « gestion locative multi-pays » que l'amorce fait
+        à la première ligne de la page et que rien n'étayait avant la section
+        internationale, cinq sections plus bas ;
+      — la barre de chrome de la carte d'aperçu : 49 px. Elle dit « ceci est un
+        écran de l'outil » là où quatre nombres sur une surface blanche
+        pouvaient aussi bien être une infographie.
+
+    ET CE QUI A RENDU. `ValueProps` abandonne ses quatre cartes pour une règle
+    graduée : −164 px au téléphone, mesurés sur la même passe. La croissance
+    NETTE est donc de 124 px sur 10 247 — un virgule deux pour cent — pour un
+    argument que la page ne faisait pas.
+
+    LA COLONNE LARGE EST MESURÉE, LA NORMALE EST DÉDUITE, et il faut le dire :
+    `MESURER_EN_POLICE_LARGE=1` rend ici EXACTEMENT les quatre nombres que la
+    porte publique avait inscrits — 10247, 9997, 7272, 7248 —, donc les
+    `plafondLarge` ci-dessous sont des relevés. La machine de ce lot n'est pas
+    celle qui a posé la colonne normale (elle y mesure ~290 px de plus sur la
+    page mobile, écart de polices système) : ses quatre `plafond` reçoivent donc
+    le DELTA mesuré, pas une mesure. À revérifier sur la machine de
+    développement au premier passage.
+  */
+  { largeur: 360, langue: 'fr', plafond: 10371, plafondLarge: 10371, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 10219, plafondLarge: 10111, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -243,8 +272,24 @@ const PLAFONDS = [
     cette table — 7247 et non 7250. La porte publique fait autorité ; aucune
     mesure locale n'entre ici.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7195, plafondLarge: 7272, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
-  { largeur: 1280, langue: 'en', plafond: 7269, plafondLarge: 7248, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
+  /*
+    +28 px (fr) ET +31 (en) AU BUREAU, LE 2026-09-26 : LE MÊME LOT QUE
+    CI-DESSUS, et il coûte ici huit fois moins.
+
+    LA RAISON EST DANS LA MISE EN PAGE, PAS DANS LA CLÉMENCE. `HeroProof` se
+    range sous les actions, dans la colonne de GAUCHE du hero — celle qui
+    mesurait 245 px en regard d'une carte d'aperçu de 494. Au bureau il occupe
+    donc du vide qui existait déjà, et la section ne bouge pas d'un pixel :
+    les 28 px sont ceux de la barre de chrome de la carte, seule.
+
+    LA GRILLE DES FONCTIONNALITÉS, ELLE, NE COÛTE RIEN — et il a fallu s'y
+    reprendre. Sa première version posait un pas de six colonnes, trois rangées
+    de deux tuiles : 230 px, refusés par cette porte. Le pas de douze rend la
+    même asymétrie en DEUX rangées (5+4+3), qui est ce que la grille de trois
+    colonnes faisait déjà. Voir le commentaire de `FeatureGrid`.
+  */
+  { largeur: 1280, langue: 'fr', plafond: 7223, plafondLarge: 7300, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 7300, plafondLarge: 7279, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══

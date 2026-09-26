@@ -64,12 +64,34 @@ export function RolesSection() {
               {t(`roles.${key}.pitch` as 'roles.owner.pitch')}
             </p>
 
-            <p className="mt-6 border-t border-on-dark-border pt-5 text-body text-on-dark-muted">
-              <span className="eyebrow mb-1 block text-on-dark-faint">
+            {/*
+              ═══ CE QUE LE RÔLE PEUT FAIRE SE LIT, IL NE SE DÉCHIFFRE PAS ═══
+
+              Le bloc des droits était un paragraphe gris sous un surtitre
+              effacé : trois fois le même pavé, sur trois cartes qu'on est
+              justement venu COMPARER. Un visiteur qui cherche « est-ce que mon
+              gestionnaire pourra arbitrer les cautions ? » devait lire les trois
+              en entier pour y répondre.
+
+              La coche fait de ce pavé une ASSERTION plutôt qu'une glose, et
+              l'aligne sur le vocabulaire de la matrice de tarifs, quatre
+              sections plus bas, qui coche déjà ce qui est inclus. `shrink-0` et
+              `mt-0.5` : le glyphe tient sa colonne et s'aligne sur la première
+              ligne du texte, pas sur son centre optique.
+            */}
+            <div className="mt-6 border-t border-on-dark-border pt-5">
+              <span className="eyebrow mb-2 block text-on-dark-faint">
                 {t('marketing.roles.seeMore')}
               </span>
-              {t(`roles.${key}.rights` as 'roles.owner.rights')}
-            </p>
+              <p className="flex gap-2.5 text-body text-on-dark-muted">
+                <Icon
+                  name="checkCircle"
+                  size={16}
+                  className="mt-0.5 shrink-0 text-accent-on-dark"
+                />
+                <span>{t(`roles.${key}.rights` as 'roles.owner.rights')}</span>
+              </p>
+            </div>
 
             <Link
               to={signup}

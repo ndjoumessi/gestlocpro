@@ -1,5 +1,4 @@
 import { Section } from '@/components/layout/Section'
-import { Card } from '@/components/primitives/Card'
 import { useT } from '@/i18n/I18nProvider'
 
 const KEYS = ['one', 'two', 'three', 'four'] as const
@@ -30,61 +29,51 @@ export function ValueProps() {
       title={t('marketing.value.title')}
       description={t('marketing.value.body')}
     >
-      {/* Quatre frictions, numérotées : le chiffre donne la mesure — quatre
-          ruptures nommées, pas « des problèmes » en général.
-          Sur une grille de quatre et non de deux : en deux colonnes, les
-          entrées courtes laissaient des demi-lignes vides sous les longues. */}
-      <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* `as="li"` : ces cartes sont les items d'un `<ol>`, et un `<div>`
-              enfant direct d'`<ol>` est du HTML invalide autant qu'une liste
-              sans items pour un lecteur d'écran. */}
+      {/*
+        ═══ QUATRE CARTES DEVIENNENT UNE LIGNE QUI S'ACCUMULE ═══
+
+        Elles étaient quatre surfaces blanches à filet d'accent, posées sur le
+        gris de la section. Le filet avait été ajouté pour qu'on voie « une
+        SÉRIE avant de lire » — c'était le bon diagnostic, et la carte était le
+        mauvais support : une carte BORNE son contenu, elle dit « ceci est un
+        objet complet ». Quatre objets complets côte à côte se lisent comme
+        quatre constats séparés, alors que l'argument de cette section est
+        précisément qu'ils S'ADDITIONNENT.
+
+        Le trait continu le dit sans rien écrire. Une seule règle horizontale
+        traverse les quatre entrées ; chaque numéro s'y pose comme une graduation.
+        On lit une progression, puis on lit les phrases.
+
+        LA SECTION Y PERD AUSSI SES SURFACES, ce qui n'est pas un effet de bord
+        mais l'autre moitié du geste : la grille de fonctionnalités qui suit
+        IMMÉDIATEMENT est faite de cartes, et c'est elle qui répond. Deux
+        rangées de cartes à la suite faisaient lire le problème et la réponse
+        avec la même insistance.
+      */}
+      <ol className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
         {KEYS.map((key, index) => (
-          <Card
-            as="li"
-            flush
-            elevation="e1"
-            key={key}
-            /*
-              UN FILET D'ACCENT EN TÊTE DE CARTE.
+          <li key={key} className="relative border-t border-border pt-9">
+            {/*
+              LE NUMÉRO EST LE REPÈRE, PAS UNE ÉTIQUETTE — la note d'origine
+              reste vraie et ne dépend pas du support. Ce qui change est qu'il
+              se pose SUR le trait : une graduation n'est pas un titre, elle
+              marque un endroit sur une échelle.
 
-              Quatre cartes blanches sur un gris clair, portant chacune une
-              phrase et un petit label bleu, se lisaient comme quatre fragments
-              posés là. Rien ne les reliait, rien ne disait qu'elles s'ajoutent.
-              Le filet donne à la rangée sa trame : on voit une SÉRIE avant de
-              lire, ce qui est exactement ce qu'une énumération de frictions doit
-              produire — l'accumulation est l'argument.
-
-              `overflow-hidden` : sans lui le filet dépasse des coins arrondis de
-              la carte, et ce sont eux qui portent la forme.
-            */
-            className="flex flex-col overflow-hidden p-0"
-          >
-            <span aria-hidden="true" className="block h-1 bg-accent" />
-            <span className="flex flex-1 flex-col p-6">
-              {/*
-                LE NUMÉRO EST LE REPÈRE, PAS UNE ÉTIQUETTE.
-
-                Il était en `text-caps` — douze pixels, la taille des surtitres,
-                donc le rang de ce qui NOMME une section. Or ces quatre chiffres
-                ne nomment rien : ils comptent, et c'est toute leur fonction. À
-                `text-kpi` ils prennent le rang qui leur revient, celui d'un
-                repère qu'on parcourt du regard avant de lire.
-
-                `text-accent-ink` et non `text-accent` : c'est du TEXTE sur une
-                surface claire, et le jeton d'action ne tient que 5,17:1 quand
-                celui-ci est fait pour être lu.
-              */}
-              <span
-                aria-hidden="true"
-                className="numeric text-kpi leading-none font-medium text-accent-ink"
-              >
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <p className="mt-4 text-body-l text-pretty text-ink">
-                {t(`marketing.value.before.${key}` as 'marketing.value.before.one')}
-              </p>
+              `-top-4` pour une pastille de 32 px : elle est à cheval sur la
+              règle, moitié au-dessus, moitié en dessous. `numeric` garde les
+              chiffres à chasse fixe, sans quoi « 01 » et « 04 » ne se centrent
+              pas pareil dans leur rond.
+            */}
+            <span
+              aria-hidden="true"
+              className="numeric absolute -top-4 left-0 flex size-8 items-center justify-center rounded-full bg-accent text-caption font-medium text-on-accent"
+            >
+              {String(index + 1).padStart(2, '0')}
             </span>
-          </Card>
+            <p className="text-body-l text-pretty text-ink">
+              {t(`marketing.value.before.${key}` as 'marketing.value.before.one')}
+            </p>
+          </li>
         ))}
       </ol>
     </Section>
