@@ -496,6 +496,49 @@ export function Access() {
         })
       : null
 
+  /**
+   * LES LOGEMENTS, GROUPÉS SOUS LEUR IMMEUBLE.
+   *
+   * ═══ LE NOM DE L'IMMEUBLE ÉTAIT RECOPIÉ À CHAQUE LOGEMENT ═══
+   *
+   * Il le faut — « S1 » ne dit rien sur un parc de cinq résidences, trois
+   * d'entre elles ont un S1 —, mais il était recopié DEVANT CHACUN. Relevé sur
+   * la démonstration, sur la fiche de Diane :
+   *
+   *   « — sauf Résidence Bonamoussadi · A2, Résidence Bonamoussadi · A3,
+   *     Résidence Bonamoussadi · A4 et 1 autre »
+   *
+   * Vingt-deux caractères d'immeuble pour deux de logement, trois fois de
+   * suite, sur quatre lignes de fiche. Groupés : « — sauf Résidence
+   * Bonamoussadi · A2, A3, A4 », quarante-quatre caractères de moins pour la
+   * même information.
+   *
+   * CE QUE LE GROUPEMENT NE FAIT PAS, et une première rédaction l'a prétendu :
+   * il ne rend PAS le quatrième numéro. Le plafond de trois s'applique
+   * toujours, désormais aux numéros d'un même immeuble — « A2, A3, A4 et 1
+   * autre ». Relever ce plafond serait un autre arbitrage, et il demanderait
+   * sa propre mesure ; celui-ci ne gagne que la répétition.
+   *
+   * ═══ DEUX REPLIS, ET CHACUN COMPTE CE QU'IL NOMME ═══
+   *
+   * À L'INTÉRIEUR du groupe, `replier` borne les NUMÉROS : un immeuble de
+   * trente logements moins dix-huit redonnerait la liste illisible que ce
+   * plafond existe pour éviter. « et 2 autres » y compte des logements.
+   *
+   * AU-DEHORS, l'appelant borne les GROUPES, et « et 1 autre » y compte un
+   * immeuble. Les deux comptes sont exacts dans leur phrase, et aucun ne mêle
+   * les deux natures — c'est ce qu'une liste à plat ne pouvait pas faire.
+   */
+  const logementsParImmeuble = (ids: string[] | null | undefined): string[] =>
+    immeublesDuParc
+      .map((immeuble) => {
+        const numeros = (immeuble.units ?? [])
+          .filter((u) => (ids ?? []).includes(u.id))
+          .map((u) => u.label)
+        return numeros.length === 0 ? null : `${immeuble.name} · ${replier(numeros, t)}`
+      })
+      .filter((entree): entree is string => entree !== null)
+
   const resumeDuPerimetre = (m: MembreApi): string | null => {
     if (m.role !== 'manager') return null
     /* DEUX VIDES, ET ILS DISENT LE CONTRAIRE L'UN DE L'AUTRE. `declared` sans
@@ -512,13 +555,7 @@ export function Access() {
           ...immeublesDuParc
             .filter((i) => (m.buildingIds ?? []).includes(i.id))
             .map((i) => i.name),
-          /* LES LOGEMENTS PORTENT LE NOM DE LEUR IMMEUBLE. « S1 » ne dit rien
-             sur un parc de cinq résidences : trois d'entre elles ont un S1. */
-          ...immeublesDuParc.flatMap((i) =>
-            (i.units ?? [])
-              .filter((u) => (m.unitIds ?? []).includes(u.id))
-              .map((u) => `${i.name} · ${u.label}`),
-          ),
+          ...logementsParImmeuble(m.unitIds),
         ],
         t,
       ),
@@ -537,14 +574,7 @@ export function Access() {
       confies +
       ' ' +
       t('app.access.scopeExcept', {
-        names: replier(
-          immeublesDuParc.flatMap((i) =>
-            (i.units ?? [])
-              .filter((u) => (m.excludedUnitIds ?? []).includes(u.id))
-              .map((u) => `${i.name} · ${u.label}`),
-          ),
-          t,
-        ),
+        names: replier(logementsParImmeuble(m.excludedUnitIds), t),
       })
     )
   }

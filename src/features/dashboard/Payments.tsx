@@ -391,6 +391,37 @@ export function Payments() {
             etat={kpis.late > 0 ? { ton: 'danger' } : undefined}
             label={t('app.dashboard.recoveryLate')}
             value={money(kpis.late, { compact: true })}
+            /*
+              LA CARTE DE CET ÉCRAN N'AVAIT RIEN SOUS SON MONTANT.
+
+              Ses deux voisines portent une note — « vs. 1 250 000 FCFA le mois
+              dernier », et celle des baux actifs ci-dessous —, elle non : son
+              tiers inférieur était blanc sur la carte que l'écran EXISTE pour
+              montrer. « 412 000 FCFA en retard » pose deux questions qu'il
+              fallait aller compter dans la grille : combien de baux, et depuis
+              combien de temps.
+
+              LES DEUX NOMBRES SONT À CÔTÉ, DÉJÀ CALCULÉS. `maxOverdueDays` est
+              le plus grand retard du parc, et il est la seule chose qui
+              distingue trois loyers oubliés hier d'un impayé de deux mois — le
+              premier se relance, le second se met en demeure, et l'écran porte
+              les deux boutons.
+
+              LE COMPTE EST CELUI DES BAUX QUI FONT CE MONTANT, en retard
+              seulement : la clé sert aussi au tableau de bord, où elle
+              accompagne l'impayé ENTIER — partiels compris — et y compte donc
+              davantage de baux. Chaque note compte ce que SON montant totalise,
+              et c'est la condition pour que les deux écrans ne se contredisent
+              pas à un onglet de distance.
+            */
+            note={
+              kpis.late > 0
+                ? t('app.dashboard.overdueTenants', {
+                    count: leases.filter((bail) => bail.status === 'overdue').length,
+                    days: kpis.maxOverdueDays,
+                  })
+                : undefined
+            }
           />
           {/* LA MÊME COMPARAISON QUE SUR LE TABLEAU DE BORD, et calculée au même
               endroit : les deux écrans affichent le MÊME nombre — `collected` —
@@ -435,6 +466,12 @@ export function Payments() {
             icone="layers"
             label={t('app.dashboard.expected')}
             value={money(kpis.expected, { compact: true })}
+            /* LA MÊME NOTE QUE SUR LE TABLEAU DE BORD, où cette carte porte
+               « son compte de baux actifs » — le commentaire ci-dessus le dit
+               déjà de l'autre écran. Le montant est le même au franc près ;
+               sans ce compte, il ne disait pas sur COMBIEN de baux il est
+               appelé, et « 1 397 000 FCFA » ne se rapporte alors à rien. */
+            note={t('app.dashboard.activeLeases', { count: kpis.occupied })}
           />
           )}
         </div>

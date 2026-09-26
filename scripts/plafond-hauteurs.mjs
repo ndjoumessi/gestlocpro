@@ -414,7 +414,14 @@ const PLAFONDS = [
   { adresse: '/confidentialite', largeur: 360, plafond: 3383, plafondLarge: 3297 },
   { adresse: '/conditions-generales', largeur: 360, plafond: 4778, plafondLarge: 4679 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
-  { adresse: '/demo/paiements', largeur: 360, plafond: 3343, plafondLarge: 3343 },
+  /* +30 px LE 2026-09-26, ET C'EST LA CARTE QUE L'ÉCRAN EXISTE POUR MONTRER.
+     « En retard · 412 000 FCFA » ne portait rien sous son montant ; la note dit
+     désormais combien de baux le composent et depuis combien de jours — les
+     deux questions qu'il fallait aller compter dans la grille, et les deux qui
+     distinguent la relance de la mise en demeure. Sur un téléphone, c'est la
+     SEULE carte rendue : ses deux voisines partent sous `lg`. Trente pixels
+     pour la réponse qu'on descendait chercher. */
+  { adresse: '/demo/paiements', largeur: 360, plafond: 3373, plafondLarge: 3373 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
@@ -431,7 +438,10 @@ const PLAFONDS = [
      bureau vient de la grille à deux colonnes, qui n'existe pas ici. */
   { adresse: '/demo/locataires', largeur: 360, plafond: 4651, plafondLarge: 4380 },
   { adresse: '/demo/mes-donnees', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/acces', largeur: 360, plafond: 2248, plafondLarge: 2209 },
+  /* −22 px : le résumé de périmètre cesse de recopier le nom de l'immeuble
+     devant chaque logement retranché. Mesuré ici à 2187 en police large ; la
+     colonne normale, qui appartient à l'autre machine, reçoit le même écart. */
+  { adresse: '/demo/acces', largeur: 360, plafond: 2226, plafondLarge: 2187 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
@@ -534,7 +544,10 @@ const PLAFONDS = [
   */
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2386, plafondLarge: 2364 },
   { adresse: '/demo/mes-donnees', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/acces', largeur: 1280, plafond: 1213, plafondLarge: 1213 },
+  /* −21 px, même cause qu'à 360 : la phrase de périmètre passe de quatre
+     lignes à deux sur la fiche du gestionnaire, qui est la plus haute de sa
+     rangée et fixe donc la hauteur de la grille. */
+  { adresse: '/demo/acces', largeur: 1280, plafond: 1192, plafondLarge: 1192 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },

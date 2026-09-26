@@ -507,6 +507,31 @@ describe('un résumé qui ne tient pas sur une ligne', () => {
     expect(rangeeDe('Diane Fotso').textContent).not.toMatch(/autre/)
   })
 
+  it('écrit l’immeuble UNE fois pour tous ses logements', async () => {
+    /**
+     * ═══ LE NOM ÉTAIT RECOPIÉ DEVANT CHAQUE NUMÉRO ═══
+     *
+     * « sauf Résidence Bonamoussadi · S1, Résidence Bonamoussadi · S2,
+     * Résidence Bonamoussadi · S3 » : vingt-deux caractères d'immeuble pour
+     * deux de logement, trois fois de suite. Le nom RESTE nécessaire — « S1 »
+     * ne désigne rien sur un parc où trois résidences en ont un — mais une
+     * seule fois suffit à le dire.
+     */
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [S1, S2, S3] },
+      parc: PARC_ELARGI,
+    })
+    const texte = rangeeDe('Diane Fotso').textContent ?? ''
+
+    expect(texte).toContain('sauf Résidence Bonamoussadi · S1, S2, S3')
+    /* DANS LA CLAUSE D'EXCLUSION SEULE : « Gère : Résidence Bonamoussadi » en
+       porte une occurrence légitime de l'autre côté de la phrase — c'est
+       l'immeuble CONFIÉ, et non un logement retranché. */
+    const exclusions = texte.slice(texte.indexOf('sauf'))
+    const repetitions = (exclusions.match(/Résidence Bonamoussadi/g) ?? []).length
+    expect(repetitions, 'le nom de l’immeuble est encore recopié').toBe(1)
+  })
+
   it('replie aussi les exclusions, qui souffrent du même mal', async () => {
     await ouvrirLesAcces({
       membreBorne: {
