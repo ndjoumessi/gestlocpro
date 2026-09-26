@@ -7,6 +7,7 @@ import { Field } from '@/components/primitives/Field'
 import { RadioCards } from '@/components/primitives/Choice'
 import { Input, Textarea } from '@/components/primitives/Input'
 import { StatusPill, type StatusTone } from '@/components/primitives/StatusPill'
+import { Badge } from '@/components/primitives/Badge'
 import { EmptyState } from '@/components/primitives/DataTable'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
@@ -397,6 +398,25 @@ export function Signaler() {
                     <StatusPill tone={TONE[work.status]} size="sm">
                       {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
                     </StatusPill>
+                    {/*
+                      L'URGENCE QU'IL A DÉCLARÉE, ET QU'ON NE LUI RENDAIT PAS.
+
+                      Le formulaire, trois cents lignes plus haut, lui fait
+                      choisir entre « gênant » et « bloquant » ; la liste de ses
+                      signalements n'en montrait rien. Il ne pouvait donc pas
+                      vérifier que sa fuite est bien partie comme bloquante, ni
+                      distinguer ses trois déclarations entre elles.
+
+                      L'ASYMÉTRIE ÉTAIT COMPLÈTE : `Works.tsx` rend cette même
+                      donnée en pastille rouge au bailleur, sur le même parc, au
+                      même instant. Le locataire est le seul à ne pas voir ce
+                      qu'il a lui-même écrit.
+
+                      Le MÊME mot que côté bailleur — `app.works.urgent` — et
+                      non un synonyme : deux surfaces qui nomment le même fait
+                      de deux façons font douter qu'il s'agisse du même fait.
+                    */}
+                    {work.urgent && <Badge tone="danger">{t('app.works.urgent')}</Badge>}
                     {work.reference && (
                       <span className="numeric text-label text-muted">{work.reference}</span>
                     )}
@@ -416,7 +436,16 @@ export function Signaler() {
                   {work.description && (
                     <p className="text-body text-pretty text-muted">{work.description}</p>
                   )}
-                  <p className="text-label text-muted">{d.dayMonth(work.reportedAt)}</p>
+                  {/* LE MÉTIER, sur la ligne de date qui portait cinq
+                      caractères et toute la largeur. Sur une déclaration libre
+                      — « ça coince depuis mardi » —, rien ne confirmait au
+                      locataire que sa demande est partie chez le serrurier
+                      plutôt que chez le plombier ; c'est pourtant le champ que
+                      le formulaire lui fait choisir juste après le texte. */}
+                  <p className="text-label text-muted">
+                    {t(`app.trades.${work.trade}` as 'app.trades.plumbing')} ·{' '}
+                    {d.dayMonth(work.reportedAt)}
+                  </p>
                   {/*
                     LE FIL, et il n'existait nulle part.
 

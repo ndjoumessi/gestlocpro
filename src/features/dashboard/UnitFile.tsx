@@ -160,6 +160,13 @@ export function UnitFile() {
   const entree = inspectionForUnit(unitId, 'entry')
   const sortie = inspectionForUnit(unitId, 'exit')
   const releve = readingForUnit(unitId)
+  /* « 3 réserves » ou « aucune réserve » — accordé en nombre par le
+     dictionnaire, comme tous les décomptes de ce produit. Zéro se DIT : c'est
+     le résultat le plus favorable d'une visite, pas une donnée manquante. */
+  const reserves = (nombre: number) =>
+    nombre === 0
+      ? t('app.inspections.noIssues')
+      : t('app.inspections.issues', { count: nombre })
 
   /*
     LES TROIS CHIFFRES QUE CET ÉCRAN CALCULAIT DÉJÀ, SANS LES DIRE.
@@ -237,9 +244,25 @@ export function UnitFile() {
           icone="shield"
           label={t('app.unitFile.kpiDeposit')}
           value={money(caution?.held ?? 0, { compact: true })}
+          /*
+            LA NOTE SUIVAIT LA PRÉSENCE D'UNE CAUTION, JAMAIS SON ÉTAT.
+
+            « à restituer en fin de bail » s'écrivait sous une caution DÉJÀ
+            RESTITUÉE comme sous une caution en cours d'arbitrage : le dossier
+            d'un logement dont le locataire est parti annonçait détenir un
+            argent rendu la semaine d'avant. C'est le défaut que l'écran des
+            cautions a corrigé ligne à ligne — « la ligne ne se contredit plus,
+            elle portait "À restituer 250 000 FCFA" à côté d'une pastille
+            "Restituée" » — et le dossier du logement, qui est l'écran de
+            synthèse d'un départ, le portait encore.
+
+            `caution.status` existait et n'était lu nulle part dans ce fichier.
+          */
           note={
             caution
-              ? t('app.unitFile.kpiDepositNote')
+              ? t(
+                  `app.unitFile.kpiDepositNote_${caution.status}` as 'app.unitFile.kpiDepositNote_held',
+                )
               : t('app.unitFile.kpiDepositNone')
           }
         />
@@ -515,14 +538,27 @@ export function UnitFile() {
               valeur={caution ? money(caution.held, { compact: true }) : null}
               absence={t('app.unitFile.noDeposit')}
             />
+            {/*
+              LA DATE DISAIT QU'ON EST PASSÉ, JAMAIS CE QU'ON A VU.
+
+              « État des lieux d'entrée · 15/06/2024 » atteste une visite ; le
+              dossier se lit au moment d'un départ, et ce qu'on y cherche est
+              le nombre de RÉSERVES — c'est lui, et lui seul, qui justifie ou
+              non une retenue sur la caution. Il était porté par `entree.issues`
+              et `sortie.issues`, que ce fichier n'ouvrait pas.
+
+              « Aucune réserve » est dit en toutes lettres et non par un blanc :
+              une visite sans réserve est un fait, et le plus favorable des
+              deux.
+            */}
             <LignePiece
               label={t('app.documents.entryInspection')}
-              valeur={entree ? d.fullDate(entree.date) : null}
+              valeur={entree ? `${d.fullDate(entree.date)} · ${reserves(entree.issues)}` : null}
               absence={t('app.unitFile.noInspection')}
             />
             <LignePiece
               label={t('app.inspections.kinds.exit')}
-              valeur={sortie ? d.fullDate(sortie.date) : null}
+              valeur={sortie ? `${d.fullDate(sortie.date)} · ${reserves(sortie.issues)}` : null}
               absence={t('app.unitFile.noInspection')}
             />
             <LignePiece

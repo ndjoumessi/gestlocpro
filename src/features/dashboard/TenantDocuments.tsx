@@ -9,11 +9,13 @@ import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDe
 import { EmptyState } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion } from '@/components/primitives/Skeleton'
 import { useCurrency } from '@/currency/CurrencyProvider'
+import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import {
   DOCUMENT_KIND_LABELS,
   receiptDue,
+  receiptStatus,
   type DocumentKind,
   type DocumentRequest,
 } from '@/data/portfolio'
@@ -40,7 +42,21 @@ import { useHistoriqueCsv } from './quittancesCsv'
  *
  * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
  */
-const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
+/*
+  `items-start` : SANS LUI, LA COLONNE COURTE S'ÉTIRE SUR LA HAUTEUR DE L'AUTRE.
+
+  Mesuré à 1280 px sur `/demo/documents` : « Mon dossier » porte trois lignes —
+  bail, état des lieux, reçu de caution — pendant que « Mes quittances » en
+  porte six, et la carte de gauche était tirée à la hauteur de la droite. Deux
+  cent quarante pixels de blanc sous le reçu de caution, DANS une carte bordée,
+  qui se lisent comme un dossier auquel il manque des pièces.
+
+  Même remède que la grille des fiches de membre du registre des accès, qui
+  porte le relevé de son propre cas : « un bord bas irrégulier coûte moins
+  qu'une fiche au tiers vide ». Ici la carte ne se compare à rien — un dossier
+  et une liste de quittances n'ont aucune ligne commune à aligner.
+*/
+const GRILLE_DEUX_COLONNES = 'grid items-start gap-4 lg:grid-cols-2'
 
 /**
  * Documents du locataire — ses pièces contractuelles et ses quittances.
@@ -310,8 +326,33 @@ export function TenantDocuments() {
                     écran, avec la primitive qui distingue les deux. */}
                 <span className="min-w-32 flex-1">
                   <span className="block text-body">{d.monthYear(receipt)}</span>
-                  <span className="numeric block text-label text-muted">
-                    {money(receiptDue(receipt), { compact: true })}
+                  {/*
+                    L'ÉTAT DE LA PÉRIODE, À CÔTÉ DE SON MONTANT.
+
+                    Le commentaire ci-dessus explique pourquoi la ligne porte le
+                    TOTAL DÛ et non le réglé, et il a raison : sur une période
+                    partiellement soldée, le versement se lirait comme le
+                    montant de la pièce. Mais il renvoyait « le reste dû » à un
+                    autre écran, et laissait partir d'ici une quittance de mai
+                    dont 5 058 FCFA d'électricité ne sont pas payés — sans que
+                    rien, sur la ligne, ne le dise au locataire qui la
+                    télécharge.
+
+                    Le montant reste donc le dû ; l'ÉTAT, lui, se dit. Les deux
+                    ensemble se lisent « 166 585 FCFA, partiellement réglé »,
+                    ce qu'aucun des deux ne dit seul.
+
+                    `PaymentStatusPill` ET NON UNE TEINTE : elle porte le MOT de
+                    l'état, et un glyphe sur les deux états que la couleur seule
+                    confondrait. C'est la primitive que la grille des paiements
+                    emploie pour le même fait, côté bailleur — les deux côtés du
+                    produit nomment donc une période partielle du même mot.
+                  */}
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="numeric text-label text-muted">
+                      {money(receiptDue(receipt), { compact: true })}
+                    </span>
+                    <PaymentStatusPill status={receiptStatus(receipt, new Date())} size="sm" />
                   </span>
                 </span>
                 <div className="ml-auto shrink-0">

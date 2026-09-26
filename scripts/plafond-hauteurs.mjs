@@ -426,7 +426,13 @@ const PLAFONDS = [
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
   { adresse: '/demo/mon-espace', largeur: 360, plafond: 3249, plafondLarge: 3198 },
-  { adresse: '/demo/documents', largeur: 360, plafond: 2244, plafondLarge: 2244 },
+  /* +48 px LE 2026-09-26 : chaque quittance porte son état de règlement.
+     Six lignes annonçaient un mois et un montant DÛ — le fichier s'en
+     expliquait — sans jamais dire si la période était soldée : le locataire
+     téléchargeait une quittance de juin dont 5 058 FCFA restent impayés sans
+     que rien, sur la ligne, ne l'en avertisse. Huit pixels par quittance pour
+     le seul fait qui décide s'il doit payer ou ranger. */
+  { adresse: '/demo/documents', largeur: 360, plafond: 2292, plafondLarge: 2292 },
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
   { adresse: '/demo/parc', largeur: 360, plafond: 4232, plafondLarge: 4232 },
   { adresse: '/demo/releves', largeur: 360, plafond: 3753, plafondLarge: 3753 },
@@ -486,7 +492,9 @@ const PLAFONDS = [
   { adresse: '/demo/travaux', largeur: 1280, plafond: 1546, plafondLarge: 1479 },
   { adresse: '/demo/signalements', largeur: 1280, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
-  { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
+  /* +15 px, même cause qu'à 360 — la pastille tient sur la ligne du montant
+     dès que la carte a sa largeur de bureau. */
+  { adresse: '/demo/documents', largeur: 1280, plafond: 1202, plafondLarge: 1180 },
   { adresse: '/demo/signaler', largeur: 1280, plafond: 900, plafondLarge: 900 },
   /*
     +154 px SUR `/demo/parc@1280`, 2058 → 2212, LE 2026-09-26 : L'ÉCRAN TOTALISE

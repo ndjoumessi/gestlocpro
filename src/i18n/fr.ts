@@ -998,7 +998,12 @@ export const fr = {
       kpiBalanceNote: 'sur {count} périodes facturées',
       kpiBalanceNote_one: 'sur {count} période facturée',
       kpiDeposit: 'Caution consignée',
-      kpiDepositNote: 'à restituer en fin de bail',
+      /* UNE NOTE PAR ÉTAT DE CAUTION. La note unique affirmait « à restituer en
+         fin de bail » sous une caution déjà rendue — voir le bloc qui la rend
+         dans `UnitFile.tsx`. Les trois états du modèle, les trois phrases. */
+      kpiDepositNote_held: 'à restituer en fin de bail',
+      kpiDepositNote_settling: 'en cours d’arbitrage',
+      kpiDepositNote_returned: 'déjà restituée au locataire',
       kpiDepositNone: 'aucune caution enregistrée',
       kpiWorks: 'Travaux engagés',
       kpiWorksNote: 'sur {count} interventions',
@@ -2384,6 +2389,8 @@ export const fr = {
       emptyBody:
         'Le produit dépose ici les loyers en retard, les devis à arbitrer, les relevés manquants et les baux qui arrivent à échéance. Rien de tout cela n’est en cours.',
       open: 'Ouvrir',
+      /* LE NOM ACCESSIBLE du même bouton — voir le bloc qui le pose. */
+      openKind: 'Ouvrir · {kind}',
       unread: '{count} non lues',
       unread_one: '{count} non lue',
       severityHigh: 'Prioritaire',

@@ -700,6 +700,29 @@ export function Alerts() {
                     variant="ghost"
                     size="sm"
                     iconAfter="arrowRight"
+                    /*
+                      DOUZE « OUVRIR » IDENTIQUES, ET AUCUN NE DISAIT OÙ.
+
+                      À la lecture d'écran, la liste rendait « Ouvrir, lien »
+                      douze fois de suite : le nom accessible d'un bouton est
+                      tout ce qu'on entend quand on parcourt les commandes d'une
+                      page, et celui-ci ne distinguait pas un impayé d'un relevé
+                      manquant. La destination était pourtant décidée deux
+                      lignes plus haut, et son nom lisible existe depuis
+                      longtemps sous `app.alerts.kind`.
+
+                      LE LIBELLÉ VISIBLE NE BOUGE PAS. La rangée est `shrink-0`
+                      et le dépôt a déjà payé un repli de rangée pour un libellé
+                      allongé ; un nom accessible ne coûte aucun pixel. Le
+                      voyant lit « Ouvrir » avec la carte entière sous les yeux,
+                      qui dit déjà de quoi il s'agit.
+
+                      C'est le pendant exact du correctif que cet écran vient de
+                      faire pour l'état « non lue ».
+                    */
+                    aria-label={t('app.alerts.openKind', {
+                      kind: t(`app.alerts.kind.${alert.kind}` as 'app.alerts.kind.payment'),
+                    })}
                   >
                     {t('app.alerts.open')}
                   </Button>

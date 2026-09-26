@@ -16,6 +16,7 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useT } from '@/i18n/I18nProvider'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useDates } from '@/lib/useDates'
+import { useNumbers } from '@/lib/numbers'
 import type { Finding, Inspection, Photo } from '@/data/portfolio'
 
 import { usePortfolio } from '@/data/PortfolioProvider'
@@ -59,6 +60,8 @@ const GRILLE_DEUX_COLONNES = 'grid items-start gap-4 lg:grid-cols-2'
 export function Inspections() {
   const t = useT()
   const d = useDates()
+  /* `n.list` : la conjonction d'une énumération est une affaire de langue. */
+  const n = useNumbers()
   const { role } = useRole()
   const { unitById, isMine, units, inspections: INSPECTIONS, loading } = usePortfolio()
   const [ouverte, setOuverte] = useState(false)
@@ -159,7 +162,31 @@ export function Inspections() {
             label={t('app.inspections.kpiNone')}
             value={String(sansDossier.length)}
             etat={sansDossier.length > 0 ? { ton: 'warn' } : undefined}
-            note={t('app.inspections.kpiNoneNote')}
+            /*
+              LE CHIFFRE COMPTAIT SANS PERMETTRE D'ALLER VOIR.
+
+              « Aucun dossier · 7 · aucune pièce contradictoire » : le nombre le
+              plus actionnable de l'écran, et rien pour savoir DE QUELS
+              logements il s'agit. La liste dessous ne rend que `byUnit` —
+              c'est-à-dire exactement les logements qui en ONT un —, donc les
+              sept manquants n'apparaissent nulle part sur la page qui les
+              compte.
+
+              C'est le défaut que les relevés ont déjà payé et corrigé : « une
+              note ambre annonce "2 relevés manquants pour la période" et rien
+              ne mène à ces deux lignes-là ». Ici il n'y a pas de ligne où
+              mener — un logement sans dossier n'en a pas — donc la note les
+              NOMME, comme la note des relevés nomme A5 et C2.
+
+              `n.list` et non un `join` : la conjonction et les virgules sont
+              celles de la langue, et « A2, A4 et B1 » ne s'écrit pas comme
+              « A2, A4, and B1 ».
+            */
+            note={
+              sansDossier.length > 0
+                ? n.list(sansDossier.map((u) => u.label))
+                : t('app.inspections.kpiNoneNote')
+            }
           />
         </div>
       )}

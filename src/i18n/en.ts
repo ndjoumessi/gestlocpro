@@ -718,7 +718,9 @@ export const en: Dictionary = {
       kpiBalanceNote: 'across {count} billed periods',
       kpiBalanceNote_one: 'across {count} billed period',
       kpiDeposit: 'Deposit held',
-      kpiDepositNote: 'to return at the end of the lease',
+      kpiDepositNote_held: 'to return at the end of the lease',
+      kpiDepositNote_settling: 'being settled',
+      kpiDepositNote_returned: 'already returned to the tenant',
       kpiDepositNone: 'no deposit on record',
       kpiWorks: 'Works committed',
       kpiWorksNote: 'across {count} jobs',
@@ -1660,6 +1662,7 @@ export const en: Dictionary = {
       emptyBody:
         'The product files late rents, quotes awaiting a decision, missing meter readings and leases coming up for renewal here. None of that is pending.',
       open: 'Open',
+      openKind: 'Open · {kind}',
       unread: '{count} unread',
       unread_one: '{count} unread',
       severityHigh: 'Priority',
