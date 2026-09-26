@@ -271,17 +271,40 @@ const PLAFONDS = [
     les `dt` survivent aux cartes, puisque ce sont eux qui nomment les listes.
     Ce qu'elle inspectait n'était pas la carte.
 
-    RESTE CE QUE CE PLAFOND CONCÈDE ENCORE : 11798 px dépassent `origine` de
-    379 px au téléphone français, 240 en anglais. Deux sections de plus, et une
-    page qui n'est pas revenue sous sa hauteur d'avant la refonte de densité.
+    ═══ ET LA PAGE MOBILE EST REPASSÉE SOUS SON ORIGINE, LE MÊME JOUR ═══
+
+    Ce bloc concédait, deux heures plus tôt, que 11798 px dépassaient `origine`
+    de 379 au téléphone français et de 240 en anglais. Deux sections ont été
+    reprises et rendent 398 et 420 px :
+
+      — LES RÔLES (−268 px à 360). La pastille de chaque carte passe à GAUCHE du
+        nom au lieu d'être posée au-dessus : 72 px par carte, 216 sur trois
+        cartes empilées. Le reste vient des rembourrages, alignés sur ceux des
+        autres cartes de la page. Au bureau, la même section GAGNE quatre bandes
+        partagées (`grid-rows-subgrid`, comme la grille de prix) : ses trois
+        cartes s'alignaient par leurs extrémités et glissaient de 28 px au
+        milieu, là où se lit la comparaison ;
+      — LES TARIFS (−16 px). La rangée des deux réglages faisait 50 px de haut
+        pour 72 de marge. Cette section n'avait rien d'autre à rendre : elle
+        bascule déjà en onglets sous `lg`, un seul palier à la fois, et tout ce
+        qui reste — la formule par unité, la mention d'arrondi, l'essai, la
+        TVA — est ce qu'un prospect vient vérifier. Le dire vaut mieux que de
+        raboter ce qui informe ;
+      — six tuiles de fonctionnalités au même rembourrage que les cartes de
+        rôles (−48), et les deux listes graduées au même écart vertical (−40).
+
+    RÉSULTAT : 11400 et 10969 px, soit 19 et 180 px SOUS `origine`, avec DIX
+    sections au lieu de huit. Au bureau la page reste au-dessus de son origine —
+    8177 contre 7110 — et ce nombre-là n'a jamais été comparable : il mesurait
+    huit sections sur une page où deux de plus ont été demandées.
 
     LES DEUX SECTIONS ONT ÉTÉ RESSERRÉES AVANT D'ÊTRE PESÉES. « Ce qui vous
     engage » pose son signe à GAUCHE du texte et non au-dessus : 207 px rendus
     au téléphone, mesurés (1148 → 941). Elle tient le temps `serre` — un appui,
     pas une étape.
   */
-  { largeur: 360, langue: 'fr', plafond: 11798, plafondLarge: 11798, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 11497, plafondLarge: 11389, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'fr', plafond: 11400, plafondLarge: 11400, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 11077, plafondLarge: 10969, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -337,10 +360,11 @@ const PLAFONDS = [
     colonnes faisait déjà. Voir le commentaire de `FeatureGrid`.
   */
   /*
-    +990 px (fr) ET +948 (en) AU BUREAU, LE 2026-09-26 : LES MÊMES DEUX
-    SECTIONS, moins les 141 et 131 px que rend le retrait des trois cartes de
-    chiffres de la section internationale (voir le bloc du téléphone). Le
-    rapport par section tombe de 889 à 829 px.
+    +877 px (fr) ET +852 (en) AU BUREAU, LE 2026-09-26 : LES MÊMES DEUX
+    SECTIONS, moins ce que rendent le retrait des trois cartes de chiffres de la
+    section internationale (141 et 131) puis la reprise des rôles, des tarifs et
+    des tuiles (113 et 96). Voir le bloc du téléphone pour le détail. Le rapport
+    par section tombe de 889 à 818 px.
 
     LA COLONNE LARGE EST MESURÉE, LA NORMALE EST DÉDUITE, comme le lot du même
     jour juste au-dessus : `MESURER_EN_POLICE_LARGE=1` reproduit exactement les
@@ -348,8 +372,8 @@ const PLAFONDS = [
     celle de la colonne normale. Les `plafond` reçoivent le delta mesuré. À
     revérifier sur la machine de développement au premier passage.
   */
-  { largeur: 1280, langue: 'fr', plafond: 8213, plafondLarge: 8290, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
-  { largeur: 1280, langue: 'en', plafond: 8248, plafondLarge: 8227, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'fr', plafond: 8100, plafondLarge: 8177, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 8152, plafondLarge: 8131, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══

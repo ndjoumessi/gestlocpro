@@ -84,7 +84,14 @@ export function FeatureGrid() {
             elevation="e1"
             key={key}
             className={cn(
-              'group p-7 sm:p-8',
+              /* `p-6 sm:p-7`, COMME LES CARTES DE RÔLES. Les trois familles de
+                 cartes de la page tenaient trois rembourrages différents —
+                 28/32 ici, 28/32 aux rôles, 20 aux engagements — sans qu'aucun
+                 ne dise pourquoi. Les rôles sont passés à 24/28 dans le même
+                 lot, pour la hauteur ; garder 28/32 ici en aurait fait deux
+                 densités de carte à trois sections d'écart. Six tuiles au
+                 téléphone, cela vaut 96 px. */
+              'group p-6 sm:p-7',
               span,
               'transition-[transform,box-shadow,border-color] duration-200 ease-out',
               'hover:-translate-y-1 hover:border-border-strong hover:shadow-e2',

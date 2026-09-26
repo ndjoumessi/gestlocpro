@@ -94,7 +94,11 @@ export function PricingSection() {
     >
       <UnitSlider units={units} onChange={setUnits} />
 
-      <div className="mt-8 mb-10 flex flex-wrap items-center justify-center gap-3">
+      {/* `mt-6 mb-8` : la rangée fait 50 px de haut et s'entourait de 72 px de
+          marge — plus de vide que de commande. Les deux réglages appartiennent
+          au même geste que le curseur qui les précède et que la grille qu'ils
+          pilotent ; les tenir à distance de tout en faisait un intermède. */}
+      <div className="mt-6 mb-8 flex flex-wrap items-center justify-center gap-3">
         <SegmentedControl
           label={t('marketing.pricing.monthly')}
           value={period}

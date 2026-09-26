@@ -46,7 +46,13 @@ export function HowItWorks() {
       title={t('marketing.how.title')}
       description={t('marketing.how.subtitle')}
     >
-      <ol className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      {/* `gap-y-8` ET NON `gap-y-10` : la pastille déborde de 16 px au-dessus
+          de son trait, il en faut donc au moins autant entre deux entrées
+          empilées. Trente-deux en laissent le double, et rendent 24 px au
+          téléphone sur les quatre frictions, 16 sur les trois étapes — les deux
+          listes graduées partagent cet écart, comme elles partagent tout le
+          reste de leur forme. */}
+      <ol className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
         {ETAPES.map(({ key, icone }, index) => (
           <li key={key} className="relative border-t border-border pt-9">
             {/* Le numéro se pose SUR le trait, comme les quatre frictions :
