@@ -32,7 +32,29 @@ import { usePortfolio } from '@/data/PortfolioProvider'
  *
  * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
  */
-const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
+/*
+  ═══ `items-start` : CHAQUE FICHE À SA HAUTEUR, ET NON À CELLE DE SA VOISINE ═══
+
+  La grille étirait ses fiches à la hauteur de la plus haute de leur rangée.
+  Mesuré au DOM sur `/demo/etats-des-lieux` :
+
+    1440 px   A1 : 291 px de contenu dans une boîte de 659  →  368 px de vide
+    1280 px   A1 : 291 px de contenu dans une boîte de 724  →  433 px de vide
+
+  Le trou tombe DANS la fiche, sous ses photos, et c'est exactement ce que la
+  sonde des sections alignées écrit du blanc réservé : « le vide tombe alors au
+  MILIEU de la fiche, là où il se lit comme une donnée manquante, et non en bas,
+  où il se lit comme une fiche qui a moins à dire ». Ici il n'y a rien de
+  manquant — A1 n'a qu'une entrée, B4 porte une comparaison de cinq pièces.
+
+  POURQUOI CET ÉCRAN ET PAS LES AUTRES. Les cartes de rôles, la grille de prix
+  et les fiches de locataire s'étirent VOLONTAIREMENT : on les lit EN TRAVERS,
+  ligne contre ligne, et leurs rangées partagées sont le prix de cette lecture.
+  Ces fiches-ci ne se comparent pas — chacune est le dossier d'un logement, et
+  leur contenu n'a ni le même nombre de lignes ni la même nature. Rien ne se lit
+  d'une fiche à l'autre, donc rien ne justifie de réserver.
+*/
+const GRILLE_DEUX_COLONNES = 'grid items-start gap-4 lg:grid-cols-2'
 
 export function Inspections() {
   const t = useT()
