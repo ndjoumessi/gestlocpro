@@ -47,7 +47,20 @@ const ECART_MIN_PX = 8
   une classe fantôme dans le CSS livré.
 */
 const ECART = new RegExp(`\\b${'gap'}-(?:x-|y-)?(\\d+(?:\\.\\d+)?)\\b`, 'g')
-const RANGEE = new RegExp(`\\b${'flex'}\\b`)
+/*
+  UNE RANGÉE EST UN `flex` OU UNE `grid`.
+
+  Elle ne reconnaissait que `flex`. Or une grille aligne des commandes tout
+  autant — et c'est même là que l'écart se répète, puisqu'un `gap` de grille
+  s'applique à DEUX axes. Trois grilles de `DatePicker` y échappaient :
+  `grid grid-cols-4 gap-1`, quatre pixels entre des boutons qui portent
+  pourtant chacun `min-h-11`. Deux cibles conformes séparées de quatre pixels
+  se manquent quand même : c'est la phrase d'ouverture de ce fichier, et la
+  garde ne la tenait qu'à moitié.
+
+  Mesuré le 2026-09-26 : l'élargissement révèle ces trois sites, et eux seuls.
+*/
+const RANGEE = new RegExp(`\\b(?:${['flex', 'grid'].join('|')})\\b`)
 
 /** Ce qui, dans le voisinage, désigne une rangée de COMMANDES. */
 const COMMANDE = /<Button\b|<IconButton\b|<Link\b|<button\b|role="group"/
@@ -236,6 +249,26 @@ describe('l’écart entre deux cibles', () => {
     ).toEqual([])
     // Et dans un commentaire, jamais.
     expect(ecartsTropSerres('t.tsx', `/* ${rangee} ${serre} <Button /> */\n<div />`)).toEqual([])
+
+    /*
+      LA GRILLE EST EXERCÉE POUR ELLE-MÊME, et non déduite du cas `flex`.
+
+      Les deux formes passent par la même branche, mais c'est le MOTIF qui a
+      changé : un témoin qui n'exercerait que `flex` laisserait retomber
+      `grid` au premier remaniement de la expression régulière sans que rien
+      ne rougisse. C'est la leçon que ce fichier applique déjà à son cas
+      positif — une garde qui ne teste pas ce qu'elle vient d'ajouter ne garde
+      que ce qu'elle gardait hier.
+    */
+    const grille = `${'grid'} ${'grid'}-cols-4`
+    expect(
+      ecartsTropSerres('t.tsx', `<div className="${grille} ${serre}">\n<button />`).map(
+        (t) => t.site,
+      ),
+    ).toEqual(['t.tsx:1'])
+    expect(
+      ecartsTropSerres('t.tsx', `<div className="${grille} ${large}">\n<button />`),
+    ).toEqual([])
   })
 
   /** Une tolérance qui ne couvre plus rien est une tolérance qui ment. */

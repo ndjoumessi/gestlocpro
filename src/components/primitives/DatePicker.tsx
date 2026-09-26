@@ -368,7 +368,7 @@ function GrilleAnnees({
   onChoisir: (annee: number) => void
 }) {
   return (
-    <div className="grid grid-cols-4 gap-1">
+    <div className="grid grid-cols-4 gap-2">
       {Array.from({ length: ANNEES_PAR_PAGE }, (_, i) => ancre + i).map((annee) => {
         const estChoisie = annee === choisie
         const estCourante = annee === courante
@@ -710,7 +710,7 @@ export function DatePicker({
           )}
 
           {vue === 'mois' && (
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid grid-cols-4 gap-2">
               {nomsMois.map((nom, index) => {
                 const estChoisi = curseur.mois === index
                 return (
@@ -1023,7 +1023,7 @@ export function MonthPicker({
               />
             )}
 
-            <div className="grid grid-cols-4 gap-1" hidden={vue !== 'mois'}>
+            <div className="grid grid-cols-4 gap-2" hidden={vue !== 'mois'}>
               {nomsMois.map((nom, index) => {
                 const estChoisi = choisi?.annee === annee && choisi.mois === index
                 const estCourant = courant.annee === annee && courant.mois === index
