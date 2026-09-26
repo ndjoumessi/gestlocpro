@@ -165,6 +165,16 @@ export const fr = {
     monthCalendar: 'Choix du mois',
     monthCurrent: 'Ce mois-ci',
     emailPlaceholder: 'nom@domaine.com',
+    // LE PLACEHOLDER DU MOT DE PASSE MONTRE UNE FORME, il ne redit pas
+    // l'étiquette. C'est la règle que `emailPlaceholder` suit déjà juste
+    // au-dessus : « nom@domaine.com » est un EXEMPLE, pas le mot « courriel »
+    // recopié. La forme d'un mot de passe saisi est une suite de points, et
+    // c'est ce que le champ montre au repos.
+    //
+    // Il vit au dictionnaire plutôt qu'en dur dans `Login.tsx` — la garde des
+    // chaînes en dur l'exigerait de toute façon — et cela le rend réglable :
+    // une langue qui masquerait autrement n'aurait qu'à changer la valeur.
+    passwordPlaceholder: '••••••••',
     fullName: 'Nom complet',
     showPassword: 'Afficher le mot de passe',
     hidePassword: 'Masquer le mot de passe',

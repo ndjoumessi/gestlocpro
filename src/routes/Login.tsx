@@ -346,6 +346,17 @@ export function Login() {
               {...props}
               name="password"
               autoComplete="current-password"
+              /* LES DEUX CHAMPS DE CET ÉCRAN NE PESAIENT PAS PAREIL AU REPOS :
+                 celui du courriel montrait « nom@domaine.com », celui-ci restait
+                 vide. Deux champs voisins de même rang, dont l'un paraît
+                 rempli et l'autre inerte — l'œil lit une différence d'état là
+                 où il n'y en a pas.
+
+                 Le point n'est PAS de redire l'étiquette : « Mot de passe »
+                 est déjà au-dessus, visible, et `Field` le câble. Comme le
+                 placeholder du courriel, celui-ci montre une FORME — ce que le
+                 champ affichera une fois saisi, des points de masquage. */
+              placeholder={t('common.passwordPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onBlur={() => {

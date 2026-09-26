@@ -88,6 +88,7 @@ export const en: Dictionary = {
     monthCalendar: 'Month picker',
     monthCurrent: 'This month',
     emailPlaceholder: 'name@domain.com',
+    passwordPlaceholder: '••••••••',
     fullName: 'Full name',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
