@@ -867,6 +867,18 @@ export function MonthPicker({
     return { annee: n.getFullYear(), mois: n.getMonth() }
   }, [])
 
+  /**
+   * LE MOIS COURANT EST-IL HORS BORNES ?
+   *
+   * La même expression que les cases de la grille, écrite une fois : le
+   * raccourci de pied la traversait, et deux façons de dire « fermé »
+   * finissent toujours par diverger — c'est ce qui a produit le défaut.
+   */
+  const courantFerme = useMemo(() => {
+    const cle = `${courant.annee}-${String(courant.mois + 1).padStart(2, '0')}`
+    return (max !== undefined && cle > max) || (min !== undefined && cle < min)
+  }, [courant, min, max])
+
   const choisi = useMemo(() => {
     const m = /^(\d{4})-(\d{2})$/.exec(value)
     if (!m) return null
@@ -1023,6 +1035,8 @@ export function MonthPicker({
               />
             )}
 
+            {/* Le mois courant, mesuré à la MÊME aune que les cases de la
+                grille — voir le raccourci de pied, qui s'en sert. */}
             <div className="grid grid-cols-4 gap-2" hidden={vue !== 'mois'}>
               {nomsMois.map((nom, index) => {
                 const estChoisi = choisi?.annee === annee && choisi.mois === index
@@ -1055,10 +1069,35 @@ export function MonthPicker({
             </div>
 
             <div className="mt-2 border-t border-divider pt-2">
+              {/*
+                ═══ UNE PORTE OUVERTE VERS UN MOIS FERMÉ ═══
+
+                La grille respecte `min`/`max` — douze mois grisés et
+                `disabled` —, et ce raccourci passait à travers : il appelait
+                `choisir` sans consulter les bornes. Le panneau montrait donc
+                des mois interdits ET un bouton qui menait à l'un d'eux ; la
+                valeur partait au formulaire, et le refus n'arrivait qu'après,
+                chez l'appelant ou au serveur.
+
+                Ce n'est pas un cas de laboratoire : la démonstration resserre
+                `min` et `max` sur UN mois, celui du dernier relevé — c'est
+                écrit en tête de ce fichier. « Mois courant » y traversait la
+                borne la plus étroite que le produit pose.
+
+                LA MÊME EXPRESSION QUE LA GRILLE, et il le faut : deux façons de
+                dire « fermé » finiraient par diverger, et c'est précisément la
+                divergence qui a produit ce défaut.
+              */}
               <button
                 type="button"
+                disabled={courantFerme}
                 onClick={() => choisir(courant.mois, courant.annee)}
-                className="min-h-11 cursor-pointer rounded-md px-2 text-label font-semibold text-accent-ink hover:text-accent-ink-hover"
+                className={cn(
+                  'min-h-11 rounded-md px-2 text-label font-semibold',
+                  courantFerme
+                    ? 'cursor-not-allowed text-muted opacity-45'
+                    : 'cursor-pointer text-accent-ink hover:text-accent-ink-hover',
+                )}
               >
                 {t('common.monthCurrent')}
               </button>

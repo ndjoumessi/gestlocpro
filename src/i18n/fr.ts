@@ -187,6 +187,9 @@ export const fr = {
     // l'inscription, où une phrase complète tenait sur quatre lignes et pesait
     // plus que les options qu'elle commente.
     listTruncated: 'Liste raccourcie : affinez votre recherche.',
+    /* LA LISTE VIDE — voir `Combobox` : elle rendait un tiret muet sous la
+       promesse d'un mot. */
+    listEmpty: 'Aucun résultat pour cette recherche.',
     period: 'Période',
     perMonth: '/ mois',
     perYear: '/ an',
@@ -2215,6 +2218,10 @@ export const fr = {
       sentTitle: 'Message envoyé.',
       delivered: '{count} locataires le liront dans leurs notifications.',
       delivered_one: '{count} locataire le lira dans ses notifications.',
+      /* COMBIEN LIRONT, AVANT DE CLIQUER — voir `AnnounceModal` : le compte ne
+         se disait qu'APRÈS l'envoi, quand il décide de ce qu'on écrit. */
+      audience: '{count} locataires le recevront.',
+      audience_one: '{count} locataire le recevra.',
       unreachable: '{count} locataires n’ont pas de compte : il reste à les appeler.',
       unreachable_one: '{count} locataire n’a pas de compte : il reste à l’appeler.',
       channelNotice: 'Le message se dépose dans l’application. Aucun SMS n’est envoyé.',
@@ -2756,6 +2763,13 @@ export const fr = {
          signalement se NOMME ; plusieurs se COMPTENT, et la liste est à un
          onglet de distance. */
       whatHintOpen: 'Déjà en cours sur ce logement : {count} signalements.',
+      /* LE SINGULIER, QUE L'ÉCRAN N'APPELLE PAS — et la garde de parité a
+         raison de l'exiger quand même : une clé qui interpole `{count}` doit
+         porter sa variante, sans quoi le premier appelant qui lui passe un
+         rend « 1 signalements ». Ici c'est `whatHintOpenOne` qui sert ce
+         cas-là, en NOMMANT le signalement plutôt qu'en le comptant ; cette
+         ligne est le filet, pas le chemin. */
+      whatHintOpen_one: 'Déjà en cours sur ce logement : {count} signalement.',
       whatHintOpenOne: 'Déjà en cours sur ce logement : « {titre} ».',
       whatPlaceholder: 'Fuite sous l’évier de la cuisine',
       whatError: 'Décrivez le problème en quelques mots',

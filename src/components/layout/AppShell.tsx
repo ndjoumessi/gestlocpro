@@ -2042,8 +2042,36 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
       <Icon name={item.icon} size={17} />
       {wide && <span className="min-w-0 flex-1 truncate">{label}</span>}
       {/* Une pastille à zéro disparaît : « 0 impayé » n'est pas une alerte. */}
-      {wide && item.badge && count(item.badge.count) > 0 && (
-        <Badge tone={item.badge.tone}>{count(item.badge.count)}</Badge>
+      {item.badge && count(item.badge.count) > 0 && (
+        /*
+          ═══ REPLIER LE RAIL FAISAIT DISPARAÎTRE L'ALERTE ═══
+
+          La pastille était gardée par `wide` — sans raison écrite ; le
+          commentaire au-dessus ne justifie que le zéro. Replié, le rail gardait
+          donc la navigation et perdait « 3 impayés », sur la taille d'écran où
+          l'on travaille la journée entière. L'autre porteur de ces comptes est
+          la barre basse, `lg:hidden` : au-delà de 1024 px, plus personne ne les
+          disait.
+
+          REPLIÉ, ELLE S'ANCRE SUR LE GLYPHE — le motif que la barre basse
+          écrit déjà, halo compris, pour que le compte se lise comme un objet
+          POSÉ et non comme une morsure dans ce qu'il recouvre. Le lien porte
+          `relative` depuis toujours. Déplié, rien ne change : la pastille reste
+          en fin de ligne, après le libellé.
+
+          AUCUN PIXEL DE HAUTEUR : en absolu hors du flux, dans les 72 px du
+          rail replié.
+        */
+        <Badge
+          tone={item.badge.tone}
+          className={
+            wide
+              ? undefined
+              : 'absolute -top-0.5 -right-0.5 px-1 py-0 leading-tight ring-2 ring-paper'
+          }
+        >
+          {count(item.badge.count)}
+        </Badge>
       )}
       {!wide && <span className="sr-only">{label}</span>}
     </NavLink>
@@ -2069,6 +2097,8 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
   const t = useT()
   const { demo } = useIdentite()
   const sansParc = useSansParc()
+  const base = useBase()
+  const { pathname } = useLocation()
 
   /* Sans parc, la barre basse n'a AUCUNE destination : ses quatre places sont
      choisies dans `BOTTOM_ORDER`, qui ne passe pas par `sectionsPour` — la
@@ -2092,6 +2122,31 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
         )
   const items = entreesVisibles(candidats, role, demo).slice(0, BOTTOM_MAX)
   if (sansParc) return null
+
+  /**
+   * ═══ HUIT ÉCRANS SUR DOUZE N'AVAIENT AUCUN REPÈRE ═══
+   *
+   * La barre ne tient que quatre destinations. Sur les autres — cautions,
+   * relevés, locataires, décisions, mes données —, aucune pastille ne
+   * s'allumait, et « Plus » ne s'allumait jamais NON PLUS : son commentaire
+   * l'affirmait comme une évidence, « Plus n'est pas une destination et ne
+   * peut donc pas être l'entrée courante ». C'est vrai de la destination, faux
+   * du REPÈRE : la seule ancre de lieu du téléphone restait muette exactement
+   * là où l'on est le plus perdu, et l'écran courant n'était signalé nulle
+   * part.
+   *
+   * « Plus » CONTIENT l'écran courant quand aucune des quatre ne le porte : le
+   * tiroir qu'il déplie a l'entrée allumée. Il se lit donc « vous êtes
+   * là-dedans », ce qui est une information vraie, et la seule disponible.
+   *
+   * `aria-current="true"` ET NON `"page"` : `page` désigne un lien vers la page
+   * courante, et ceci est un bouton qui n'emmène nulle part. La valeur
+   * générique dit « l'élément courant de cet ensemble » sans mentir sur sa
+   * nature.
+   *
+   * AUCUN PIXEL : c'est un changement d'état sur une cible qui existe déjà.
+   */
+  const ailleurs = !items.some((item) => lien(base, item.to) === pathname)
 
   return (
     <nav
@@ -2154,17 +2209,29 @@ function BarreBasse({ role, onOpenDrawer }: { role: Role; onOpenDrawer: () => vo
       <button
         type="button"
         onClick={onOpenDrawer}
-        className={CIBLE_DE_PLUS}
+        aria-current={ailleurs ? 'true' : undefined}
+        className={classesDuBoutonDePlus(ailleurs)}
       >
         {/* Le même gabarit que ses quatre voisines, pastille comprise : elle ne
             s'allume jamais — « Plus » n'est pas une destination et ne peut donc
             pas être l'entrée courante — mais elle porte le survol et
             l'enfoncement, sans quoi la cinquième cible serait la seule muette au
             doigt. */}
-        <span className={cn(PASTILLE, 'group-hover:bg-surface-sunken')}>
+        {/* LA MÊME ENCRE QUE LES QUATRE AUTRES quand l'écran courant est
+            derrière « Plus » : l'état actif d'une cible de cette barre est un
+            aplat d'encre, une graisse de libellé et `aria-current` — trois
+            signaux, dont deux survivent aux niveaux de gris. */}
+        <span
+          className={cn(
+            PASTILLE,
+            ailleurs ? 'bg-ink text-on-dark' : 'group-hover:bg-surface-sunken',
+          )}
+        >
           <Icon name="menu" size={TAILLE_DU_GLYPHE} />
         </span>
-        <span className="text-label leading-tight">{t('nav.more')}</span>
+        <span className={cn('text-label leading-tight', ailleurs && 'font-semibold')}>
+          {t('nav.more')}
+        </span>
       </button>
     </nav>
   )
@@ -2256,7 +2323,18 @@ const TAILLE_DU_GLYPHE = 22
  * Les liens, eux, échappent à la garde pour une raison qui n'est pas la nôtre :
  * son motif ne reconnaît que `<button`, `<Link` et `<a`, jamais `<NavLink`.
  */
-const CIBLE_DE_PLUS = cn(CIBLE_DE_BARRE, 'text-muted hover:text-ink')
+/**
+ * Les classes de « Plus », l'état de repère en plus — et NOMMÉES, comme celles
+ * du lien voisin, pour la raison que celui-ci porte déjà : « le plancher de
+ * 44 px vit dans `CIBLE_DE_BARRE`, et une flèche anonyme ne délègue à aucun nom
+ * que la garde puisse suivre. Nommée, elle délègue. »
+ *
+ * Écrit d'abord en `cn(...)` à l'appel, ce qui rouvrait exactement ce trou : la
+ * garde des cibles refuse `className={cn(` précisément parce qu'elle ne peut
+ * pas en suivre le contenu. Elle a rougi, et elle avait raison.
+ */
+const classesDuBoutonDePlus = (courant: boolean) =>
+  cn(CIBLE_DE_BARRE, courant ? 'font-semibold text-ink' : 'text-muted hover:text-ink')
 
 /**
  * Les classes d'une destination, l'état en plus — et nommées pour la même raison.

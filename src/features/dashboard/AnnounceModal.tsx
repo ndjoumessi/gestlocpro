@@ -36,7 +36,8 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
   const t = useT()
   const n = useNumbers()
   const { notify } = useToast()
-  const { buildings } = usePortfolio()
+  const { buildings, units } = usePortfolio()
+
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
 
@@ -46,6 +47,29 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
   /** `''` vaut TOUT LE PARC : c'est la valeur que le serveur lit comme l'absence
       de `buildingId`, et la valeur initiale du champ. */
   const [immeuble, setImmeuble] = useState('')
+
+  /**
+   * ═══ COMBIEN LIRONT, SU SEULEMENT APRÈS L'ENVOI ═══
+   *
+   * Le panneau d'après annonce qui n'a pas pu être atteint — « 1 locataire n'a
+   * pas de compte : il reste à l'appeler ». C'est la bonne phrase, au mauvais
+   * moment : une coupure d'eau annoncée jeudi se prépare AVANT de cliquer, et
+   * savoir que deux tiers du parc ne lira rien change ce qu'on écrit, ou le
+   * canal qu'on prend.
+   *
+   * LE MÊME COMPTE QUE L'ENVOI, sur les mêmes gens : un bail (`u.tenant`), dans
+   * le périmètre choisi. Si les deux divergeaient, l'écran annoncerait un
+   * nombre et en toucherait un autre — exactement ce que le dépôt reproche
+   * ailleurs à deux comptes calculés par deux chemins.
+   *
+   * `=== false` ET NON `!u.tenantHasAccount` : le champ est FACULTATIF. Absent,
+   * il veut dire « on ne sait pas », et le traiter comme « pas de compte »
+   * ferait annoncer des injoignables qui n'existent pas.
+   */
+  const concernes = units.filter(
+    (u) => u.tenant && (immeuble === '' || u.buildingId === immeuble),
+  )
+  const sansCompte = concernes.filter((u) => u.tenantHasAccount === false).length
   const [issue, setIssue] = useState<Envoi | null>(null)
   const issueRef = useRef<HTMLDivElement>(null)
 
@@ -244,7 +268,16 @@ export function AnnounceModal({ open, onClose }: { open: boolean; onClose: () =>
               notifications de l'application ; aucun SMS ne part, parce qu'aucun
               fournisseur n'est branché. Le dire avant l'envoi évite de compter
               sur un canal qui n'existe pas pour une coupure d'eau de jeudi. */}
-          <p className="text-body text-muted">{t('app.announce.channelNotice')}</p>
+          {/* L'AUDIENCE DANS LA PHRASE DU CANAL, et non dans un bloc à elle :
+              les deux disent la même chose — par où ça part, et jusqu'à qui —
+              et une modale se lit d'un trait. */}
+          <p className="text-body text-muted">
+            {t('app.announce.channelNotice')}{' '}
+            {t('app.announce.audience', { count: concernes.length })}
+            {sansCompte > 0
+              ? ` ${t('app.announce.unreachable', { count: sansCompte })}`
+              : ''}
+          </p>
         </form>
       )}
     </Modal>

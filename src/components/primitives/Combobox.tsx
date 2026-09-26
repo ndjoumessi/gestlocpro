@@ -143,6 +143,8 @@ export function Combobox({
   const idChamp = id ?? genere
   const idListe = `${idChamp}-liste`
   const idTroncature = `${idChamp}-troncature`
+  /* Le pendant du précédent pour la liste VIDE — voir le `<li>` du menu. */
+  const idVide = `${idChamp}-vide`
 
   const [ouvert, setOuvert] = useState(false)
   /* La liste reste PEINTE le temps de sa sortie, puis se démonte. `monte`
@@ -356,7 +358,15 @@ export function Combobox({
           // remplacer celle du consommateur : une liste qui s'arrête au
           // cinquantième élément ne dit rien d'elle-même à qui ne la voit pas.
           aria-describedby={
-            [ariaDescribedBy, ouvert && tronquee ? idTroncature : null].filter(Boolean).join(' ') ||
+            [
+              ariaDescribedBy,
+              ouvert && tronquee ? idTroncature : null,
+              /* LA LISTE VIDE SE DIT AUSSI : c'est l'état où l'on a le plus
+                 besoin qu'on nous parle, et le seul où rien ne se lit. */
+              ouvert && visibles.length === 0 ? idVide : null,
+            ]
+              .filter(Boolean)
+              .join(' ') ||
             undefined
           }
           aria-invalid={invalid ? true : undefined}
@@ -447,9 +457,23 @@ export function Combobox({
           )}
         >
           {visibles.length === 0 && (
-            // Une liste vide sans un mot laisse croire à une panne.
-            <li role="presentation" className="px-3 py-2 text-body text-muted">
-              —
+            /*
+              ═══ LE COMMENTAIRE PROMETTAIT UN MOT, LE CODE RENDAIT UN TIRET ═══
+
+              « Une liste vide sans un mot laisse croire à une panne » — et ce
+              qui était rendu était « — », c'est-à-dire pas un mot. Le tiret
+              cadratin était en outre la seule chaîne en dur de ces primitives,
+              sous un `role="presentation"` qui le retire du décompte : à
+              l'oreille, une recherche sans réponse ne produisait RIEN, pendant
+              qu'`aria-expanded` continuait d'annoncer une liste développée.
+
+              L'id le rattache à la description du champ, exactement comme la
+              mention de troncature dix lignes plus bas — même mécanique, et
+              elle dit déjà pourquoi : ce qu'une liste ne montre pas d'elle-même
+              doit se dire à qui ne la voit pas.
+            */
+            <li id={idVide} role="presentation" className="px-3 py-2 text-body text-muted">
+              {t('common.listEmpty')}
             </li>
           )}
           {/*
