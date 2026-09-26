@@ -5,6 +5,8 @@ import { PublicFooter } from '@/components/layout/PublicFooter'
 import { Hero } from '@/features/marketing/Hero'
 import { ValueProps } from '@/features/marketing/ValueProps'
 import { FeatureGrid } from '@/features/marketing/FeatureGrid'
+import { HowItWorks } from '@/features/marketing/HowItWorks'
+import { ProofBand } from '@/features/marketing/ProofBand'
 import { RolesSection } from '@/features/marketing/RolesSection'
 import { InternationalSection } from '@/features/marketing/InternationalSection'
 import { PricingSection } from '@/features/marketing/PricingSection'
@@ -25,8 +27,11 @@ export function Landing() {
         <Hero />
         <ValueProps />
         <FeatureGrid />
+        <HowItWorks />
         <RolesSection />
-        <InternationalSection />        <PricingSection />
+        <InternationalSection />
+        <ProofBand />
+        <PricingSection />
         <Faq />
         <FinalCta />
       </main>

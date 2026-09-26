@@ -3041,6 +3041,46 @@ export const fr = {
       seeMore: 'Ce que ce rôle peut faire',
     },
 
+    how: {
+      eyebrow: 'Mise en route',
+      title: 'Trois étapes, puis le registre tient tout seul',
+      subtitle:
+        'La saisie initiale est la seule qui vous coûte du temps. Ce qui suit est du quotidien, et le produit en garde la trace.',
+      park: {
+        title: 'Décrivez le parc',
+        body: 'Immeubles, unités, baux en cours, index de compteurs au jour de la reprise. Une saisie, une fois.',
+      },
+      invite: {
+        title: 'Invitez ceux qui l’occupent',
+        body: 'Le locataire reçoit un code rattaché à son logement ; le gestionnaire reçoit les droits que vous lui laissez.',
+      },
+      run: {
+        title: 'Encaissez, relancez, arbitrez',
+        body: 'Quittance à chaque règlement, relance à l’échéance, état des lieux comparé à la sortie, caution soldée pièce par pièce.',
+      },
+    },
+
+    proof: {
+      eyebrow: 'Ce qui vous engage',
+      title: 'Quatre engagements, et aucun n’a d’astérisque',
+      trial: {
+        title: 'Trente jours sans carte bancaire',
+        body: 'L’essai ne demande aucun moyen de paiement et ne se reconduit pas de lui-même.',
+      },
+      commission: {
+        title: 'Aucune commission sur les loyers',
+        body: 'Vous payez l’abonnement et les unités gérées. Ce qui passe par le registre ne nous concerne pas.',
+      },
+      exportable: {
+        title: 'Vos données sortent quand vous voulez',
+        body: 'Export CSV et PDF de l’intégralité du registre, quittances et états des lieux compris. Sans période de rétention.',
+      },
+      rights: {
+        title: 'Les droits sont séparés, pas partagés',
+        body: 'Le gestionnaire opère, le propriétaire arbitre, le locataire consulte. Personne ne voit le parc d’un autre.',
+      },
+    },
+
     international: {
       eyebrow: 'International',
       title: 'Pensé pour plusieurs marchés',

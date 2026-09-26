@@ -232,8 +232,43 @@ const PLAFONDS = [
     le DELTA mesuré, pas une mesure. À revérifier sur la machine de
     développement au premier passage.
   */
-  { largeur: 360, langue: 'fr', plafond: 10371, plafondLarge: 10371, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 10219, plafondLarge: 10111, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  /*
+    ═══ +1841 px (fr@360) ET +1692 (en@360), LE 2026-09-26 : DEUX SECTIONS ═══
+
+    « Mise en route » et « Ce qui vous engage ». Ce sont des AJOUTS DEMANDÉS,
+    pas une dérive, et cette porte ne fait pas la différence — c'est à ce
+    commentaire de la faire.
+
+    ET IL FAUT DIRE CE QUE CE PLAFOND CONCÈDE, parce que c'est la première fois
+    qu'il le concède : 12212 px DÉPASSE `origine`, la hauteur d'avant la refonte
+    de densité du 2026-08-22 (11419 px). La page mobile est donc, en pixels,
+    plus longue qu'avant le lot qui l'avait raccourcie. Le nombre est exact et
+    il n'y a pas de bonne façon de l'enjoliver.
+
+    CE QUI N'EST PAS COMPARABLE : `origine` mesurait HUIT sections, celle-ci en
+    porte DIX. À section égale la page reste plus dense — 1221 px par section
+    contre 1427. Ce n'est pas une excuse, c'est la seule lecture qui a un sens :
+    une somme ne se compare qu'à contenu égal, et ce fichier le dit déjà de
+    lui-même en tête (« il garde une somme, pas une composition »).
+
+    CE QUI EST VRAIMENT EN CAUSE, ET QUI RESTE À TRANCHER. `HeroProof`, ajouté
+    le même jour, énonce les trois nombres — devises, langues, pays — avec les
+    libellés de la section internationale, qui les répète 1068 px plus bas au
+    téléphone dans trois cartes. La redondance est réelle et elle est de ce
+    lot-là. La réduire demanderait de retirer les trois cartes de chiffres de
+    cette section pour n'y laisser que les listes et la note sur les zones CFA
+    — environ 600 px au téléphone, davantage que ce que « Mise en route » coûte
+    — et de récrire la garde `troisSectionsDeLaVitrine`, qui exige trois signes
+    distincts dans ses `dt`. C'est une décision éditoriale, pas une optimisation :
+    elle n'est pas prise ici.
+
+    LES DEUX SECTIONS ONT ÉTÉ RESSERRÉES AVANT D'ÊTRE PESÉES. « Ce qui vous
+    engage » pose son signe à GAUCHE du texte et non au-dessus : 207 px rendus
+    au téléphone, mesurés (1148 → 941). Elle tient le temps `serre` — un appui,
+    pas une étape.
+  */
+  { largeur: 360, langue: 'fr', plafond: 12212, plafondLarge: 12212, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 11911, plafondLarge: 11803, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -288,8 +323,20 @@ const PLAFONDS = [
     même asymétrie en DEUX rangées (5+4+3), qui est ce que la grille de trois
     colonnes faisait déjà. Voir le commentaire de `FeatureGrid`.
   */
-  { largeur: 1280, langue: 'fr', plafond: 7223, plafondLarge: 7300, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
-  { largeur: 1280, langue: 'en', plafond: 7300, plafondLarge: 7279, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
+  /*
+    +1131 px (fr) ET +1079 (en) AU BUREAU, LE 2026-09-26 : LES MÊMES DEUX
+    SECTIONS, et ici la page reste SOUS son origine — 8431 contre 7110 le
+    2026-08-23 ne se compare pas davantage, mais le rapport par section y tombe
+    de 889 à 843 px.
+
+    LA COLONNE LARGE EST MESURÉE, LA NORMALE EST DÉDUITE, comme le lot du même
+    jour juste au-dessus : `MESURER_EN_POLICE_LARGE=1` reproduit exactement les
+    quatre nombres de la porte publique sur la machine de ce lot, qui n'est pas
+    celle de la colonne normale. Les `plafond` reçoivent le delta mesuré. À
+    revérifier sur la machine de développement au premier passage.
+  */
+  { largeur: 1280, langue: 'fr', plafond: 8354, plafondLarge: 8431, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 8379, plafondLarge: 8358, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══
@@ -407,7 +454,16 @@ const ATTENDUS = 4
  * garder sous un plafond unique reviendrait soit a donner du mou a la mesure
  * locale, soit a refuser une page correcte. Les deux valeurs sont MESUREES.
  */
-const SECTIONS_ATTENDUES = 8
+/*
+  HUIT DEVIENT DIX, LE 2026-09-26, ET LE COMPTE EST ÉCRIT PARCE QU'IL DÉCIDE.
+
+  Deux sections entrent : « Mise en route » après la grille des fonctionnalités,
+  et « Ce qui vous engage » devant la grille de prix. Ce nombre ne mesure rien —
+  il EMPÊCHE de passer sous le plafond en supprimant une section, comme le dit
+  le commentaire ci-dessus. Le monter est donc une décision, et elle se lit dans
+  le diff à côté des plafonds qu'elle accompagne.
+*/
+const SECTIONS_ATTENDUES = 10
 
 /** Le plafond effectif, selon la police imposee — et une entree sans son second
  *  plafond ne passe pas en silence. */

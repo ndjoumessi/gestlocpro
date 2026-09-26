@@ -2217,6 +2217,46 @@ export const en: Dictionary = {
       seeMore: 'What this role can do',
     },
 
+    how: {
+      eyebrow: 'Getting started',
+      title: 'Three steps, then the ledger keeps itself',
+      subtitle:
+        'The initial entry is the only part that costs you time. What follows is day-to-day work, and the product keeps the record of it.',
+      park: {
+        title: 'Describe the portfolio',
+        body: 'Buildings, units, active leases, meter readings on the day you take over. One entry, once.',
+      },
+      invite: {
+        title: 'Invite the people in it',
+        body: 'The tenant gets a code tied to their unit; the manager gets the rights you choose to hand over.',
+      },
+      run: {
+        title: 'Collect, chase, arbitrate',
+        body: 'A receipt on every settlement, a reminder on the due date, a compared inspection on move-out, a deposit settled item by item.',
+      },
+    },
+
+    proof: {
+      eyebrow: 'What we commit to',
+      title: 'Four commitments, none of them asterisked',
+      trial: {
+        title: 'Thirty days, no card',
+        body: 'The trial asks for no payment method and does not renew itself.',
+      },
+      commission: {
+        title: 'No commission on rent',
+        body: 'You pay for the subscription and the units you manage. What goes through the ledger is none of our business.',
+      },
+      exportable: {
+        title: 'Your data leaves when you want it to',
+        body: 'CSV and PDF export of the whole ledger, receipts and inspections included. No forced retention period.',
+      },
+      rights: {
+        title: 'Rights are separated, not shared',
+        body: 'The manager operates, the owner arbitrates, the tenant consults. Nobody sees somebody else’s portfolio.',
+      },
+    },
+
     international: {
       eyebrow: 'International',
       title: 'Built for more than one market',
