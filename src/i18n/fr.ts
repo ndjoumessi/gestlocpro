@@ -1376,6 +1376,10 @@ export const fr = {
          de juillet dans la tête de qui le saisit. */
       readAtHint: 'La période refacturée est le mois de cette date.',
       indexHint: 'L’index lu sur le compteur, pas la consommation.',
+      /* AVEC LE PRÉCÉDENT SOUS LES YEUX — voir `RecordReadingModal` : un index
+         ne se vérifie qu'en comparant, et un chiffre de trop ne se voyait
+         qu'en refacturation. */
+      indexHintPrevious: 'L’index lu sur le compteur. Dernier relevé : {index}.',
       unitRequired: 'Choisissez un logement.',
       oneRequired: 'Saisissez au moins un des deux index.',
       indexInvalid: 'Saisissez un index entier, positif ou nul.',
@@ -1407,7 +1411,7 @@ export const fr = {
       description:
         'L’eau et l’électricité sont refacturées à ces prix. Sans eux, les relevés s’affichent en quantités, sans montant.',
       utility: 'Énergie',
-      price: 'Prix unitaire',
+      price: 'Prix unitaire ({devise})',
       priceHint: 'Par mètre cube pour l’eau, par kilowattheure pour l’électricité.',
       demoNoSave:
         'La démonstration n’enregistre pas de prix : ceux de l’historique sont ceux qu’elle applique à ses relevés, et ils ne quittent pas la visite.',
@@ -1479,6 +1483,10 @@ export const fr = {
       reminderDayHint: 'Sept par défaut : ni le délai serré d’un jour, ni la sévérité de quinze.',
       reminderHour: 'À quelle heure',
       reminderHourHint: 'De 0 à 23, dans le fuseau choisi ci-dessous.',
+      /* L'HEURE QUE ÇA FAIT CHEZ CELUI QUI RÈGLE — voir `ParkSettingsModal` :
+         6 h en UTC part à 7 h à Douala, et l'aide ne disait que la règle. */
+      reminderHourHintLocal:
+        'De 0 à 23, dans le fuseau choisi ci-dessous — soit {heure} chez vous.',
       reminderZone: 'Fuseau horaire',
       reminderZoneHint: 'Celui de vos locataires, qui n’est pas forcément le vôtre.',
       currencyWarning:
@@ -2225,6 +2233,13 @@ export const fr = {
       unit: 'Logement concerné',
       unitHint:
         'Le locataire rejoindra ce logement. Sans logement, il rejoint le parc sans bail — vous l’y rattacherez ensuite.',
+      /* LE DESTINATAIRE DU CODE, AVANT DE L'ÉMETTRE — voir `InviteModal`. Le
+         panneau du code promet « Envoyé par SMS au numéro indiqué » sans que
+         ce numéro ait jamais paru, et une fiche sans téléphone ne déclenche
+         aucun envoi. */
+      unitHintPhone: 'Le code partira par SMS au {phone}.',
+      unitHintNoPhone:
+        'Cette fiche n’a pas de téléphone : aucun SMS ne partira, transmettez le code vous-même.',
       issue: 'Émettre le code',
       codeTitle: 'Code d’invitation',
       codeOnce:

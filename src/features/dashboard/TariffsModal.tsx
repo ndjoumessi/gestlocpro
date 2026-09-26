@@ -63,7 +63,7 @@ interface TarifApi {
 export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const d = useDates()
-  const { money, parseAmount, enDeviseAffichee } = useCurrency()
+  const { money, parseAmount, enDeviseAffichee, definition } = useCurrency()
   const { notify } = useToast()
   /*
     LE REFUS LOCAL VIT SOUS SON CHAMP, et non dans un toast.
@@ -381,8 +381,14 @@ export function TariffsModal({ open, onClose }: { open: boolean; onClose: () => 
           )}
         </Field>
 
+        {/* LA DEVISE DANS LE LIBELLÉ, comme le loyer d'un logement : ici aussi
+            `corriger` pré-remplit par `enDeviseAffichee` et `parseAmount`
+            reconvertit à l'envoi, donc le nombre affiché n'est pas celui du
+            parc. Un prix au mètre cube saisi en croyant les francs pendant que
+            l'écran est réglé sur l'euro se retrouve sur toutes les quittances
+            du mois. */}
         <Field
-          label={t('app.tariffs.price')}
+          label={t('app.tariffs.price', { devise: definition.symbol })}
           hint={t('app.tariffs.priceHint')}
           required
           error={erreurPrix}

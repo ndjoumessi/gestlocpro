@@ -241,6 +241,8 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
    * ne décide rien à sa place.
    */
   const choix = unitId === '' || logements.some((u) => u.id === unitId) ? unitId : ''
+  /* Le numéro du bail choisi — ce que le SMS atteindra, ou rien. */
+  const destinataire = logements.find((u) => u.id === choix)?.phone ?? null
   const [code, setCode] = useState<string | null>(null)
   const codeRef = useRef<HTMLDivElement>(null)
 
@@ -462,8 +464,31 @@ export function InviteModal({ open, onClose }: { open: boolean; onClose: () => v
             </Notice>
           )}
 
+          {/*
+            LE NUMÉRO AUQUEL LE CODE PARTIRA, AVANT DE L'ÉMETTRE.
+
+            L'écran du code promet « Envoyé par SMS au numéro indiqué » — un
+            numéro que le formulaire n'a JAMAIS montré. Et le cas fréquent est
+            l'autre : une fiche sans téléphone ne déclenche aucun envoi, ce
+            qu'on découvrait sur l'écran d'après, celui dont le produit dit
+            lui-même qu'il n'est plus relisible. Choisir un logement, c'est
+            choisir un destinataire ; l'aide le dit maintenant.
+
+            `phone` est `null` sur un logement vacant, et ces logements-là ne
+            sont pas offerts ici — mais un bail sans numéro existe, et c'est
+            précisément celui qu'il faut annoncer.
+          */}
           {roleInvite === 'tenant' && logements.length > 0 && (
-            <Field label={t('app.invite.unit')} hint={t('app.invite.unitHint')}>
+            <Field
+              label={t('app.invite.unit')}
+              hint={
+                destinataire
+                  ? t('app.invite.unitHintPhone', { phone: destinataire })
+                  : choix
+                    ? t('app.invite.unitHintNoPhone')
+                    : t('app.invite.unitHint')
+              }
+            >
               {(props) => (
                 <Combobox
                   id={props.id}

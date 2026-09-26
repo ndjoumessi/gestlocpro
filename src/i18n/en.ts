@@ -964,6 +964,7 @@ export const en: Dictionary = {
       readAt: 'Read on',
       readAtHint: 'The rebilled period is the month of this date.',
       indexHint: 'The index shown on the meter, not the consumption.',
+      indexHintPrevious: 'The index read on the meter. Last reading: {index}.',
       unitRequired: 'Pick a unit.',
       oneRequired: 'Enter at least one of the two indexes.',
       indexInvalid: 'Enter a whole index, zero or above.',
@@ -993,7 +994,7 @@ export const en: Dictionary = {
       description:
         'Water and power are rebilled at these prices. Without them, meter readings show quantities only, with no amount.',
       utility: 'Utility',
-      price: 'Unit price',
+      price: 'Unit price ({devise})',
       priceHint: 'Per cubic metre for water, per kilowatt-hour for power.',
       demoNoSave:
         'The demo does not save prices: the ones listed below are those it applies to its own readings, and they never leave your visit.',
@@ -1046,6 +1047,8 @@ export const en: Dictionary = {
       reminderDayHint: 'Seven by default: neither the tight one-day delay, nor the severity of fifteen.',
       reminderHour: 'At what time',
       reminderHourHint: 'From 0 to 23, in the time zone chosen below.',
+      reminderHourHintLocal:
+        'From 0 to 23, in the time zone chosen below — that is {heure} where you are',
       reminderZone: 'Time zone',
       reminderZoneHint: 'Your tenants’, which is not necessarily your own.',
       currencyWarning:
@@ -1561,6 +1564,9 @@ export const en: Dictionary = {
       unit: 'Unit concerned',
       unitHint:
         'The tenant will join this unit. Without one, they join the portfolio with no lease — you will attach them afterwards.',
+      unitHintPhone: 'The code will be texted to {phone}.',
+      unitHintNoPhone:
+        'This record has no phone number: no text will be sent — pass the code on yourself.',
       issue: 'Issue the code',
       codeTitle: 'Invitation code',
       codeOnce:

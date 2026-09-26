@@ -153,6 +153,46 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
    * le rendent pas, et que c'est le défaut de tout parc existant : il doit
    * pouvoir se relire.
    */
+  /**
+   * L'HEURE DE RELANCE, RELUE DANS LE FUSEAU DU NAVIGATEUR.
+   *
+   * `null` quand les deux fuseaux donnent la même heure — il n'y a alors rien à
+   * dire —, et `null` aussi si `Intl` refuse la valeur : un fuseau saisi à la
+   * main, une heure hors de 0–23 le temps d'une frappe. Une aide qui explose
+   * pendant qu'on tape serait pire que l'aide absente.
+   */
+  const heureLocale = useMemo(() => {
+    const valeur = Number(heure)
+    if (!Number.isInteger(valeur) || valeur < 0 || valeur > 23) return null
+    try {
+      const aujourdhui = new Date()
+      /* On construit l'instant qui vaut `heure` DANS le fuseau du parc : on
+         part d'une heure UTC, on lit ce qu'elle donne là-bas, et on corrige de
+         l'écart. Deux lectures suffisent — aucun décalage n'est fractionnaire
+         au point de demander mieux. */
+      const sonde = Date.UTC(
+        aujourdhui.getUTCFullYear(),
+        aujourdhui.getUTCMonth(),
+        aujourdhui.getUTCDate(),
+        valeur,
+      )
+      const lecture = (zone: string, instant: number) =>
+        Number(
+          new Intl.DateTimeFormat('en-GB', {
+            timeZone: zone,
+            hour: '2-digit',
+            hour12: false,
+          }).format(new Date(instant)),
+        )
+      const ecart = lecture(fuseau, sonde) - valeur
+      const instant = sonde - ecart * 3_600_000
+      const ici = lecture(Intl.DateTimeFormat().resolvedOptions().timeZone, instant)
+      return ici === valeur ? null : `${String(ici).padStart(2, '0')}:00`
+    } catch {
+      return null
+    }
+  }, [heure, fuseau])
+
   const optionsDeFuseau = useMemo(
     () => ['UTC', ...Intl.supportedValuesOf('timeZone')].map((z) => ({ value: z, label: z })),
     [],
@@ -497,7 +537,25 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
         {relances && (
           <Field
             label={t('app.parkSettings.reminderHour')}
-            hint={t('app.parkSettings.reminderHourHint')}
+            /*
+              L'HEURE QUE ÇA FAIT CHEZ CELUI QUI RÈGLE.
+
+              Le couple par défaut est 6 h / UTC. Un propriétaire à Douala règle
+              « 6 » en croyant six heures du matin chez lui, et la relance part
+              à sept. L'aide disait « dans le fuseau choisi ci-dessous » : la
+              règle, jamais sa conséquence — et c'est l'écran dont l'en-tête
+              rappelle qu'« un parc porte FR et loue à Yaoundé ».
+
+              `Intl` fait la conversion, sans rien demander à personne : on prend
+              aujourd'hui à l'heure saisie DANS le fuseau choisi, et on la relit
+              dans le fuseau du navigateur. Rien n'est ajouté quand les deux
+              coïncident — redire « 6 h, soit 6 h » serait du bruit.
+            */
+            hint={
+              heureLocale
+                ? t('app.parkSettings.reminderHourHintLocal', { heure: heureLocale })
+                : t('app.parkSettings.reminderHourHint')
+            }
           >
             {(props) => (
               <Input

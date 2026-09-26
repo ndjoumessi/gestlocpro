@@ -61,7 +61,18 @@ describe('l’écran des relevés', () => {
     await utilisateur.click(screen.getByRole('button', { name: /Saisir un relevé/ }))
     const modale = await screen.findByRole('dialog')
 
-    expect(within(modale).getByText(/l’index lu sur le compteur/i)).toBeInTheDocument()
+    /* LES DEUX CHAMPS LE DISENT DÉSORMAIS, et c'est le lot qui a suivi : le
+       champ du courant n'avait AUCUNE aide, quand celui de l'eau en portait une
+       depuis toujours — deux champs de même nature dont un seul expliquait ce
+       qu'on attend. `getAllByText` et non `getByText` : la phrase est là deux
+       fois parce qu'il y a deux compteurs, pas parce qu'elle bégaie. */
+    expect(within(modale).getAllByText(/l’index lu sur le compteur/i)).toHaveLength(2)
+
+    /* ET CHACUNE PORTE SON DERNIER RELEVÉ : un index ne se vérifie qu'en
+       comparant, et c'est la seule chose qui rende un chiffre de trop visible
+       avant qu'il ne ressorte en refacturation. */
+    expect(within(modale).getAllByText(/dernier relevé/i)).toHaveLength(2)
+
     expect(within(modale).getByText(/le mois de cette date/i)).toBeInTheDocument()
   })
 

@@ -8,6 +8,7 @@ import { Notice } from '@/components/primitives/Notice'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
+import { useNumbers } from '@/lib/numbers'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import type { MeterReading } from '@/data/portfolio'
 
@@ -61,10 +62,48 @@ export function RecordReadingModal({
   aCorriger?: MeterReading
 }) {
   const t = useT()
-  const { units, recordReading, updateReading, deleteReading } = usePortfolio()
+  /* `n.integer` : un index à cinq chiffres se lit « 4 298 » en français et
+     « 4,298 » en anglais — le groupement est une affaire de langue. */
+  const n = useNumbers()
+  const { units, readings, recordReading, updateReading, deleteReading } = usePortfolio()
   const { notify } = useToast()
 
   const [unitId, setUnitId] = useState(aCorriger?.unitId ?? units[0]?.id ?? '')
+
+  /**
+   * ═══ ON SAISISSAIT UN INDEX SANS VOIR CELUI D'AVANT ═══
+   *
+   * Un compteur se relève en comparant : « 4 298 » ne veut rien dire seul, il
+   * veut dire « 178 de plus que le mois dernier ». Le champ ne montrait rien,
+   * et la seule chose qui rende une faute de frappe visible — la consommation
+   * implicite — n'était calculable nulle part sur cet écran.
+   *
+   * CE QUE COÛTAIT L'ABSENCE : un index reculé n'est refusé qu'à l'envoi,
+   * après l'aller-retour ; un index trop grand d'un chiffre passe, et ressort
+   * en refacturation multipliée par dix sur la quittance d'un locataire.
+   *
+   * LE DERNIER RELEVÉ DU LOGEMENT, et non celui d'un mois choisi : c'est la
+   * valeur contre laquelle le serveur compare, donc celle qu'il faut avoir sous
+   * les yeux. `readings` les porte déjà, l'écran des relevés les affiche à côté
+   * — cette modale était la seule à s'en passer.
+   */
+  const dernierIndex = (fluide: 'water' | 'power'): number | null => {
+    const releves = readings
+      .filter((releve) => releve.unitId === unitId)
+      .map((releve) => (fluide === 'water' ? releve.waterCurrent : releve.powerCurrent))
+      .filter((index): index is number => index !== null)
+    return releves.length === 0 ? null : Math.max(...releves)
+  }
+
+  /* L'aide d'un champ d'index : le précédent quand il existe, la phrase
+     générale sinon. Les deux disent la même chose — ce qu'on attend est un
+     INDEX — mais la première le dit avec le nombre qui permet de se relire. */
+  const aideDIndex = (fluide: 'water' | 'power') => {
+    const precedent = dernierIndex(fluide)
+    return precedent === null
+      ? t('app.readings.indexHint')
+      : t('app.readings.indexHintPrevious', { index: n.integer(precedent) })
+  }
   const [readAt, setReadAt] = useState(() =>
     aCorriger?.readAt
       ? `${aCorriger.readAt.year}-${String(aCorriger.readAt.month + 1).padStart(2, '0')}-${String(aCorriger.readAt.day).padStart(2, '0')}`
@@ -316,7 +355,7 @@ export function RecordReadingModal({
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
               label={`${t('app.meters.utility.water')} (m³)`}
-              hint={t('app.readings.indexHint')}
+              hint={aideDIndex('water')}
               optional
               error={erreurs.water}
             >
@@ -332,6 +371,10 @@ export function RecordReadingModal({
             </Field>
             <Field
               label={`${t('app.meters.utility.power')} (kWh)`}
+              /* LE CHAMP DU COURANT N'AVAIT AUCUNE AIDE, quand celui de l'eau
+                 en portait une depuis toujours : deux champs de même nature,
+                 dont un seul expliquait ce qu'on attend. */
+              hint={aideDIndex('power')}
               optional
               error={erreurs.power}
             >
