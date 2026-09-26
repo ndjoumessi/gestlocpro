@@ -1054,6 +1054,9 @@ export const fr = {
       unitLabelPlaceholder: 'A1',
       unitLabelRequired: 'Requis',
       unitLabelTaken: 'Ce numéro existe déjà dans cet immeuble',
+      /* CE QUI EST DÉJÀ PRIS, AVANT DE TAPER — voir `AddUnitModal` : on ajoute
+         rarement un logement seul, et le doublon ne se disait qu'au refus. */
+      unitLabelTakenHint: 'Déjà pris dans cet immeuble : {labels}.',
       unitSurface: 'Surface (m²)',
       /* LA DEVISE EST DANS LE LIBELLÉ, et ce n'est pas un ornement : la saisie
          est lue dans la devise AFFICHÉE puis reconvertie vers celle du parc
@@ -1630,6 +1633,11 @@ export const fr = {
          deux propriétés du même nom ; sans lui, la collision aurait été
          silencieuse, et c'est exactement le défaut que ce remaniement existe
          pour rendre impossible. */
+      /* L'ÉTAT DES LIEUX DÉJÀ ENREGISTRÉ — voir `InspectionModal` : le serveur
+         n'en accepte qu'un par bail et par nature, et le refus arrivait après
+         les photos. */
+      alreadyRecorded:
+        'Un état des lieux d’{kind} existe déjà pour ce logement, daté du {date}.',
       kinds: {
         entry: 'Entrée',
         exit: 'Sortie',
@@ -1827,6 +1835,9 @@ export const fr = {
       copiesPartial: '{count} copies e-mail remises sur {total} tentées · {date}',
       copiesPartial_one: '1 copie e-mail remise sur {total} tentées · {date}',
       replyTo: 'Destinataire : {name}',
+      /* L'OBJET DU SIGNALEMENT — voir `ReplyModal` : on répondait sans l'avoir
+         sous les yeux. */
+      replyAbout: 'À propos de : {titre}',
       replyLabel: 'Votre message',
       replyHint: 'Ce que vous écrivez est lu tel quel. Dites quand, et par qui.',
       replyError: 'Un message d’au moins 3 caractères est requis',
@@ -2734,6 +2745,18 @@ export const fr = {
       body: 'Votre gestionnaire et votre bailleur le reçoivent immédiatement. Décrivez ce que vous voyez : le devis et le corps de métier, ce n’est pas à vous de les fixer.',
       what: 'Que se passe-t-il ?',
       whatHint: 'Une phrase suffit. Vous pourrez détailler en dessous.',
+      /* CE QUI EST DÉJÀ EN COURS — voir `ReportModal` : on redéclarait la même
+         panne faute de nouvelle, et deux fiches partaient chez le
+         gestionnaire. Accordé en nombre : le premier titre est nommé, les
+         autres comptés. */
+      /* DEUX PHRASES, ET NON UN ACCORD EN NOMBRE. Une première rédaction
+         nommait le premier titre PUIS comptait — « « {titre} » et {count}
+         autres » —, et les deux se chevauchaient : en français, `_one` couvre
+         zéro ET un, donc « et 1 autre » n'aurait jamais pu se rendre. Un seul
+         signalement se NOMME ; plusieurs se COMPTENT, et la liste est à un
+         onglet de distance. */
+      whatHintOpen: 'Déjà en cours sur ce logement : {count} signalements.',
+      whatHintOpenOne: 'Déjà en cours sur ce logement : « {titre} ».',
       whatPlaceholder: 'Fuite sous l’évier de la cuisine',
       whatError: 'Décrivez le problème en quelques mots',
       trade: 'De quoi s’agit-il ?',

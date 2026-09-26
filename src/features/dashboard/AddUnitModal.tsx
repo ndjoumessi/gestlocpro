@@ -45,6 +45,22 @@ export function AddUnitModal({
 
   const [buildingId, setBuildingId] = useState(immeuble ?? buildings[0]?.id ?? '')
   const [label, setLabel] = useState('')
+
+  /**
+   * LES NUMÉROS DE L'IMMEUBLE CHOISI, pour l'aide du champ.
+   *
+   * Bornés à trois puis comptés : un immeuble de trente logements rendrait une
+   * ligne d'aide plus longue que le formulaire. C'est la règle que le résumé de
+   * périmètre applique déjà — « trois noms suffisent à RECONNAÎTRE, au-delà
+   * c'est du dénombrement, et le compte le fait mieux ».
+   */
+  const numerosPris = units
+    .filter((u) => u.buildingId === buildingId)
+    .map((u) => u.label)
+  const apercuDesNumeros =
+    numerosPris.length > 3
+      ? `${numerosPris.slice(0, 3).join(', ')} +${numerosPris.length - 3}`
+      : numerosPris.join(', ')
   const [type, setType] = useState<Unit['type']>('T2')
   const [surface, setSurface] = useState('')
   const [rent, setRent] = useState('')
@@ -189,7 +205,26 @@ export function AddUnitModal({
           </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label={t('app.portfolio.unitLabel')} required error={errors.label}>
+            {/*
+              LES NUMÉROS DÉJÀ PRIS, AVANT DE TAPER.
+
+              Le doublon est refusé — ici et au serveur — mais on ne l'apprenait
+              qu'APRÈS avoir tapé « A1 » et validé. Or on ajoute rarement un
+              logement seul : on en saisit cinq d'affilée, et la question à
+              chaque fois est « où en suis-je ». La liste y répond sans
+              aller-retour, et la borne de trois est celle du registre des accès
+              — trois noms situent, le reste se compte.
+            */}
+            <Field
+              label={t('app.portfolio.unitLabel')}
+              hint={
+                numerosPris.length > 0
+                  ? t('app.portfolio.unitLabelTakenHint', { labels: apercuDesNumeros })
+                  : undefined
+              }
+              required
+              error={errors.label}
+            >
               {(props) => (
                 <Input
                   {...props}

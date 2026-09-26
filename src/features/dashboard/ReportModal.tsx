@@ -7,6 +7,7 @@ import { RadioCards, type RadioCardOption } from '@/components/primitives/Choice
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { workTitle } from '@/data/workTitle'
 import { TRADES_REPORTABLE } from '@/data/portfolio'
 import type { TradeKey, UrgencyKey } from '@/data/portfolio'
 
@@ -37,7 +38,24 @@ export function ReportModal({
 }) {
   const t = useT()
   const { notify } = useToast()
-  const { addWork } = usePortfolio()
+  const { addWork, worksForUnit } = usePortfolio()
+
+  /**
+   * CE QUI EST DÉJÀ DÉCLARÉ SUR CE LOGEMENT, et qu'on redéclarait.
+   *
+   * Un locataire qui n'a pas de nouvelle depuis dix jours resignale la même
+   * panne — c'est le réflexe, et rien sur ce formulaire ne l'en dissuadait. Le
+   * serveur n'y voit aucun doublon : deux fiches partent chez le gestionnaire,
+   * qui chiffre deux fois la même intervention.
+   *
+   * ON N'EMPÊCHE RIEN : deux pannes distinctes sur un même logement existent, et
+   * refuser serait pire que le doublon. On RAPPELLE ce qui est en cours, avec
+   * son titre — c'est lui qui permet de dire « ce n'est pas la même chose ».
+   *
+   * `status !== 'done'` : un chantier terminé ne retient personne, et le
+   * signaler à nouveau est même le geste juste si la panne revient.
+   */
+  const dejaOuverts = worksForUnit(unitId).filter((chantier) => chantier.status !== 'done')
 
   const [titre, setTitre] = useState('')
   const [erreur, setErreur] = useState(false)
@@ -134,7 +152,13 @@ export function ReportModal({
       >
         <Field
           label={t('app.report.what')}
-          hint={t('app.report.whatHint')}
+          hint={
+            dejaOuverts.length === 1
+              ? t('app.report.whatHintOpenOne', { titre: workTitle(dejaOuverts[0], t) })
+              : dejaOuverts.length > 1
+                ? t('app.report.whatHintOpen', { count: dejaOuverts.length })
+                : t('app.report.whatHint')
+          }
           required
           {...(erreur ? { error: t('app.report.whatError') } : {})}
         >

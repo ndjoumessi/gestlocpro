@@ -51,7 +51,7 @@ export function OpenWorkModal({
 }) {
   const t = useT()
   const { notify } = useToast()
-  const { addWork } = usePortfolio()
+  const { addWork, unitById } = usePortfolio()
 
   const [unite, setUnite] = useState(unitIds[0]?.id ?? '')
   const [titre, setTitre] = useState('')
@@ -163,7 +163,28 @@ export function OpenWorkModal({
                  dialogue vient de donner le focus. Voir `ouvrirAuFocus`. */
               ouvrirAuFocus={false}
               autoComplete="off"
-              options={unitIds.map((u) => ({ value: u.id, label: u.label }))}
+              /*
+                LE LOCATAIRE DANS L'ÉTIQUETTE, comme sur l'invitation.
+
+                Les options étaient des numéros nus — « A1 », « B4 » — sur un
+                geste qui envoie quelqu'un CHEZ quelqu'un. Un propriétaire qui
+                ouvre un chantier pense « l'appartement de Nadia », pas « B2 » ;
+                et un logement vacant se dit, parce que c'est précisément celui
+                où l'on peut intervenir sans prévenir personne.
+
+                `Combobox` filtre sur l'étiquette : le nom du locataire devient
+                donc aussi une clé de recherche, ce qu'un numéro seul ne
+                permettait pas.
+              */
+              options={unitIds.map((u) => {
+                const occupant = unitById(u.id)?.tenant
+                return {
+                  value: u.id,
+                  label: occupant
+                    ? `${u.label} — ${occupant}`
+                    : `${u.label} — ${t('app.invite.unitVacant')}`,
+                }
+              })}
             />
           )}
         </Field>

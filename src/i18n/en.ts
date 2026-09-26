@@ -764,6 +764,7 @@ export const en: Dictionary = {
       unitLabelPlaceholder: 'A1',
       unitLabelRequired: 'Required',
       unitLabelTaken: 'That number already exists in this building',
+      unitLabelTakenHint: 'Already taken in this building: {labels}.',
       unitSurface: 'Surface (m²)',
       unitRent: 'Monthly rent ({devise})',
       unitNumberInvalid: 'A number is expected',
@@ -1151,6 +1152,7 @@ export const en: Dictionary = {
          deux propriétés du même nom ; sans lui, la collision aurait été
          silencieuse, et c'est exactement le défaut que ce remaniement existe
          pour rendre impossible. */
+      alreadyRecorded: 'A {kind} inspection already exists for this unit, dated {date}.',
       kinds: {
         entry: 'Move-in',
         exit: 'Move-out',
@@ -1243,6 +1245,7 @@ export const en: Dictionary = {
       copiesPartial: '{count} email copies delivered of {total} attempted · {date}',
       copiesPartial_one: '1 email copy delivered of {total} attempted · {date}',
       replyTo: 'Recipient: {name}',
+      replyAbout: 'About: {titre}',
       replyLabel: 'Your message',
       replyHint: 'What you write is shown as is. Say when, and who is coming.',
       replyError: 'A message of at least 3 characters is required',
@@ -1891,6 +1894,8 @@ export const en: Dictionary = {
       body: 'Your manager and your landlord receive it straight away. Describe what you see: the quote and the trade are not yours to decide.',
       what: 'What is happening?',
       whatHint: 'One sentence is enough. You can add detail below.',
+      whatHintOpen: 'Already open on this unit: {count} reports.',
+      whatHintOpenOne: 'Already open on this unit: “{titre}”.',
       whatPlaceholder: 'Leak under the kitchen sink',
       whatError: 'Describe the issue in a few words',
       trade: 'What kind of issue is it?',

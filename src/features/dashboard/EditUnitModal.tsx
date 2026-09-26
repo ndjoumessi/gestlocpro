@@ -35,7 +35,7 @@ const TYPES: Unit['type'][] = ['T1', 'T2', 'T3', 'T4']
  */
 export function EditUnitModal({ unit, onClose }: { unit: Unit; onClose: () => void }) {
   const t = useT()
-  const { updateUnit } = usePortfolio()
+  const { units, updateUnit } = usePortfolio()
   const { notify } = useToast()
   const { parseAmount, enDeviseAffichee, definition } = useCurrency()
   const [numero, setNumero] = useState(unit.label)
@@ -58,6 +58,30 @@ export function EditUnitModal({ unit, onClose }: { unit: Unit; onClose: () => vo
        aller-retour. Le serveur les tient de toute façon. */
     const suivant: Record<string, string | undefined> = {}
     if (!numero.trim()) suivant.label = t('app.portfolio.unitLabelRequired')
+    /**
+     * LE NUMÉRO DÉJÀ PRIS, VÉRIFIÉ ICI COMME À L'AJOUT.
+     *
+     * `AddUnitModal` refuse « A1 » quand l'immeuble en a déjà un, et porte la
+     * raison : « le serveur le refuse déjà en 409 — c'est lui qui fait
+     * autorité — on le vérifie aussi ici pour que la correction se fasse sans
+     * aller-retour ». La CORRECTION, elle, envoyait et récoltait ce 409, que
+     * le fournisseur traduit en « L'action a échoué » : ni le champ fautif, ni
+     * la règle, ni rien à corriger — sur le seul écran où le numéro se change.
+     *
+     * `u.id !== unit.id` : un logement n'est pas son propre doublon, sans quoi
+     * enregistrer une fiche sans toucher au numéro se refuserait tout seul.
+     *
+     * Même comparaison insensible à la casse qu'à l'ajout : « a1 » et « A1 »
+     * désignent le même logement pour un humain, et produiraient deux lignes
+     * indiscernables.
+     */
+    const dejaPris = units.some(
+      (u) =>
+        u.id !== unit.id &&
+        u.buildingId === unit.buildingId &&
+        u.label.toLowerCase() === numero.trim().toLowerCase(),
+    )
+    if (numero.trim() && dejaPris) suivant.label = t('app.portfolio.unitLabelTaken')
     if (!Number.isInteger(surfaceLue) || surfaceLue <= 0)
       suivant.surface = t('app.portfolio.unitNumberInvalid')
     if (loyerLu === null || loyerLu < 0) suivant.rent = t('app.portfolio.unitNumberInvalid')

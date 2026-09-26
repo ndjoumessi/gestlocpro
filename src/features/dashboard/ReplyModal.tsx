@@ -7,6 +7,7 @@ import { Textarea } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
+import { workTitle } from '@/data/workTitle'
 import { useSession } from '@/api/SessionProvider'
 import { ApiError } from '@/api/client'
 import { api } from '@/api/client'
@@ -219,6 +220,24 @@ export function ReplyModal({
               {t('app.works.replyTo', { name: work.reportedBy })}
             </p>
           )}
+
+          {/*
+            CE QU'IL A SIGNALÉ, SOUS LES YEUX DE QUI RÉPOND.
+
+            La modale nommait le destinataire et la référence — « à qui » et
+            « à propos de quel numéro » — jamais l'OBJET. Ouverte depuis une
+            liste de douze lignes, on écrit « le plombier passe mardi » sans
+            relire ce qu'on répond ; la ligne d'à côté porte peut-être une
+            serrure.
+
+            LE TITRE SEUL, pas la description : celle-ci est le texte libre du
+            locataire, de longueur non bornée, et cette modale est en `size="sm"`.
+            Le titre suffit à reconnaître la panne — c'est lui que la liste
+            affiche en gras.
+          */}
+          <p className="text-body text-muted">
+            {t('app.works.replyAbout', { titre: workTitle(work, t) })}
+          </p>
 
           <Field
             label={t('app.works.replyLabel')}

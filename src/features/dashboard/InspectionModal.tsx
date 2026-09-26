@@ -10,6 +10,7 @@ import { DatePicker } from '@/components/primitives/DatePicker'
 import { SegmentedControl } from '@/components/primitives/Choice'
 import { useToast } from '@/components/primitives/Toast'
 import { useT } from '@/i18n/I18nProvider'
+import { useDates } from '@/lib/useDates'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { usePortfolio, type ReserveCreee } from '@/data/PortfolioProvider'
 import { PhotosDeReserve, type PhotoLocale } from './PhotosDeReserve'
@@ -187,10 +188,33 @@ export function InspectionModal({
   const t = useT()
   const { notify } = useToast()
   const { parseAmount, money } = useCurrency()
-  const { addInspection, envoyerPhotos } = usePortfolio()
+  const d = useDates()
+  const { addInspection, envoyerPhotos, inspectionForUnit } = usePortfolio()
 
   const [unite, setUnite] = useState(unitIds[0]?.id ?? '')
   const [nature, setNature] = useState<'entry' | 'exit'>('entry')
+
+  /**
+   * ═══ UN ÉTAT DES LIEUX EXISTANT, ANNONCÉ AVANT LA SAISIE ═══
+   *
+   * Le serveur n'en accepte QU'UN par bail et par nature — « la comparaison
+   * suppose deux documents, pas une pile ; un second écraserait en pratique le
+   * premier dans la lecture, sans que rien ne dise lequel fait foi ». Il le
+   * refuse en 409.
+   *
+   * Le formulaire ne le disait ni au choix du logement, ni au choix de la
+   * nature : on remplit la date, on coche les pièces, on écrit les réserves, on
+   * JOINT LES PHOTOS — et c'est à l'envoi qu'on apprend que tout était vain.
+   * C'est la saisie la plus longue du produit, et la seule dont le refus arrive
+   * après le travail plutôt qu'avant.
+   *
+   * SANS REFUSER ICI, et c'est délibéré : le serveur fait autorité, et une
+   * règle recopiée dans le client se met à diverger le jour où l'une des deux
+   * change. L'écran AVERTIT — il dit la date du document existant, qui est ce
+   * qu'on vient vérifier — et laisse l'envoi se faire. Le refus, lui, reste où
+   * il est déjà tenu.
+   */
+  const dejaEnregistre = inspectionForUnit(unite, nature)
   const [date, setDate] = useState('')
   const [pieces, setPieces] = useState('3')
   const [signataire, setSignataire] = useState('')
@@ -674,7 +698,20 @@ export function InspectionModal({
         {/* Une liste qui grandit avec le parc se FILTRE — voir le motif
             détaillé dans `RecordPaymentModal`. Les listes fixées par le
             produit gardent leur `<select>` natif. */}
-        <Field label={t('app.inspections.unit')} required>
+        <Field
+          label={t('app.inspections.unit')}
+          hint={
+            dejaEnregistre
+              ? t('app.inspections.alreadyRecorded', {
+                  kind: t(
+                    `app.inspections.kinds.${nature}` as 'app.inspections.kinds.entry',
+                  ).toLowerCase(),
+                  date: d.fullDate(dejaEnregistre.date),
+                })
+              : undefined
+          }
+          required
+        >
           {(champ) => (
             <Combobox
               id={champ.id}
