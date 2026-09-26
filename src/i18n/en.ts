@@ -95,6 +95,8 @@ export const en: Dictionary = {
     selectPlaceholder: 'Select…',
     listTruncated: 'Shortened list: narrow your search.',
     listEmpty: 'No match for this search.',
+    onlyDigits: 'This field only accepts digits.',
+    onlyPhone: 'This field only accepts digits and the plus sign.',
     period: 'Period',
     perMonth: '/ month',
     perYear: '/ year',

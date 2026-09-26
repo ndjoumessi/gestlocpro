@@ -190,6 +190,10 @@ export const fr = {
     /* LA LISTE VIDE — voir `Combobox` : elle rendait un tiret muet sous la
        promesse d'un mot. */
     listEmpty: 'Aucun résultat pour cette recherche.',
+    /* LA FRAPPE REFUSÉE — voir `useSaisieFiltree` : le champ absorbait la
+       touche en silence, et la contrainte n'était écrite nulle part. */
+    onlyDigits: 'Ce champ n’accepte que des chiffres.',
+    onlyPhone: 'Ce champ n’accepte que des chiffres et le signe plus.',
     period: 'Période',
     perMonth: '/ mois',
     perYear: '/ an',

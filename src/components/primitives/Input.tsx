@@ -50,29 +50,97 @@ const CARACTERES_PERMIS: Partial<Record<string, RegExp>> = {
  * re-rend pas, donc le caractère refusé RESTE affiché dans le DOM. Il faut
  * écrire la valeur précédente à la main pour que le refus se voie.
  */
+/**
+ * ═══ LE REFUS SE VOYAIT, IL NE SE DISAIT PAS ═══
+ *
+ * Le bloc ci-dessus explique qu'on remet la valeur en place « pour que le refus
+ * se voie ». Ce qui se voit, c'est l'ABSENCE du caractère — pas le refus. Sur
+ * un clavier physique, taper « 1o3 » rend un champ qui semble avaler une touche
+ * au hasard ; la contrainte, elle, n'est écrite nulle part pour qui saisit, et
+ * un lecteur d'écran n'annonce RIEN puisque rien n'a changé.
+ *
+ * LE MESSAGE SE DÉDUIT DU MODE, jamais d'une prop que l'appelant devrait
+ * penser à passer : c'est l'argument même de ce fichier contre un
+ * `NumericInput` séparé — « le douzième champ écrit demain est correct sans que
+ * personne le sache ».
+ *
+ * UNE CLÉ QUI AVANCE À CHAQUE REFUS. Une région vivante n'annonce que ce qui
+ * CHANGE : deux refus de suite portant le même texte resteraient muets au
+ * second. Le compteur remonte le nœud, et l'annonce repart — sans minuterie à
+ * nettoyer, et sans texte qui s'efface tout seul sous les yeux.
+ */
 function useSaisieFiltree({ inputMode, value, onChange }: InputProps) {
   const dernier = useRef('')
+  const [refus, setRefus] = useState<{ cle: number } | null>(null)
   const permis = inputMode ? CARACTERES_PERMIS[inputMode] : undefined
-  if (!permis) return onChange
-  return (evenement: React.ChangeEvent<HTMLInputElement>) => {
-    if (permis.test(evenement.target.value)) {
-      dernier.current = evenement.target.value
+  const filtre = (evenement: React.ChangeEvent<HTMLInputElement>) => {
+    if (!permis) {
       onChange?.(evenement)
       return
     }
+    if (permis.test(evenement.target.value)) {
+      dernier.current = evenement.target.value
+      /* LE MESSAGE PART À LA PREMIÈRE FRAPPE ACCEPTÉE : il a dit ce qu'il avait
+         à dire, et une annonce qui traîne se ferait relire à chaque relecture
+         du champ. */
+      if (refus) setRefus(null)
+      onChange?.(evenement)
+      return
+    }
+    setRefus((precedent) => ({ cle: (precedent?.cle ?? 0) + 1 }))
     evenement.target.value = typeof value === 'string' ? value : dernier.current
   }
+  return { onChange: permis ? filtre : onChange, refus, mode: inputMode }
+}
+
+/**
+ * L'annonce du refus — invisible, et seulement pour qui écoute la page.
+ *
+ * `sr-only` : aucun pixel, sur aucun des vingt champs filtrés du dépôt. Le
+ * voyant a déjà l'information — le caractère n'apparaît pas — et lui ajouter
+ * une ligne rouge sous chaque champ numérique du produit ferait payer à tous
+ * un accident de frappe qui se corrige tout seul.
+ */
+function AnnonceDeRefus({
+  refus,
+  mode,
+}: {
+  refus: { cle: number } | null
+  mode: InputProps['inputMode']
+}) {
+  const t = useT()
+  return (
+    <span className="sr-only" aria-live="polite">
+      {refus
+        ? mode === 'tel'
+          ? t('common.onlyPhone')
+          : t('common.onlyDigits')
+        : ''}
+      {/* Le nœud porteur de la clé : c'est SON remontage que la région
+          observe, et non le texte, qui lui ne change pas d'un refus à
+          l'autre. */}
+      <span key={refus?.cle ?? 0} />
+    </span>
+  )
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { invalid, icon, className, ...props },
   ref,
 ) {
-  const onChange = useSaisieFiltree(props)
+  const { onChange, refus, mode } = useSaisieFiltree(props)
 
   if (!icon) {
     return (
-      <input ref={ref} className={controlClasses(invalid, className)} {...props} onChange={onChange} />
+      <>
+        <input
+          ref={ref}
+          className={controlClasses(invalid, className)}
+          {...props}
+          onChange={onChange}
+        />
+        <AnnonceDeRefus refus={refus} mode={mode} />
+      </>
     )
   }
 
@@ -89,6 +157,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         {...props}
         onChange={onChange}
       />
+      <AnnonceDeRefus refus={refus} mode={mode} />
     </div>
   )
 })
