@@ -2783,6 +2783,11 @@ export const fr = {
     activity: 'Activité principale',
     address: 'Adresse',
     registration: 'Immatriculation',
+    /* LE SOMMAIRE des deux pages longues — voir `SommaireDesRubriques`. Sous
+       `legal` et non sous `terms` ou `privacy` : les deux pages le partagent,
+       et une clé par page ferait deux mots pour une seule chose. */
+    contents: 'Sommaire',
+    anchorHint: 'Chaque rubrique a son adresse : ouvrez-la pour en citer le lien.',
     updatedOn: 'Inscription à jour au {date}',
     /* LA DATE DU DOCUMENT, distincte de celle de l'immatriculation juste
        au-dessus — voir `MentionsLegales.tsx`. */

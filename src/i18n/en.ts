@@ -1946,6 +1946,8 @@ export const en: Dictionary = {
     activity: 'Main activity',
     address: 'Address',
     registration: 'Registration',
+    contents: 'Contents',
+    anchorHint: 'Every section has its own address: open one to quote its link.',
     updatedOn: 'Entry up to date as of {date}',
     pageUpdatedOn: 'Page up to date as of {date}',
     hosting: 'Hosting',

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
+import { SommaireDesRubriques } from '@/components/layout/SommaireDesRubriques'
 import { Logo } from '@/components/primitives/Logo'
 import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useT } from '@/i18n/I18nProvider'
@@ -24,6 +25,24 @@ import { COOKIE_DE_SESSION, RELEVE_LE, SOUS_TRAITANTS } from '@/legal/confidenti
  * qui ne se ressemblent pas laissent croire qu'elles ne viennent pas du même
  * éditeur.
  */
+/**
+ * LES NEUF RUBRIQUES, DANS L'ORDRE DU DOCUMENT — même rôle et même garde que
+ * la table des conditions générales : elle sert au sommaire, et un cas la
+ * compare aux rubriques réellement rendues pour qu'un ajout d'un seul côté
+ * rougisse.
+ */
+const RUBRIQUES = [
+  ['controleur', 'privacy.controller.title'],
+  ['roles', 'privacy.roles.title'],
+  ['donnees', 'privacy.data.title'],
+  ['finalites', 'privacy.purposes.title'],
+  ['destinataires', 'privacy.recipients.title'],
+  ['transferts', 'privacy.transfers.title'],
+  ['conservation', 'privacy.retention.title'],
+  ['stockage', 'privacy.storage.title'],
+  ['droits', 'privacy.rights.title'],
+] as const
+
 export function Confidentialite() {
   const t = useT()
   const d = useDates()
@@ -59,6 +78,15 @@ export function Confidentialite() {
           <p className="mt-2 text-label text-muted">
             {t('privacy.updatedOn', { date: d.fullDate(RELEVE_LE) })}
           </p>
+
+          <SommaireDesRubriques
+            libelle={t('legal.contents')}
+            prefixe="confidentialite"
+            rubriques={RUBRIQUES.map(([ancre, cle]) => ({
+              ancre,
+              titre: t(cle as 'privacy.controller.title'),
+            }))}
+          />
 
           <Rubrique id="controleur" titre={t('privacy.controller.title')}>
             <p>
@@ -182,7 +210,9 @@ export function Confidentialite() {
 function Rubrique({ id, titre, children }: { id: string; titre: string; children: ReactNode }) {
   return (
     <section aria-labelledby={`confidentialite-${id}`} className="mt-10">
-      <h2 id={`confidentialite-${id}`} className="title-m">
+      {/* `scroll-mt-6` : voir la rubrique des conditions générales — une cible
+          d'ancre collée au bord haut se lit comme une page coupée. */}
+      <h2 id={`confidentialite-${id}`} className="title-m scroll-mt-6">
         {titre}
       </h2>
       <div className="mt-3 text-body text-pretty">{children}</div>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from '@/components/layout/gouttiere'
+import { SommaireDesRubriques } from '@/components/layout/SommaireDesRubriques'
 import { Logo } from '@/components/primitives/Logo'
 import { PanneauDeReglages } from '@/components/controls/PanneauDeReglages'
 import { useT } from '@/i18n/I18nProvider'
@@ -24,6 +25,34 @@ import { DELAI_D_EFFACEMENT_JOURS, RELEVE_LE } from '@/legal/conditions'
  * les deux autres pages juridiques : trois pages qui ne se ressembleraient pas
  * laisseraient croire qu'elles ne viennent pas du même éditeur.
  */
+/**
+ * LES TREIZE RUBRIQUES, DANS L'ORDRE DU DOCUMENT.
+ *
+ * Elle sert au SOMMAIRE ; les rubriques elles-mêmes restent écrites en clair
+ * plus bas, parce que leur corps est du JSX — des liens en pleine phrase, un
+ * délai interpolé, une liste. Rendre la page entière à partir d'une table
+ * transformerait treize paragraphes en treize cas particuliers d'un gabarit.
+ *
+ * LA DÉRIVE EST GARDÉE PLUTÔT QU'EMPÊCHÉE : `conditionsGenerales.test.tsx`
+ * compare cette liste aux rubriques RÉELLEMENT rendues, dans l'ordre. Une
+ * rubrique ajoutée sans son entrée de sommaire — ou l'inverse — rougit.
+ */
+const RUBRIQUES = [
+  ['objet', 'terms.purpose.title'],
+  ['service', 'terms.service.title'],
+  ['compte', 'terms.account.title'],
+  ['prix', 'terms.price.title'],
+  ['donnees', 'terms.data.title'],
+  ['obligations', 'terms.duties.title'],
+  ['disponibilite', 'terms.availability.title'],
+  ['responsabilite', 'terms.liability.title'],
+  ['propriete', 'terms.property.title'],
+  ['fermeture', 'terms.closure.title'],
+  ['suspension', 'terms.suspension.title'],
+  ['modification', 'terms.changes.title'],
+  ['droit', 'terms.law.title'],
+] as const
+
 export function ConditionsGenerales() {
   const t = useT()
   const d = useDates()
@@ -50,6 +79,15 @@ export function ConditionsGenerales() {
           <p className="mt-2 text-label text-muted">
             {t('terms.updatedOn', { date: d.fullDate(RELEVE_LE) })}
           </p>
+
+          <SommaireDesRubriques
+            libelle={t('legal.contents')}
+            prefixe="conditions"
+            rubriques={RUBRIQUES.map(([ancre, cle]) => ({
+              ancre,
+              titre: t(cle as 'terms.purpose.title'),
+            }))}
+          />
 
           <Rubrique id="objet" titre={t('terms.purpose.title')}>
             <p>{t('terms.purpose.body')}</p>
@@ -169,7 +207,10 @@ export function ConditionsGenerales() {
 function Rubrique({ id, titre, children }: { id: string; titre: string; children: ReactNode }) {
   return (
     <section aria-labelledby={`conditions-${id}`} className="mt-10">
-      <h2 id={`conditions-${id}`} className="title-m">
+      {/* `scroll-mt-6` : la cible d'une ancre se colle au bord haut de la
+          fenêtre, et un titre posé à zéro pixel du bord se lit comme une page
+          coupée. Six unités rendent l'air qu'on attend au-dessus d'un titre. */}
+      <h2 id={`conditions-${id}`} className="title-m scroll-mt-6">
         {titre}
       </h2>
       <div className="mt-3 text-body text-pretty">{children}</div>

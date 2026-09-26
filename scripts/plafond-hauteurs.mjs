@@ -415,8 +415,24 @@ const PLAFONDS = [
      l'intérieur de la fiche d'éditeur — un lecteur qui veut savoir si le
      document est à jour ne pouvait pas la lire comme telle. */
   { adresse: '/mentions-legales', largeur: 360, plafond: 1996, plafondLarge: 1970 },
-  { adresse: '/confidentialite', largeur: 360, plafond: 3383, plafondLarge: 3297 },
-  { adresse: '/conditions-generales', largeur: 360, plafond: 4778, plafondLarge: 4679 },
+  /*
+    LE SOMMAIRE DES PAGES LÉGALES, LE 2026-09-26 — et c'est le plus gros relèvement
+    de ce fichier, donc celui qui doit le mieux se justifier.
+
+    Les treize rubriques des conditions générales et les neuf de la
+    confidentialité portaient chacune un `id`, donc une destination utilisable,
+    et RIEN ne les listait : sur 4 679 px à 360 px de large, quelqu'un qui
+    cherche le délai d'effacement de son compte parcourait treize écrans en
+    lisant les titres au passage. Un document juridique est exactement le lieu
+    où une table des matières se paie.
+
+    CE QU'ELLE COÛTE, MESURÉ : +470 px à 360 et +423 à 1280 sur les conditions,
+    +360 et +335 sur la confidentialité. Un premier jet à UNE colonne sous `sm`
+    coûtait 713 px ; les deux colonnes en rendent 243, et ce relevé-là est la
+    raison pour laquelle la grille n'attend plus `sm`.
+  */
+  { adresse: '/confidentialite', largeur: 360, plafond: 3743, plafondLarge: 3657 },
+  { adresse: '/conditions-generales', largeur: 360, plafond: 5248, plafondLarge: 5149 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
   /* +30 px LE 2026-09-26, ET C'EST LA CARTE QUE L'ÉCRAN EXISTE POUR MONTRER.
      « En retard · 412 000 FCFA » ne portait rien sous son montant ; la note dit
@@ -463,8 +479,8 @@ const PLAFONDS = [
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mentions-legales', largeur: 1280, plafond: 1544, plafondLarge: 1544 },
-  { adresse: '/confidentialite', largeur: 1280, plafond: 2414, plafondLarge: 2371 },
-  { adresse: '/conditions-generales', largeur: 1280, plafond: 3336, plafondLarge: 3250 },
+  { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
+  { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
