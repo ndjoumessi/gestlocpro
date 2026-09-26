@@ -77,11 +77,32 @@ describe('matrice des droits', () => {
     expect(gestionnaire).toHaveLength(12)
     expect(new Set(gestionnaire)).toEqual(new Set(['—non activé']))
 
+    /* LES TROIS LIGNES FERMÉES AU GESTIONNAIRE MÊME EN DÉLÉGATION : la
+       correction du parc, la validation d'un devis et l'arbitrage d'une
+       caution. Le cas suivant tient les deux dernières ; celui-ci a besoin du
+       compte pour vérifier ce que la note annonce. */
+    const autorisesAuProprietaireSeul = 3
+
     // Et la note remplace les douze refus par une phrase qui énonce la règle.
     // Elle ne désigne plus « ci-dessus » : le sélecteur a suivi la délégation
     // dans les réglages du parc, et le chemin diffère selon le contexte — un
     // lien sur un vrai parc, la bascule elle-même en démonstration.
     expect(screen.getByText(/en gestion déléguée/i)).toBeInTheDocument()
+
+    /*
+      ET ELLE CHIFFRE L'ENJEU, DEPUIS LA TABLE ELLE-MÊME.
+
+      « Ces droits n'existent qu'en gestion déléguée » est exact et n'aide pas à
+      choisir : pour savoir ce que la bascule ferme, il fallait recompter douze
+      lignes à la main, dans un tableau dont la colonne vient de se vider.
+
+      LE COMPTE EST RECALCULÉ ICI, à partir des mêmes cellules que le cas
+      ci-dessus vient de lire — neuf lignes où le gestionnaire est autorisé en
+      délégation. Le figer à « 9 » ferait deux endroits à corriger le jour où un
+      geste s'ajoute, et c'est justement la dette que la phrase remplace.
+    */
+    const delegables = gestionnaire.length - autorisesAuProprietaireSeul
+    expect(screen.getByText(new RegExp(`${delegables} gestes`))).toBeInTheDocument()
   })
 
   it('réserve au propriétaire les deux gestes qui engagent son argent', async () => {

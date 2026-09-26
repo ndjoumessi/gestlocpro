@@ -1055,7 +1055,13 @@ export const fr = {
       unitLabelRequired: 'Requis',
       unitLabelTaken: 'Ce numéro existe déjà dans cet immeuble',
       unitSurface: 'Surface (m²)',
-      unitRent: 'Loyer mensuel',
+      /* LA DEVISE EST DANS LE LIBELLÉ, et ce n'est pas un ornement : la saisie
+         est lue dans la devise AFFICHÉE puis reconvertie vers celle du parc
+         (`parseAmount`). Écran réglé sur l'euro, « 145 000 » tapé vaut cent
+         quarante-cinq mille euros, donc des milliards de francs — et rien, ni
+         avant ni après, ne nommait l'unité. « Surface (m²) » porte la sienne
+         depuis toujours. */
+      unitRent: 'Loyer mensuel ({devise})',
       unitNumberInvalid: 'Nombre attendu',
       noBuildingYet: 'Déclarez d’abord un immeuble : un logement s’y rattache.',
       addBuildingTitle: 'Ajouter un immeuble',
@@ -1317,6 +1323,10 @@ export const fr = {
       paidInFuture: 'Un versement ne peut pas être reçu à une date future.',
       amountInvalid: 'Saisissez un montant supérieur à zéro.',
       dueAmount: 'Dû : {amount}',
+      /* LE RESTE, ET NON LE TOTAL — voir `RecordPaymentModal`, qui porte le
+         relevé : le loyer seul se disait « Dû » sur un parc qui refacture
+         l'eau et le courant, et un règlement partiel est accepté. */
+      remainingAmount: 'Reste à encaisser : {amount}',
       overdueDays: '+{days} j',
       /* Relance et mise en demeure — la promesse de la grille tarifaire. */
       callRent: 'Appeler les loyers',
@@ -2598,8 +2608,11 @@ export const fr = {
        * Elle énonce donc la RÈGLE, que les deux contextes partagent, et laisse
        * le contrôle voisin dire par lui-même où l'on va.
        */
+      /* LE COMPTE VIENT DE LA TABLE — voir `GESTES_DELEGABLES`. La phrase
+         disait la condition sans dire l'enjeu : on ne savait pas combien de
+         gestes la bascule ferme. */
       managerOffNote:
-        'Ces droits n’existent que si le parc est en gestion déléguée.',
+        'Ces droits n’existent que si le parc est en gestion déléguée : {gestes} gestes que vous pourriez confier.',
       families: {
         build: 'Constituer le parc',
         operate: 'Exploiter au quotidien',

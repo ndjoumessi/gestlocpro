@@ -765,7 +765,7 @@ export const en: Dictionary = {
       unitLabelRequired: 'Required',
       unitLabelTaken: 'That number already exists in this building',
       unitSurface: 'Surface (m²)',
-      unitRent: 'Monthly rent',
+      unitRent: 'Monthly rent ({devise})',
       unitNumberInvalid: 'A number is expected',
       noBuildingYet: 'Add a building first: a unit belongs to one.',
       addBuildingTitle: 'Add a building',
@@ -922,6 +922,7 @@ export const en: Dictionary = {
       paidInFuture: 'A payment cannot be received on a future date.',
       amountInvalid: 'Enter an amount greater than zero.',
       dueAmount: 'Due: {amount}',
+      remainingAmount: 'Still to collect: {amount}',
       overdueDays: '+{days} d',
       callRent: 'Issue this month’s rent',
       rentCalled: '{count} charges issued for this month',
@@ -1783,7 +1784,8 @@ export const en: Dictionary = {
       allowed: 'Allowed',
       denied: 'Not allowed',
       managerOff: 'not enabled',
-      managerOffNote: 'These rights only exist when the portfolio delegates management.',
+      managerOffNote:
+        'These rights only exist when the portfolio delegates management: {gestes} actions you could hand over.',
       families: {
         build: 'Build the portfolio',
         operate: 'Run it day to day',

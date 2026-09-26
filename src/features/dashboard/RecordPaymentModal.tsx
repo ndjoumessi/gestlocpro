@@ -9,6 +9,7 @@ import { useToast } from '@/components/primitives/Toast'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { usePortfolio } from '@/data/PortfolioProvider'
+import { receiptDue } from '@/data/portfolio'
 
 /** Le repli par défaut du mois et du jour, à l'ouverture ET à chaque
     réinitialisation ci-dessous : une seule formule pour les deux moments. */
@@ -20,7 +21,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
   const t = useT()
   const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
-  const { units, recordPayment } = usePortfolio()
+  const { units, receiptsForUnit, recordPayment } = usePortfolio()
 
   const payable = units.filter((unit) => unit.status !== 'vacant')
 
@@ -103,6 +104,38 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
   }, [open])
 
   const unit = units.find((u) => u.id === unitId)
+
+  /**
+   * ═══ « DÛ » DISAIT LE LOYER, PAS LE DÛ ═══
+   *
+   * L'aide du champ de montant rendait `unit.rent` sous le mot « Dû ». Sur un
+   * parc qui refacture l'eau et le courant — ce que ce produit fait, et ce que
+   * son écran de relevés existe pour tenir —, l'échéance du mois vaut le loyer
+   * PLUS les consommations. Relevé sur la démonstration, logement A1,
+   * septembre : loyer 145 000, échéance 170 942. Vingt-cinq mille neuf cent
+   * quarante-deux francs d'écart, sous un libellé qui dit « Dû », et recopiés
+   * tels quels par le placeholder que le champ propose.
+   *
+   * ═══ ET IL FAUT LE RESTE, PAS LE TOTAL ═══
+   *
+   * Un règlement partiel est accepté — l'aide d'à côté le dit depuis toujours —
+   * donc la question posée au moment de la saisie n'est pas « combien vaut le
+   * mois » mais « combien reste-t-il à encaisser ». Sur une période déjà réglée
+   * à moitié, afficher le total ferait saisir deux fois la même somme.
+   *
+   * LES DEUX FONCTIONS SONT CELLES DE LA QUITTANCE. `receiptsForUnit` et
+   * `receiptDue` calculent déjà ce nombre pour `ReceiptModal`, qui le montre au
+   * locataire : la saisie et la pièce émise se règlent désormais sur la même
+   * arithmétique, et ne peuvent plus diverger.
+   *
+   * SANS ÉCHÉANCE CONNUE — un mois qu'aucune quittance ne couvre, un parc qui
+   * ne refacture rien —, on retombe sur le loyer. C'est ce que l'écran faisait
+   * pour tout le monde ; il ne le fait plus que là où c'est vrai.
+   */
+  const echeance = receiptsForUnit(unitId).find(
+    (recu) => `${recu.year}-${String(recu.month + 1).padStart(2, '0')}` === periode,
+  )
+  const resteDu = echeance ? Math.max(0, receiptDue(echeance) - echeance.paidMinor) : null
 
   const submit = async () => {
     if (envoi) return
@@ -307,9 +340,13 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
         <Field
           label={t('app.payments.amount')}
           hint={
-            unit
-              ? t('app.payments.dueAmount', { amount: money(unit.rent, { compact: true }) })
-              : t('app.payments.amountHint')
+            resteDu !== null
+              ? t('app.payments.remainingAmount', {
+                  amount: money(resteDu, { compact: true }),
+                })
+              : unit
+                ? t('app.payments.dueAmount', { amount: money(unit.rent, { compact: true }) })
+                : t('app.payments.amountHint')
           }
           required
           error={erreurs.amount}
@@ -320,7 +357,16 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
               name="amount"
               inputMode="decimal"
               value={amount}
-              placeholder={unit ? money(unit.rent, { compact: true, omitSymbol: true }) : ''}
+              /* LE PLACEHOLDER SUIT L'AIDE, et il le faut : c'est le nombre
+                 qu'on recopie sans lire. Les laisser diverger ferait proposer
+                 un montant que la ligne au-dessus contredit. */
+              placeholder={
+                resteDu !== null
+                  ? money(resteDu, { compact: true, omitSymbol: true })
+                  : unit
+                    ? money(unit.rent, { compact: true, omitSymbol: true })
+                    : ''
+              }
               onChange={(e) => setAmount(e.target.value)}
               className="numeric"
             />

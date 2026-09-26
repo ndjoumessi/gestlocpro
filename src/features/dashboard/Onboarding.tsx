@@ -77,6 +77,17 @@ const FAMILLES: {
   },
 ]
 
+/**
+ * CE QUE LA DÉLÉGATION OUVRE, COMPTÉ SUR LA TABLE ELLE-MÊME.
+ *
+ * La note de pied annonce l'enjeu du choix « gestion seule » ; le nombre qu'elle
+ * porte se dérive donc de `FAMILLES`, et non d'un chiffre recopié à côté. Tout
+ * geste ajouté au gestionnaire corrige la phrase sans qu'on y pense.
+ */
+const GESTES_DELEGABLES = FAMILLES.flatMap((famille) => famille.rows).filter(
+  (ligne) => ligne.manager,
+).length
+
 const ROLES: Role[] = ['owner', 'manager', 'tenant']
 
 /**
@@ -650,7 +661,23 @@ export function Onboarding() {
             déléguée serait du bruit. */}
         {mode !== 'delegate' && (
           <p className="border-t border-divider px-4 py-3 text-body text-muted sm:px-5">
-            {t('app.onboarding.managerOffNote')}
+            {/*
+              LA NOTE DISAIT LA CONDITION, JAMAIS L'ENJEU.
+
+              « Ces droits n'existent que si le parc est en gestion déléguée »
+              est exact et n'aide pas à choisir : basculer sur « vous gérez
+              seul » vide une colonne entière d'un coup, et pour savoir COMBIEN
+              de gestes cela ferme, il fallait recompter douze lignes à la main,
+              dans un tableau dont la colonne vient justement de se vider.
+
+              LE NOMBRE EST DÉRIVÉ DE LA TABLE, jamais écrit à côté d'elle : le
+              commentaire d'un lot précédent mentionnait « neuf lignes » en dur
+              dans le code, ce qui est la même dette sous une autre forme —
+              exacte aujourd'hui, silencieusement fausse au premier geste
+              ajouté. Une ligne de plus dans `FAMILLES` corrige la phrase toute
+              seule.
+            */}
+            {t('app.onboarding.managerOffNote', { gestes: GESTES_DELEGABLES })}
           </p>
         )}
       </Card>

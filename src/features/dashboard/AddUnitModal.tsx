@@ -40,7 +40,7 @@ export function AddUnitModal({
   immeuble?: string
 }) {
   const t = useT()
-  const { parseAmount } = useCurrency()
+  const { parseAmount, definition } = useCurrency()
   const { buildings, units, addUnit } = usePortfolio()
 
   const [buildingId, setBuildingId] = useState(immeuble ?? buildings[0]?.id ?? '')
@@ -230,7 +230,15 @@ export function AddUnitModal({
               )}
             </Field>
 
-            <Field label={t('app.portfolio.unitRent')} required error={errors.rent}>
+            {/* `definition.symbol` ET NON `label` : « FCFA » et « € » disent
+                l'unité en deux caractères, quand « Euro (€) » ferait un libellé
+                de champ qui se replie. C'est le symbole qui suit le nombre dans
+                tout le produit. */}
+            <Field
+              label={t('app.portfolio.unitRent', { devise: definition.symbol })}
+              required
+              error={errors.rent}
+            >
               {(props) => (
                 <Input
                   {...props}

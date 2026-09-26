@@ -37,7 +37,7 @@ export function EditUnitModal({ unit, onClose }: { unit: Unit; onClose: () => vo
   const t = useT()
   const { updateUnit } = usePortfolio()
   const { notify } = useToast()
-  const { parseAmount, enDeviseAffichee } = useCurrency()
+  const { parseAmount, enDeviseAffichee, definition } = useCurrency()
   const [numero, setNumero] = useState(unit.label)
   const [type, setType] = useState<Unit['type']>(unit.type)
   const [surface, setSurface] = useState(String(unit.surface))
@@ -152,7 +152,15 @@ export function EditUnitModal({ unit, onClose }: { unit: Unit; onClose: () => vo
             )}
           </Field>
 
-          <Field label={t('app.portfolio.unitRent')} required error={erreurs.rent}>
+          {/* LA DEVISE, ET ELLE MANQUE PLUS ENCORE ICI QU'À L'AJOUT : le champ
+              s'ouvre PRÉ-REMPLI par `enDeviseAffichee`, donc le nombre déjà
+              présent n'est pas celui du parc. Sans son unité, il se relit comme
+              une valeur en francs qu'on corrigerait de travers. */}
+          <Field
+            label={t('app.portfolio.unitRent', { devise: definition.symbol })}
+            required
+            error={erreurs.rent}
+          >
             {(props) => (
               <Input
                 {...props}
