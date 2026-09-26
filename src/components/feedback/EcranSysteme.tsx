@@ -109,6 +109,54 @@ export function EcranSysteme({
 
   if (dansLaCoquille) return <section>{contenu}</section>
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-canvas px-5">{contenu}</div>
+    /*
+      ═══ LE BLOC FLOTTAIT AU MILIEU D'UN ÉCRAN VIDE ═══
+
+      Ces écrans prennent la fenêtre entière — c'est voulu, ils REMPLACENT la
+      page — et centraient leur bloc exactement. Mesuré au navigateur, sur
+      l'écran de reprise de session :
+
+        1440 × 1080   bloc 209 px   435 px de vide en haut, 435 en bas
+        1280 ×  900   bloc 209 px   345 en haut, 345 en bas
+         390 ×  844   bloc 231 px   306 / 306
+         360 ×  640   bloc 257 px   191 / 191
+
+      Sur un grand écran, le bloc occupe un cinquième de la hauteur et se
+      retrouve à égale distance de deux bords lointains : il ne se rattache à
+      rien et se lit comme un accident d'affichage plutôt que comme le contenu
+      de la page.
+
+      ═══ CE QU'ON PEUT RÉDUIRE, ET CE QU'ON NE PEUT PAS ═══
+
+      Le vide TOTAL est celui de la fenêtre moins le bloc : le seul moyen de le
+      réduire serait de grossir le bloc — donc d'inventer une taille de titre de
+      plus, ce que l'échelle typographique de ce produit refuse — ou de rendre
+      la page plus courte, ce qui ferait de ces écrans terminaux des bandeaux
+      posés en haut d'un fond vide.
+
+      Ce qui se corrige est sa RÉPARTITION. Un bloc court remonté vers le
+      centre optique — autour du tiers supérieur — se lit comme posé sur la
+      page ; le vide passe alors sous lui, là où l'œil ne le compte pas, au lieu
+      de l'encadrer à parts égales.
+
+      `min(12vh,7rem)` de rembourrage BAS : le centrage reste, mais il s'opère
+      dans un cadre raccourci par le bas. Proportionnel d'abord — l'écart suit
+      la fenêtre —, puis plafonné à 112 px, sans quoi un écran très haut
+      remonterait le bloc jusqu'à le coller en haut. Relevé après :
+
+        1440 × 1080   379 en haut, 491 en bas   (bloc à 35 % du haut)
+        1280 ×  900   291 / 399                 (32 %)
+
+      Et les deux points du téléphone ne bougent pas d'un pixel : 306 / 306 et
+      191 / 191, identiques à la table d'avant.
+
+      `sm:` — RIEN SOUS 640 px, et c'est mesuré : à 360 × 640 le bloc occupe
+      déjà 40 % de la hauteur et les deux vides valent 191 px. Il n'y a rien à
+      rééquilibrer, et l'y remonter ne ferait que le décoller du centre pour
+      rien.
+    */
+    <div className="flex min-h-dvh items-center justify-center bg-canvas px-5 sm:pb-[min(12vh,7rem)]">
+      {contenu}
+    </div>
   )
 }
