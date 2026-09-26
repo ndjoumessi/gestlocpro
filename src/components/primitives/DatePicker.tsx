@@ -857,6 +857,8 @@ export function MonthPicker({
   const idInterne = useId()
   const idDuDeclencheur = id ?? idInterne
   const idDeLaValeur = `${idDuDeclencheur}-valeur`
+  /* La phrase de plage, quand les bornes en posent une. */
+  const idDeLaPlage = `${idDuDeclencheur}-plage`
   const d = useDates()
 
   const { ouvert, ouvrir, fermer, position, origine, monte, sortant, racine, declencheur, panneau } =
@@ -896,6 +898,32 @@ export function MonthPicker({
     const f = new Intl.DateTimeFormat(d.tag, { month: 'short' })
     return Array.from({ length: 12 }, (_, m) => f.format(new Date(2026, m, 1)))
   }, [d.tag])
+
+  /**
+   * LA PLAGE AUTORISÉE, DITE EN TOUTES LETTRES.
+   *
+   * Les mois fermés portaient `disabled`, une opacité de 45 % et un curseur
+   * barré — trois signaux qui disent QUE c'est fermé, aucun qui dise
+   * JUSQU'OÙ. Il fallait cliquer les chevrons d'année en année pour trouver
+   * la fenêtre ouverte, et `disabled` ne se lit pas : un lecteur d'écran
+   * annonce « indisponible » douze fois sans jamais donner la borne.
+   *
+   * `null` quand rien n'est borné — l'immense majorité des champs de date de
+   * ce produit —, auquel cas le panneau ne gagne pas une ligne pour ne rien
+   * dire.
+   *
+   * LES MÊMES BORNES QUE LA GRILLE, relues avec le formateur du panneau : la
+   * phrase ne peut donc pas annoncer une fenêtre que les cases contredisent.
+   */
+  const plage = useMemo(() => {
+    if (!min && !max) return null
+    const enMois = (cle: string) => {
+      const [an, mois] = cle.split('-')
+      return d.monthYear({ year: Number(an), month: Number(mois) - 1 })
+    }
+    if (min && max) return t('common.monthRange', { debut: enMois(min), fin: enMois(max) })
+    return min ? t('common.monthFrom', { debut: enMois(min) }) : t('common.monthUntil', { fin: enMois(max!) })
+  }, [min, max, d, t])
 
   const choisir = (mois: number, an = annee) => {
     onChange(`${an}-${String(mois + 1).padStart(2, '0')}`)
@@ -958,6 +986,10 @@ export function MonthPicker({
             data-portail-de={idDuDeclencheur}
             role="dialog"
             aria-label={t('common.monthCalendar')}
+            /* LA PLAGE DÉCRIT LE PANNEAU : à l'ouverture, un lecteur d'écran
+               annonce la fenêtre autorisée AVANT de parcourir douze mois dont
+               la plupart sont peut-être fermés. */
+            aria-describedby={plage ? idDeLaPlage : undefined}
             ref={panneau}
             style={{
               top: position.top,
@@ -1069,6 +1101,13 @@ export function MonthPicker({
             </div>
 
             <div className="mt-2 border-t border-divider pt-2">
+              {/* AVANT LE RACCOURCI, parce qu'elle explique pourquoi il est
+                  parfois éteint : les deux se lisent ensemble. */}
+              {plage && (
+                <p id={idDeLaPlage} className="px-2 pb-1 text-caption text-muted">
+                  {plage}
+                </p>
+              )}
               {/*
                 ═══ UNE PORTE OUVERTE VERS UN MOIS FERMÉ ═══
 

@@ -192,6 +192,11 @@ export const fr = {
     listEmpty: 'Aucun résultat pour cette recherche.',
     /* LA FRAPPE REFUSÉE — voir `useSaisieFiltree` : le champ absorbait la
        touche en silence, et la contrainte n'était écrite nulle part. */
+    /* LA PLAGE D'UN SÉLECTEUR DE MOIS — voir `MonthPicker` : les mois fermés
+       disaient QUE c'était fermé, jamais jusqu'où. */
+    monthRange: 'Choix possible de {debut} à {fin}.',
+    monthFrom: 'Choix possible à partir de {debut}.',
+    monthUntil: 'Choix possible jusqu’à {fin}.',
     onlyDigits: 'Ce champ n’accepte que des chiffres.',
     onlyPhone: 'Ce champ n’accepte que des chiffres et le signe plus.',
     period: 'Période',
