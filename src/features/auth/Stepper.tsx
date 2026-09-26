@@ -115,7 +115,23 @@ export function Stepper({ steps, current }: StepperProps) {
               */}
               <span
                 className={cn(
-                  'w-full hyphens-auto text-center text-label leading-tight',
+                  /* `break-words` APRÈS la césure, jamais à sa place. À 320 px
+                     en police large la colonne offre 68 px et « Récapitulatif »
+                     en demande 74 : six pixels DANS la boîte, que seule la
+                     sonde des débordements locaux voit. La passe précédente
+                     avait déjà repris ces six pixels en quittant `text-caps`
+                     pour `text-label` ; le libellé ACTIF est en `font-semibold`,
+                     et les reprend.
+
+                     Il n'y a plus de place à rendre : quatre colonnes se
+                     partagent 320 px, et en retirer une cacherait une étape.
+                     `hyphens-auto` reste en premier — la coupure avec trait
+                     d'union est celle qui se lit —, `break-words` n'agit que
+                     lorsqu'elle échoue, et coupe DANS le mot plutôt que de le
+                     laisser sortir de sa colonne. Le mot reste entier des deux
+                     côtés de la coupure ; c'est ce que `truncate` ne peut pas
+                     dire. */
+                  'w-full hyphens-auto break-words text-center text-label leading-tight',
                   'sm:w-auto sm:text-left',
                   active ? 'font-semibold text-ink' : 'text-muted',
                 )}

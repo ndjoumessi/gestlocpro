@@ -204,7 +204,18 @@ function HeroPreview({
               affichée dans un chrome doit être vraie, et celle de cet aperçu
               n'existe pas. La clé vivait au dictionnaire sans être rendue nulle
               part depuis la passe qui a retiré le titre de la carte. */}
-          <span className="ml-2 truncate text-caption text-muted">
+          {/* RIEN SOUS 640 px, ET C'EST MESURÉ. À 320 px en police large la barre
+              n'offre que 153 px au libellé, qui en réclame 283 : `truncate` le
+              coupait à la moitié — « Ce que le registre tient… » —, et
+              `mesure-ui` l'a relevé comme un texte du produit ROGNÉ. La règle
+              du dépôt est de rendre la place, jamais d'abréger le vocabulaire ;
+              ici il n'y a pas de place à rendre — la barre de chrome n'a que sa
+              hauteur, et le libellé en occuperait toute la largeur.
+
+              Le retirer aux largeurs étroites ne coûte rien : le bloc entier
+              est `aria-hidden`, c'est une IMAGE d'application. Les trois points
+              suffisent à la dire, et ils ne se rognent pas. */}
+          <span className="ml-2 hidden truncate text-caption text-muted sm:inline">
             {t('marketing.metrics.title')}
           </span>
         </div>

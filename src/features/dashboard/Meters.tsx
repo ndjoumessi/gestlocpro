@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -322,6 +322,95 @@ export function Meters() {
       : READINGS.filter((r) => (triDesReleves === 'manquant' ? estManquant(r) : !estManquant(r)))
 
   /**
+   * ═══ DIX NOMBRES ALIGNÉS NE SE COMPARENT PAS ═══
+   *
+   * La colonne d'eau rend « 16 · 12 · 21 · 27 · 14 · 15 · 13 · 33 », celle
+   * d'électricité « 178 · 131 · 192 · 275 · 163 · 155 · 128 · 320 ». Ce sont
+   * les seules données de ce produit qu'on vient lire SANS chercher une ligne
+   * précise : on parcourt la colonne pour voir si un logement sort du lot —
+   * une fuite, un chauffe-eau resté allumé, un compteur mal relevé. Nommer
+   * l'écart demandait de comparer huit nombres deux à deux, de tête.
+   *
+   * La barre le dit en un balayage : elle est PROPORTIONNELLE au plus fort
+   * relevé de la colonne affichée. « 320 » remplit la cellule, « 128 » en
+   * occupe 40 % — et l'œil trouve la ligne à ouvrir avant d'avoir lu un
+   * chiffre.
+   *
+   * ═══ CE QU'ELLE NE FAIT PAS ═══
+   *
+   * ELLE NE PORTE AUCUN SENS À ELLE SEULE. Le nombre reste écrit, entier, à sa
+   * place ; la barre est `aria-hidden` et peinte d'un gris de fond — pas d'une
+   * couleur d'état. Une forte consommation n'est pas une anomalie, c'est une
+   * consommation forte : la qualifier en rouge accuserait un locataire de
+   * quatre personnes d'un défaut qui n'existe pas. C'est pourquoi ce n'est pas
+   * une teinte de danger mais une LONGUEUR, et pourquoi elle se lit aussi bien
+   * en niveaux de gris.
+   *
+   * ELLE NE COÛTE AUCUNE HAUTEUR : elle est posée DERRIÈRE le nombre, dans la
+   * cellule qui existe déjà, et non sur une ligne à elle. Un écran de relevés
+   * fait déjà 1402 px à 1280 ; une rangée de plus par logement en aurait coûté
+   * quatre-vingts de plus pour la même information.
+   *
+   * ELLE NE PARAÎT PAS EN FICHES. Sous `sm` chaque ligne devient un
+   * enregistrement, et deux consommations y sont lues l'une après l'autre, non
+   * comparées à huit autres : la barre n'y comparerait rien et peindrait un
+   * fond derrière une valeur isolée.
+   *
+   * ═══ LE MAXIMUM EST CELUI DE CE QUI EST AFFICHÉ ═══
+   *
+   * Et non celui du parc : filtrer sur « Relevé saisi » ou changer de mois
+   * change la colonne, donc l'échelle. Une barre calculée sur un maximum
+   * invisible se lirait comme une mesure sans repère. `|| 1` : une colonne dont
+   * tout vaut zéro ne divise pas par zéro, et rend des barres nulles — ce
+   * qu'elle est.
+   */
+  const consommation = (r: MeterReading, fluide: 'water' | 'power') => {
+    const courant = fluide === 'water' ? r.waterCurrent : r.powerCurrent
+    const precedent = fluide === 'water' ? r.waterPrevious : r.powerPrevious
+    return courant === null || precedent === null ? null : courant - precedent
+  }
+  const maximum = (fluide: 'water' | 'power') =>
+    Math.max(0, ...relevesVisibles.map((r) => consommation(r, fluide) ?? 0)) || 1
+  const maximumEau = maximum('water')
+  const maximumElectricite = maximum('power')
+
+  /**
+   * La cellule et sa barre. `relative` sur une boîte qui prend toute la
+   * largeur de la cellule — sans quoi la barre se mesurerait sur le nombre
+   * lui-même, et « 9 » et « 320 » auraient la même pleine largeur.
+   *
+   * Elle part de la DROITE parce que la colonne est `numeric` : les chiffres y
+   * sont alignés à droite, et une barre qui croîtrait vers la droite laisserait
+   * son extrémité à une distance variable du nombre qu'elle qualifie.
+   */
+  const avecBarre = (part: number, serie: string, contenu: ReactNode) => (
+    <span className="relative flex w-full justify-end">
+      {/*
+        UN FILET SOUS LE NOMBRE, ET NON UN FOND DERRIÈRE LUI.
+
+        Premier jet : un pavé teinté occupant la cellule, dont la largeur disait
+        la part. Rendu et regardé, il ne se lisait pas comme une mesure — posé
+        derrière « 16 342→358 », il ressemblait à une pastille qui SURLIGNE la
+        plage d'index, et les huit cellules paraissaient marquées plutôt que
+        comparées.
+
+        Un filet de trois pixels n'a pas cette ambiguïté : il ne touche aucun
+        texte, donc il ne peut pas se lire comme un fond, et une rangée de
+        segments de longueurs différentes EST la forme d'un graphe à barres.
+
+        `bottom-[-0.45rem]` : il vit dans le rembourrage que la rangée a déjà —
+        la hauteur du document ne bouge pas d'un pixel, et c'est mesuré.
+      */}
+      <span
+        aria-hidden="true"
+        className="absolute right-0 bottom-[-0.45rem] hidden h-[3px] rounded-full sm:block"
+        style={{ width: `${Math.round(part * 100)}%`, background: serie }}
+      />
+      <span>{contenu}</span>
+    </span>
+  )
+
+  /**
    * L'écran affirmait « 2 relevés manquants — A3, B1 » sur des unités
    * inconnues du gestionnaire, et le nommait en jaune, ton d'une consigne. Un
    * relevé manquant déclenche une tournée : envoyer quelqu'un sur le terrain
@@ -596,7 +685,14 @@ export function Meters() {
                    qu'on ne sait pas calculer. */
                 <span className="text-label text-muted">{n.integer(r.waterCurrent)}</span>
               ) : (
-                <span>
+                avecBarre(
+                  (r.waterCurrent - r.waterPrevious) / maximumEau,
+                  /* LES MÊMES DEUX ENCRES QUE L'ESPACE LOCATAIRE, où l'eau et
+                     l'électricité portent déjà chacune la sienne. Deux écrans
+                     qui montrent les deux mêmes fluides ne peuvent pas les
+                     peindre différemment. */
+                  'var(--color-data-4)',
+                  <>
                   {n.integer(r.waterCurrent - r.waterPrevious)}{' '}
                   {/*
                     UN VRAI ESPACE, ET NON UNE MARGE. `ml-1.5` posait l'écart
@@ -617,7 +713,8 @@ export function Meters() {
                   <span className="text-label whitespace-nowrap text-muted">
                     {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
-                </span>
+                  </>,
+                )
               ),
           },
           {
@@ -630,7 +727,10 @@ export function Meters() {
               ) : r.powerPrevious === null ? (
                 <span className="text-label text-muted">{n.integer(r.powerCurrent)}</span>
               ) : (
-                <span>
+                avecBarre(
+                  (r.powerCurrent - r.powerPrevious) / maximumElectricite,
+                  'var(--color-data-3)',
+                  <>
                   {n.integer(r.powerCurrent - r.powerPrevious)}{' '}
                   {/* Les index d'électricité sont à cinq chiffres : sans
                       groupement ils rendaient « 7640 » dans les deux langues,
@@ -640,7 +740,8 @@ export function Meters() {
                   <span className="text-label whitespace-nowrap text-muted">
                     {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
-                </span>
+                  </>,
+                )
               ),
           },
           {

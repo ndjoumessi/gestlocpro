@@ -547,7 +547,17 @@ export function Tenants() {
                   qui sauterait cette rangée ferait remonter ses gestes d'un
                   cran, et la ligne des boutons cesserait d'être une ligne. Vide,
                   il ne fait pas un pixel. */}
-              <div data-section="pastilles" className="flex flex-wrap content-start gap-1.5">
+              {/* `data-facultative` : l'attribut que le commentaire ci-dessus
+                  annonce, et qui manquait au nœud. Sans lui, la sonde des
+                  sections alignées compare la rangée VIDE d'une fiche à la
+                  rangée pleine de sa voisine et voit « du blanc réservé au
+                  milieu » — dix relevés, de 1024 à 1536 px, dans les deux
+                  langues. Une prose qui décrit un attribut ne le pose pas. */}
+              <div
+                data-section="pastilles"
+                data-facultative
+                className="flex flex-wrap content-start gap-1.5"
+              >
                 {chantiers > 0 && (
                   <Badge icon="wrench">{t('app.portfolio.openWorks', { count: chantiers })}</Badge>
                 )}
