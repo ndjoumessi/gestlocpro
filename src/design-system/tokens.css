@@ -1180,6 +1180,57 @@
   --color-on-accent: #131a22;
 }
 
+/* ============================================================================
+   LE PANNEAU FIGÉ, TEINTÉ EN THÈME SOMBRE
+   ============================================================================
+
+   CE QUE LE PANNEAU FIGÉ FAIT EN CLAIR, ET POURQUOI IL LE FAIT MOINS EN SOMBRE.
+   Une section en ton sombre posée sur une page claire est une RUPTURE : #131a22
+   contre #eceef3, et le regard sait immédiatement qu'il change de registre.
+   C'est tout l'effet recherché par la section des rôles, qui interrompt la
+   démonstration pour dire qui voit quoi.
+
+   En thème sombre, cette rupture s'évanouit. `.on-dark` remonte l'encre à
+   #2a323c pour qu'un panneau reste lisible sur un fond déjà noir — mesuré,
+   #2a323c contre le canevas #0a0d11 ne fait plus qu'un écart de valeur, dans la
+   même famille NEUTRE que tout le reste de la page. Le panneau ne tranche plus,
+   il flotte : c'est le point le plus plat de la vitrine en sombre.
+
+   LA TEINTE REND LA RUPTURE SANS TOUCHER À LA VALEUR. Ces deux nuances sont les
+   homologues BLEUTÉS de #2a323c et #38414e, posés à luminance quasi égale — ce
+   qui change est la teinte, pas la clarté :
+
+     panneau  #2a323c (Y 0,0322) -> #252e45 (Y 0,0287)   blanc : 12,77 -> 12,85
+     carte    #38414e (Y 0,0519) -> #323d59 (Y 0,0483)   blanc : 10,00 -> 10,55
+
+   Les deux paires GAGNENT du contraste sous le blanc, et l'accent clair des
+   liens et des mentions — #93bbfd — tient 6,64 sur le panneau et 5,32 sur la
+   carte, contre 4,5 exigés. Aucun seuil ne se joue ici ; c'est `mesure-ui` qui
+   le certifie écran par écran, dans les deux thèmes.
+
+   NON APPLIQUÉ EN CLAIR, et c'est le point : en clair le panneau tranche déjà,
+   et le teinter n'ajouterait qu'une couleur de plus à une page qui n'en demande
+   pas. La classe n'a donc AUCUNE règle hors thème sombre.
+
+   ELLE SE POSE À CÔTÉ DE `.on-dark`, JAMAIS À SA PLACE : `.on-dark` fige l'encre
+   et l'inverse des textes, cette classe ne fait que reteinter les deux fonds
+   qu'elle a figés. L'ordre d'émission tranche — les deux sélecteurs pèsent
+   autant —, d'où sa place APRÈS les deux blocs ci-dessus, et non ailleurs dans
+   ce fichier.
+   ========================================================================= */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .panneau-teinte {
+    --color-ink: #252e45;
+    --color-ink-2: #323d59;
+  }
+}
+
+:root[data-theme='dark'] .panneau-teinte {
+  --color-ink: #252e45;
+  --color-ink-2: #323d59;
+}
+
 /* CETTE RÈGLE A DISPARU AVEC SA CAUSE, et il faut dire laquelle.
 
    Elle refixait l'encre sombre sur l'aplat d'accent, parce que l'or de marque

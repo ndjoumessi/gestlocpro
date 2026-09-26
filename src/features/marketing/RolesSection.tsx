@@ -18,6 +18,12 @@ export function RolesSection() {
     <Section
       id="roles"
       tone="dark"
+      /* `panneau-teinte` : en thème sombre, un panneau d'encre neutre posé sur
+         un fond déjà noir ne tranche plus — il flotte. La classe reteinte ses
+         deux fonds en bleuté à luminance égale, et n'a aucune règle en clair,
+         où la rupture existe déjà. Voir le bloc qui la définit dans
+         `tokens.css` pour les quatre contrastes mesurés. */
+      className="panneau-teinte"
       eyebrow={t('marketing.roles.eyebrow')}
       title={t('marketing.roles.title')}
       description={t('marketing.roles.subtitle')}
@@ -64,6 +70,14 @@ export function RolesSection() {
             flush
             key={key}
             className={cn(
+              /* `panneau-teinte` ICI AUSSI, et ce n'est pas un doublon. La
+                 carte porte elle-même `.on-dark` — c'est ce que `tone`
+                 applique —, et une propriété personnalisée déclarée sur un
+                 élément l'emporte sur celle qu'il hérite : sans la classe, la
+                 carte relisait le `--color-ink-2` NEUTRE que son propre
+                 `.on-dark` vient de poser, et restait grise dans une section
+                 devenue bleutée. Mesuré : #38414e sur #252e45. */
+              'panneau-teinte',
               'group flex flex-col p-6 sm:p-7',
               'lg:grid lg:grid-rows-subgrid lg:row-span-4',
               'transition-[transform,border-color] duration-200 ease-out',
