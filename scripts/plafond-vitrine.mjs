@@ -251,24 +251,37 @@ const PLAFONDS = [
     une somme ne se compare qu'à contenu égal, et ce fichier le dit déjà de
     lui-même en tête (« il garde une somme, pas une composition »).
 
-    CE QUI EST VRAIMENT EN CAUSE, ET QUI RESTE À TRANCHER. `HeroProof`, ajouté
-    le même jour, énonce les trois nombres — devises, langues, pays — avec les
-    libellés de la section internationale, qui les répète 1068 px plus bas au
-    téléphone dans trois cartes. La redondance est réelle et elle est de ce
-    lot-là. La réduire demanderait de retirer les trois cartes de chiffres de
-    cette section pour n'y laisser que les listes et la note sur les zones CFA
-    — environ 600 px au téléphone, davantage que ce que « Mise en route » coûte
-    — et de récrire la garde `troisSectionsDeLaVitrine`, qui exige trois signes
-    distincts dans ses `dt`. C'est une décision éditoriale, pas une optimisation :
-    elle n'est pas prise ici.
+    ═══ LA REDONDANCE A ÉTÉ TRANCHÉE, ET ELLE REND 414 px ═══
+
+    Ce commentaire disait, le matin même, que la décision « n'est pas prise
+    ici » : `HeroProof` énonçait les trois nombres — devises, langues, pays —
+    avec les libellés de la section internationale, qui les répétait 1068 px
+    plus bas au téléphone dans trois cartes. Elle est prise. Les trois cartes de
+    CHIFFRES sont parties ; les trois LISTES restent, parce qu'un nombre dit
+    combien et jamais lesquels, et que c'est le seul endroit de la page où la
+    couverture est énumérée.
+
+    MESURÉ : la section tombe de 1068 à 683 px à 360, et le document de 414 px
+    dans les deux langues — 141 et 131 au bureau. L'estimation de ce matin
+    (« environ 600 px ») était trop généreuse de moitié ; c'est le relevé qui
+    est inscrit, pas elle.
+
+    LA GARDE `troisSectionsDeLaVitrine` N'A PAS EU À BOUGER, contre ce qui était
+    annoncé ici. Elle exige trois signes DISTINCTS dans les `dt` de la section :
+    les `dt` survivent aux cartes, puisque ce sont eux qui nomment les listes.
+    Ce qu'elle inspectait n'était pas la carte.
+
+    RESTE CE QUE CE PLAFOND CONCÈDE ENCORE : 11798 px dépassent `origine` de
+    379 px au téléphone français, 240 en anglais. Deux sections de plus, et une
+    page qui n'est pas revenue sous sa hauteur d'avant la refonte de densité.
 
     LES DEUX SECTIONS ONT ÉTÉ RESSERRÉES AVANT D'ÊTRE PESÉES. « Ce qui vous
     engage » pose son signe à GAUCHE du texte et non au-dessus : 207 px rendus
     au téléphone, mesurés (1148 → 941). Elle tient le temps `serre` — un appui,
     pas une étape.
   */
-  { largeur: 360, langue: 'fr', plafond: 12212, plafondLarge: 12212, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 11911, plafondLarge: 11803, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'fr', plafond: 11798, plafondLarge: 11798, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 11497, plafondLarge: 11389, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -324,10 +337,10 @@ const PLAFONDS = [
     colonnes faisait déjà. Voir le commentaire de `FeatureGrid`.
   */
   /*
-    +1131 px (fr) ET +1079 (en) AU BUREAU, LE 2026-09-26 : LES MÊMES DEUX
-    SECTIONS, et ici la page reste SOUS son origine — 8431 contre 7110 le
-    2026-08-23 ne se compare pas davantage, mais le rapport par section y tombe
-    de 889 à 843 px.
+    +990 px (fr) ET +948 (en) AU BUREAU, LE 2026-09-26 : LES MÊMES DEUX
+    SECTIONS, moins les 141 et 131 px que rend le retrait des trois cartes de
+    chiffres de la section internationale (voir le bloc du téléphone). Le
+    rapport par section tombe de 889 à 829 px.
 
     LA COLONNE LARGE EST MESURÉE, LA NORMALE EST DÉDUITE, comme le lot du même
     jour juste au-dessus : `MESURER_EN_POLICE_LARGE=1` reproduit exactement les
@@ -335,8 +348,8 @@ const PLAFONDS = [
     celle de la colonne normale. Les `plafond` reçoivent le delta mesuré. À
     revérifier sur la machine de développement au premier passage.
   */
-  { largeur: 1280, langue: 'fr', plafond: 8354, plafondLarge: 8431, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
-  { largeur: 1280, langue: 'en', plafond: 8379, plafondLarge: 8358, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'fr', plafond: 8213, plafondLarge: 8290, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 8248, plafondLarge: 8227, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══

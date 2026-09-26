@@ -1,5 +1,4 @@
 import { Section } from '@/components/layout/Section'
-import { Card } from '@/components/primitives/Card'
 import { Icon } from '@/components/primitives/Icon'
 import { CURRENCIES, CURRENCY_DEFS } from '@/currency/currencies'
 import { COUNTRIES } from '@/lib/countries'
@@ -86,47 +85,61 @@ export function InternationalSection() {
         locales: LOCALES.length,
       })}
     >
-      {/* Trois chiffres en cartes, sur la même grille que le reste de la page.
-          Posés à même le fond, ils flottaient dans une moitié de section vide,
-          et le contraste d'échelle entre le nombre et son libellé ne suffisait
-          pas à les rattacher les uns aux autres. */}
-      <dl className="grid gap-5 sm:grid-cols-3">
+      {/*
+        ═══ LES TROIS NOMBRES SONT PARTIS DANS L'ACCROCHE ═══
+
+        Cette section portait trois cartes, chacune un grand chiffre au-dessus
+        de ses valeurs : 4 devises, 2 langues, 21 pays. `HeroProof` énonce
+        désormais les MÊMES trois nombres, avec les MÊMES libellés — ce sont
+        littéralement les clés `marketing.international.*` —, au premier écran.
+        Les garder ici en faisait une redondance, et une redondance coûteuse :
+        385 des 1068 px que cette section occupait au téléphone servaient à
+        redire ce qui était déjà lu au premier écran.
+
+        CE QUI RESTE EST CE QUE L'ACCROCHE NE PEUT PAS PORTER. Un nombre dit
+        combien ; il ne dit pas LESQUELS. « 4 devises » ne renseigne pas
+        l'exploitant de Douala sur le franc CFA, ni celui de Dakar sur le fait
+        que c'est le même sigle pour deux zones — la description de la section
+        le dit, et ces trois listes le montrent. C'est le seul endroit de la
+        page où la couverture est ÉNUMÉRÉE.
+
+        LE COMPTE RESTE VISIBLE, SANS ÊTRE ÉCRIT : quatre gélules de devise se
+        comptent d'un regard, et c'est exactement l'argument de la note sur les
+        jetons ci-dessous. Le chiffre de 44 px ne faisait que le répéter en gros.
+
+        LA CARTE PART AVEC LUI. Une carte borne un objet ; ce qui reste est une
+        énumération à trois entrées, pas trois objets à comparer. Le surtitre et
+        son signe suffisent à séparer les colonnes, et la page y gagne 385 px au
+        téléphone (mesuré au DOM à 360 px : 1068 → 683).
+
+        LES TROIS SIGNES RESTENT DISTINCTS, et une garde l'exige — voir
+        `troisSectionsDeLaVitrine` : un icône ne vaut que par ce qu'il sépare, et
+        les trois `dt` qui les portent sont ce que cette garde inspecte.
+      */}
+      <dl className="grid gap-x-6 gap-y-8 sm:grid-cols-3">
         {facts.map((fact) => (
-          /* Par la primitive, et non recopiée à la main : cette carte EST
-             `tone="default"` au jeton près — `bg-surface`, `border-divider`,
-             `shadow-e1` —, si bien que la réécrire ici la condamnait à être
-             corrigée à part à chaque lot de géométrie. `flush` retire le
-             rembourrage par défaut de la primitive au lieu de le laisser en
-             conflit avec celui d'ici : `cn` concatène, il ne fusionne pas, et
-             deux `p-*` sur le même élément ne se départagent alors que par
-             l'ordre d'émission de la feuille de style. */
-          <Card key={fact.key} flush className="flex flex-col p-7 sm:p-8">
-            {/* Le signe passe à 16 px et prend l'accent : à 13 px il n'était
-                qu'une poussière bleue en concurrence avec le surtitre. */}
+          <div key={fact.key} className="min-w-0">
             <dt className="eyebrow flex items-center gap-2.5 text-muted">
               <Icon name={fact.icone} size={16} className="text-accent-ink" />
               {t(`marketing.international.${fact.key}` as 'marketing.international.currencies')}
             </dt>
-            <dd className="m-0 flex flex-1 flex-col">
-              <p className="numeric mt-4 text-[2.75rem] leading-none font-medium">{fact.value}</p>
-
+            <dd className="m-0 mt-4">
               {/*
-                LE DÉTAIL EN JETONS, ET NON EN LISTE QUI SE REPLIE.
+                LE DÉTAIL EN JETONS, ET NON EN LISTE QUI SE REPLIE — la note
+                d'origine reste vraie et ne dépendait pas de la carte. C'étaient
+                des mots posés côte à côte, séparés par un écart : sur les pays,
+                quatre noms plus « et 17 autres » se replient en deux lignes
+                ragées où « Congo-Brazzaville Tchad » se lit comme une seule
+                entrée. Une bordure par valeur rend le compte visible.
 
-                C'étaient des mots posés côte à côte, séparés par un écart. Sur la
-                carte des pays, quatre noms plus « et 17 autres » se replient en
-                deux lignes ragées où rien ne dit où finit un pays et où commence
-                le suivant — « Congo-Brazzaville Tchad » se lit comme une seule
-                entrée. Une bordure par valeur rend le compte visible : on VOIT
-                quatre devises, deux langues, quatre pays nommés.
-
-                `mt-auto` : les trois cartes n'ont pas le même nombre de valeurs,
-                et sans lui le trait de séparation tombait à trois hauteurs
-                différentes. Poussé en bas, il aligne les trois cartes sur leur
-                partie basse — celle qu'on compare.
+                `mt-auto` est parti avec la carte : il poussait le trait de
+                séparation en bas pour aligner trois colonnes de hauteurs
+                différentes. Sans surface ni trait, il n'y a plus rien à aligner
+                — et trois listes qui commencent ensemble se comparent mieux que
+                trois qui finissent ensemble.
               */}
               {fact.detail.length > 0 && (
-                <ul className="mt-auto flex flex-wrap gap-2 border-t border-divider pt-5">
+                <ul className="flex flex-wrap gap-2">
                   {fact.detail.map((label, index) => (
                     <li
                       key={label}
@@ -145,7 +158,7 @@ export function InternationalSection() {
                 </ul>
               )}
             </dd>
-          </Card>
+          </div>
         ))}
       </dl>
     </Section>
