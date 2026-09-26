@@ -174,6 +174,23 @@ export function MentionsLegales() {
         <div className="mx-auto w-full max-w-2xl">
           <h1 className="display-m text-balance">{t('legal.title')}</h1>
           <p className="mt-4 text-body-l text-pretty text-muted">{t('legal.intro')}</p>
+          {/*
+            LA DATE DE LA PAGE, comme ses deux sœurs.
+
+            Les conditions générales portent « Rédigées le … » et la page de
+            confidentialité « Relevé au … » ; celle-ci n'avait rien. Sa seule
+            date visible est à l'INTÉRIEUR de la fiche d'éditeur — « Inscription
+            à jour au … » —, et elle date l'IMMATRICULATION, pas le document :
+            un lecteur qui veut savoir si la page est à jour ne peut pas la lire
+            comme telle.
+
+            Même donnée, autre phrase, et c'est le point : réutiliser
+            `legal.updatedOn` ferait dire à la ligne du haut ce que celle du bas
+            dit déjà d'autre chose.
+          */}
+          <p className="mt-2 text-label text-muted">
+            {t('legal.pageUpdatedOn', { date: d.fullDate(EDITEUR.miseAJour) })}
+          </p>
 
           <section aria-labelledby="mentions-editeur" className="mt-10">
             <h2 id="mentions-editeur" className="title-m">

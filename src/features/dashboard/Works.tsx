@@ -21,7 +21,12 @@ import { TenantScopeNote } from './TenantDashboard'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
-import { montantEngage, type WorkOrder } from '@/data/portfolio'
+import {
+  montantEngage,
+  type DateParts,
+  type RelativeStamp,
+  type WorkOrder,
+} from '@/data/portfolio'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { workTitle } from '@/data/workTitle'
 import { ReportModal } from './ReportModal'
@@ -37,6 +42,34 @@ const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
   quoted: 'warn',
   approved: 'info',
   done: 'ok',
+}
+
+/**
+ * DEPUIS COMBIEN DE TEMPS — en jours, en semaines ou en mois, selon l'écart.
+ *
+ * `Intl.RelativeTimeFormat` ne choisit PAS son unité : il rend « il y a 61
+ * jours » aussi volontiers que « il y a 2 mois », et c'est à l'appelant de
+ * décider. Le dépôt sert partout des horodatages déjà exprimés dans leur unité
+ * — `{ value: -7, unit: 'day' }` — parce que c'est le serveur qui tranche ;
+ * `reportedAt` est une DATE, pas un horodatage, donc la conversion se fait
+ * ici, une fois.
+ *
+ * LES SEUILS SONT CEUX DE LA LECTURE, pas du calendrier. Sous deux semaines on
+ * compte en jours, parce qu'un devis qui attend neuf jours n'attend pas « il y
+ * a 1 semaine » ; jusqu'à deux mois en semaines ; au-delà en mois, où le jour
+ * exact n'apprend plus rien et où le mot « mois » est justement l'alarme.
+ *
+ * `Math.round` et non `floor` sur les semaines et les mois : à dix jours,
+ * « il y a 1 semaine » est plus juste que « il y a 1 semaine » obtenu en
+ * jetant trois jours — la division arrondie tombe sur la valeur que l'œil
+ * attend. Les JOURS, eux, se tronquent : un signalement de ce matin ne doit
+ * jamais s'annoncer « il y a 1 jour ».
+ */
+function depuis({ year, month, day }: DateParts): RelativeStamp {
+  const jours = Math.floor((Date.now() - new Date(year, month, day).getTime()) / 86_400_000)
+  if (jours < 14) return { value: -Math.max(0, jours), unit: 'day' }
+  if (jours < 60) return { value: -Math.round(jours / 7), unit: 'week' }
+  return { value: -Math.round(jours / 30), unit: 'month' }
 }
 
 export function Works() {
@@ -580,6 +613,31 @@ export function Works() {
                   {work.reference ?? work.id} · {unit?.label} {unit?.tenant ? `· ${unit.tenant}` : ''} ·{' '}
                   {t(`app.trades.${work.trade}` as 'app.trades.plumbing')} ·{' '}
                   {d.dayMonth(work.reportedAt)}
+                  {/*
+                    ═══ UNE DATE NUE NE HIÉRARCHISE RIEN ═══
+
+                    « 26 août » et « 5 août » se lisent à l'identique sur une
+                    liste qu'on ouvre pour décider PAR QUOI COMMENCER. Ce qui
+                    trie un devis à arbitrer, ce n'est pas le jour où il est
+                    tombé, c'est depuis COMBIEN DE TEMPS il attend — un
+                    signalement de deux jours et un de sept semaines appellent
+                    deux gestes différents, et rien sur cette ligne ne les
+                    distinguait.
+
+                    SEULEMENT SUR CE QUI ATTEND UNE DÉCISION. Un chantier
+                    approuvé est en cours — son ancienneté ne reproche rien à
+                    personne — et un chantier terminé l'est depuis d'autant plus
+                    longtemps qu'il a été traité vite. Les deux états où
+                    l'attente EST le sujet sont `reported`, qui attend un prix,
+                    et `quoted`, qui attend un arbitrage.
+
+                    L'ANCIENNETÉ NE REMPLACE PAS LA DATE, elle la qualifie : la
+                    date reste ce qu'on recopie dans un courrier, l'ancienneté
+                    ce qui décide de l'ordre. Même ligne, même encre, aucun
+                    pixel de hauteur.
+                  */}
+                  {(work.status === 'reported' || work.status === 'quoted') &&
+                    ` · ${d.relative(depuis(work.reportedAt))}`}
                 </p>
                 {/*
                   D'OÙ ELLE VIENT, et de qui.

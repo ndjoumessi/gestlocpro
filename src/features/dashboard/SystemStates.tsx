@@ -163,7 +163,24 @@ export function SystemStates() {
                    nom d'un état d'interface — le titre est déjà donné par
                    `CardHeader`, et un lecteur d'écran n'y aurait entendu que
                    deux fois le même mot pour deux choses différentes. */
-                caption={t('app.portfolio.title')}
+                /*
+                  LA LÉGENDE DIT QUE L'ÉCHANTILLON EST UN ÉCHANTILLON.
+
+                  Cette carte montre le chargement du parc sur `units.slice(0,
+                  3)`, et rien ne signalait la troncature : trois lignes de
+                  tableau se lisent comme un parc de trois logements. Sur un
+                  écran dont l'en-tête promet que « ce qu'on y voit est
+                  littéralement ce que le produit affiche », un extrait muet
+                  est la seule chose qui puisse s'y lire de travers.
+
+                  La légende est l'endroit prévu pour cela — elle DÉCRIT le
+                  tableau, le titre étant porté par la carte — et elle occupe
+                  déjà sa ligne : aucun pixel de plus.
+                */
+                caption={t('app.system.sampleOf', {
+                  shown: Math.min(3, units.length),
+                  total: units.length,
+                })}
                 rows={units.slice(0, 3)}
                 rowKey={(u) => u.id}
                 columns={[

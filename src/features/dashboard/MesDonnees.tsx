@@ -57,6 +57,9 @@ export function MesDonnees() {
   const t = useT()
   const d = useDates()
   const { etat: session, adhesionActive, fermerLeCompte } = useSession()
+  /* Le nom du parc, ou celui de la démonstration — la même expression que le
+     titre du PDF plus bas, pour que les deux surfaces ne divergent pas. */
+  const nomDuParc = adhesionActive?.parkName ?? t('common.demoPark')
   const naviguer = useNavigate()
   const courriel = session.statut === 'connecte' ? session.compte.email : ''
   const { exporterLeDossier } = usePortfolio()
@@ -202,7 +205,17 @@ export function MesDonnees() {
         {/* SANS SESSION — la démonstration —, la phrase ne cite aucun compte :
             « votre compte () » était rendu tel quel, parenthèses vides
             comprises, mesuré au navigateur le 2026-09-16. */}
-        {courriel ? t('app.data.body', { email: courriel }) : t('app.data.bodyAnonyme')}
+        {/* LE PARC, NOMMÉ. La phrase promettait « ce que votre compte peut lire
+            dans ce parc » sans jamais dire DUQUEL — sur l'écran dont le sujet
+            est précisément l'étendue de ce qu'un compte atteint. Un compte qui
+            tient deux parcs ne savait pas lequel il emportait.
+
+            La même expression qu'en tête du PDF, cent lignes plus haut : les
+            deux surfaces nomment donc le même dossier du même nom, et le repli
+            de démonstration est déjà celui du document. */}
+        {courriel
+          ? t('app.data.body', { email: courriel, parc: nomDuParc })
+          : t('app.data.bodyAnonyme', { parc: nomDuParc })}
       </p>
 
       {/* DÉCLARÉE MESURABLE : le geste qui la rend est le bouton ci-dessus, sous

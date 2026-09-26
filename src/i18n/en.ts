@@ -258,12 +258,14 @@ export const en: Dictionary = {
     forgot: {
       title: 'Reset your password',
       subtitle:
-        'Enter your account email. We’ll send you a reset link valid for one hour.',
+        'Enter your account email. We’ll send you a reset link valid for {minutes} minutes.',
       submit: 'Send the link',
       backToLogin: 'Back to sign in',
       sentTitle: 'Check your inbox',
       sentBody:
         'If an account exists for {email}, a reset link is on its way. Remember to check your spam folder.',
+      sentDelay:
+        'The link stays valid for {minutes} minutes and works only once. After that, request a new one.',
       resend: 'Send it again',
       resent: 'Request sent again',
       wrongEmail: 'Not the right address?',
@@ -283,7 +285,7 @@ export const en: Dictionary = {
       goToLogin: 'Sign in',
       invalidTitle: 'This link is no longer valid',
       invalidBody:
-        'A reset link expires after one hour and works only once. Request a new one.',
+        'A reset link expires after {minutes} minutes and works only once. Request a new one.',
       askAnother: 'Request a new link',
     },
 
@@ -433,10 +435,10 @@ export const en: Dictionary = {
       title: 'My data',
       subtitle: 'Take away what the product knows about you.',
       body:
-        'Your file gathers what your account ({email}) can read in this portfolio. ' +
+        'Your file gathers what your account ({email}) can read in {parc}. ' +
         'It downloads as spreadsheets, one per kind of record, and as a summary to archive.',
       bodyAnonyme:
-        'Your file gathers what your account can read in this portfolio. ' +
+        'Your file gathers what your account can read in {parc}. ' +
         'It downloads as spreadsheets, one per kind of record, and as a summary to archive.',
       prepare: 'Prepare my export',
       preparing: 'Preparing…',
@@ -1845,6 +1847,7 @@ export const en: Dictionary = {
     },
 
     system: {
+      sampleOf: '{shown} of {total} units',
       title: 'System states',
       subtitle: 'The states the interface must handle: loading, empty, error, offline.',
       loading: 'Loading',
@@ -1944,6 +1947,7 @@ export const en: Dictionary = {
     address: 'Address',
     registration: 'Registration',
     updatedOn: 'Entry up to date as of {date}',
+    pageUpdatedOn: 'Page up to date as of {date}',
     hosting: 'Hosting',
     hostName: 'Company name',
     phone: 'Phone',

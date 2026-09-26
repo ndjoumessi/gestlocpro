@@ -7,6 +7,7 @@ import { PasswordInput, PasswordStrength } from '@/components/primitives/Input'
 import { Icon } from '@/components/primitives/Icon'
 import { Notice } from '@/components/primitives/Notice'
 import { useT } from '@/i18n/I18nProvider'
+import { DUREE_DU_LIEN_MINUTES } from '@/legal/reinitialisation'
 import { api } from '@/api/client'
 import { ApiError } from '@/api/client'
 import { useToast } from '@/components/primitives/Toast'
@@ -83,7 +84,7 @@ export function ResetPassword() {
           {/* `clock` et non l'alerte par défaut du ton : le refus porte sur la
               PÉRIODE de validité du lien, pas sur une faute de l'utilisateur. */}
           <Notice tone="warn" icon="clock" forte>
-            {t('auth.reset.invalidBody')}
+            {t('auth.reset.invalidBody', { minutes: DUREE_DU_LIEN_MINUTES })}
           </Notice>
 
           <Button size="lg" fullWidth to="/mot-de-passe-oublie" iconAfter="arrowRight">

@@ -363,12 +363,18 @@ export const fr = {
     forgot: {
       title: 'Réinitialiser votre mot de passe',
       subtitle:
-        'Indiquez l’adresse de votre compte. Nous vous envoyons un lien de réinitialisation valable une heure.',
+        'Indiquez l’adresse de votre compte. Nous vous envoyons un lien de réinitialisation valable {minutes} minutes.',
       submit: 'Envoyer le lien',
       backToLogin: 'Revenir à la connexion',
       sentTitle: 'Vérifiez votre boîte mail',
       sentBody:
         'Si un compte existe pour {email}, un lien de réinitialisation vient d’y être envoyé. Pensez à regarder dans les indésirables.',
+      /* LE DÉLAI, SUR L'ÉCRAN OÙ IL SERT. Il n'était écrit que dans le
+         sous-titre d'AVANT l'envoi, que ce même écran vient de remplacer : on
+         attend son courriel devant une page qui ne dit plus ni combien de temps
+         le lien vaut, ni quoi faire ensuite. */
+      sentDelay:
+        'Le lien reste valable {minutes} minutes et ne sert qu’une fois. Passé ce délai, demandez-en un nouveau.',
       resend: 'Renvoyer le lien',
       resent: 'Demande renvoyée',
       wrongEmail: 'Ce n’est pas la bonne adresse ?',
@@ -388,7 +394,7 @@ export const fr = {
       goToLogin: 'Se connecter',
       invalidTitle: 'Ce lien n’est plus valable',
       invalidBody:
-        'Un lien de réinitialisation expire au bout d’une heure et ne sert qu’une fois. Demandez-en un nouveau.',
+        'Un lien de réinitialisation expire au bout de {minutes} minutes et ne sert qu’une fois. Demandez-en un nouveau.',
       askAnother: 'Demander un nouveau lien',
     },
 
@@ -603,11 +609,14 @@ export const fr = {
     data: {
       title: 'Mes données',
       subtitle: 'Emporter ce que le produit sait de vous.',
+      /* LE PARC EST NOMMÉ. « ce parc » ne désignait rien sur un écran dont le
+         sujet EST l'étendue de ce qu'un compte peut lire — et un compte qui
+         tient deux parcs ne savait pas lequel il emportait. */
       body:
-        'Votre dossier rassemble ce que votre compte ({email}) peut lire dans ce parc. ' +
+        'Votre dossier rassemble ce que votre compte ({email}) peut lire dans {parc}. ' +
         'Il se télécharge en tableur, nature par nature, et en récapitulatif à archiver.',
       bodyAnonyme:
-        'Votre dossier rassemble ce que votre compte peut lire dans ce parc. ' +
+        'Votre dossier rassemble ce que votre compte peut lire dans {parc}. ' +
         'Il se télécharge en tableur, nature par nature, et en récapitulatif à archiver.',
       prepare: 'Préparer mon export',
       preparing: 'Préparation…',
@@ -2654,6 +2663,8 @@ export const fr = {
     },
 
     system: {
+      /* LA LÉGENDE D'UN EXTRAIT — voir `SystemStates.tsx`, qui porte la raison. */
+      sampleOf: '{shown} logements sur {total}',
       title: 'États du système',
       subtitle:
         'Les états que l’interface doit savoir afficher : chargement, vide, erreur, hors ligne.',
@@ -2773,6 +2784,9 @@ export const fr = {
     address: 'Adresse',
     registration: 'Immatriculation',
     updatedOn: 'Inscription à jour au {date}',
+    /* LA DATE DU DOCUMENT, distincte de celle de l'immatriculation juste
+       au-dessus — voir `MentionsLegales.tsx`. */
+    pageUpdatedOn: 'Page à jour au {date}',
     hosting: 'Hébergement',
     hostName: 'Raison sociale',
     phone: 'Téléphone',

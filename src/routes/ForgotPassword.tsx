@@ -8,6 +8,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { Notice } from '@/components/primitives/Notice'
 import { useT } from '@/i18n/I18nProvider'
 import { validateEmail, type FieldError } from '@/features/auth/validation'
+import { DUREE_DU_LIEN_MINUTES } from '@/legal/reinitialisation'
 import { api } from '@/api/client'
 import { useToast } from '@/components/primitives/Toast'
 
@@ -108,6 +109,26 @@ export function ForgotPassword() {
             {t('auth.forgot.sentBody', { email })}
           </Notice>
 
+          {/*
+            LE DÉLAI SUR L'ÉCRAN OÙ IL SERT, et il en était absent.
+
+            « valable une heure » ne vivait que dans le SOUS-TITRE de la
+            demande — celui que cet écran-ci vient de remplacer par « Vérifiez
+            votre boîte mail ». L'utilisateur reste donc devant la seule page
+            qu'il garde ouverte en attendant son courriel, et c'est celle qui
+            ne dit plus ni combien de temps le lien vaut, ni quoi faire quand
+            il ne vaut plus rien.
+
+            HORS DE L'ENCART, et non dedans : l'encart est la phrase
+            volontairement conditionnelle — « si un compte existe » —, dont
+            toute la discipline est de ne rien affirmer sur personne. Le délai,
+            lui, est un fait du produit, vrai pour tout le monde ; le glisser
+            dans la phrase prudente le rendrait conditionnel à son tour.
+          */}
+          <p className="text-body text-muted">
+            {t('auth.forgot.sentDelay', { minutes: DUREE_DU_LIEN_MINUTES })}
+          </p>
+
           <Button
             variant="secondary"
             size="lg"
@@ -147,7 +168,7 @@ export function ForgotPassword() {
   return (
     <AuthLayout
       title={t('auth.forgot.title')}
-      subtitle={t('auth.forgot.subtitle')}
+      subtitle={t('auth.forgot.subtitle', { minutes: DUREE_DU_LIEN_MINUTES })}
       footer={backLink}
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">

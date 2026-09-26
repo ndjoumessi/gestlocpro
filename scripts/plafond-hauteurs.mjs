@@ -410,7 +410,11 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 360, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 360, plafond: 1971, plafondLarge: 1945 },
+  /* +25 px : la page porte enfin SA date de mise à jour, comme les deux autres
+     pages légales. La seule date visible était celle de l'immatriculation, à
+     l'intérieur de la fiche d'éditeur — un lecteur qui veut savoir si le
+     document est à jour ne pouvait pas la lire comme telle. */
+  { adresse: '/mentions-legales', largeur: 360, plafond: 1996, plafondLarge: 1970 },
   { adresse: '/confidentialite', largeur: 360, plafond: 3383, plafondLarge: 3297 },
   { adresse: '/conditions-generales', largeur: 360, plafond: 4778, plafondLarge: 4679 },
   { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
@@ -458,7 +462,7 @@ const PLAFONDS = [
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/mot-de-passe-oublie', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/reinitialiser', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/mentions-legales', largeur: 1280, plafond: 1520, plafondLarge: 1520 },
+  { adresse: '/mentions-legales', largeur: 1280, plafond: 1544, plafondLarge: 1544 },
   { adresse: '/confidentialite', largeur: 1280, plafond: 2414, plafondLarge: 2371 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3336, plafondLarge: 3250 },
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
@@ -489,7 +493,11 @@ const PLAFONDS = [
     raccourcis pour être lus — et corrigés au passage, ils disaient « trier »
     là où l'on filtre.
   */
-  { adresse: '/demo/travaux', largeur: 1280, plafond: 1546, plafondLarge: 1479 },
+  /* +34 px : les signalements qui attendent un prix ou un arbitrage disent
+     DEPUIS QUAND. « 26 août » et « 5 août » se lisaient à l'identique sur une
+     liste qu'on ouvre pour décider par quoi commencer ; « il y a 6 semaines »
+     les sépare. La ligne s'allonge et se replie sur deux cartes à 1280. */
+  { adresse: '/demo/travaux', largeur: 1280, plafond: 1580, plafondLarge: 1513 },
   { adresse: '/demo/signalements', largeur: 1280, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   /* +15 px, même cause qu'à 360 — la pastille tient sur la ligne du montant
