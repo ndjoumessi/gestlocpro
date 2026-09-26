@@ -229,10 +229,36 @@ function BrandPanel() {
         'lg:pt-[calc(2.5rem+env(safe-area-inset-top))] lg:pb-10',
       )}
     >
+      {/*
+        ═══ LE HALO ÉCLAIRCISSAIT DANS LES DEUX THÈMES, ET C'EST UN SENS ═══
+
+        Il était peint avec `--color-accent`, et ce jeton BASCULE à l'intérieur
+        d'un `.on-dark` : #2563eb en clair, #93bbfd en sombre. Le halo était
+        donc bleu profond sur un panneau presque noir — où éclaircir est le bon
+        geste, il creuse le coin — puis bleu CLAIR sur un panneau qui venait
+        lui-même de s'éclaircir pour rester lisible sur un fond noir. Mesuré à
+        1280 × 860 : le coin haut gauche remontait à une valeur voisine de celle
+        du texte en retrait, et la bande se lisait comme une tache diagonale
+        plutôt que comme une profondeur.
+
+        `--color-accent-tint` NE BASCULE PAS DANS `.on-dark` — cette règle ne
+        refixe que l'encre, l'accent et son inverse —, donc il suit le thème de
+        la PAGE : #eff5ff en clair, #152238 en sombre. Le halo éclaircit là où
+        le panneau est sombre et assombrit là où il l'est moins. Le geste est le
+        même dans les deux thèmes — donner un coin au panneau — et la couleur
+        en change le sens.
+
+        CE HALO-LÀ RESTE, QUAND DEUX AUTRES SONT PARTIS. Le hero et le bloc de
+        clôture en portaient un, retirés tous les deux : ils flottaient sur une
+        page claire, où ils ne bornaient rien et affaiblissaient le contraste
+        recherché. Celui-ci est à l'intérieur d'un panneau FERMÉ, dont il occupe
+        le coin — `overflow-hidden` le coupe aux bords —, et ce panneau est une
+        surface d'un tiers d'écran qui ne porte qu'un logo et quatre lignes.
+      */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 -left-24 size-[30rem] rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, var(--color-accent) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, var(--color-accent-tint) 0%, transparent 70%)' }}
       />
 
       <div className="relative">
