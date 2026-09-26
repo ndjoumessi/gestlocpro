@@ -418,7 +418,78 @@ function RadioPuces<T extends string>({
   )
 }
 
-/** Bascule segmentée à deux états — mensuel/annuel, solo/délégué. */
+/**
+ * Bascule segmentée à deux états — mensuel/annuel, solo/délégué.
+ *
+ * ═══ LA PASTILLE SE DÉPLACE, ELLE NE CLIGNOTE PLUS ═══
+ *
+ * Le fond `bg-ink` vivait SUR le bouton actif, et changeait donc d'élément à
+ * chaque bascule : l'ancienne pastille s'effaçait pendant que la nouvelle
+ * apparaissait, en `transition-colors`. Deux objets se croisaient dans un
+ * fondu là où l'utilisateur en attend UN qui se déplace — c'est précisément le
+ * cas où un fondu se lit comme un défaut, parce que l'œil voit les deux états
+ * en même temps au lieu d'une seule chose qui bouge.
+ *
+ * C'est aussi le seul mouvement de la page de tarifs, à l'endroit où le
+ * prospect compare deux prix : la bascule doit dire « je suis passé LÀ », pas
+ * « quelque chose a changé de couleur ».
+ *
+ * ═══ POURQUOI UNE GRILLE, ET NON UNE MESURE ═══
+ *
+ * Un indicateur glissant se pose d'ordinaire en `absolute`, sa position lue au
+ * `offsetLeft` du bouton actif. Cette écriture-là ne peut pas vivre ici : jsdom
+ * ne fait aucune mise en page — `offsetWidth` y vaut zéro — et l'indicateur
+ * serait donc invisible et INVÉRIFIABLE dans toute la suite de tests, sur un
+ * dépôt dont les gardes sont la doctrine.
+ *
+ * Les segments sont donc ÉGAUX (`flex-1 basis-0 min-w-0`), l'indicateur vaut
+ * `(100 % − rembourrage) / N` de la boîte de rembourrage, et il se déplace de
+ * `n × 100 %` de SA PROPRE largeur — c'est-à-dire exactement d'un segment.
+ * Aucune mesure, aucune dépendance à la mise en page, un calcul juste par
+ * construction. Les trois appels du dépôt portent deux options aux libellés
+ * courts (entrée/sortie, mineure/majeure, mensuel/annuel) : l'égalité des
+ * segments y rend la bascule symétrique, ce qu'un sélecteur à deux états doit
+ * être.
+ *
+ * ═══ POURQUOI `flex` ET NON `grid`, QUI DISAIT LA MÊME CHOSE ═══
+ *
+ * La première écriture posait une grille — `inline-grid auto-cols-fr`, les
+ * boutons et l'indicateur placés en colonnes explicites. Elle rendait le même
+ * pixel, et elle SORTAIT DU CHAMP DE `ecarts.test.ts` : ce contrôle-ci y était
+ * inscrit comme tolérance motivée, et la garde ne reconnaît une rangée qu'à un
+ * `flex`. Passer en grille faisait donc disparaître le contrôle de la garde
+ * sans que rien ne rougisse — on ne quitte pas une garde par un changement de
+ * mise en page, surtout quand c'est la garde elle-même qui signale que la
+ * tolérance ne couvre plus rien.
+ *
+ * `gap-0` EST ÉCRIT, et ce n'est pas un vide décoratif : un écart absent n'est
+ * pas lu par la garde — elle cherche un `gap-N` — alors qu'un zéro EXPLICITE
+ * la fait rougir, et c'est la tolérance qui répond. Le contrôle reste donc
+ * examiné, avec son motif, au lieu d'être invisible.
+ *
+ * RÉSERVE ÉCRITE : la garde ignore les rangées en `grid`. Deux sites du dépôt
+ * y échappent pour de bon — les deux grilles de mois de `DatePicker` (`grid
+ * grid-cols-4 gap-1`), quatre pixels entre des boutons voisins, c'est-à-dire
+ * le défaut que cette garde nomme. Mesuré le 2026-09-25 en élargissant le
+ * motif à `flex|grid` : deux sites révélés, ceux-là. Élargir la garde et
+ * reprendre la géométrie du calendrier est un lot à soi — il touche des
+ * plafonds de hauteur qui se mesurent au navigateur.
+ *
+ * `ease-in-out` ET NON `ease-out` : la pastille ne fait ni entrée ni sortie,
+ * elle TRAVERSE. Le jeton du dépôt est l'easeInOutQuint, écrit pour ce cas —
+ * voir son commentaire dans `tokens.css`. `duration-200` reste sous le plafond
+ * que `durees.test.ts` défend, et la règle globale de `prefers-reduced-motion`
+ * la ramène à l'instantané sans qu'on ait à la redire ici.
+ *
+ * `relative` SUR LES BOUTONS, ET RIEN DE PLUS : un `transform` peint dans la
+ * couche des descendants positionnés, si bien que l'indicateur passerait
+ * par-dessus le texte qu'il est censé porter. `relative` y fait monter les
+ * boutons à leur tour, et DANS cette couche c'est l'ordre du document qui
+ * tranche — ils viennent après. Un `z-10` y a été écrit puis retiré :
+ * `altitudes.test.ts` l'a refusé à raison, une altitude en clair ne dit pas
+ * contre quoi elle se compare, et il ne servait à rien que l'ordre du document
+ * ne fasse déjà.
+ */
 export function SegmentedControl<T extends string>({
   label,
   value,
@@ -432,46 +503,154 @@ export function SegmentedControl<T extends string>({
   options: { value: T; label: string; badge?: string }[]
   className?: string
 }) {
+  const indice = options.findIndex((option) => option.value === value)
+  const part = 100 / options.length
+
+  /*
+    LE DÉCOUPAGE, EN POURCENTAGES DE LA PISTE.
+
+    `inset()` mange depuis chaque bord : on garde la tranche du segment actif en
+    rognant `indice` parts à gauche et tout le reste à droite. Les segments
+    étant égaux, ces deux nombres sont de l'arithmétique pure — aucune mesure,
+    donc rien qui dépende d'une mise en page que jsdom ne fait pas.
+
+    `round` : sans lui, le découpage rendrait des angles droits là où il coupe,
+    et la pastille perdrait ses coins sur ses bords intérieurs.
+  */
+  const decoupe =
+    indice < 0
+      ? undefined
+      : `inset(0 ${((options.length - 1 - indice) * part).toFixed(4)}% 0 ${(indice * part).toFixed(4)}% round 0.25rem)`
+
   return (
     <div
       role="group"
       aria-label={label}
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border border-border bg-surface p-0.5',
+        'relative inline-flex items-stretch gap-0 rounded-md border border-border bg-surface p-0.5',
         className,
       )}
     >
-      {options.map((option) => {
-        const active = option.value === value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              'inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-sm px-3.5',
-              'text-label font-semibold transition-colors duration-150 ease-out',
-              active ? 'bg-ink text-on-dark' : 'text-muted hover:bg-surface-sunken hover:text-ink',
-            )}
-          >
-            {option.label}
-            {option.badge && (
-              <span
-                className={cn(
-                  'rounded-full px-1.5 py-0.5 numeric text-label',
-                  // La pastille de remise suit l'accent unique. Elle était en
-                  // vert de succès, seule tache de couleur restante sur la
-                  // landing une fois les autres neutralisées.
-                  active ? 'bg-accent text-on-accent' : 'bg-accent-tint text-accent-ink',
-                )}
-              >
-                {option.badge}
-              </span>
-            )}
-          </button>
-        )
-      })}
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={option.value === value}
+          onClick={() => onChange(option.value)}
+          className={cn(
+            /* `flex-1 basis-0 min-w-0` : les segments se partagent la largeur à
+               ÉGALITÉ, ce dont dépend l'arithmétique du découpage ci-dessus.
+               Sans `min-w-0`, le plancher de contenu d'un segment plus long —
+               la remise « −20 % » — l'emporterait et les rendrait inégaux. */
+            'flex-1 basis-0 min-w-0',
+            /* `min-h-11` EST ÉCRIT ICI, et non rangé dans `SEGMENT` avec le
+               reste : `cibles.test.ts` exige que le plancher de 44 px se lise
+               sur la balise même, et refuse `cn()` comme délégation — à
+               raison, puisque `cn` ne délègue rien, il fusionne des classes
+               que le lecteur de la balise est censé voir. La constante l'avait
+               caché, et la garde l'a dit. Il n'appartient de toute façon qu'au
+               bouton : les libellés de la couche active s'étirent sur la
+               hauteur que ces boutons dictent. */
+            'min-h-11 cursor-pointer',
+            SEGMENT,
+            /* Tous les segments sont peints INACTIFS ici, l'actif compris : ce
+               qu'on voit de lui est la couche du dessus. D'où l'absence de
+               branche `active` — elle vivait ici et c'est précisément ce qui a
+               rougi. */
+            'text-muted transition-colors duration-150 ease-out hover:text-ink',
+          )}
+        >
+          {option.label}
+          {option.badge && <Remise ton="pale">{option.badge}</Remise>}
+        </button>
+      ))}
+
+      {/*
+        ═══ LA COUCHE ACTIVE EST UNE COPIE DÉCOUPÉE, ET NON UNE PASTILLE NUE ═══
+
+        Première écriture : un `<span>` d'encre en `absolute`, glissé en
+        `translateX` sous des libellés qui, eux, changeaient de couleur sur
+        place. Elle rendait le bon pixel et `mesure-ui` l'a refusée — dix
+        formes sous le seuil, « blanc sur blanc », à 360 px dans les deux
+        langues et sur trois surfaces du modal d'état des lieux.
+
+        LE REFUS ÉTAIT JUSTE, ET CE N'ÉTAIT PAS UN ARTEFACT DE SONDE. Le fond
+        qui rend le libellé actif lisible n'était plus son ANCÊTRE mais un
+        frère posé derrière : la couleur du texte et celle de son support
+        avaient cessé d'être solidaires. Tout ce qui empêche le frère de
+        peindre — couleurs forcées, impression, une règle de plus dans la
+        cascade — laissait alors du blanc sur du blanc. Une garde qui lit
+        l'ascendance lisait donc la vraie fragilité, pas une approximation.
+
+        La copie la referme. La couche porte `bg-ink` ET ses libellés en
+        `text-on-dark` : le contraste est de nouveau une propriété d'un seul
+        objet, vérifiable là où il est écrit. Le découpage la réduit au segment
+        actif, et l'animer déplace le fond AVEC son texte — un seul objet qui
+        se déplace, ce que la pastille nue ne pouvait pas faire puisque ses
+        libellés, restés en bas, ne pouvaient que se teinter en fondu.
+
+        ELLE EST APRÈS LES BOUTONS DANS LE DOCUMENT, et c'est ce qui la fait
+        peindre au-dessus : positionnée, donc dans la couche des descendants
+        positionnés, où l'ordre du document tranche. Aucune altitude écrite —
+        `altitudes.test.ts` l'a déjà refusée une fois ici.
+
+        `aria-hidden` ET `pointer-events-none` : les vrais boutons sont
+        dessous, avec leur `aria-pressed`. Cette couche ne se lit ni ne se
+        clique — elle se regarde.
+      */}
+      {decoupe && (
+        <div
+          aria-hidden="true"
+          data-pastille-segmentee=""
+          style={{ clipPath: decoupe }}
+          className={cn(
+            'pointer-events-none absolute inset-0.5 flex items-stretch gap-0',
+            'rounded-sm bg-ink',
+            'transition-[clip-path] duration-200 ease-in-out',
+          )}
+        >
+          {options.map((option) => (
+            <span
+              key={option.value}
+              className={cn('flex-1 basis-0 min-w-0', SEGMENT, 'text-on-dark')}
+            >
+              {option.label}
+              {option.badge && <Remise ton="plein">{option.badge}</Remise>}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+/**
+ * La géométrie d'un segment, partagée par les DEUX couches.
+ *
+ * Elles doivent s'aligner au pixel : le moindre écart de rembourrage entre la
+ * copie et l'original décalerait le libellé actif au moment où le découpage le
+ * révèle. Une constante plutôt que deux listes de classes jumelles, parce que
+ * deux listes jumelles finissent par diverger.
+ */
+const SEGMENT = 'inline-flex items-center justify-center gap-1.5 px-3.5 text-label font-semibold'
+
+/**
+ * La pastille de remise, dans ses deux tons.
+ *
+ * Elle suit l'accent unique — elle était en vert de succès, seule tache de
+ * couleur restante sur la landing une fois les autres neutralisées. Le ton
+ * plein est celui de la couche active, où elle se détache de l'encre ; le ton
+ * pâle celui des boutons du dessous.
+ */
+function Remise({ ton, children }: { ton: 'plein' | 'pale'; children: string }) {
+  return (
+    <span
+      className={cn(
+        'rounded-full px-1.5 py-0.5 numeric text-label',
+        ton === 'plein' ? 'bg-accent text-on-accent' : 'bg-accent-tint text-accent-ink',
+      )}
+    >
+      {children}
+    </span>
   )
 }

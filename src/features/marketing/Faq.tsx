@@ -46,7 +46,21 @@ export function Faq() {
           <details
             key={key}
             name="faq"
-            className="group rounded-lg border border-divider bg-surface px-5 shadow-e1 open:shadow-e2"
+            /* `gl-repli` : la réponse s'ouvre et se referme en 200 ms au lieu
+               de surgir. Le mécanisme, et la raison de le tenir en CSS brut
+               plutôt qu'en classe utilitaire, sont dans `tokens.css`.
+
+               `hover:border-border-strong` : la rangée entière est cliquable
+               sur 56 px et ne le disait NULLE PART — ni fond, ni bordure, ni
+               changement d'encre. Seul le curseur en souris l'indiquait, ce
+               qui ne s'est jamais vu au doigt. La bordure qui se renforce est
+               le geste des cartes de fonctionnalités, trois sections plus
+               haut : la page garde un vocabulaire. */
+            className={cn(
+              'gl-repli group rounded-lg border border-divider bg-surface px-5',
+              'shadow-e1 open:shadow-e2',
+              'transition-colors duration-150 ease-out hover:border-border-strong',
+            )}
           >
             <summary
               className={cn(
@@ -88,6 +102,14 @@ export function Faq() {
                 className={cn(
                   'flex size-9 shrink-0 items-center justify-center rounded-full',
                   'bg-accent text-on-accent',
+                  /* Le rond suit la rangée : il fonce au survol et s'enfonce à
+                     l'appui, comme la pastille des fonctionnalités et comme
+                     celle de la barre d'onglets. `accent-hover` porte 6,70:1
+                     sous du blanc contre 5,17 au repos — le survol AMÉLIORE le
+                     contraste, il ne le dégrade pas. `group-active:scale-95`
+                     est le seul retour tactile de la rangée : au doigt, le
+                     survol n'existe pas, et l'appui doit se voir. */
+                  'group-hover:bg-accent-hover group-active:scale-95',
                   // `ease-in-out` : le rond ne fait ni entrée ni sortie, il
                   // PIVOTE sur place. Sans courbe nommée, Tailwind applique la
                   // sienne — `cubic-bezier(0.4, 0, 0.2, 1)`, mesurée dans le

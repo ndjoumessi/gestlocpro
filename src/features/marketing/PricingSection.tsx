@@ -537,6 +537,43 @@ function UnitSlider({ units, onChange }: { units: number; onChange: (n: number) 
             '[&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full',
             '[&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-surface',
             '[&::-moz-range-thumb]:bg-ink',
+
+            /*
+              ═══ LE CURSEUR RÉPOND À LA PRISE ═══
+
+              Il n'avait AUCUN état : ni survol, ni saisie, ni transition. Or
+              c'est la seule chose de cette page qu'on attrape et qu'on traîne,
+              et le nombre qu'elle commande est le prix — l'unique chiffre pour
+              lequel le prospect est venu. Un bouton de 20 px qui ne bouge pas
+              sous le doigt ne dit pas qu'il a été pris ; on le vérifie en
+              regardant le prix changer, c'est-à-dire ailleurs que là où l'on
+              agit.
+
+              IL GROSSIT, il ne s'enfonce pas. C'est l'inverse de la règle des
+              boutons du dépôt (`active:translate-y-px`, un appui), et c'est
+              volontaire : un bouton se PRESSE, une poignée se SAISIT. Les
+              curseurs du système — iOS, macOS — grossissent sous la prise, et
+              le geste est un glissement, pas une pression. Rendre 1 px vers le
+              bas ici dirait « enfoncé » d'un objet qu'on tient.
+
+              Deux préfixes pour la même règle, faute d'API commune, comme la
+              piste juste au-dessus. `duration-150` est le jeton du retour
+              immédiat, celui des boutons ; `ease-out` parce que ce qu'on
+              regarde est le DÉPART du mouvement.
+
+              Le survol n'est pas gardé à la main : Tailwind v4 enferme toute
+              variante `hover:` dans `@media (hover: hover)` — vérifié dans le
+              paquet servi, les 23 règles de survol y sont. Sur un téléphone,
+              le curseur ne grossit donc qu'à la saisie.
+            */
+            '[&::-webkit-slider-thumb]:transition-transform',
+            '[&::-webkit-slider-thumb]:duration-150 [&::-webkit-slider-thumb]:ease-out',
+            'hover:[&::-webkit-slider-thumb]:scale-110',
+            'active:[&::-webkit-slider-thumb]:scale-125',
+            '[&::-moz-range-thumb]:transition-transform',
+            '[&::-moz-range-thumb]:duration-150 [&::-moz-range-thumb]:ease-out',
+            'hover:[&::-moz-range-thumb]:scale-110',
+            'active:[&::-moz-range-thumb]:scale-125',
           )}
           style={{
             // Variable consommée par les deux pseudo-éléments de piste.

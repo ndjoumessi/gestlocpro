@@ -110,10 +110,22 @@ const TOLERES: { fichier: string; signature: string; raison: string }[] = [
   },
   {
     fichier: 'components/primitives/Choice.tsx',
-    signature: "'inline-flex items-center gap-1 rounded-md border border-border bg-surface p-0.5',",
+    signature:
+      "'relative inline-flex items-stretch gap-0 rounded-md border border-border bg-surface p-0.5',",
     raison:
       'La primitive de contrôle segmenté elle-même — celle dont les deux sélecteurs ' +
-      'ci-dessus reprennent la forme. Elle a migré de la ligne 210 à la 319 quand ' +
+      'ci-dessus reprennent la forme. ' +
+      'L’ÉCART EST PASSÉ DE 4 PX À ZÉRO, ET IL EST ÉCRIT : l’indicateur actif ' +
+      'GLISSE désormais d’un segment à l’autre, et il ne peut le faire par un ' +
+      '`translateX` de n × 100 % que si les segments sont égaux ET contigus — ' +
+      'le moindre écart ferait tomber la pastille à côté de sa cible, d’un ' +
+      'décalage cumulé à chaque rang. La convention qui motivait déjà cette ' +
+      'tolérance — les segments d’un contrôle segmenté se TOUCHENT — est ' +
+      'devenue une contrainte de construction en plus d’une règle de forme. ' +
+      '`gap-0` plutôt qu’aucun `gap` : un écart absent ne serait pas LU par ' +
+      'cette garde, et le contrôle quitterait son champ sans que rien ne ' +
+      'rougisse. Un zéro explicite le garde examiné, avec ce motif. ' +
+      'Elle a migré de la ligne 210 à la 319 quand ' +
       'le variant en pastilles s’est inséré au-dessus, puis à la 324 quand un lot ' +
       'de prose a documenté le fichier : une tolérance repérée par un NUMÉRO DE ' +
       'LIGNE se périme au premier ajout, et c’est ' +

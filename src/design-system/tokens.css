@@ -1450,6 +1450,70 @@
   background: linear-gradient(to top, currentColor 0 50%, transparent 50% 100%);
 }
 
+/*
+  ═══ UN REPLI QUI S'OUVRE, ET NE SURGIT PAS ═══
+
+  La FAQ de la vitrine anime son signe — le rond d'accent pivote de 45° en
+  200 ms — et RIEN d'autre : la réponse, elle, apparaît d'un coup. Le seul
+  élément qui bouge est donc celui qui ne porte aucune information, et les
+  deux cents mots qu'il annonce arrivent sans transition. C'est l'exemple
+  même de ce qu'une page ne doit pas faire : animer le signal et laisser
+  sauter la chose signalée.
+
+  L'accordéon est EXCLUSIF (`name="faq"` partagé), ce qui aggrave le saut :
+  ouvrir une question en referme une autre, donc deux hauteurs changent d'un
+  coup et tout ce qui suit se déplace sans qu'on puisse suivre d'où à où. Une
+  seule transition suffit à rendre le mouvement lisible, parce que la
+  fermeture et l'ouverture partagent alors la même durée et se lisent comme un
+  échange.
+
+  ═══ CE QUI REND LA CHOSE POSSIBLE SANS JAVASCRIPT ═══
+
+  `::details-content` est le pseudo-élément du contenu d'un `<details>` ; il
+  est animable, et `interpolate-size: allow-keywords` autorise l'interpolation
+  d'une taille vers `auto` — c'est-à-dire exactement ce qui manquait pour
+  qu'une hauteur de contenu inconnue puisse se transitionner. Aucun état
+  React, aucune mesure, aucun `ResizeObserver`.
+
+  `interpolate-size` EST PORTÉ PAR LE REPLI, ET NON PAR `:root`. Il s'hérite,
+  si bien qu'une déclaration à la racine rendrait animables TOUTES les
+  hauteurs `auto` du produit — vingt écrans applicatifs dont aucun n'a été
+  mesuré pour cela. La propriété reste donc dans le sous-arbre qui l'utilise.
+
+  `content-visibility` avec `allow-discrete` : sans elle, le contenu est
+  rendu non affichable dès la première image de la fermeture, et la hauteur
+  s'anime sur du vide. C'est la propriété qui fait que la fermeture se VOIT.
+
+  ═══ LE REPLI EST GRACIEUX, COMME L'EXCLUSIVITÉ QU'IL ACCOMPAGNE ═══
+
+  Un navigateur qui ignore `::details-content` laisse tomber la règle entière
+  — pseudo-élément inconnu — et retrouve le comportement d'aujourd'hui : la
+  réponse paraît d'un coup. On perd le mouvement, jamais l'accès à la
+  réponse. C'est la même garantie que `name` partagé donne à l'exclusivité,
+  et pour la même raison : la FAQ doit se lire sans script comme sans CSS
+  récent.
+
+  `--duration-base` (200 ms) et non `--duration-slow` : c'est une bascule
+  qu'on peut enchaîner cinq fois en parcourant la liste, pas une entrée qu'on
+  regarde une fois. La règle globale de `prefers-reduced-motion` la ramène à
+  l'instantané sans qu'on ait à la redire ici.
+*/
+.gl-repli {
+  interpolate-size: allow-keywords;
+}
+
+.gl-repli::details-content {
+  block-size: 0;
+  overflow-y: clip;
+  transition:
+    block-size var(--duration-base) var(--ease-out),
+    content-visibility var(--duration-base) var(--ease-out) allow-discrete;
+}
+
+.gl-repli[open]::details-content {
+  block-size: auto;
+}
+
 /* Le mouvement respecte `prefers-reduced-motion` par la règle globale plus
    haut, qui neutralise `animation-duration` et `animation-iteration-count` sur
    `*`, `*::before` et `*::after` en `!important` — une déclaration importante
