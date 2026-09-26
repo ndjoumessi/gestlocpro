@@ -1578,8 +1578,6 @@ export const en: Dictionary = {
       kpiRequestsNote: 'awaiting your reply',
       addTenant: 'Create a tenant record',
       noAccount: 'No account',
-      cardDeposit: 'Deposit',
-      cardWorks: 'Works',
       remindOne: 'Send reminder',
       remindFor: 'Send a reminder to {name}',
       fileLink: 'File',

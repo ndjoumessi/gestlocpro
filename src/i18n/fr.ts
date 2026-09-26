@@ -2230,11 +2230,18 @@ export const fr = {
       /* L'ÉTAT QUE DEUX ÉCRANS SE CACHAIENT L'UN À L'AUTRE. Le statut du bail
          ne dit rien de l'accès : à jour et sans espace où le lire. */
       noAccount: 'Sans compte',
-      /* LES LIBELLÉS DE LA FICHE DE LOCATAIRE. Quatre faits, deux gestes, et
-         les noms accessibles du menu : douze entrées « Corriger » ne disent pas
-         laquelle on active. */
-      cardDeposit: 'Caution',
-      cardWorks: 'Travaux',
+      /* LES LIBELLÉS DE LA FICHE DE LOCATAIRE. DEUX faits, deux gestes, et les
+         noms accessibles du menu : douze entrées « Corriger » ne disent pas
+         laquelle on active.
+
+         `cardDeposit` ET `cardWorks` SONT PARTIS AVEC LEURS COLONNES. La fiche
+         ne porte plus quatre faits dont deux affichaient un tiret huit fois sur
+         dix : la caution et les chantiers sont devenus des pastilles
+         conditionnelles, et elles empruntent les clés de la fiche de LOGEMENT
+         — `app.portfolio.depositHeld`, `app.portfolio.openWorks` —, qui disent
+         la même chose sur l'écran Parc. Deux écrans, un seul vocabulaire. Une
+         chaîne traduite que plus rien ne rend est un orphelin ; celles-ci sont
+         retirées plutôt que gardées « au cas où ». */
       remindOne: 'Relancer',
       remindFor: 'Relancer {name}',
       fileLink: 'Dossier',

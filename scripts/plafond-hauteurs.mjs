@@ -424,7 +424,12 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 360, plafond: 4232, plafondLarge: 4232 },
   { adresse: '/demo/releves', largeur: 360, plafond: 3753, plafondLarge: 3753 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2121, plafondLarge: 2121 },
-  { adresse: '/demo/locataires', largeur: 360, plafond: 4364, plafondLarge: 4364 },
+  /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
+     la caution et les chantiers deviennent des pastilles conditionnelles. En
+     pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
+     valent une de plus à elles deux sur les fiches qui les portent. Le gain du
+     bureau vient de la grille à deux colonnes, qui n'existe pas ici. */
+  { adresse: '/demo/locataires', largeur: 360, plafond: 4651, plafondLarge: 4380 },
   { adresse: '/demo/mes-donnees', largeur: 360, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/acces', largeur: 360, plafond: 2248, plafondLarge: 2209 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
@@ -474,7 +479,35 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 1280, plafond: 2212, plafondLarge: 2212 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },
+  /*
+    −86 px AU BUREAU ET +16 AU TÉLÉPHONE, LE 2026-09-26 : LES DEUX FAITS QUI
+    PORTAIENT UN TIRET SONT DEVENUS DES PASTILLES CONDITIONNELLES.
+
+    La fiche de locataire rendait quatre couples libellé/valeur ; deux d'entre
+    eux — la caution et les chantiers — affichaient un tiret sur huit fiches sur
+    dix. Ils suivent désormais la convention de la fiche de LOGEMENT : des
+    pastilles posées seulement là où elles existent, avec les mêmes clés.
+
+    LE COMPTE A ÉTÉ FAIT DEUX FOIS, ET LE PREMIER ÉTAIT FAUX. Une première
+    rédaction posait la rangée des pastilles SEULEMENT sur les fiches qui en
+    ont, et relevait −189 px. Elle était cassée : la fiche partage cinq rangées
+    par `subgrid`, et une section sans rangée se peint PAR-DESSUS les gestes —
+    vu à la capture, « Dossier » à cheval sur « Caution 290 000 FCFA ». Le
+    conteneur est donc toujours rendu, même vide ; il ne fait pas un pixel là
+    où aucune voisine de sa ligne ne porte de pastille, et la ligne des boutons
+    reste une ligne.
+
+    LE PLAFOND SUIT LE MESURÉ, DANS LES DEUX SENS : 2386 au bureau (contre 2450
+    avant le lot, donc la fiche reste plus courte qu'elle ne l'était), 4651 au
+    téléphone en police normale. En police large — la colonne reproductible —
+    2364 et 4380.
+
+    POURQUOI LE TÉLÉPHONE GRANDIT DE SEIZE PIXELS : en pile, les deux tirets
+    valaient deux lignes de valeur, et les pastilles en valent une de plus à
+    elles deux sur les fiches qui les portent. Le gain du bureau vient de la
+    grille à deux colonnes, où deux faits occupent une rangée au lieu de deux.
+  */
+  { adresse: '/demo/locataires', largeur: 1280, plafond: 2386, plafondLarge: 2364 },
   { adresse: '/demo/mes-donnees', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/acces', largeur: 1280, plafond: 1213, plafondLarge: 1213 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },

@@ -20,6 +20,7 @@ import { Input } from '@/components/primitives/Input'
 import { Combobox } from '@/components/primitives/Combobox'
 import { StatCard } from '@/components/primitives/Charts'
 import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import { Badge } from '@/components/primitives/Badge'
 import { GroupeDeFiltres } from '@/components/controls/GroupeDeFiltres'
 import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
@@ -76,10 +77,31 @@ const GRILLE_DES_FICHES_DE_LOCATAIRE =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-3'
 
 /**
- * LES QUATRE SECTIONS D'UNE FICHE S'ALIGNENT SUR CELLES DE SES VOISINES.
+ * LES CINQ SECTIONS D'UNE FICHE S'ALIGNENT SUR CELLES DE SES VOISINES.
  *
- * Chaque fiche occupe quatre rangées de la grille — identité, états, faits,
- * gestes — et les partage par `subgrid` avec les fiches de la même ligne.
+ * Chaque fiche occupe cinq rangées de la grille — identité, états, faits,
+ * pastilles, gestes — et les partage par `subgrid` avec les fiches de la même
+ * ligne.
+ *
+ * ═══ POURQUOI CINQ, ET POURQUOI LA RANGÉE DES PASTILLES EST TOUJOURS LÀ ═══
+ *
+ * Elles étaient quatre. La caution et les chantiers, devenus des pastilles
+ * conditionnelles, ont ajouté une section — et la première rédaction l'a posée
+ * en CINQUIÈME ENFANT d'une fiche qui n'en déclarait que quatre. Le résultat
+ * n'est pas subtil : la section sans rangée se peint PAR-DESSUS les gestes.
+ * Vu à la capture, « Dossier » à cheval sur « Caution 290 000 FCFA ».
+ *
+ * Le conteneur est donc TOUJOURS rendu, même vide, et c'est ce qui garde
+ * l'alignement : une fiche qui sauterait sa rangée ferait remonter ses gestes
+ * d'un cran, et la ligne des boutons — la dernière que l'œil compare —
+ * cesserait d'être une ligne. C'est le défaut que ce fichier a déjà payé à
+ * 52 px près.
+ *
+ * ET CE CONTENEUR VIDE NE COÛTE RIEN QUAND PERSONNE NE LE REMPLIT : une rangée
+ * de `subgrid` prend la hauteur de son contenu le plus haut, et un `div` sans
+ * enfant ne fait pas un pixel. Le vide n'apparaît que sur les fiches d'une
+ * ligne où une VOISINE porte des pastilles — et là, il est le prix de
+ * l'alignement, que cette grille paie partout ailleurs.
  * « Loyer » tombe donc à la même hauteur partout. Sans cela, relevé le
  * 2026-09-11 : les fiches qui portent « Sans compte » descendaient leur grille
  * de 38 px sous celle de leurs voisines, et la comparaison « d'un coup d'œil »
@@ -89,7 +111,7 @@ const GRILLE_DES_FICHES_DE_LOCATAIRE =
  * Posé sur l'élément de liste ET sur la carte : la carte est l'enfant de
  * l'élément, et une rangée ne se transmet qu'à travers chaque niveau.
  */
-const SECTIONS_DE_FICHE = 'row-span-4 grid grid-rows-subgrid'
+const SECTIONS_DE_FICHE = 'row-span-5 grid grid-rows-subgrid'
 
 /**
  * UN COUPLE NOM/VALEUR de la fiche, et il est un vrai couple.
@@ -466,22 +488,45 @@ export function Tenants() {
                 ) : null}
               </div>
 
-              {/* QUATRE FAITS, TOUJOURS LES MÊMES ET TOUJOURS LÀ. Une grille dont
-                  les cases changent d'une fiche à l'autre ne se compare plus
-                  d'un coup d'œil ; une case sans valeur porte un tiret. */}
+              {/*
+                ═══ DEUX FAITS QUI EXISTENT TOUJOURS, ET NON QUATRE DONT DEUX
+                    PORTENT UN TIRET ═══
+
+                La rédaction d'avant défendait le contraire — « quatre faits,
+                toujours les mêmes et toujours là ; une grille dont les cases
+                changent d'une fiche à l'autre ne se compare plus d'un coup
+                d'œil » —, et l'argument vaut pour ce qui EST comparable. Un
+                loyer et un solde le sont : toute fiche en a un, et zéro est une
+                réponse.
+
+                Une caution et des chantiers, non. Sur le parc de démonstration,
+                HUIT fiches sur dix n'ont ni l'une ni les autres : la grille
+                rendait seize tirets pour quatre valeurs, et un tiret ne se
+                compare à rien. Il dit « rien ici » dans une colonne qui promet
+                un chiffre.
+
+                L'ÉCRAN PARC A DÉJÀ TRANCHÉ CE CAS, et les deux écrans tenaient
+                deux conventions pour le même fait : la fiche de logement pose
+                ses pastilles SEULEMENT quand elles existent, avec les mêmes
+                deux glyphes et les mêmes deux clés. On aligne donc celui-ci sur
+                celui-là, jusqu'aux libellés — « 1 chantier en cours »,
+                « Caution 290 000 FCFA » — plutôt que d'inventer une troisième
+                forme.
+
+                LA COMPARABILITÉ N'EST PAS PERDUE, ELLE EST DÉCLARÉE. La rangée
+                des pastilles porte `data-facultative`, que la sonde des sections
+                alignées prévoit précisément pour cela : une section qui n'existe
+                que sur certaines fiches, ne réserve rien chez les autres, et
+                doit commencer à la même hauteur chez celles qui la portent.
+                C'était le sens de la rangée de faits ; c'est celui de cette
+                rangée-ci, sans les tirets.
+              */}
               <dl
                 data-section="faits"
                 className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-divider pt-3"
               >
                 <FaitDeLaFiche libelle={t('app.portfolio.rent')}>
                   {money(unit.rent, { compact: true })}
-                </FaitDeLaFiche>
-                <FaitDeLaFiche libelle={t('app.tenants.cardDeposit')}>
-                  {caution ? (
-                    money(caution.held, { compact: true })
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
                 </FaitDeLaFiche>
                 <FaitDeLaFiche libelle={t('app.payments.balanceTotal')}>
                   {solde === 0 ? (
@@ -496,14 +541,24 @@ export function Tenants() {
                     </span>
                   )}
                 </FaitDeLaFiche>
-                <FaitDeLaFiche libelle={t('app.tenants.cardWorks')}>
-                  {chantiers > 0 ? (
-                    String(chantiers)
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </FaitDeLaFiche>
               </dl>
+
+              {/* TOUJOURS RENDU, MÊME VIDE — voir `SECTIONS_DE_FICHE` : une fiche
+                  qui sauterait cette rangée ferait remonter ses gestes d'un
+                  cran, et la ligne des boutons cesserait d'être une ligne. Vide,
+                  il ne fait pas un pixel. */}
+              <div data-section="pastilles" className="flex flex-wrap content-start gap-1.5">
+                {chantiers > 0 && (
+                  <Badge icon="wrench">{t('app.portfolio.openWorks', { count: chantiers })}</Badge>
+                )}
+                {caution && (
+                  <Badge icon="shield">
+                    {t('app.portfolio.depositHeld', {
+                      amount: money(caution.held, { compact: true }),
+                    })}
+                  </Badge>
+                )}
+              </div>
 
               {/* LES GESTES COMMENCENT EN HAUT DE LEUR RANGÉE, comme les trois
                   sections au-dessus, et leur filet avec eux.
@@ -1111,8 +1166,8 @@ export function Tenants() {
             data-mesure="sections-alignees"
           >
             {vacant.map((unit) => (
-              <li key={unit.id} className="mb-1 row-span-4 grid grid-rows-subgrid">
-                <Card className="row-span-4 grid grid-rows-subgrid">
+              <li key={unit.id} className="mb-1 row-span-5 grid grid-rows-subgrid">
+                <Card className="row-span-5 grid grid-rows-subgrid">
                   <p data-section="logement" className="numeric font-medium">{unit.label}</p>
                   <p data-section="type" className="text-label text-muted">
                     {t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · {unit.surface} m²

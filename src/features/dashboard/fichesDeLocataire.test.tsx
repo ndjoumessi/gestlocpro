@@ -121,7 +121,26 @@ function parc() {
 }
 
 describe('les locataires sur bureau', () => {
-  it('rend une fiche par locataire, sans tableau, avec ses quatre faits', async () => {
+  /**
+   * ═══ QUATRE FAITS SONT DEVENUS DEUX FAITS ET DEUX PASTILLES ═══
+   *
+   * La fiche portait quatre couples libellé/valeur : loyer, caution, solde,
+   * travaux. Sur le parc de démonstration, HUIT fiches sur dix rendaient un
+   * tiret aux deux derniers — seize tirets pour quatre valeurs. Un tiret ne se
+   * compare à rien : il dit « rien ici » dans une colonne qui promet un chiffre.
+   *
+   * L'écran Parc avait déjà tranché ce cas dans l'autre sens, avec des pastilles
+   * posées SEULEMENT quand elles existent. Les deux écrans tenaient donc deux
+   * conventions pour le même fait ; celui-ci s'aligne sur celui-là, jusqu'aux
+   * clés — ce sont les libellés de la fiche de LOGEMENT qui sont rendus ici.
+   *
+   * CE QUE CE CAS GARDE MAINTENANT : que les deux faits COMPARABLES restent une
+   * grille — un loyer et un solde existent sur toute fiche, et zéro est une
+   * réponse —, et que les deux autres n'apparaissent QUE là où ils existent. La
+   * fiche de Serge n'a ni caution ni chantier : elle ne doit plus porter un
+   * tiret, elle ne doit rien porter du tout.
+   */
+  it('rend une fiche par locataire, sans tableau : deux faits, des pastilles quand il y en a', async () => {
     parc()
     await renderApp('/app/locataires', { session: SESSION, largeur: 1280 })
     await attendreLeChargement()
@@ -138,18 +157,35 @@ describe('les locataires sur bureau', () => {
     const charles = fiches[0]
     expect(within(charles).getByText('Charles Ngassa')).toBeInTheDocument()
     expect(within(charles).getByText(/A1/)).toBeInTheDocument()
-    for (const libelle of [/Loyer/, /Caution/, /Solde cumulé/, /Travaux/]) {
+    /* LES DEUX FAITS QUI EXISTENT TOUJOURS, en grille. */
+    for (const libelle of [/Loyer/, /Solde cumulé/]) {
       expect(within(charles).getByText(libelle)).toBeInTheDocument()
     }
-    expect(within(charles).getByText(/220\s?000/)).toBeInTheDocument()
-    expect(within(charles).getByText('1')).toBeInTheDocument()
+    /* ET LES DEUX QUI N'EXISTENT QUE PARFOIS, en pastilles — mêmes libellés que
+       la fiche de logement : « Caution 220 000 FCFA », « 1 chantier en cours ». */
+    expect(within(charles).getByText(/Caution\s.*220\s?000/)).toBeInTheDocument()
+    expect(within(charles).getByText(/1\s+chantier/)).toBeInTheDocument()
 
     // La fiche en retard : le solde porte son signe, et il est dû.
     const serge = fiches[1]
     expect(within(serge).getByText(/En retard/)).toBeInTheDocument()
     expect(within(serge).getByText(/−\s?110\s?000/)).toBeInTheDocument()
-    // Aucune caution tenue sur ce logement : un tiret, pas un zéro inventé.
-    expect(within(serge).getAllByText('—').length).toBeGreaterThan(0)
+    /* AUCUNE CAUTION, AUCUN CHANTIER : la fiche ne porte plus de tiret. C'est la
+       différence entre « rien ici » et une case vide dans une colonne qui
+       promet un chiffre. */
+    expect(within(serge).queryByText('—'), 'la fiche porte encore un tiret').toBeNull()
+
+    /* LA RANGÉE, ELLE, RESTE — ET VIDE. Les fiches partagent leurs cinq rangées
+       par `subgrid` : une fiche qui sauterait celle-ci ferait remonter ses
+       gestes d'un cran, et la ligne des boutons — la dernière que l'œil compare
+       — cesserait d'être une ligne. Vide, elle ne fait pas un pixel ; ce cas
+       garde donc qu'elle est là ET qu'elle ne dit rien. */
+    const pastilles = serge.querySelector('[data-section="pastilles"]')
+    expect(pastilles, 'la rangée des pastilles a disparu de la fiche').not.toBeNull()
+    expect(
+      pastilles!.textContent?.trim(),
+      'une fiche sans caution ni chantier écrit quelque chose',
+    ).toBe('')
   })
 
   it('cherche et filtre, et dit ce qu’il ne rend pas', async () => {
