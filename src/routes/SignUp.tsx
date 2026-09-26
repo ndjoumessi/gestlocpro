@@ -284,10 +284,35 @@ export function SignUp() {
       const champ = document.querySelector<HTMLElement>(
         `[data-champ="${firstBad[0]}"], [name="${firstBad[0]}"]:not([type="hidden"])`,
       );
+      /*
+        ON AMÈNE À L'ÉCRAN LE GROUPE, ON DONNE LE FOCUS À CE QUI PEUT LE PRENDRE.
+
+        Le même défaut que `[name="pays"]` ci-dessus, d'un cran plus haut. Sur
+        l'étape des rôles, le premier élément que le sélecteur trouve est le
+        `<fieldset data-champ="role">` — et un `fieldset` sans `tabindex` NE
+        PREND PAS LE FOCUS. `champ.focus()` ne faisait donc rien, en silence :
+        relevé au navigateur, `document.activeElement` restait le bouton qu'on
+        venait de refuser, au-dessus du groupe à corriger dans l'ordre de
+        tabulation. Le message s'affichait, et le curseur n'y menait pas.
+
+        Marquer le groupe reste juste — c'est LUI qu'il faut amener à l'écran,
+        pas un bouton radio perdu au milieu — donc le défilement le vise encore.
+        Seul le focus descend chercher la première commande réellement
+        focalisable, et retombe sur `champ` quand c'en est une : un champ simple
+        se focalise comme avant, un groupe donne le focus à son premier contrôle.
+
+        `:not([tabindex="-1"])` : un conteneur rendu focalisable au PROGRAMME —
+        une modale, un panneau — n'est pas une commande à corriger, et le
+        ramasser ici ferait atterrir le curseur sur un décor.
+      */
+      const FOCALISABLES =
+        'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const cible =
+        champ && (champ.matches(FOCALISABLES) ? champ : champ.querySelector<HTMLElement>(FOCALISABLES));
       // `scrollIntoView` n'existe pas sous jsdom : l'appel est facultatif pour
       // que les tests n'aient pas à simuler une capacité du navigateur.
       champ?.scrollIntoView?.({ block: "center" });
-      champ?.focus();
+      cible?.focus();
       setEchec(firstBad[1]);
       return;
     }

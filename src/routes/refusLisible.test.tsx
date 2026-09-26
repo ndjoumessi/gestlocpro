@@ -45,6 +45,49 @@ describe('le refus de la première étape', () => {
   })
 
   /**
+   * ═══ LE REFUS SE LISAIT, MAIS LE FOCUS NE SUIVAIT PAS ═══
+   *
+   * `goNext` cherche le champ fautif par `[data-champ="…"], [name="…"]` et lui
+   * donne le focus. Sur cette étape, le premier élément que ce sélecteur trouve
+   * est le `<fieldset data-champ="role">` — et un `fieldset` sans `tabindex` NE
+   * PREND PAS LE FOCUS. L'appel ne faisait donc rien, en silence : relevé au
+   * navigateur, `document.activeElement` restait le bouton « Continuer ».
+   *
+   * C'est exactement le défaut que `goNext` documente pour `[name="pays"]`,
+   * deux commentaires plus haut : un sélecteur qui désigne quelque chose
+   * d'infocalisable échoue sans rien dire. La correction d'alors visait le
+   * champ VISIBLE ; celle-ci vise ce qui est FOCALISABLE, et les groupes de
+   * choix sont le cas que la première ne couvrait pas.
+   *
+   * CE QUE CELA COÛTE À QUI NAVIGUE AU CLAVIER : le refus est annoncé — la
+   * région vivante s'en charge — mais le curseur reste sur le bouton, à dix
+   * tabulations du groupe qu'il faut corriger, et au-dessus de lui. Il faut
+   * revenir en ARRIÈRE dans l'ordre de tabulation pour atteindre ce que le
+   * message demande de faire.
+   */
+  it('donne le focus au groupe fautif, et non au bouton', async () => {
+    const utilisateur = userEvent.setup()
+    await renderApp('/inscription')
+
+    const continuer = await screen.findByRole('button', { name: /Continuer/ })
+    await utilisateur.click(continuer)
+    await screen.findAllByRole('alert')
+
+    const actif = document.activeElement
+    expect(actif, 'le focus est resté sur le bouton refusé').not.toBe(continuer)
+
+    /* On n'exige pas UNE balise : ce qui compte est que le focus ait atterri
+       DANS le groupe de rôles, sur quelque chose qui peut le recevoir. Exiger
+       le premier bouton radio figerait une implémentation de `Choice`. */
+    const groupe = document.querySelector('[data-champ="role"]')
+    expect(groupe, 'le groupe de rôles a perdu son marqueur').not.toBeNull()
+    expect(
+      groupe!.contains(actif),
+      'le focus n’est pas dans le groupe de rôles',
+    ).toBe(true)
+  })
+
+  /**
    * LE CONTREPOIDS. Un rôle choisi, on passe.
    *
    * Un refus qui ne se lève jamais serait pire que le bouton éteint : la
