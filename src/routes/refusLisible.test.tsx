@@ -88,6 +88,46 @@ describe('le refus de la première étape', () => {
   })
 
   /**
+   * ═══ UN SEUL REFUS À L'ŒIL, DEUX RATTACHEMENTS AUX OUTILS ═══
+   *
+   * La phrase s'écrivait DEUX FOIS sur cette étape — au-dessus des cartes et
+   * au-dessus du bouton —, mot pour mot, à trois cents pixels d'écart. Le motif
+   * « résumé plus erreur au champ » vaut pour une étape qui porte plusieurs
+   * champs ; celle-ci n'en porte qu'un, et la seconde copie fait douter qu'il
+   * s'agisse du même refus.
+   *
+   * CE QUE CE CAS GARDE, et c'est ce qui distingue `hideError` d'un `error`
+   * retiré : le groupe reste INVALIDE aux yeux des outils et cite toujours son
+   * texte. Un groupe rendu valide parce qu'on a voulu alléger une mise en page
+   * serait un mensonge sémantique sur l'écran qui vient de le refuser.
+   */
+  it('n’écrit le refus qu’une fois, sans délier le groupe de son texte', async () => {
+    const utilisateur = userEvent.setup()
+    await renderApp('/inscription')
+
+    await utilisateur.click(await screen.findByRole('button', { name: /Continuer/ }))
+    await screen.findAllByRole('alert')
+
+    const groupe = document.querySelector('[data-champ="role"]')!
+    expect(groupe.getAttribute('aria-invalid'), 'le groupe se dit valide').toBe('true')
+
+    const cite = groupe.getAttribute('aria-describedby')
+    expect(cite, 'le groupe ne cite plus son refus').not.toBeNull()
+    const texte = document.getElementById(cite!)
+    expect(texte, 'le texte cité n’existe pas').not.toBeNull()
+    expect(texte!.textContent ?? '', 'le texte cité ne dit pas le refus').toMatch(/rôle/i)
+
+    /* Il est DANS le document et hors de l'écran : c'est `sr-only` qui fait la
+       différence, et c'est aussi ce qui le retire de la peinture. */
+    expect(texte!.className.split(/\s+/), 'le refus du groupe est encore peint').toContain(
+      ['sr', 'only'].join('-'),
+    )
+    /* Et il n'annonce plus : deux régions vivantes portant la même phrase la
+       feraient annoncer deux fois. */
+    expect(texte!.getAttribute('role'), 'le refus du groupe annonce en double').toBeNull()
+  })
+
+  /**
    * LE CONTREPOIDS. Un rôle choisi, on passe.
    *
    * Un refus qui ne se lève jamais serait pire que le bouton éteint : la

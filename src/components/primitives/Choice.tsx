@@ -145,6 +145,29 @@ export interface RadioCardsProps<T extends string> {
    * annoncé quand il paraît, et rattaché au groupe pour qui y revient ensuite.
    */
   error?: string
+  /**
+   * MASQUE LE REFUS À L'ŒIL, JAMAIS AUX OUTILS.
+   *
+   * Le cas réel : la première étape de l'inscription ne porte QU'UN groupe, et
+   * son refus s'écrivait deux fois — ici, au-dessus des cartes, et dans le
+   * bandeau que `goNext` pose au-dessus du bouton. Mot pour mot, à trois cents
+   * pixels d'écart. Le motif « résumé plus erreur au champ » vaut pour une
+   * étape qui porte plusieurs champs ; sur une étape qui n'en porte qu'un, la
+   * seconde copie n'ajoute rien et fait douter qu'il s'agisse du même refus.
+   *
+   * CE QUI NE DISPARAÎT PAS AVEC LUI, et c'est tout l'intérêt de cette option
+   * plutôt que d'un `error` retiré : le `fieldset` garde `aria-invalid`, garde
+   * son `aria-describedby`, et le texte reste dans le document en `sr-only`.
+   * Retirer `error` aurait rendu le groupe VALIDE aux yeux des outils, sur un
+   * écran qui vient justement de le refuser — un mensonge sémantique pour un
+   * motif de mise en page.
+   *
+   * `role="alert"` part en revanche avec l'affichage : deux régions vivantes
+   * portant la même phrase la font annoncer deux fois. C'est le bandeau du
+   * bouton qui l'annonce, et ce texte-ci ne sert plus qu'à qui revient au
+   * groupe.
+   */
+  hideError?: boolean
   className?: string
 }
 
@@ -163,6 +186,7 @@ export function RadioCards<T extends string>({
   columns = 3,
   variant = 'cartes',
   error,
+  hideError,
   className,
 }: RadioCardsProps<T>) {
   if (variant === 'puces') {
@@ -175,6 +199,7 @@ export function RadioCards<T extends string>({
         onChange={onChange}
         options={options}
         error={error}
+        hideError={hideError}
         className={className}
       />
     )
@@ -197,16 +222,23 @@ export function RadioCards<T extends string>({
           ce qui suit. Placé dessous, il se lirait après le geste qu'il
           commande — et sous trois cartes, il tomberait hors du champ de vision
           sur un téléphone. */}
-      {error && (
-        <p
-          id={`${name}-refus`}
-          role="alert"
-          className="mb-3 flex items-start gap-1.5 text-body font-medium text-danger"
-        >
-          <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
-          {error}
-        </p>
-      )}
+      {error &&
+        (hideError ? (
+          /* `sr-only` et sans `role` : le texte reste cité par le `fieldset`,
+             il n'est plus ni peint ni annoncé une seconde fois. */
+          <p id={`${name}-refus`} className="sr-only">
+            {error}
+          </p>
+        ) : (
+          <p
+            id={`${name}-refus`}
+            role="alert"
+            className="mb-3 flex items-start gap-1.5 text-body font-medium text-danger"
+          >
+            <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+            {error}
+          </p>
+        ))}
 
       {/* `data-rangee-de-pairs` : ces cellules SONT le même composant rendu N
           fois, et le blanc qu'une description plus longue impose aux autres est
@@ -346,6 +378,7 @@ function RadioPuces<T extends string>({
   onChange,
   options,
   error,
+  hideError,
   className,
 }: Omit<RadioCardsProps<T>, 'columns' | 'variant'>) {
   return (
@@ -363,16 +396,21 @@ function RadioPuces<T extends string>({
           aurait laissé muettes les rangées de pastilles — dont la demande de
           pièce du locataire, qui est justement l'un des deux boutons éteints
           que ce lot corrige. */}
-      {error && (
-        <p
-          id={`${name}-refus`}
-          role="alert"
-          className="mb-2 flex items-start gap-1.5 text-body font-medium text-danger"
-        >
-          <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
-          {error}
-        </p>
-      )}
+      {error &&
+        (hideError ? (
+          <p id={`${name}-refus`} className="sr-only">
+            {error}
+          </p>
+        ) : (
+          <p
+            id={`${name}-refus`}
+            role="alert"
+            className="mb-2 flex items-start gap-1.5 text-body font-medium text-danger"
+          >
+            <Icon name="alert" size={14} className="mt-0.5 shrink-0" />
+            {error}
+          </p>
+        ))}
 
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {

@@ -418,6 +418,13 @@ export function SignUp() {
             error={
               touched.role && errors.role ? t(errors.role) : undefined
             }
+            /* CE REFUS-CI NE S'AFFICHE PLUS ICI : cette étape ne porte qu'un
+               groupe, et `goNext` pose déjà la même phrase au-dessus du bouton,
+               là où l'on vient de cliquer. Deux copies mot pour mot à trois
+               cents pixels d'écart font douter qu'il s'agisse du même refus.
+               Le groupe reste `aria-invalid` et cite toujours le texte — voir
+               `hideError` dans `Choice`. */
+            hideError
             name="role"
             value={state.role}
             onChange={(role: Role) => patch({ role })}
