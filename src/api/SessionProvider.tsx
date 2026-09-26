@@ -115,6 +115,18 @@ export type EchecDeSession = 'technique' | 'delai'
  */
 export type IssueDInscription = 'connecte' | 'sessionIndisponible'
 
+/**
+ * Ce qu'une connexion rend quand elle n'a pas levé.
+ *
+ * MÊME PARTAGE QUE L'INSCRIPTION, AUTRE REMÈDE. `sessionIndisponible` dit que
+ * les identifiants ont été acceptés — le cookie est posé — et que seule la
+ * relecture a manqué. L'appelant ne doit alors NI reprocher une erreur au
+ * formulaire, ni prétendre connaître le rôle : il n'a pas lu les adhésions.
+ */
+export type IssueDeConnexion =
+  | { issue: 'connecte'; role: Role }
+  | { issue: 'sessionIndisponible' }
+
 interface SessionContextValue {
   etat: EtatSession
   /** `true` tant que le premier `/auth/me` n'a pas répondu. */
@@ -142,7 +154,19 @@ interface SessionContextValue {
    * valeur, `Login` déciderait sur les adhésions d'AVANT la connexion,
    * c'est-à-dire sur aucune.
    */
-  connecter: (email: string, motDePasse: string, persistante: boolean) => Promise<Role>
+  /**
+   * Identifie, puis relit la session.
+   *
+   * REND CE QUI S'EST PASSÉ : le rôle quand les deux appels ont abouti,
+   * `sessionIndisponible` quand seuls les identifiants sont passés — l'échec est
+   * alors inscrit pour la barrière, qui offre la reprise. Lève encore quand ce
+   * sont les IDENTIFIANTS qui sont refusés.
+   */
+  connecter: (
+    email: string,
+    motDePasse: string,
+    persistante: boolean,
+  ) => Promise<IssueDeConnexion>
   /**
    * Crée le compte, puis relit la session.
    *
@@ -345,12 +369,67 @@ export function SessionProvider({
     void chargerLaSession()
   }, [etatInitial, chargerLaSession])
 
+  /**
+   * ═══ DEUX APPELS, DEUX ÉCHECS — LA PORTE JUMELLE DE `inscrire` ═══
+   *
+   * Le défaut était le même, et il se lisait autrement : l'échec de la
+   * RELECTURE remontait au formulaire, qui annonçait « La connexion a échoué »
+   * à quelqu'un dont le serveur venait d'accepter les identifiants, cookie posé.
+   *
+   * LE REMÈDE N'EST PAS CELUI DE L'INSCRIPTION, et la différence est dans le
+   * danger. Là-bas, le réessai bute sur 409 : il fallait dire que le compte
+   * existe. Ici, rien n'est détruit par un réessai — et la coquille SAIT déjà
+   * traiter une session illisible : `RequireAuth` porte « serveur injoignable »
+   * et « échec de la session », chacun avec une reprise qui rejoue `/auth/me`
+   * sans redemander le mot de passe. Il ne manquait pas un écran, il manquait
+   * le chemin vers lui.
+   *
+   * ON INSCRIT DONC L'ÉCHEC LÀ OÙ CETTE COQUILLE LE LIT — le même état que
+   * `chargerLaSession` pose pour l'amorçage, avec la même distinction entre un
+   * délai et une panne, parce que les deux écrans ne disent pas la même chose.
+   * Sans lui, l'état resterait « inconnu » et la barrière afficherait une
+   * attente sans fin : c'est le « rejet sans lecteur » que ce fichier documente
+   * déjà pour le montage.
+   *
+   * `api.login` CONTINUE DE LEVER : un identifiant refusé doit se lire comme
+   * tel, et laisser passer un 401 ferait entrer quelqu'un que le serveur vient
+   * d'éconduire.
+   */
   const connecter = useCallback(
-    async (email: string, motDePasse: string, persistante: boolean) => {
+    async (
+      email: string,
+      motDePasse: string,
+      persistante: boolean,
+    ): Promise<IssueDeConnexion> => {
       await api.login(email, motDePasse, persistante)
       // On relit la session plutôt que de se fier au corps de la réponse : les
       // adhésions n'y sont pas, et deux chemins d'hydratation divergeraient.
-      const adhesions = await rafraichir()
+      let adhesions: AdhesionApi[]
+      try {
+        adhesions = await rafraichir()
+      } catch (err) {
+        /*
+          ═══ « INCONNU » EST L'ÉTAT VRAI, ET SANS LUI LA BARRIÈRE RENVOIE ICI ═══
+
+          `rafraichir` a levé sans rien poser : l'état reste celui d'AVANT la
+          connexion, c'est-à-dire `anonyme` — et `RequireAuth` ne consulte
+          `echecDeSession` que sur `inconnu`. Mesuré : la barrière renvoyait donc
+          vers `/connexion`, et l'utilisateur retombait sur le formulaire qu'il
+          venait de remplir, sans un mot. Le correctif aurait été silencieux.
+
+          Or `anonyme` est FAUX depuis que `api.login` a répondu : le cookie est
+          posé, cette personne est identifiée. `inconnu` dit exactement ce qu'on
+          sait — on ne sait plus —, et c'est l'état que les deux écrans
+          terminaux de la barrière attendent.
+
+          On ne passe PAS par `connecte` pour autant : le compte du corps de
+          `login` est là, mais pas les adhésions, et poser une session sans elles
+          serait le second chemin d'hydratation que tout ce fichier refuse.
+        */
+        setEtat({ statut: 'inconnu' })
+        setEchec(err instanceof DelaiDepasse || err instanceof DelaiDeReponse ? 'delai' : 'technique')
+        return { issue: 'sessionIndisponible' }
+      }
       /* LE MÊME DÉFAUT QUE LA COQUILLE, à la ligne près : `adhesions[0]` et
          `?? 'owner'`. Un compte sans adhésion n'a pas de rôle — il verra
          « aucun parc rattaché » quoi qu'il arrive —, et le supposer locataire
@@ -361,7 +440,7 @@ export function SessionProvider({
          jugé sur le premier. Le cas est étroit et sa conséquence est un renvoi
          au tableau de bord, jamais un accès indu — le garde de la route, lui,
          lit bien `adhesionActive`. */
-      return adhesions[0]?.role ?? 'owner'
+      return { issue: 'connecte', role: adhesions[0]?.role ?? 'owner' }
     },
     [rafraichir],
   )

@@ -140,7 +140,7 @@ export function Login() {
     setSubmitting(true)
     setEchec(null)
     try {
-      const role = await connecter(email, password, persistante)
+      const resultat = await connecter(email, password, persistante)
       /* ON RETIENT APRÈS COUP, JAMAIS À LA FRAPPE. Une adresse rangée avant
          d'être éprouvée serait une faute de frappe conservée pour toujours,
          resservie à chaque visite — et l'écran reprocherait alors un
@@ -173,7 +173,30 @@ export function Login() {
        * toujours son 404, qui est la vérité ; ce qu'on cesse d'infliger, c'est
        * un mur à quelqu'un qui n'a rien demandé d'autre que d'entrer.
        */
-      navigate(adresseOuverteAuRole(destination, role) ? destination : '/app', { replace: true })
+      /*
+        ═══ LA SESSION N'A PAS PU ÊTRE RELUE : ON PASSE QUAND MÊME ═══
+
+        Les identifiants ont été acceptés, le cookie est posé, et c'est la
+        LECTURE de la session qui a manqué. Retenir ici quelqu'un devant un
+        formulaire en lui disant que sa connexion a échoué serait faux, et
+        surtout inutile : la barrière d'accès porte déjà les deux écrans de ce
+        cas — « serveur injoignable » et « échec de la session » —, chacun avec
+        une reprise qui rejoue `/auth/me` SANS redemander le mot de passe. Il ne
+        manquait pas un écran, il manquait le chemin vers lui.
+
+        `/app` ET NON L'ADRESSE DEMANDÉE : le rôle n'est pas connu — les
+        adhésions sont précisément ce qu'on n'a pas lu —, et `adresseOuverteAuRole`
+        ne peut donc rien garantir. L'adresse retenue survit dans l'état de
+        navigation de la barrière ; elle sera suivie à la reprise.
+      */
+      if (resultat.issue === 'sessionIndisponible') {
+        navigate('/app', { replace: true })
+        return
+      }
+
+      navigate(adresseOuverteAuRole(destination, resultat.role) ? destination : '/app', {
+        replace: true,
+      })
     } catch (err) {
       /**
        * L'échec porte sur le FORMULAIRE, pas sur un champ.
