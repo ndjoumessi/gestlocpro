@@ -30,7 +30,7 @@ describe('le tri des travaux par état', () => {
     const main = screen.getByRole('main')
     const user = userEvent.setup()
 
-    const groupe = within(main).getByRole('group', { name: /par état|by status/ })
+    const groupe = within(main).getByRole('group', { name: /^(État|Status)$/ })
     const pastilles = within(groupe).getAllByRole('button')
     expect(pastilles.length, 'au moins « Toutes » et un état').toBeGreaterThan(1)
 
@@ -53,8 +53,8 @@ describe('le tri des travaux par état', () => {
     const main = screen.getByRole('main')
     const user = userEvent.setup()
 
-    const parOrigine = within(main).getByRole('group', { name: /origine|origin/i })
-    const parEtat = within(main).getByRole('group', { name: /par état|by status/ })
+    const parOrigine = within(main).getByRole('group', { name: /^(Origine|Origin)$/ })
+    const parEtat = within(main).getByRole('group', { name: /^(État|Status)$/ })
 
     /* On restreint l'origine, PUIS on relit les comptes d'état : ils doivent
        avoir bougé avec, et chacun rendre ce qu'il annonce. C'est la propriété

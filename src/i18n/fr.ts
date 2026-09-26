@@ -1724,7 +1724,11 @@ export const fr = {
        * l'autre : « qu'est-ce qu'on me signale ? » et « qu'est-ce que j'ai
        * engagé de ma propre initiative ? ».
        */
-      filterOrigin: 'Trier par origine',
+      /* LE NOM DU GROUPE, DÉSORMAIS VISIBLE — et raccourci pour cela. Il ne
+         servait qu'à l'`aria-label`, où une phrase passe ; posé devant les
+         pastilles, « Trier par origine » redirait en quatre mots ce que la
+         rangée montre. Il disait aussi « trier » là où l'on FILTRE. */
+      filterOrigin: 'Origine',
       filterAll: 'Toutes',
       /* « TOUS LES ÉTATS » ET NON « TOUTES ». Cet écran porte DEUX tris côte
          à côte depuis le lot du second axe, et le mot « Toutes » figurait
@@ -1734,7 +1738,7 @@ export const fr = {
          d'écran ; rien ne les séparait pour l'œil. Le libellé dit donc
          quel axe il relâche. */
       filterAllStatuses: 'Tous les états',
-      filterStatus: 'Trier par état',
+      filterStatus: 'État',
       filterReported: 'Signalées',
       filterOpened: 'À mon initiative',
       /* ENGAGÉ et non devisé : un devis proposé n'est pas une dépense, et

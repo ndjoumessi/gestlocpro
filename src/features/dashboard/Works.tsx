@@ -347,6 +347,10 @@ export function Works() {
       {!isTenant && duPerimetre.length > 0 && (
         <div className="mt-6 mb-4 flex flex-wrap items-center gap-x-6 gap-y-3">
           <GroupeDeFiltres
+            /* LES DEUX GROUPES DE CET ÉCRAN SE NOMMENT, et c'est le seul du
+               produit qui en porte deux — voir `libelleVisible`. Ailleurs, une
+               rangée unique se passe de titre : ses pastilles le disent. */
+            libelleVisible
             libelle={t('app.works.filterOrigin')}
             valeur={origine}
             onChange={setOrigine}
@@ -374,6 +378,7 @@ export function Works() {
             signalé, validé, terminé.
           */}
           <GroupeDeFiltres
+            libelleVisible
             libelle={t('app.works.filterStatus')}
             valeur={etat}
             onChange={setEtat}

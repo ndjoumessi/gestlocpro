@@ -71,8 +71,8 @@ describe('le tri se retient dans l’adresse', () => {
     await renderApp('/demo/travaux?origine=tenantReport&etat=quoted')
     await attendreLeChargement()
 
-    expect(pastillePressee(groupe(/origine|origin/i))).toMatch(/Signalées|Reported/)
-    expect(pastillePressee(groupe(/par état|by status/))).toMatch(/Devis proposé|Quoted/)
+    expect(pastillePressee(groupe(/^(Origine|Origin)$/))).toMatch(/Signalées|Reported/)
+    expect(pastillePressee(groupe(/^(État|Status)$/))).toMatch(/Devis proposé|Quoted/)
   })
 
   it('ouvre le registre des accès sur le rôle que porte l’adresse', async () => {

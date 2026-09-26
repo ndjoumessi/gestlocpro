@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { cn } from '@/lib/cn'
 
 /**
@@ -31,6 +32,7 @@ export interface OptionDeFiltre<T extends string> {
 
 export function GroupeDeFiltres<T extends string>({
   libelle,
+  libelleVisible = false,
   valeur,
   onChange,
   options,
@@ -38,13 +40,48 @@ export function GroupeDeFiltres<T extends string>({
 }: {
   /** Nom du GROUPE pour les technologies d'assistance, pas de ses options. */
   libelle: string
+  /**
+   * ═══ QUAND DEUX GROUPES SE SUIVENT, LE LECTEUR D'ÉCRAN LES DISTINGUE ET
+   *     L'ŒIL NON ═══
+   *
+   * Un seul groupe n'a pas besoin d'être nommé : ses pastilles le disent —
+   * « Payés », « Partiels », « En retard » ne peuvent être qu'un état. Le nom
+   * reste alors réservé aux technologies d'assistance, qui, elles, ne voient
+   * pas la page.
+   *
+   * L'écran des travaux en porte DEUX, côte à côte : l'origine du chantier et
+   * son état. Chacun ouvre par une pastille « Tout », chacune est active, et
+   * les deux sont peintes en encre pleine — vu à la capture, « Tout 6 » et
+   * « Tous les états 6 » à vingt-quatre pixels l'une de l'autre, qui se lisent
+   * comme une contradiction. Les noms EXISTENT — `aria-label` les porte depuis
+   * toujours — mais ils sont invisibles, et la seule frontière visible est
+   * `gap-x-6` contre `gap-2` : trois fois l'écart intérieur, ce qui ne suffit
+   * pas quand les pastilles font quarante-quatre pixels de haut.
+   *
+   * Rendre le nom VISIBLE ne coûte aucune chaîne nouvelle : c'est le même, déjà
+   * traduit. `aria-label` disparaît alors au profit d'`aria-labelledby`, sans
+   * quoi le groupe porterait son nom deux fois pour un lecteur d'écran.
+   */
+  libelleVisible?: boolean
   valeur: T
   onChange: (valeur: T) => void
   options: OptionDeFiltre<T>[]
   className?: string
 }) {
+  const idDuLibelle = useId()
+
   return (
-    <div role="group" aria-label={libelle} className={cn('flex flex-wrap gap-2', className)}>
+    <div
+      role="group"
+      aria-label={libelleVisible ? undefined : libelle}
+      aria-labelledby={libelleVisible ? idDuLibelle : undefined}
+      className={cn('flex flex-wrap items-center gap-2', className)}
+    >
+      {libelleVisible && (
+        <span id={idDuLibelle} className="eyebrow mr-1 text-muted">
+          {libelle}
+        </span>
+      )}
       {options.map((option) => {
         const actif = option.valeur === valeur
         return (

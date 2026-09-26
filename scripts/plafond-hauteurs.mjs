@@ -448,7 +448,32 @@ const PLAFONDS = [
   { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
   { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
-  { adresse: '/demo/travaux', largeur: 1280, plafond: 1490, plafondLarge: 1423 },
+  /*
+    +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE
+    NOMMENT, ET SE RANGENT DONC SUR DEUX LIGNES.
+
+    Cet écran est le seul du produit à porter DEUX groupes de filtres — origine
+    et état. Leurs noms existaient depuis toujours, dans l'`aria-label` : un
+    lecteur d'écran les distinguait, l'œil non. Vu à la capture : « Tout 6 » et
+    « Tous les états 6 », deux pastilles en encre pleine à vingt-quatre pixels
+    l'une de l'autre, qui se lisent comme une contradiction.
+
+    Le dictionnaire portait déjà la trace du défaut : `filterAllStatuses` a été
+    écrit parce que « Toutes » figurait deux fois côte à côte. On traitait le
+    symptôme une pastille à la fois.
+
+    LE NOM VISIBLE RANGE LA RANGÉE. À 1280 les deux groupes ne tiennent plus sur
+    une ligne et se posent l'un sous l'autre, chacun sous son nom — ce qui est
+    la forme qu'ils auraient dû avoir. À 1440 la ligne unique tient encore, et
+    rien ne bouge ; au téléphone non plus — `/demo/travaux@360` mesure 3097 px
+    en police large avant comme après, à son plafond exact, la rangée y étant
+    déjà repliée.
+
+    AUCUNE CHAÎNE NOUVELLE : les deux noms sont ceux de l'`aria-label`,
+    raccourcis pour être lus — et corrigés au passage, ils disaient « trier »
+    là où l'on filtre.
+  */
+  { adresse: '/demo/travaux', largeur: 1280, plafond: 1546, plafondLarge: 1479 },
   { adresse: '/demo/signalements', largeur: 1280, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
