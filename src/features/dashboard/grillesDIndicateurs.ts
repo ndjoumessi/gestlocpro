@@ -90,11 +90,13 @@ export const GRILLE_DEUX_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3
 export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3'
 
 /**
- * TROIS COLONNES À `xl`, QUATRE À `2xl`, pour la raison ci-dessus portée d'un
- * cran : quatre cartes qui doivent chacune loger un montant reclament ~1050 px
- * avec la police la plus etroite, et sensiblement plus avec la plus large.
+ * QUATRE COLONNES À PARTIR DE 1440 px, pour la raison ci-dessus portée d'un
+ * cran : quatre cartes qui doivent chacune loger un montant reclament de la
+ * largeur, et sensiblement plus avec la police la plus large.
  *
- * Employée par le tableau de bord et le parc.
+ * Employée par le tableau de bord — la rangée chargée et son squelette. La
+ * mention du parc qui vivait ici était PÉRIMÉE : `grep` ne rend que
+ * `Dashboard.tsx`, deux fois.
  */
 /*
   DEUX COLONNES, PUIS QUATRE. JAMAIS TROIS — et le premier jet s'y était trompé.
@@ -144,5 +146,48 @@ export const GRILLE_TROIS_INDICATEURS = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-
   `LARGEURS`, dans `scripts/mesure-ui.mjs`, s'arrêtait à 1440 : porter les
   quatre colonnes à 1536 les mettait hors de portée de toute mesure. 1536 est
   entré dans les largeurs balayées le même jour.
+
+  ═══ 2026-09-26 : LES QUATRE COLONNES DESCENDENT À 1440, ET L'OBSTACLE ÉTAIT
+      UN ORDRE DE CASCADE, PAS UNE LARGEUR ═══
+
+  Le bloc ci-dessus raconte une tentative à 1400 px « ESSAYÉE ET ABANDONNÉE » :
+  la règle était bien émise en `@media(min-width:1400px)`, et `sm:grid-cols-2`,
+  écrite plus loin, l'emportait. Le diagnostic était juste ; ce qu'il a coûté ne
+  l'était pas. Un point de rupture personnalisé est rangé AVANT les points
+  natifs, donc un `sm:` le bat quelle que soit la largeur.
+
+  LE REMÈDE EST DE NE PAS MÉLANGER LES DEUX FAMILLES. Les deux crans sont
+  désormais des variantes ARBITRAIRES — `min-[640px]` et `min-[1440px]` — et
+  elles se rangent entre elles par valeur. Vérifié au navigateur : 2 colonnes à
+  1439, 4 à 1440, 4 à 1536. Avec `sm:` conservé pour le premier cran, 1536
+  rendait encore DEUX colonnes ; c'est la mesure qui a tranché, pas la doctrine.
+
+  `min-[640px]` VAUT EXACTEMENT `sm` — même valeur, autre écriture. Rien ne
+  change sous 1440.
+
+  ═══ CE QUE LA DESCENTE À 1440 RAPPORTE, ET CE QU'ELLE RISQUE ═══
+
+  RAPPORTE : la rangée passe de 294 px à 166 px à 1440, mesurée au DOM sur
+  `/demo` — deux rangs de cartes deviennent un seul. Ce sont 128 px rendus au
+  contenu sur la largeur d'écran la plus répandue, au deuxième rang de l'écran
+  que le propriétaire ouvre chaque jour.
+
+  RISQUE : le montant qui déborde, et c'est LA question de ce fichier. Mesuré au
+  DOM, colonne de 228 px à 1440, sur les quatre cartes :
+
+                        marge du montant    avec UN CHIFFRE DE PLUS
+    police normale          30 px                 14 px
+    police large            43 px                 30 px
+
+  La seconde colonne est le vrai garde-fou : le parc de démonstration porte des
+  montants à sept chiffres, un parc réel peut en porter huit. Le test a donc été
+  refait en doublant un chiffre du montant rendu, et il passe dans les deux
+  polices. À 1400 px la même mesure ne laissait que 6 px dans ce cas — d'où
+  1440, et non le 1400 de la tentative d'août.
+
+  La police LARGE est ici plus généreuse que la normale, ce qui surprend : les
+  montants sont rendus en chasse fixe (`numeric`), que `--font-sans` ne touche
+  pas, tandis que les libellés autour, eux, grossissent. Le montant ne bouge
+  donc pas et sa colonne, si.
 */
-export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 sm:grid-cols-2 2xl:grid-cols-4'
+export const GRILLE_QUATRE_INDICATEURS = 'grid gap-4 min-[640px]:grid-cols-2 min-[1440px]:grid-cols-4'
