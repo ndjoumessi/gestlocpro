@@ -448,7 +448,30 @@ const PLAFONDS = [
   { adresse: '/demo/mon-espace', largeur: 1280, plafond: 1409, plafondLarge: 1409 },
   { adresse: '/demo/documents', largeur: 1280, plafond: 1187, plafondLarge: 1165 },
   { adresse: '/demo/signaler', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/parc', largeur: 1280, plafond: 2058, plafondLarge: 2058 },
+  /*
+    +154 px SUR `/demo/parc@1280`, 2058 → 2212, LE 2026-09-26 : L'ÉCRAN TOTALISE
+    CE QU'IL MONTRAIT DOUZE FOIS.
+
+    La rangée portait UN indicateur, le taux d'occupation. Les fiches en dessous
+    disaient déjà, logement par logement, le loyer attendu, les chantiers
+    ouverts et la caution tenue — douze fois, sans que rien ne les additionne.
+    Un propriétaire qui voulait le total devait le faire de tête ou aller le
+    chercher sur deux autres écrans.
+
+    LE COÛT EST UNE RANGÉE DE PLUS, ET SEULEMENT SOUS 1440. À cette largeur les
+    quatre cartes tiennent sur une ligne — voir `GRILLE_QUATRE_INDICATEURS`,
+    dont le cran est descendu à 1440 le même jour — et la rangée ne coûte alors
+    que 26 px. À 1280 elle se replie en deux colonnes : deux rangs, 154 px.
+
+    AU TÉLÉPHONE, RIEN. La rangée ne paraît qu'en vue tableau, et `/demo/parc@360`
+    rend des fiches : sa hauteur ne bouge pas d'un pixel, vérifié — 4253 px avant
+    comme après.
+
+    RELEVÉ EN POLICE LARGE, la colonne reproductible : 2212 px, seule plainte de
+    la porte sur cette passe. Les vingt-huit autres de la passe normale sont
+    celles de la machine — elles rougissent à l'identique sur `main`.
+  */
+  { adresse: '/demo/parc', largeur: 1280, plafond: 2212, plafondLarge: 2212 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/locataires', largeur: 1280, plafond: 2450, plafondLarge: 2429 },

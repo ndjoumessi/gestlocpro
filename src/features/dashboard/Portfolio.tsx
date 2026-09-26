@@ -14,7 +14,7 @@ import {
   SkeletonStatRow,
   SkeletonTable,
 } from '@/components/primitives/Skeleton'
-import { GRILLE_TROIS_INDICATEURS } from './grillesDIndicateurs'
+import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { Input } from '@/components/primitives/Input'
 import { Button } from '@/components/primitives/Button'
@@ -383,6 +383,31 @@ export function Portfolio() {
     })
 
   const occupied = unitesAffichees.filter((u) => u.status !== 'vacant').length
+
+  /*
+    LES TROIS TOTAUX DE LA RANGÉE D'INDICATEURS, dérivés de ce que les fiches
+    montrent déjà une par une — voir le commentaire de la rangée.
+
+    TOUS PARTENT DE `unitesAffichees`, jamais de `units` : la rangée coiffe ce
+    que l'écran montre, et un total qui ignorerait la recherche en cours
+    dirait autre chose que les fiches d'en dessous.
+
+    `status !== 'done'` POUR LES CHANTIERS et `status === 'held'` POUR LES
+    CAUTIONS : ce sont exactement les deux prédicats que la fiche emploie pour
+    décider d'afficher ses pastilles, et les recopier ici est le seul moyen que
+    le total et le détail disent la même chose. Une divergence entre les deux
+    serait invisible — personne ne compte douze pastilles à la main.
+  */
+  const idsAffiches = new Set(unitesAffichees.map((u) => u.id))
+  const loyersAttendus = unitesAffichees
+    .filter((u) => u.status !== 'vacant')
+    .reduce((somme, u) => somme + u.rent, 0)
+  const chantiersDuParc = works.filter((w) => w.status !== 'done' && idsAffiches.has(w.unitId))
+  const chantiersOuverts = chantiersDuParc.length
+  const logementsAvecChantier = new Set(chantiersDuParc.map((w) => w.unitId)).size
+  const cautionsDuParc = deposits.filter((c) => c.status === 'held' && idsAffiches.has(c.unitId))
+  const cautionsDetenues = cautionsDuParc.reduce((somme, c) => somme + c.held, 0)
+  const logementsAvecCaution = cautionsDuParc.length
 
   /**
    * L'occupation par immeuble se dérive de l'état vivant.
@@ -1144,16 +1169,40 @@ export function Portfolio() {
           au-dessus de « Aucun logement pour l'instant » est exact, ne dit rien,
           et occupe 140 px avant le message qui, lui, dit tout. */}
       {unitesAffichees.length === 0 || !enTableau ? null : (
-        /* SEUL DANS LE GABARIT DES TROIS, et non étiré sur toute la largeur.
+        /*
+          ═══ L'ÉCRAN MONTRAIT DOUZE FOIS UN FAIT, ET NE LE TOTALISAIT JAMAIS ═══
 
-           C'est la doctrine que `GRILLE_DEUX_INDICATEURS` a déjà écrite pour ce
-           cas exact : « une carte a une taille dans ce produit ; elle ne
-           l'emprunte pas à ses voisines ». Étirée, elle porterait deux cents
-           pixels de contenu dans une boîte de mille — le défaut que la règle du
-           BLANC IMPOSÉ de `mesure-ui` mesure, et qu'`Access.tsx` s'est déjà payé
-           à 71 % de vide. La colonne restée libre à sa droite est le prix, et
-           c'est un blanc RÉGULIER. */
-        <div className={GRILLE_TROIS_INDICATEURS}>
+          Il portait UN indicateur — le taux d'occupation — seul dans le gabarit
+          des trois. Le commentaire qui l'y avait mis défendait sa TAILLE, et il
+          avait raison : « une carte a une taille dans ce produit ; elle ne
+          l'emprunte pas à ses voisines ». Mais il ne répondait pas à l'autre
+          question, celle que personne n'avait posée : pourquoi UN SEUL.
+
+          Les fiches en dessous disent déjà, logement par logement, le loyer
+          attendu, les chantiers ouverts et la caution tenue. Douze fois. Un
+          propriétaire qui veut le total de ce que son parc doit lui rapporter ce
+          mois-ci, ou de ce qu'il détient pour le compte de ses locataires, n'a
+          aucun endroit où le lire : il doit additionner douze cartes de tête, ou
+          aller le chercher sur deux autres écrans.
+
+          LES QUATRE SONT DES SOMMES DE CE QUI EST DÉJÀ À L'ÉCRAN, et c'est la
+          règle qui les autorise : aucun ne fait entrer une donnée que cet écran
+          n'affiche pas ailleurs. Ils ne montrent rien de neuf ; ils épargnent
+          une addition.
+
+          ILS SUIVENT LE FILTRE, comme le taux d'occupation le faisait déjà —
+          `unitesAffichees`, et non `units`. Un total qui ignorerait la recherche
+          en cours dirait autre chose que les fiches qu'il coiffe, et c'est le
+          défaut le plus coûteux d'une rangée d'indicateurs : on la croit sur
+          parole.
+
+          LES INTITULÉS SONT CEUX DES ÉCRANS QUI PORTENT CES SUJETS — « Loyers
+          attendus » du tableau de bord, « Cautions consignées » des cautions,
+          « Chantiers en cours » des travaux. Aucune clé nouvelle : le même fait
+          doit se nommer pareil d'un écran à l'autre, sans quoi le lecteur croit
+          lire deux choses.
+        */
+        <div className={GRILLE_QUATRE_INDICATEURS}>
         <StatCard
           icone="gauge"
           label={t('app.dashboard.occupancy')}
@@ -1172,6 +1221,28 @@ export function Portfolio() {
               />
             </div>
           }
+        />
+        <StatCard
+          icone="layers"
+          label={t('app.dashboard.expected')}
+          value={money(loyersAttendus, { compact: true })}
+          note={t('app.dashboard.activeLeases', { count: occupied })}
+        />
+        <StatCard
+          icone="wrench"
+          label={t('app.works.kpiOngoing')}
+          value={String(chantiersOuverts)}
+          /* `etat` ET NON UNE COULEUR POSÉE ICI : c'est `StatCard` qui sait
+             peindre un indicateur qui appelle un geste, et les gardes de couleur
+             lisent son attribut. Zéro chantier n'est pas un avertissement. */
+          etat={chantiersOuverts > 0 ? { ton: 'warn' } : undefined}
+          note={t('app.portfolio.kpiWorksNote', { count: logementsAvecChantier })}
+        />
+        <StatCard
+          icone="shield"
+          label={t('app.deposits.totalHeld')}
+          value={money(cautionsDetenues, { compact: true })}
+          note={t('app.deposits.kpiHeldNote', { count: logementsAvecCaution })}
         />
         </div>
       )}
@@ -1705,13 +1776,19 @@ function PortfolioSkeleton() {
         {/* Quatre cartes : le nombre réel vaut « un par immeuble, plus le
             total », donc il dépend du parc qu'on attend. Quatre remplit
             exactement une rangée de la grille sur grand écran. */}
-        {/* UN, ET NON QUATRE. Le squelette annonçait la grille des trois
-            immeubles plus le taux ; l'écran charge désormais le seul bandeau
-            d'occupation. Un squelette qui promet quatre cartes et en rend une
-            fait sauter la page au chargement — et c'est le défaut exact que
-            `SkeletonStatRow` documente, « attendait sous quatre cartes égales
-            et chargeait trois cartes inégales ». */}
-        <SkeletonStatRow count={1} className={GRILLE_TROIS_INDICATEURS} />
+        {/* QUATRE, COMME LA RANGÉE CHARGÉE — et ce compte a suivi l'écran deux
+            fois. Il a valu quatre (la grille des immeubles plus le taux), puis
+            UN quand la rangée s'est réduite au seul bandeau d'occupation, et de
+            nouveau quatre depuis que les trois totaux l'accompagnent.
+
+            C'est le défaut que `SkeletonStatRow` documente en propre —
+            « attendait sous quatre cartes égales et chargeait trois cartes
+            inégales » : un squelette qui ne promet pas ce que l'écran rend fait
+            sauter la page au chargement, et personne ne le voit, puisqu'un
+            squelette n'apparaît ni dans les captures ni dans les tests. La
+            grille est partagée par la constante, le COMPTE ne peut pas l'être :
+            il se corrige ici, à la main, à chaque fois que la rangée change. */}
+        <SkeletonStatRow count={4} className={GRILLE_QUATRE_INDICATEURS} />
 
         <div className="mt-6 mb-4 flex flex-wrap items-center gap-3">
           <Skeleton radius="md" className="h-11 w-full max-w-xs" />

@@ -826,6 +826,8 @@ export const en: Dictionary = {
       noTenant: 'No tenant',
       assignTenant: 'Assign a tenant',
       sinceLease: 'since {date}',
+      kpiWorksNote: '{count} units affected',
+      kpiWorksNote_one: '{count} unit affected',
       openWorks: '{count} open works',
       openWorks_one: '{count} open work',
       depositHeld: 'Deposit {amount}',

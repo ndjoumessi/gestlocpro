@@ -1166,6 +1166,14 @@ export const fr = {
       assignTenant: 'Attribuer un locataire',
       /* Ce que la fiche dit en plus, seulement quand c'est vrai. */
       sinceLease: 'depuis {date}',
+      /* LA NOTE DE LA RANGÉE DU PARC, et pourquoi elle ne réemploie pas celle
+         des travaux : « {count} encore à chiffrer » y compte des chantiers SANS
+         DEVIS, ce qui est le geste de cet écran-là. Ici le total coiffe des
+         fiches de LOGEMENT, et ce qu'il faut savoir est combien d'entre elles
+         sont concernées — trois chantiers sur un même logement ne se lisent pas
+         comme trois logements en travaux. */
+      kpiWorksNote: '{count} logements concernés',
+      kpiWorksNote_one: '{count} logement concerné',
       openWorks: '{count} chantiers en cours',
       openWorks_one: '{count} chantier en cours',
       depositHeld: 'Caution {amount}',

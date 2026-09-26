@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { renderApp, screen, attendreLeChargement, userEvent, within } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
+import { UNITS } from '@/data/parcDeDemonstration'
+import { DEPOSITS, WORKS } from '@/data/portfolio'
 
 /**
  * SUR UN TÉLÉPHONE, LE PARC SE GROUPE PAR IMMEUBLE.
@@ -207,11 +209,56 @@ describe('le parc sur un écran large', () => {
     await attendreLeChargement()
   }
 
-  it('ne garde qu’UN indicateur : l’agrégat, au-dessus de la liste', async () => {
+  /**
+   * ═══ UN INDICATEUR EST DEVENU QUATRE, ET CE CAS CHANGE AVEC L'ÉCRAN ═══
+   *
+   * Il exigeait UN indicateur, et il avait raison de l'exiger : le taux du parc
+   * venait d'être sorti de la grille des immeubles, où il se lisait comme un
+   * quatrième immeuble. Ce que ce cas gardait est que l'agrégat reste AU-DESSUS
+   * de la liste, pas qu'il reste SEUL — et l'en-tête de ce fichier l'écrit déjà
+   * pour ses voisins : « une clôture de non-régression, pas un engagement à
+   * garder cette forme ».
+   *
+   * L'écran totalise désormais ce que ses fiches montrent une par une : loyers
+   * attendus, chantiers ouverts, cautions tenues. Ce sont des sommes de ce qui
+   * est déjà là, pas des données neuves.
+   *
+   * CE QUE CE CAS GARDE MAINTENANT, et c'est plus fort que le compte : que les
+   * totaux DISENT LA MÊME CHOSE QUE LES FICHES. Une divergence entre l'agrégat
+   * et son détail est invisible — personne ne rajoute douze cartes à la main —
+   * et c'est exactement le genre de défaut qu'une rangée d'indicateurs fabrique
+   * quand elle cesse de suivre le filtre de l'écran.
+   */
+  it('totalise, au-dessus de la liste, ce que les fiches disent une par une', async () => {
     await ouvrir()
-    const indicateurs = document.querySelectorAll('[data-indicateur]')
-    expect(indicateurs.length, 'le taux du parc, et lui seul').toBe(1)
-    expect(indicateurs[0]!.textContent).toContain('83')
+    const indicateurs = Array.from(document.querySelectorAll('[data-indicateur]'))
+    expect(indicateurs.length, 'la rangée du parc a changé de compte').toBe(4)
+
+    /* LES CHIFFRES SEULS : `Intl` compose ses montants avec des espaces
+       insécables étroites, et comparer la chaîne rendue reviendrait à garder le
+       format de la devise au lieu du total. */
+    const texte = indicateurs.map((i) => i.textContent ?? '')
+    const chiffres = texte.map((t) => t.replace(/\D/g, ''))
+    expect(texte[0], 'le taux du parc n’ouvre plus la rangée').toContain('83')
+
+    /* LES TROIS TOTAUX, CONFRONTÉS AU JEU DE DÉMONSTRATION plutôt qu'à des
+       nombres recopiés : dix baux actifs, leurs loyers, les chantiers non
+       terminés et les cautions consignées. Si le jeu change, c'est le calcul du
+       cas qui suit, jamais une constante à réaccorder à la main. */
+    const occupees = UNITS.filter((u) => u.status !== 'vacant')
+    const loyers = occupees.reduce((somme, u) => somme + u.rent, 0)
+    expect(chiffres[1], 'le total des loyers attendus ne suit pas les fiches').toContain(
+      String(loyers),
+    )
+
+    const chantiers = WORKS.filter((w) => w.status !== 'done')
+    expect(texte[2], 'le compte des chantiers ne suit pas les fiches').toContain(
+      String(chantiers.length),
+    )
+
+    const cautions = DEPOSITS.filter((c) => c.status === 'held')
+    const tenu = cautions.reduce((somme, c) => somme + c.held, 0)
+    expect(chiffres[3], 'le total des cautions ne suit pas les fiches').toContain(String(tenu))
   })
 
   it('groupe ses fiches par immeuble, un en-tête par immeuble', async () => {
