@@ -16,7 +16,7 @@ import { Notice } from "@/components/primitives/Notice";
 import { Card } from "@/components/primitives/Card";
 import { useI18n, useT, type MessageKey } from "@/i18n/I18nProvider";
 import { ApiError, NetworkError } from "@/api/client";
-import { useSession } from "@/api/SessionProvider";
+import { useSession, type IssueDInscription } from "@/api/SessionProvider";
 import { LOCALES, LOCALE_LABELS } from "@/i18n/locales";
 import type { Locale } from "@/i18n/locales";
 import { useCurrency } from "@/currency/CurrencyProvider";
@@ -84,7 +84,17 @@ export function SignUp() {
   const [errors, setErrors] = useState<Record<string, FieldError>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  /**
+   * L'ISSUE DE L'INSCRIPTION, ET NON UN BOOLÉEN.
+   *
+   * `null` tant qu'on n'a rien créé ; ensuite `connecte` ou
+   * `sessionIndisponible`. Le second état existe parce que la création et la
+   * relecture de session sont DEUX appels : le compte peut exister sans que la
+   * session soit ouverte, et l'écran de succès ne propose alors pas la même
+   * sortie. Un booléen forçait à choisir entre annoncer un échec qui n'a pas eu
+   * lieu et promettre un tableau de bord qui rebondirait vers la connexion.
+   */
+  const [done, setDone] = useState<IssueDInscription | null>(null);
   /** Échec de l'appel, distinct des erreurs de saisie champ par champ. */
   const [echec, setEchec] = useState<MessageKey | null>(null);
 
@@ -172,7 +182,7 @@ export function SignUp() {
     setSubmitting(true);
     setEchec(null);
     try {
-      await inscrire({
+      const issue = await inscrire({
         email: state.email.trim(),
         password: state.password,
         fullName: state.name.trim(),
@@ -222,7 +232,7 @@ export function SignUp() {
           ? { invitationCode: codeInvitation }
           : {}),
       });
-      setDone(true);
+      setDone(issue);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         /**
@@ -360,7 +370,7 @@ export function SignUp() {
   };
 
   if (done) {
-    return <SignupSuccess role={state.role} />;
+    return <SignupSuccess role={state.role} issue={done} email={state.email.trim()} />;
   }
 
   return (
@@ -1273,23 +1283,56 @@ function ReviewStep({
   );
 }
 
-function SignupSuccess({ role }: { role: Role | null }) {
+/**
+ * ═══ L'ÉCRAN DE SUCCÈS SUIT L'ÉTAT RÉEL, PAS LE CAS HEUREUX ═══
+ *
+ * Deux issues, deux sorties, et c'est la seule chose qui les sépare.
+ *
+ * `connecte` : la session est ouverte, le tableau de bord s'ouvre d'un clic.
+ *
+ * `sessionIndisponible` : le compte existe, la session n'a pas pu être relue.
+ * Proposer « Ouvrir le tableau de bord » enverrait sur une route gardée par
+ * `RequireAuth`, qui rebondirait vers la connexion — un aller-retour que cet
+ * écran peut s'épargner puisqu'il SAIT. Il mène donc à la connexion, et rappelle
+ * l'adresse à y porter : c'est celle qu'on vient de saisir, trois écrans plus
+ * haut, et personne ne l'a retenue.
+ *
+ * LE TON RESTE `ok` DANS LES DEUX CAS. L'inscription a réussi ; ce qui manque
+ * est une session, pas un compte. Un bandeau d'avertissement ferait douter de ce
+ * qui est acquis, et c'est précisément le doute que ce lot corrige.
+ */
+function SignupSuccess({
+  role,
+  issue,
+  email,
+}: {
+  role: Role | null;
+  issue: IssueDInscription;
+  email: string;
+}) {
   const t = useT();
+  const nomDuRole = t(
+    `roles.${role ?? "owner"}.name` as "roles.owner.name",
+  ).toLowerCase();
 
   return (
     <AuthLayout title={t("auth.signup.successTitle")}>
       <div className="flex flex-col gap-6">
         <Notice tone="ok" forte>
-          {t("auth.signup.successBody", {
-            role: t(
-              `roles.${role ?? "owner"}.name` as "roles.owner.name",
-            ).toLowerCase(),
-          })}
+          {issue === "connecte"
+            ? t("auth.signup.successBody", { role: nomDuRole })
+            : t("auth.signup.successBodyNoSession", { role: nomDuRole, email })}
         </Notice>
 
-        <Button size="lg" fullWidth to="/app" iconAfter="arrowRight">
-          {t("auth.signup.goToDashboard")}
-        </Button>
+        {issue === "connecte" ? (
+          <Button size="lg" fullWidth to="/app" iconAfter="arrowRight">
+            {t("auth.signup.goToDashboard")}
+          </Button>
+        ) : (
+          <Button size="lg" fullWidth to="/connexion" iconAfter="arrowRight">
+            {t("auth.signIn")}
+          </Button>
+        )}
       </div>
     </AuthLayout>
   );

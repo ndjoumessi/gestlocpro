@@ -489,6 +489,22 @@ export const fr = {
       successBody:
         'Votre compte est créé et vous y êtes déjà connecté. Voici votre espace {role}, encore vide.',
       goToDashboard: 'Ouvrir le tableau de bord',
+      /**
+       * LE COMPTE EST CRÉÉ, LA SESSION NE S'EST PAS OUVERTE.
+       *
+       * L'inscription relit la session après la création — `/auth/me` — et ce
+       * second appel peut échouer quand le premier a réussi. Le compte existe
+       * alors pour de bon, mais rien n'est ouvert : annoncer « vous y êtes déjà
+       * connecté » serait le mensonge symétrique de celui que `successBody`
+       * raconte plus haut, et il enverrait sur une route gardée.
+       *
+       * La phrase dit les deux choses utiles, dans l'ordre où elles servent : ce
+       * qui est acquis — le compte, avec l'adresse à laquelle se connecter —, et
+       * le geste qui reste. Elle ne nomme PAS la cause : « le réseau », « le
+       * serveur » ou « la session » ne changent rien à ce qu'il y a à faire.
+       */
+      successBodyNoSession:
+        'Votre compte est créé, mais la session n’a pas pu s’ouvrir. Connectez-vous avec {email} pour entrer dans votre espace {role}.',
 
       // Une seule issue de correction par groupe, donc un libellé qui dit LEQUEL
       // — « Modifier » répété trois fois ne se distingue pas à l'oreille.

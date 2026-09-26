@@ -105,6 +105,16 @@ class DelaiDepasse extends Error {}
  */
 export type EchecDeSession = 'technique' | 'delai'
 
+/**
+ * Ce qu'une inscription rend quand elle n'a pas levé.
+ *
+ * `sessionIndisponible` n'est PAS une erreur : le compte est créé, enregistré,
+ * facturable. Seule la relecture de session a échoué, et l'écran de succès en
+ * tire une sortie différente — se connecter plutôt qu'ouvrir un tableau de bord
+ * gardé qui rebondirait aussitôt.
+ */
+export type IssueDInscription = 'connecte' | 'sessionIndisponible'
+
 interface SessionContextValue {
   etat: EtatSession
   /** `true` tant que le premier `/auth/me` n'a pas répondu. */
@@ -133,7 +143,15 @@ interface SessionContextValue {
    * c'est-à-dire sur aucune.
    */
   connecter: (email: string, motDePasse: string, persistante: boolean) => Promise<Role>
-  inscrire: (donnees: DemandeInscription) => Promise<void>
+  /**
+   * Crée le compte, puis relit la session.
+   *
+   * REND CE QUI S'EST PASSÉ plutôt que rien : `connecte` quand les deux appels
+   * ont abouti, `sessionIndisponible` quand le compte existe et que la session
+   * n'a pas pu être relue. Lève encore quand c'est la CRÉATION qui échoue —
+   * voir le corps.
+   */
+  inscrire: (donnees: DemandeInscription) => Promise<IssueDInscription>
   deconnecter: () => Promise<void>
   /**
    * Ferme le compte, et repasse l'interface en anonyme.
@@ -348,10 +366,45 @@ export function SessionProvider({
     [rafraichir],
   )
 
+  /**
+   * ═══ DEUX APPELS, DEUX ÉCHECS, ET UN SEUL ÉTAIT LISIBLE ═══
+   *
+   * L'inscription ne se conclut pas sur la réponse de `/auth/signup` : on relit
+   * la session, pour la raison que `connecter` écrit juste au-dessus — les
+   * adhésions ne sont pas dans le corps de la création, et deux chemins
+   * d'hydratation divergeraient. C'est juste, et ça le reste.
+   *
+   * Ce qui ne l'était pas : les deux `await` s'enchaînaient sans se distinguer,
+   * si bien que l'échec du SECOND remontait au formulaire comme un échec du
+   * PREMIER. Relevé au navigateur, serveur absent après création : `signup`
+   * rend 201, `me` rend 500, et l'écran affichait « La création du compte a
+   * échoué. Vos réponses sont conservées : réessayez. » Le compte, lui,
+   * existait.
+   *
+   * Le message invitait donc à recommencer une création déjà faite, qui rend
+   * cette fois 409 — l'adresse est prise, par la sienne. Sur le réseau mobile
+   * lent que ce produit vise, ce n'est pas un cas d'école.
+   *
+   * `signup` CONTINUE DE LEVER, et c'est la moitié du correctif : un compte qui
+   * ne s'est pas créé doit se lire comme tel, sans quoi on aurait remplacé un
+   * mensonge par son symétrique — le plus grave des deux. Seule la RELECTURE
+   * cesse d'être fatale, et elle se rend : l'appelant sait alors qu'il tient un
+   * compte sans session, et peut le dire.
+   *
+   * L'ÉTAT N'EST PAS FORCÉ ICI. `rafraichir` a déjà rangé ce qu'il fallait —
+   * hors ligne, échec technique — avant de lever ; poser « connecté » à sa
+   * place sur la foi du corps de `signup` reviendrait au second chemin
+   * d'hydratation que tout ce mécanisme refuse.
+   */
   const inscrire = useCallback(
-    async (donnees: DemandeInscription) => {
+    async (donnees: DemandeInscription): Promise<IssueDInscription> => {
       await api.signup(donnees)
-      await rafraichir()
+      try {
+        await rafraichir()
+        return 'connecte'
+      } catch {
+        return 'sessionIndisponible'
+      }
     },
     [rafraichir],
   )

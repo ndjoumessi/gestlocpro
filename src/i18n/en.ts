@@ -360,6 +360,8 @@ export const en: Dictionary = {
       successBody:
         'Your account is created and you are already signed in. Here is your {role} space, still empty.',
       goToDashboard: 'Open the dashboard',
+      successBodyNoSession:
+        'Your account is created, but the session could not be opened. Sign in with {email} to enter your {role} space.',
 
       editSection: 'Edit: {section}',
 
