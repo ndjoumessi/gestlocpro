@@ -2,6 +2,7 @@ import {
   Children,
   createContext,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -82,14 +83,33 @@ export function MenuDeDebordement({
   libelle,
   children,
   className,
+  /**
+   * Le déclencheur s'efface tant qu'on ne le vise pas.
+   *
+   * À demander sur une LISTE de cartes, où le même bouton se répète ; jamais
+   * sur un en-tête, où il est seul et doit se lire comme une commande.
+   */
+  discret = false,
+  echappe = false,
 }: {
   /** Nom accessible du déclencheur — trois points ne se prononcent pas. */
   libelle: string
   children?: ReactNode
   className?: string
+  discret?: boolean
+  /**
+   * Le panneau se pose en `position: fixed`, hors de toute boîte qui le
+   * rognerait.
+   *
+   * À demander quand le menu vit DANS un conteneur à défilement — le rail des
+   * logements est le premier. Ailleurs, l'ancrage absolu reste le bon : il suit
+   * la page sans un écouteur.
+   */
+  echappe?: boolean
 }) {
   const [ouvert, setOuvert] = useState(false)
   const boite = useRef<HTMLDivElement>(null)
+  const declencheur = useRef<HTMLButtonElement>(null)
   const panneau = useRef<HTMLDivElement>(null)
 
   /* Le panneau reste PEINT le temps de sa sortie, puis se démonte. `monte`
@@ -127,6 +147,30 @@ export function MenuDeDebordement({
    * du mauvais côté, fût-ce une image. La mesure a lieu après le calcul de mise
    * en page et avant le rendu.
    */
+  /**
+   * ═══ `echappe` : LE PANNEAU SORT DE LA BOÎTE QUI LE ROGNE ═══
+   *
+   * Depuis que les logements d'un immeuble défilent dans un rail, leurs fiches
+   * vivent DANS une boîte de défilement — et une boîte de défilement rogne les
+   * DEUX axes : `overflow-x: auto` force le navigateur à calculer
+   * `overflow-y: auto`, donc à couper ce qui dépasse en hauteur. Le menu d'une
+   * fiche, qui se renverse vers le haut en bas de fenêtre, se retrouvait coupé
+   * net par le bord du rail : mesuré, il n'en restait qu'une bande de trois
+   * pixels.
+   *
+   * `position: fixed` ÉCHAPPE À CE ROGNAGE — un élément fixe n'est pas rogné
+   * par les ancêtres à défilement, seulement par un ancêtre transformé, et il
+   * n'y en a aucun ici. C'est le même résultat qu'un portail, SANS quitter
+   * l'arbre : le piège de focus, la fermeture au clic extérieur et la
+   * tabulation continuent de voir le panneau dans le conteneur, et n'ont pas à
+   * connaître son existence.
+   *
+   * LE PRIX EST NOMMÉ : un panneau fixe ne suit plus la page. On ferme donc au
+   * moindre défilement — celui du rail comme celui du document. C'est le
+   * comportement qu'on attend d'un menu de toute façon : on ne fait pas défiler
+   * la page en gardant un menu ouvert.
+   */
+  const [ancre, setAncre] = useState<{ top: number; right: number } | null>(null)
   const [versLeHaut, setVersLeHaut] = useState(false)
   useLayoutEffect(() => {
     /*
@@ -149,7 +193,45 @@ export function MenuDeDebordement({
     const barre = document.querySelector('[data-barre-basse]')
     const recouvert = barre ? barre.getBoundingClientRect().height : 0
     setVersLeHaut(p.getBoundingClientRect().bottom > window.innerHeight - recouvert)
-  }, [ouvert, monte])
+
+    /* L'ANCRE FIXE SE PREND SUR LE DÉCLENCHEUR, pas sur le panneau : c'est lui
+       qui est à sa place, le panneau n'étant encore qu'au repos par défaut. */
+    if (echappe && declencheur.current) {
+      const d = declencheur.current.getBoundingClientRect()
+      setAncre({ top: d.bottom, right: window.innerWidth - d.right })
+    }
+  }, [ouvert, monte, echappe])
+
+  /*
+    UN PANNEAU FIXE NE SUIT PAS LA PAGE — IL SE REPLACE, IL NE SE FERME PAS.
+
+    Premier jet : on fermait au moindre défilement. Logique en apparence, et
+    refusé par la porte des modales — « le bouton qui l'ouvre est introuvable »,
+    deux fois. La raison est que TOUT outil qui vise un élément le fait d'abord
+    défiler dans le champ : la sonde ouvrait le menu, le navigateur faisait
+    glisser le rail pour atteindre l'entrée, et la fermeture emportait l'entrée
+    qu'on venait viser. Un lecteur d'écran fait exactement la même chose, et un
+    doigt qui frôle le rail aussi.
+
+    On recalcule donc l'ancre. `capture` : le rail qui porte la fiche défile
+    lui-même, et un écouteur posé sur `window` sans capture ne voit jamais le
+    défilement d'un descendant — c'est pourtant le seul qui compte ici.
+  */
+  useEffect(() => {
+    if (!ouvert || !echappe) return
+    const replacer = () => {
+      const d = declencheur.current
+      if (!d) return
+      const boite = d.getBoundingClientRect()
+      setAncre({ top: boite.bottom, right: window.innerWidth - boite.right })
+    }
+    window.addEventListener('scroll', replacer, true)
+    window.addEventListener('resize', replacer)
+    return () => {
+      window.removeEventListener('scroll', replacer, true)
+      window.removeEventListener('resize', replacer)
+    }
+  }, [ouvert, echappe])
 
   /* `focusInitial: 'premier'` : le panneau ne contient QUE des commandes, la
      première est donc la bonne première étape. C'est le même réglage que le
@@ -178,6 +260,7 @@ export function MenuDeDebordement({
     <div ref={boite} className={cn('relative shrink-0', className)}>
       <button
         type="button"
+        ref={declencheur}
         aria-expanded={ouvert}
         aria-haspopup="menu"
         aria-label={libelle}
@@ -187,8 +270,29 @@ export function MenuDeDebordement({
           // la variante secondaire : c'est un bouton d'en-tête, il se lit comme
           // ses voisins plutôt que comme un ornement.
           'inline-flex size-11 cursor-pointer items-center justify-center rounded-full',
-          'border border-border bg-surface text-ink transition-colors duration-150',
-          'hover:border-ink',
+          'transition-colors duration-150',
+          /*
+            ═══ `discret` : LE CERCLE NE PARAÎT QUE QUAND IL EST UNE CIBLE ═══
+
+            Le déclencheur cerclé est juste en tête de carte, où il est seul.
+            Répété par FICHE — douze logements, douze cercles alignés —, il
+            devient une colonne de taches que l'œil compte avant d'avoir lu un
+            numéro : la commande la moins importante de la fiche y pèse autant
+            que son numéro.
+
+            Discret, il garde ses 44 px et son glyphe en encre sourde ; la
+            bordure et le fond reviennent au survol, au focus ET tant que le
+            menu est ouvert — sans quoi le déclencheur s'efface au moment précis
+            où il commande quelque chose.
+          */
+          discret
+            ? cn(
+                'border border-transparent text-muted',
+                'hover:border-border hover:bg-surface-sunken hover:text-ink',
+                'focus-visible:border-border focus-visible:text-ink',
+                ouvert && 'border-border bg-surface-sunken text-ink',
+              )
+            : 'border border-border bg-surface text-ink hover:border-ink',
         )}
       >
         <Icon name="more" size={18} />
@@ -212,6 +316,19 @@ export function MenuDeDebordement({
           style={{
             zIndex: 'var(--z-popover)',
             transformOrigin: versLeHaut ? 'bottom right' : 'top right',
+            /* FIXE ET ANCRÉ AU DÉCLENCHEUR quand il faut échapper au rognage.
+               `translateY(-100%)` remonte le panneau au-dessus de son ancre
+               dans le cas renversé : on n'a qu'une coordonnée haute, et un
+               `bottom` calculé demanderait la hauteur du panneau avant de
+               l'avoir peint. */
+            ...(echappe && ancre
+              ? {
+                  position: 'fixed' as const,
+                  top: versLeHaut ? ancre.top - TAILLE_DU_DECLENCHEUR : ancre.top,
+                  right: ancre.right,
+                  transform: versLeHaut ? 'translateY(-100%)' : undefined,
+                }
+              : {}),
           }}
           // Pendant la sortie, le menu n'existe plus que pour l'œil : il quitte
           // l'arbre d'accessibilité et cesse de prendre le pointeur. Sans cela
@@ -221,12 +338,24 @@ export function MenuDeDebordement({
           {...(sortant ? INERTE : {})}
           className={cn(
             sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
-            'absolute right-0 flex w-64 max-w-[calc(100vw-2.5rem)] flex-col gap-1',
-            'rounded-md border border-border bg-paper p-2 shadow-lg',
+            /*
+              IL ÉPOUSE SON CONTENU. `w-64` posait 256 px quoi qu'il porte :
+              deux mots de sept lettres flottaient dans une dalle plus large
+              que la fiche qui l'ouvre. `w-max` borné prend la place des
+              libellés — et la borne haute reste, parce qu'une raison de refus
+              s'écrit en une phrase et ne doit pas tirer le panneau hors de
+              l'écran.
+            */
+            echappe && ancre ? 'flex w-max min-w-52 flex-col gap-0.5' : 'absolute right-0 flex w-max min-w-52 flex-col gap-0.5',
+            'max-w-[min(18rem,calc(100vw-2.5rem))]',
+            /* `p-1` et non `p-2` : le rembourrage du panneau s'ajoutait à celui
+               des entrées, qui font déjà 44 px de haut. Deux gestes courts y
+               occupaient 120 px pour deux lignes de texte. */
+            'rounded-lg border border-border bg-paper p-1 shadow-lg',
             /* Le renversement ne change QUE l'ancrage vertical : la marge suit
                le sens, sans quoi le panneau collerait au déclencheur d'un côté
                et flotterait de l'autre. */
-            versLeHaut ? 'bottom-full mb-2' : 'top-full mt-2',
+            echappe && ancre ? '' : versLeHaut ? 'bottom-full mb-2' : 'top-full mt-2',
           )}
         >
           <FermerLeMenu.Provider value={() => setOuvert(false)}>{children}</FermerLeMenu.Provider>
@@ -236,11 +365,16 @@ export function MenuDeDebordement({
   )
 }
 
+/** La hauteur du déclencheur — l'ancre haute d'un panneau renversé s'en déduit. */
+const TAILLE_DU_DECLENCHEUR = 44
+
 /** Une entrée de menu. Elle referme le panneau en même temps qu'elle agit. */
 export function MenuElement({
   icone,
   onClick,
   nomAccessible,
+  raison,
+  ton,
   children,
 }: {
   icone?: Parameters<typeof Icon>[0]['name']
@@ -266,6 +400,25 @@ export function MenuElement({
    * déjà ouvert sur SA ligne — et le nom accessible porte le numéro.
    */
   nomAccessible?: string
+  /**
+   * POURQUOI le geste est fermé — rendu SOUS le libellé, et non seulement dans
+   * le nom accessible.
+   *
+   * Un geste éteint sans motif est un cul-de-sac : on clique, rien ne se
+   * passe, et on recommence. La raison existait déjà dans ce produit — « le
+   * logement a une histoire dans le parc » — mais elle ne vivait que dans
+   * `aria-label`, c'est-à-dire pour la synthèse vocale et pour personne
+   * d'autre. Le voyant, lui, n'avait qu'une ligne grise.
+   */
+  raison?: string
+  /**
+   * `danger` peint le geste qui DÉTRUIT — au survol et au focus seulement.
+   *
+   * Pas au repos : un menu dont une entrée est rouge en permanence fait lire le
+   * rouge avant le mot, et la liste entière se met à crier. C'est au moment où
+   * le doigt s'y pose que la couleur a quelque chose à dire.
+   */
+  ton?: 'danger'
   children: ReactNode
 }) {
   const fermer = useContext(FermerLeMenu)
@@ -285,18 +438,47 @@ export function MenuElement({
             }
       }
       className={cn(
-        'flex min-h-11 w-full items-center gap-2.5 rounded-sm px-2.5',
+        'flex min-h-11 w-full gap-2.5 rounded-md px-3 py-1.5',
+        /* LE GLYPHE SE CALE EN HAUT quand une raison suit le libellé : centré
+           sur deux lignes, il se retrouve en face du motif plutôt qu'en face du
+           geste qu'il désigne. */
+        ferme && raison ? 'items-start pt-2.5' : 'items-center',
         'text-left text-body transition-colors duration-150',
         ferme
-          ? /* `opacity-45` est l'ÉTEINT que `Button` applique à toutes ses
-               commandes fermées — repris ici pour qu'un geste fermé ait la même
-               mine partout dans le produit. */
-            'cursor-not-allowed text-muted opacity-45'
-          : 'cursor-pointer text-ink hover:bg-surface-sunken',
+          ? /*
+              UN GESTE FERMÉ QUI S'EXPLIQUE DOIT SE LIRE.
+
+              `opacity-45` est l'éteint que `Button` applique à ses commandes
+              fermées, et il convient tant qu'il n'y a rien à lire dessous. Une
+              RAISON à 45 % serait une phrase qu'on tend sans la rendre
+              lisible ; le motif du refus est justement ce qui distingue « pas
+              maintenant » de « cassé ».
+
+              Sans raison, l'éteint d'avant ne bouge pas.
+            */
+            cn('cursor-not-allowed', raison ? 'text-muted' : 'text-muted opacity-45')
+          : cn(
+              'cursor-pointer text-ink',
+              ton === 'danger'
+                ? 'hover:bg-danger-tint hover:text-danger focus-visible:bg-danger-tint'
+                : 'hover:bg-surface-sunken',
+            ),
       )}
     >
-      {icone && <Icon name={icone} size={16} className="shrink-0 text-muted" />}
-      <span className="min-w-0 flex-1">{children}</span>
+      {icone && (
+        <Icon
+          name={icone}
+          size={16}
+          className={cn('shrink-0', ferme ? 'text-muted' : 'text-inherit opacity-70')}
+        />
+      )}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span>{children}</span>
+        {/* LA RAISON SOUS LE LIBELLÉ, en `text-caption` : elle qualifie le
+            geste, elle ne le remplace pas — et la fiche reste lisible d'un
+            coup d'œil, le motif ne se lisant que si l'on s'y arrête. */}
+        {ferme && raison && <span className="text-caption text-pretty">{raison}</span>}
+      </span>
     </button>
   )
 }

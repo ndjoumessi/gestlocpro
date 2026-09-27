@@ -797,9 +797,13 @@ export const en: Dictionary = {
       monthLockedInDemo: 'Change month — the demo holds a single month',
       noFutureMonth: 'Next month — nothing is called beyond the current month',
       unitActions: 'Actions for unit {unit}',
+      railPrevious: 'See previous units',
+      railNext: 'See next units',
       remove: 'Remove',
       deleteUnit: 'Remove unit {unit}',
       deleteUnitBlocked: 'Cannot remove — {unit} has history in the portfolio',
+      deleteUnitReason:
+        'This unit carries payments or a lease: removing it would erase its history.',
       deleteUnitTitle: 'Remove {unit}?',
       deleteUnitBody:
         'This unit has never held a lease, a reading or any works. Removal is permanent.',

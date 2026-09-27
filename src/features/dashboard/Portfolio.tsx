@@ -35,6 +35,7 @@ import { ParkSettingsModal } from './ParkSettingsModal'
 import { AddUnitModal } from './AddUnitModal'
 import { EditBuildingModal } from './EditBuildingModal'
 import { EditUnitModal } from './EditUnitModal'
+import { RailDeLogements } from './RailDeLogements'
 import { NewTenantModal } from './Tenants'
 import { MonthPicker } from '@/components/primitives/DatePicker'
 import { Card } from '@/components/primitives/Card'
@@ -776,12 +777,7 @@ export function Portfolio() {
           <Card key={id} as="section" flush aria-labelledby={`immeuble-${id}`}>
             {enTeteDImmeuble(id, 'tableau')}
             {lignes.length > 0 && (
-              <ul
-                id={idDuGroupe(id)}
-                aria-label={b?.name}
-                className={GRILLE_DES_FICHES}
-                data-mesure="sections-alignees"
-              >
+              <RailDeLogements id={idDuGroupe(id)} libelle={b?.name}>
                 {lignes.map((unit) => (
                   <li
                     key={unit.id}
@@ -789,6 +785,26 @@ export function Portfolio() {
                     className={cn(
                       SECTIONS_DE_FICHE_LOGEMENT,
                       'rounded-lg border border-divider bg-surface p-4',
+                      /*
+                        LA FICHE EST UNE DESTINATION, ET NE LE DISAIT PAS.
+
+                        Son numéro est un lien vers le dossier du logement, et
+                        la carte restait inerte au survol : rien n'annonçait
+                        qu'il y avait quelque chose à ouvrir, sur une grille où
+                        l'œil passe sur les cartes avant de lire les mots.
+
+                        `focus-within` ET NON `focus` : ce n'est pas la fiche
+                        qui prend le focus mais le lien ou le menu qu'elle
+                        porte. Au clavier, la fiche entière s'éclaire donc quand
+                        l'un des siens est atteint — et sur un rail qui défile,
+                        c'est ce qui dit OÙ l'on vient d'arriver.
+
+                        `snap-start` : l'accroche du rail tombe sur le bord de
+                        la fiche, jamais au milieu d'un chiffre.
+                      */
+                      'snap-start transition-[border-color,box-shadow] duration-150',
+                      'hover:border-border-strong hover:shadow-e1',
+                      'focus-within:border-accent focus-within:shadow-e1',
                     )}
                   >
                     <div data-section="entete" className="flex items-start justify-between gap-2">
@@ -810,7 +826,18 @@ export function Portfolio() {
                         ) : (
                           <PaymentStatusPill status={unit.status} size="sm" />
                         )}
+                        {/* DISCRET SUR UNE FICHE : douze déclencheurs cerclés
+                            alignés sur une rangée font douze taches que l'œil
+                            compte avant de lire un seul numéro de logement. Le
+                            cercle revient au survol et au focus, c'est-à-dire
+                            quand il devient une cible. */}
                         <MenuDeDebordement
+                          discret
+                          /* LE RAIL ROGNE : ses fiches vivent dans une boîte à
+                             défilement, qui coupe les deux axes. Sans cela, le
+                             menu d'une fiche se réduisait à une bande de trois
+                             pixels au bord du rail — mesuré. */
+                          echappe
                           libelle={t('app.portfolio.unitActions', { unit: unit.label })}
                         >
                           <MenuElement
@@ -822,6 +849,7 @@ export function Portfolio() {
                           </MenuElement>
                           <MenuElement
                             icone="close"
+                            ton="danger"
                             onClick={
                               unit.deletable === true ? () => setLogementASupprimer(unit) : undefined
                             }
@@ -829,6 +857,16 @@ export function Portfolio() {
                               unit.deletable === true
                                 ? t('app.portfolio.deleteUnit', { unit: unit.label })
                                 : t('app.portfolio.deleteUnitBlocked', { unit: unit.label })
+                            }
+                            /* LA RAISON SE LIT, au lieu de n'exister que pour la
+                               synthèse vocale : « Retirer » en gris, sans un
+                               mot, se clique deux fois avant qu'on renonce. Le
+                               motif était écrit depuis toujours — il n'était
+                               rendu nulle part. */
+                            raison={
+                              unit.deletable === true
+                                ? undefined
+                                : t('app.portfolio.deleteUnitReason')
                             }
                           >
                             {t('app.portfolio.remove')}
@@ -1003,7 +1041,7 @@ export function Portfolio() {
                     </div>
                   </li>
                 ))}
-              </ul>
+              </RailDeLogements>
             )}
           </Card>
         )

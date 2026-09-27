@@ -543,7 +543,15 @@ const PLAFONDS = [
     la porte sur cette passe. Les vingt-huit autres de la passe normale sont
     celles de la machine — elles rougissent à l'identique sur `main`.
   */
-  { adresse: '/demo/parc', largeur: 1280, plafond: 2212, plafondLarge: 2212 },
+  /*
+    −427 px LE 2026-09-27 : les logements d'un immeuble défilent en RANG au lieu
+    de s'empiler. Une carte d'immeuble garde désormais la même hauteur qu'il
+    porte trois logements ou douze, et les trois immeubles de la démonstration
+    tiennent sur un écran au lieu d'une colonne qu'on descend. C'est le plus
+    gros gain de hauteur de ce fichier, et il vient d'un changement de forme,
+    pas d'un retrait de contenu : aucune fiche n'a perdu une ligne.
+  */
+  { adresse: '/demo/parc', largeur: 1280, plafond: 1785, plafondLarge: 1785 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   /*

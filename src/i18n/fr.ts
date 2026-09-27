@@ -1120,6 +1120,12 @@ export const fr = {
       monthLockedInDemo: 'Changer de mois — la démonstration ne porte qu’un mois',
       noFutureMonth: 'Mois suivant — rien n’est appelé au-delà du mois en cours',
       unitActions: 'Actions du logement {unit}',
+      /* LES DEUX FLÈCHES DU RAIL — voir `RailDeLogements`. Elles sont
+         `aria-hidden` : c'est un raccourci de pointeur, le clavier atteignant
+         déjà chaque fiche. Le nom reste, pour le survol et pour la garde des
+         noms accessibles. */
+      railPrevious: 'Voir les logements précédents',
+      railNext: 'Voir les logements suivants',
       remove: 'Retirer',
       deleteUnit: 'Retirer le logement {unit}',
       /* MÊME FORME QUE POUR L'IMMEUBLE : l'ÉTAT d'abord, le geste ensuite. Un
@@ -1127,6 +1133,11 @@ export const fr = {
          fermé porte le même préfixe que le geste ouvert — `modales` sélectionne
          par ce préfixe, et cliquerait le mauvais. */
       deleteUnitBlocked: 'Retrait impossible — {unit} a une histoire dans le parc',
+      /* LE MÊME FAIT, RENDU À L'ŒIL. `deleteUnitBlocked` est le nom accessible
+         — il porte le numéro parce que douze entrées se ressemblent ; celle-ci
+         se lit SOUS le libellé, dans un menu déjà ouvert sur sa fiche, où le
+         numéro serait redit pour rien. */
+      deleteUnitReason: 'Ce logement porte des paiements ou un bail : le retirer effacerait son histoire.',
       deleteUnitTitle: 'Retirer {unit} ?',
       deleteUnitBody:
         'Ce logement n’a jamais porté de bail, de relevé ni de travaux. Le retrait est définitif.',
