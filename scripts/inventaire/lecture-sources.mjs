@@ -678,7 +678,12 @@ const HORS_REPOS = /Modal$/
  * que la garde réclame un tour de clé.
  */
 export const PLANCHERS_DE_LECTURE = {
-  'fichiers scannés': 90,
+  /* 90 → 101 le 2026-09-27, réclamé par la CI : 113 fichiers lus, soit 20,35 %
+     perdables — le seuil est à 20, et il a été franchi par UN fichier. Ce tour
+     de clé n'appartient à aucun lot : `src/` a grandi commit après commit, et ce
+     plancher ne parle que le jour où la marge s'épuise. Le nombre est celui que
+     `planchersDeLecture.test.ts` a demandé, pas un arrondi de confort. */
+  'fichiers scannés': 101,
   /* 2300 → 2594 le 2026-09-12 : 2883 balises lues, et `planchersDeLecture` refuse
      plus de 20 % d'écart. L'écart s'est creusé lot après lot — les fiches du
      parc, les menus déplacés — et c'est la page des mentions légales, huit
@@ -712,7 +717,11 @@ export const PLANCHERS_DE_LECTURE = {
   // `server/src/planchersDeLecture.test.ts`, donc sous `check:server`. Ajouter
   // une garde au CLIENT fait rougir la porte du SERVEUR, un tour plus tard et
   // sur une autre machine. C'est ce qui est arrivé le 2026-09-24.
-  'fichiers de test écartés': 198,
+  // 198 → 230 le 2026-09-27, dans le même tour de clé : 256 fichiers de test
+  // lus, 22,7 % perdables. Les deux compteurs ont franchi le seuil au même
+  // passage de CI, ce qui est attendu — ils mesurent la même croissance par deux
+  // bouts, les sources et leurs gardes.
+  'fichiers de test écartés': 230,
 }
 
 export function releverLesSources() {
