@@ -174,7 +174,7 @@ describe('la quittance du gestionnaire', () => {
       await attendreLeChargement()
 
       const user = userEvent.setup()
-      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(screen.getAllByRole('button', { name: /^Quittance — / })[0])
       /* Le document arrive du serveur : la modale montre « Chargement… » entre
          l'ouverture et lui, et le bouton reste éteint jusque-là. */
       const telecharger = await screen.findByRole('button', { name: /^Télécharger$/ })
@@ -265,17 +265,22 @@ describe('la quittance du gestionnaire', () => {
 
       const user = userEvent.setup()
 
+      /* LES DEUX MOTIFS NE SE RESSEMBLENT PLUS PAR HASARD : « Quittance — A1 »
+         est le bouton du TABLEAU, qui porte son logement, et « Télécharger — mai
+         2026 » celui de la LISTE du locataire, qui porte sa période. Le
+         « Télécharger » nu, lui, est celui de la MODALE — un seul à l'écran, donc
+         rien à distinguer, et son ancre `$` le prouve. */
       // Le gestionnaire, depuis le document arrêté par le serveur.
       const bailleur = await renderApp('/app/paiements', { session: sessionBailleur() })
       await attendreLeChargement()
-      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(screen.getAllByRole('button', { name: /^Quittance — / })[0])
       await user.click(await screen.findByRole('button', { name: /^Télécharger$/ }))
       bailleur.unmount()
 
       // Le locataire, depuis son portefeuille.
       await renderApp('/app/documents', { session: sessionLocataire() })
       await attendreLeChargement()
-      await user.click(screen.getAllByRole('button', { name: /^Télécharger$/ })[0])
+      await user.click(screen.getAllByRole('button', { name: /^Télécharger — / })[0])
 
       const [duBailleur, duLocataire] = await capture.settle()
       expect(textesDe(duLocataire.bytes)).toEqual(textesDe(duBailleur.bytes))
@@ -316,7 +321,7 @@ describe('la quittance du gestionnaire', () => {
       await renderApp('/app/paiements', { session: sessionBailleur(), currency: 'EUR' })
       await attendreLeChargement()
       const user = userEvent.setup()
-      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(screen.getAllByRole('button', { name: /^Quittance — / })[0])
       await user.click(await screen.findByRole('button', { name: /^Télécharger$/ }))
       const [fichier] = await capture.settle()
 
@@ -364,7 +369,7 @@ describe('la quittance du gestionnaire', () => {
       await renderApp('/app/paiements', { session: sessionBailleur(), currency: 'CFA' })
       await attendreLeChargement()
       const user = userEvent.setup()
-      await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+      await user.click(screen.getAllByRole('button', { name: /^Quittance — / })[0])
       await user.click(await screen.findByRole('button', { name: /^Télécharger$/ }))
       const [fichier] = await capture.settle()
 
@@ -397,7 +402,7 @@ describe('la quittance du gestionnaire', () => {
     await attendreLeChargement()
 
     const user = userEvent.setup()
-    await user.click(screen.getAllByRole('button', { name: /^Quittance$/ })[0])
+    await user.click(screen.getAllByRole('button', { name: /^Quittance — / })[0])
 
     expect(await screen.findByRole('button', { name: /^Télécharger$/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Imprimer|Print/i })).toBeInTheDocument()

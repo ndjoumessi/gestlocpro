@@ -646,7 +646,7 @@ describe('émettre une quittance', () => {
   const attendreLeParcDuServeur = async () => {
     const { waitFor } = await import('@testing-library/react')
     await waitFor(() =>
-      expect(screen.getAllByRole('button', { name: /^quittance$/i })).toHaveLength(2),
+      expect(screen.getAllByRole('button', { name: /^quittance — /i })).toHaveLength(2),
     )
   }
 
@@ -680,7 +680,7 @@ describe('émettre une quittance', () => {
     const user = userEvent.setup()
     await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await attendreLeParcDuServeur()
-    await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /^quittance — /i })[0]!)
 
     // Deux occurrences, et c'est voulu : le titre de la modale et l'en-tête du
     // document portent le même mot. C'est ce mot qui atteste — le répéter là où
@@ -711,7 +711,7 @@ describe('émettre une quittance', () => {
     const user = userEvent.setup()
     await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await attendreLeParcDuServeur()
-    await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /^quittance — /i })[0]!)
 
     expect(await screen.findAllByText(/reçu de paiement/i)).toHaveLength(2)
     // Le mot « quittance » n'apparaît NULLE PART : ni au titre, ni dans le
@@ -727,7 +727,7 @@ describe('émettre une quittance', () => {
     const user = userEvent.setup()
     await renderApp('/app/paiements', { session: SESSION_AVEC_PARC })
     await attendreLeParcDuServeur()
-    await user.click(screen.getAllByRole('button', { name: /^quittance$/i })[0]!)
+    await user.click(screen.getAllByRole('button', { name: /^quittance — /i })[0]!)
 
     expect(await screen.findByText(/rien à attester/i)).toBeInTheDocument()
   })

@@ -129,7 +129,10 @@ describe('mon espace — paiements par période', () => {
   it('n’offre plus deux quittances pour un seul document', async () => {
     await ouvrir()
     const main = screen.getByRole('main')
-    expect(within(main).queryAllByRole('button', { name: /^Télécharger$/ })).toHaveLength(0)
+    /* SANS L'ANCRE `$` : ce cas garde une ABSENCE, et le nom accessible de ces
+       boutons porte maintenant sa période (« Télécharger — mai 2026 »). Anclé, il
+       serait resté vert en cessant de garder quoi que ce soit. */
+    expect(within(main).queryAllByRole('button', { name: /^Télécharger/ })).toHaveLength(0)
   })
 
   /**

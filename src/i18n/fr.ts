@@ -732,6 +732,7 @@ export const fr = {
       depositReceipt: 'Reçu de caution',
       view: 'Consulter',
       download: 'Télécharger',
+      downloadFor: 'Télécharger — {period}',
       /**
        * Le produit ne sait ni recevoir un fichier déposé, ni fabriquer un PDF
        * opposable. Annoncer « PDF » sur une case vide inventerait la pièce que
@@ -1293,6 +1294,7 @@ export const fr = {
       removeTitle: 'Retirer ce versement de {amount} ?',
       removeBody:
         'Encaissé le {date}. Le retirer fait réapparaître la dette : c’est de l’argent qu’on déclare ne plus avoir reçu. Le journal en garde la trace.',
+      issueFor: 'Quittance — {unit}',
       issue: 'Quittance',
     },
     payments: {
@@ -1392,6 +1394,7 @@ export const fr = {
          raison inventée : la démonstration n'a personne à qui écrire. */
       remindDemo:
         'La démonstration n’envoie aucune relance : il faut un parc réel pour écrire aux locataires.',
+      noticeFor: 'Mettre en demeure — {unit}',
       notice: 'Mettre en demeure',
       noticeTitle: 'Mettre en demeure {tenant} ?',
       noticeBody:
@@ -2212,6 +2215,14 @@ export const fr = {
       linkField: 'Fiche locataire',
       linkHint: 'Le logement est rappelé après le nom : c’est lui qui distingue deux fiches homonymes.',
       linked: 'Fiche reliée · le locataire voit désormais son logement',
+      /* LE NOM DE LA PERSONNE OU DU LOGEMENT DANS LE NOM ACCESSIBLE — voir
+         `Meters.correctLine`, qui a écrit la règle : « douze boutons "Corriger" à
+         la suite ne disent pas lequel on active ». Ces libellés-ci ne s'affichent
+         jamais : le bouton garde son mot court, et seule la voix reçoit le
+         complément. */
+      revokeMemberFor: 'Retirer l’accès de {name}',
+      linkTenantFor: 'Relier à une fiche — {name}',
+      unlinkTenantFor: 'Délier la fiche — {name}',
       revokeMember: 'Retirer l’accès',
       memberRevoked: 'Accès retiré',
       invitesTitle: 'Codes en attente',
@@ -2340,6 +2351,7 @@ export const fr = {
          retirées plutôt que gardées « au cas où ». */
       remindOne: 'Relancer',
       remindFor: 'Relancer {name}',
+      fileLinkFor: 'Dossier — {unit}',
       fileLink: 'Dossier',
       actionsFor: 'Actions pour {name}',
       editFor: 'Corriger la fiche de {name}',

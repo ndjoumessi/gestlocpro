@@ -529,6 +529,7 @@ export const en: Dictionary = {
       depositReceipt: 'Deposit receipt',
       view: 'View',
       download: 'Download',
+      downloadFor: 'Download — {period}',
       none: 'No document uploaded',
       leaseNever:
         'The signed lease is not filed here. Request a duplicate below: your manager replies in this space.',
@@ -897,6 +898,7 @@ export const en: Dictionary = {
       removeTitle: 'Remove this {amount} payment?',
       removeBody:
         'Received on {date}. Removing it brings the debt back: this is money you declare you no longer received. The journal keeps a record.',
+      issueFor: 'Receipt — {unit}',
       issue: 'Receipt',
     },
     payments: {
@@ -962,6 +964,7 @@ export const en: Dictionary = {
          lignes en retard — le français, plus court, tenait. La formule
          raccourcie est celle de l'usage juridique anglais ; le nom complet
          reste dans le titre de la boîte, où la place existe. */
+      noticeFor: 'Serve notice — {unit}',
       notice: 'Serve notice',
       noticeTitle: 'Serve formal notice to {tenant}?',
       noticeBody:
@@ -1519,6 +1522,9 @@ export const en: Dictionary = {
       linkField: 'Tenant record',
       linkHint: 'The unit follows the name: that is what tells two identical names apart.',
       linked: 'Record linked · the tenant now sees their unit',
+      revokeMemberFor: 'Remove {name}’s access',
+      linkTenantFor: 'Link to a record — {name}',
+      unlinkTenantFor: 'Unlink record — {name}',
       revokeMember: 'Remove access',
       memberRevoked: 'Access removed',
       invitesTitle: 'Pending codes',
@@ -1612,6 +1618,7 @@ export const en: Dictionary = {
       noAccount: 'No account',
       remindOne: 'Send reminder',
       remindFor: 'Send a reminder to {name}',
+      fileLinkFor: 'File — {unit}',
       fileLink: 'File',
       actionsFor: 'Actions for {name}',
       editFor: 'Edit {name}’s record',

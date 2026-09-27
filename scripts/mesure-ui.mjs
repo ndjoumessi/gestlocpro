@@ -4035,6 +4035,18 @@ let ciblesDeSurface = 0
   encre/fond : le même bouton anonyme rapporté à onze largeurs et deux langues
   est UN correctif, et vingt-deux lignes de rapport cachent le second défaut.
 */
+/**
+ * LES COMMANDES QUI PORTENT LE MÊME NOM DANS UNE MÊME LISTE.
+ *
+ * Seconde règle de `noms-accessibles.js`, et elle existait en prose depuis deux
+ * lots : « douze boutons "Corriger" à la suite ne disent pas lequel on active »
+ * (`Meters`), « "A1" seul, dans une liste de dix liens, ne dit pas où l'on va »
+ * (`Portfolio`). Écrite deux fois, appliquée à deux endroits, gardée nulle part —
+ * et quatre écrans la violaient au moment où cette garde est née.
+ */
+const commandesHomonymes = new Map()
+/** Combien de listes ont été regardées — voir la sonde, qui dit pourquoi. */
+let listesExaminees = 0
 const commandesAnonymes = new Map()
 let nomsExamines = 0
 /** Points (écran × largeur × langue) où la sonde des noms s'est exécutée. */
@@ -4431,6 +4443,17 @@ try {
         }
         nomsExamines += noms.examinees
         pointsDeNom++
+        /* LES HOMONYMES D'UNE MÊME LISTE — seconde règle de la même sonde, voir
+           son en-tête. Retenus une fois par NOM et par groupe : le même défaut
+           se rapporte sur douze largeurs et deux langues, et douze copies d'une
+           plainte ne la rendent pas plus vraie. */
+        listesExaminees += noms.groupes ?? 0
+        for (const h of noms.homonymes ?? []) {
+          const cle = `${h.groupe}|${h.nom}`
+          if (!commandesHomonymes.has(cle)) {
+            commandesHomonymes.set(cle, { ...h, ou: `${adresse} ${largeur}px ${langue}` })
+          }
+        }
         for (const item of noms.items) {
           const cle = `${item.balise}|${item.role}|${item.classes}`
           if (!commandesAnonymes.has(cle)) {
@@ -4735,6 +4758,13 @@ try {
         }
         nomsExamines += noms.examinees
         nomsDeSurface += noms.examinees
+        listesExaminees += noms.groupes ?? 0
+        for (const h of noms.homonymes ?? []) {
+          const cle = `${nom}|${h.groupe}|${h.nom}`
+          if (!commandesHomonymes.has(cle)) {
+            commandesHomonymes.set(cle, { ...h, ou: `surface ${nom}` })
+          }
+        }
         /* `pointsDeNom` N'EST PAS incrémenté : sa garde exige l'égalité exacte
            avec adresses × largeurs × langues, pour la même raison que
            `pointsDeCible`. Les surfaces ont leur propre compte. */
@@ -5803,6 +5833,35 @@ if (textesDeSurface < TEXTES_DE_SURFACE_ATTENDUS) {
   et le sélecteur de mois de la modale de paiement ne sont regardés par rien
   d'autre, puisqu'aucune capture ne les contient.
 */
+/*
+  ═══ DEUX COMMANDES D'UNE MÊME LISTE NE PORTENT PAS LE MÊME NOM ═══
+
+  La règle est écrite dans `noms-accessibles.js`, avec son seuil et ses limites.
+  Ce qu'il faut savoir ici : elle refuse à partir de TROIS, parce qu'une paire de
+  gestes symétriques est ordinaire et qu'une colonne de gestes ne l'est pas.
+
+  ELLE REFUSE, ELLE NE PRÉVIENT PAS, et c'est la leçon de ses deux prédécesseurs :
+  la même règle vivait en prose dans `Meters` et dans `Portfolio` depuis des lots,
+  appliquée là et nulle part ailleurs. Quatre écrans la violaient quand cette
+  garde est née — dont les deux gestes les plus lourds du produit, la mise en
+  demeure et le retrait d'un accès.
+*/
+if (commandesHomonymes.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${commandesHomonymes.size} nom(s) accessible(s) porté(s) par TROIS commandes ` +
+      `ou plus dans une même liste.\n` +
+      "   On les atteint l'une après l'autre à la tabulation, et rien n'est prononcé\n" +
+      '   entre elles : le nom doit porter ce qui les distingue — le logement, la\n' +
+      "   personne, la période. Le libellé VISIBLE, lui, garde son mot court : c'est\n" +
+      "   `aria-label` qui reçoit le complément.\n",
+  )
+  for (const c of commandesHomonymes.values()) {
+    console.error(`  ▸ ${c.ou} — « ${c.nom} » ${c.fois} fois dans un <${c.groupe}>`)
+    console.error(`     ${c.html}\n`)
+  }
+  process.exit(1)
+}
+
 if (commandesAnonymes.size > 0) {
   console.error(
     `\n✗ mesure-ui : ${commandesAnonymes.size} forme(s) de commande sans nom accessible, ` +
@@ -6640,6 +6699,8 @@ console.log(
     `plus les surfaces, aucune anonyme (WCAG 4.1.2) ;\n` +
     `  accord avec accname de Playwright vérifié en ${accordsAccname.length} points, ` +
     `écarts de la sonde déclarés dans \`scripts/noms-accessibles.js\`.\n` +
+    `  ${listesExaminees} liste(s) et tableau(x) examinés pour l'HOMONYMIE de leurs gestes, ` +
+    `aucun nom porté\n  par trois commandes ou plus — on les atteint l'un après l'autre à la tabulation.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact sur ${pointsDeCible} points ` +
       `(${LARGEURS.length} largeurs × ${LANGUES.length} langues, thème ${THEME_DE_GEOMETRIE}), ` +
       `aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,

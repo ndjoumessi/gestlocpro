@@ -209,13 +209,20 @@ const MODALES: Modale[] = [
 
       · « Quittance » et « Répondre » se répètent PAR LIGNE — dix et quatre
         boutons mesurés. Elles déclarent leur `rang` ;
+
+        CE QUE CE CONSTAT A PRODUIT, DEUX LOTS PLUS TARD : dix boutons répétés
+        par ligne, c'est dix noms accessibles identiques, et rien ne les
+        distinguait à la tabulation. Ils portent désormais leur logement — d'où
+        les motifs « — » de cette table, qui cherchent un début de nom et non un
+        nom entier. Le `rang` reste : ils se répètent toujours, c'est leur NOM
+        qui a cessé de se confondre ;
       · « Signaler un problème » n'existe que pour le LOCATAIRE : l'écran des
         travaux ne le rend pas au bailleur. Elle déclare son `profil`.
 
     La quittance est la seule `lecture` des douze : une pièce qu'on consulte,
     sans un champ à remplir.
   */
-  { nom: 'Quittance', fichier: 'features/dashboard/ReceiptModal.tsx', adresse: '/demo/paiements', bouton: /^Quittance$/, rang: 0, forme: 'lecture' },
+  { nom: 'Quittance', fichier: 'features/dashboard/ReceiptModal.tsx', adresse: '/demo/paiements', bouton: /^Quittance — /, rang: 0, forme: 'lecture' },
   { nom: 'Établir un état des lieux', fichier: 'features/dashboard/InspectionModal.tsx', adresse: '/demo/etats-des-lieux', bouton: /^Établir un état des lieux$/, forme: 'saisie' },
   { nom: 'Inviter par code', fichier: 'features/dashboard/InviteModal.tsx', adresse: '/demo/locataires', bouton: /^Inviter par code$/, forme: 'saisie' },
   { nom: 'Prévenir les locataires', fichier: 'features/dashboard/AnnounceModal.tsx', adresse: '/demo/locataires', bouton: /^Prévenir les locataires$/, forme: 'saisie' },
@@ -257,9 +264,9 @@ const MODALES: Modale[] = [
   { nom: 'Corriger une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger la fiche de /, rang: 0, forme: 'saisie' },
   { nom: 'Créer une fiche locataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Créer une fiche locataire$/, forme: 'saisie' },
   { nom: 'Confier des immeubles', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Confier des immeubles$/, rang: 0, forme: 'saisie' },
-  { nom: 'Relier à une fiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche$/, rang: 0, forme: 'saisie' },
+  { nom: 'Relier à une fiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche — /, rang: 0, forme: 'saisie' },
 
-  { nom: 'Retirer un accès', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès$/, rang: 0, forme: 'lecture' },
+  { nom: 'Retirer un accès', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès de /, rang: 0, forme: 'lecture' },
   { nom: 'Relancer les retards', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$/, forme: 'lecture' },
   /* LA RELANCE D'UN SEUL, née avec les fiches de locataire : même modale que la
      relance groupée, au singulier, et sur la fiche de qui la reçoit. `rang: 0`
@@ -267,7 +274,7 @@ const MODALES: Modale[] = [
   { nom: 'Relancer un locataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Relancer ./, rang: 0, forme: 'lecture' },
   /* La cinquième confirmation, entrée quand la démonstration a cessé de masquer
      le geste. `saisie` : elle porte un motif, qui est tout l'acte. */
-  { nom: 'Mettre en demeure', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure$/, rang: 0, forme: 'saisie' },
+  { nom: 'Mettre en demeure', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure — /, rang: 0, forme: 'saisie' },
 ]
 
 /**

@@ -74,7 +74,11 @@ describe('coquille du locataire — adresses', () => {
     await ouvrirEnLocataire('/demo/documents')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/pièces et quittances/i)
     // Six quittances au jeu de démonstration, chacune téléchargeable.
-    expect(screen.getAllByRole('button', { name: 'Télécharger' }).length).toBeGreaterThan(0)
+    /* Le nom accessible porte la période depuis `gestesQuiSeDistinguent` : on
+       cherche donc le début du nom, et non le nom entier. */
+    expect(
+      screen.getAllByRole('button', { name: /^Télécharger/ }).length,
+    ).toBeGreaterThan(0)
   })
 
   /**

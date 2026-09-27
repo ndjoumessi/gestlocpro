@@ -272,7 +272,11 @@ describe('quittances du locataire', () => {
     await attendreLeChargement()
 
     const user = userEvent.setup()
-    const [premier] = screen.getAllByRole('button', { name: /^Télécharger$/ })
+    /* `— ` DANS LE MOTIF : le nom accessible de ces boutons porte désormais la
+       PÉRIODE — six lignes rendaient six boutons « Télécharger » que rien ne
+       distinguait. Le libellé visible n'a pas changé ; l'ancre `$` visait le nom
+       accessible, qui, lui, s'est allongé. Voir `gestesQuiSeDistinguent`. */
+    const [premier] = screen.getAllByRole('button', { name: /^Télécharger — / })
     await user.click(premier)
     const [file] = await capture.settle()
 
@@ -313,7 +317,7 @@ describe('quittances du locataire', () => {
     await attendreLeChargement()
 
     const user = userEvent.setup()
-    await user.click(screen.getAllByRole('button', { name: /^Télécharger$/ })[0])
+    await user.click(screen.getAllByRole('button', { name: /^Télécharger — / })[0])
     const [file] = await capture.settle()
 
     const document = enLatin1(file.bytes)
@@ -346,7 +350,7 @@ describe('quittances du locataire', () => {
     await attendreLeChargement()
 
     const user = userEvent.setup()
-    const boutons = screen.getAllByRole('button', { name: /^Télécharger$/ })
+    const boutons = screen.getAllByRole('button', { name: /^Télécharger — / })
     // Août soldé, puis mai partiel — quatrième de la liste.
     await user.click(boutons[0])
     await user.click(boutons[3])
@@ -369,7 +373,7 @@ describe('quittances du locataire', () => {
     await attendreLeChargement()
 
     const user = userEvent.setup()
-    const boutons = screen.getAllByRole('button', { name: /^Télécharger$/ })
+    const boutons = screen.getAllByRole('button', { name: /^Télécharger — / })
     expect(boutons).toHaveLength(6)
 
     await user.click(boutons[0])

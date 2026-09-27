@@ -25,7 +25,8 @@
  * Il le LIT plutôt que d'en recopier la logique. Une copie dériverait en
  * silence, et ce dépôt a déjà payé ce silence-là.
  *
- * LA FORME DU RETOUR EST UN CONTRAT : `{ anonymes, items, examinees }`.
+ * LA FORME DU RETOUR EST UN CONTRAT :
+ * `{ anonymes, items, examinees, homonymes, groupes }`.
  * L'expression doit rester une IIFE qui S'ÉVALUE en cet objet — c'est ce que
  * `page.evaluate` reçoit. Un `return` de haut niveau, et la porte reçoit
  * `undefined` sans rien dire.
@@ -243,6 +244,86 @@
   }
 
   /*
+    ═══ DEUXIÈME RÈGLE : DEUX COMMANDES D'UNE MÊME LISTE NE PORTENT PAS LE MÊME NOM ═══
+
+    WCAG 4.1.2 exige qu'une commande ait un nom ; il ne dit pas qu'il la
+    distingue. Ce produit, lui, l'exige — et il l'avait écrit DEUX FOIS avant de
+    le mesurer :
+
+      « douze boutons "Corriger" à la suite ne disent pas lequel on active »
+        (`Meters.tsx`, colonne de geste)
+      « "A1" seul, dans une liste de dix liens, ne dit pas où l'on va »
+        (`Portfolio.tsx`, lien de logement)
+
+    Deux règles écrites, appliquées à deux endroits, gardées nulle part. Relevé
+    au navigateur le 2026-09-27, sur la démonstration en français à 1440 px :
+    dix boutons « Quittance » et trois « Mettre en demeure » dans le tableau des
+    paiements, dix liens « Dossier » chez les locataires, quatre « Retirer
+    l'accès » dans les accès, six « Télécharger » dans les documents du
+    locataire. Le geste le plus lourd du produit — la mise en demeure — et celui
+    qui retire son accès à quelqu'un en faisaient partie.
+
+    LE GROUPE EST LA LISTE, PAS LA PAGE. Deux boutons « Exporter » aux deux bouts
+    d'un écran se distinguent par leur contexte ; dix boutons dans dix rangées
+    d'un même tableau ne se distinguent par rien — on les atteint à la
+    tabulation, l'un après l'autre, et rien n'est prononcé entre eux. On groupe
+    donc par `table`, `ul` et `ol`, et l'on compte par nom.
+
+    LE SEUIL EST À TROIS, ET IL EST ARBITRÉ. Deux commandes de même nom dans une
+    liste, c'est le cas ordinaire d'une paire de gestes symétriques — « Oui » et
+    « Non », deux « Voir » sur deux moitiés — et refuser une PAIRE ferait rougir
+    des écrans sains. À partir de trois, c'est une COLONNE de gestes : la forme
+    même du défaut relevé ci-dessus, et aucun des quatre cas trouvés n'en avait
+    moins de trois.
+
+    CE QUE CETTE RÈGLE NE VOIT PAS, et l'écrire vaut mieux que de le laisser
+    croire : deux listes VOISINES portant chacune deux boutons homonymes. Le
+    groupe est la liste, donc le compte y reste à deux. Aucun cas de ce genre
+    n'existe aujourd'hui ; le jour où il existera, ce commentaire sera le seul
+    endroit où la limite était écrite.
+  */
+  const SEUIL_D_HOMONYMIE = 3
+  const homonymes = []
+  /* COMBIEN DE LISTES ONT ÉTÉ REGARDÉES — même raison qu'`examinees` : « zéro
+     homonyme » et « zéro liste » s'écrivent pareil dans un journal. */
+  let groupes = 0
+
+  for (const groupe of document.querySelectorAll('table, ul, ol')) {
+    /* Les listes IMBRIQUÉES sont sautées : leurs commandes appartiennent déjà au
+       groupe du dessus, et les compter deux fois rapporterait deux fois le même
+       défaut. On garde la plus PROCHE — celle qui contient les rangées. */
+    if (groupe.parentElement?.closest('table, ul, ol')) continue
+    if (groupe.closest('[aria-hidden="true"]')) continue
+    groupes++
+
+    const parNom = new Map()
+    for (const el of groupe.querySelectorAll(COMMANDES)) {
+      if (el.closest('[aria-hidden="true"]')) continue
+      if (!visible(el)) continue
+      /* Un menu de débordement OUVERT porte ses propres entrées, qui se
+         ressemblent d'une rangée à l'autre par construction — elles ne sont
+         atteignables que depuis LEUR déclencheur, donc jamais l'une après
+         l'autre. Le déclencheur, lui, reste compté. */
+      if (el.closest('[role="menu"]')) continue
+      const { nom } = nomDe(el, roleDe(el))
+      if (!nom) continue
+      const vus = parNom.get(nom)
+      if (vus) vus.push(el)
+      else parNom.set(nom, [el])
+    }
+
+    for (const [nom, els] of parNom) {
+      if (els.length < SEUIL_D_HOMONYMIE) continue
+      homonymes.push({
+        nom,
+        fois: els.length,
+        groupe: groupe.tagName.toLowerCase(),
+        html: netto(els[0].outerHTML).slice(0, 160),
+      })
+    }
+  }
+
+  /*
     ON REND LE NOMBRE D'ÉLÉMENTS REGARDÉS, et pas seulement les fautifs.
 
     Même raison qu'en contraste : « zéro commande anonyme » et « zéro commande
@@ -250,5 +331,5 @@
     qui n'a pas fini de peindre, et cette sonde rendrait le plus rassurant des
     verts. Le compte permet à `mesure-ui.mjs` de refuser ce vert-là.
   */
-  return { anonymes: items.length, items, examinees }
+  return { anonymes: items.length, items, examinees, homonymes, groupes }
 })()

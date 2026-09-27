@@ -764,6 +764,14 @@ export function Payments() {
                       variant="ghost"
                       size="sm"
                       icon="shield"
+                      /* LE LOGEMENT DANS LE NOM ACCESSIBLE. Dix lignes, dix
+                         boutons « Quittance » et trois « Mettre en demeure » :
+                         rien ne disait lequel on activait. La règle vient de
+                         `Meters` — « douze boutons "Corriger" à la suite ne
+                         disent pas lequel on active » — et elle vaut d'autant
+                         plus ici que la mise en demeure est le geste le plus
+                         lourd du produit. */
+                      aria-label={t('app.payments.noticeFor', { unit: unit.label })}
                       onClick={() => {
                         setEnDemeure(unit)
                         setMotif('')
@@ -777,6 +785,8 @@ export function Payments() {
                     variant="ghost"
                     size="sm"
                     icon="download"
+                    /* Voir le bouton ci-dessus : le logement nomme le geste. */
+                    aria-label={t('app.receipts.issueFor', { unit: unit.label })}
                     onClick={() => setQuittanceDe(unit.id)}
                   >
                     {t('app.receipts.issue')}

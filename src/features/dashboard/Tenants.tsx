@@ -613,6 +613,13 @@ export function Tenants() {
                   variant="secondary"
                   size="sm"
                   icon="file"
+                  /* LA MÊME RÈGLE QUE SON VOISIN, ET ELLE LUI MANQUAIT. Le bouton
+                     « Relancer », dix lignes plus haut, porte déjà le nom du
+                     locataire dans son nom accessible ; celui-ci ne portait rien,
+                     et dix cartes rendaient dix liens « Dossier ». Le logement
+                     plutôt que le locataire : c'est la fiche du LOGEMENT que le
+                     lien ouvre, et un logement vacant garde son dossier. */
+                  aria-label={t('app.tenants.fileLinkFor', { unit: unit.label })}
                   to={lien(base, `parc/${unit.id}`)}
                 >
                   {t('app.tenants.fileLink')}

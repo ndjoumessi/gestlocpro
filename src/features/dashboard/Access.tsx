@@ -442,6 +442,9 @@ export function Access() {
                         size="sm"
                         icon="users"
                         loading={enCours === m.id}
+                        /* Voir le bouton de retrait, plus bas : les trois gestes
+                           d'une ligne portent le nom de la personne. */
+                        aria-label={t('app.access.linkTenantFor', { name: m.fullName })}
                         onClick={() => setARelier(m)}
                       >
                         {t('app.access.linkTenant')}
@@ -470,16 +473,25 @@ export function Access() {
                         size="sm"
                         icon="users"
                         loading={enCours === m.id}
+                        aria-label={t('app.access.unlinkTenantFor', { name: m.fullName })}
                         onClick={() => setADelier(m)}
                       >
                         {t('app.access.unlinkTenant')}
                       </Button>
                     )}
+                    /* LE NOM DE LA PERSONNE DANS LE NOM ACCESSIBLE — la règle
+                       est celle que `Meters` a écrite pour ses douze boutons
+                       « Corriger » (« douze boutons à la suite ne disent pas
+                       lequel on active ») et que `Portfolio` applique à ses
+                       liens de logement. Quatre membres, quatre boutons
+                       identiques : celui-ci retire l'accès de quelqu'un, et
+                       c'est le geste où l'homonymie coûte le plus cher. */
                     <Button
                       variant="ghost"
                       size="sm"
                       icon="close"
                       loading={enCours === m.id}
+                      aria-label={t('app.access.revokeMemberFor', { name: m.fullName })}
                       onClick={() => setARetirer({ genre: 'membre', membre: m })}
                     >
                       {t('app.access.revokeMember')}

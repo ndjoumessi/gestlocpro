@@ -243,7 +243,11 @@ async function telecharger(nom: RegExp) {
 const DOCUMENTS = [
   {
     nom: 'quittance',
-    bouton: /^Télécharger$/,
+    /* `— ` : le nom accessible de ce bouton porte désormais la PÉRIODE, six
+       lignes rendant six « Télécharger » que rien ne distinguait. Les deux
+       autres documents n'ont qu'un bouton chacun et gardent leur libellé
+       complet. Voir `gestesQuiSeDistinguent`. */
+    bouton: /^Télécharger — /,
     /* Le nom du locataire, la référence d'opérateur, et le total de la période
        — les trois valeurs longues que ce document seul compose. */
     attendus: [NOM_LONG, 'VIR-0000000000000000-REFERENCE-INTERMINABLE', '103'],

@@ -360,6 +360,14 @@ export function TenantDocuments() {
                     variant="ghost"
                     size="sm"
                     icon="download"
+                    /* LA PÉRIODE DANS LE NOM ACCESSIBLE : six mois listés, six
+                       boutons « Télécharger », et rien pour dire lequel rend la
+                       quittance de mai. Même règle que les douze « Corriger » des
+                       relevés. C'est le mois qui distingue la ligne — le montant
+                       et l'état la qualifient, ils ne la nomment pas. */
+                    aria-label={t('app.documents.downloadFor', {
+                      period: d.monthYear(receipt),
+                    })}
                     onClick={() => telechargerLaQuittance(unit, receipt)}
                   >
                     {t('app.documents.download')}
