@@ -1010,14 +1010,30 @@ function ListeDeFiches<T>({
   }
 
   return (
-    <>
+    /*
+      UN SEUL NŒUD EN SORTIE, ET NON UN FRAGMENT DE DEUX.
+
+      Cette forme rendait la `<ul>` seule. Lui ajouter le pied EN FRÈRE change le
+      nombre d'enfants que les appelants remettent à LEUR conteneur : sept écrans
+      rendent cette liste, et chacun la pose dans une mise en page qu'il a réglée
+      pour un enfant. Un conteneur en grille ou en `flex` horizontal aurait donné
+      deux colonnes au lieu d'une, donc une liste plus étroite — et une liste plus
+      étroite est un débordement local chez le premier contenu qui ne se replie
+      pas.
+
+      La branche GROUPÉE, elle, rendait déjà un seul `<div>` : c'est la forme
+      plate qui devait la rejoindre, pas l'inverse. Le `flex flex-col` reprend ce
+      que la `<ul>` portait, pour que rien ne se déplace d'un pixel là où le pied
+      ne s'affiche pas.
+    */
+    <div className="flex flex-col">
       <ul aria-label={caption} className="flex flex-col gap-2">
         {rows.map((row) => (
           <Fiche key={rowKey(row)} row={row} columns={columns} />
         ))}
       </ul>
       <PiedDeTotaux columns={columns} rows={rows} lignesEnTout={lignesEnTout} />
-    </>
+    </div>
   )
 }
 
@@ -1087,7 +1103,29 @@ function PiedDeTotaux<T>({
           Un second garde aurait laissé croire qu'elle peut l'être. */}
       <dl className="mt-2 flex flex-col gap-1.5">
         {totalisees.map((column) => (
-            <div key={column.key} className="flex items-baseline justify-between gap-3">
+            /*
+              `flex-wrap`, ET C'EST LA PORTE QUI L'A POSÉ.
+
+              `mesure-ui` a refusé ce couple de 3 px à 320 px sur les paiements :
+              « Solde cumulé » est un intitulé long, et « −486 771 FCFA » est un
+              jeton INSÉCABLE — `Intl` met des espaces insécables À L'INTÉRIEUR
+              d'un montant, donc il ne se coupe nulle part. Le `dt` portait
+              `shrink-0`, le `dd` ne pouvait pas descendre sous la largeur de son
+              jeton : la somme des deux dépassait la carte, et rien ne cédait.
+
+              Replié, le montant passe à la ligne quand il ne tient plus à côté de
+              son nom. `ml-auto` le garde à droite une fois seul sur sa ligne —
+              `justify-between` ne l'y met pas, un élément unique allant au début.
+
+              CE QUE LE CORPS DE LA FICHE FAIT AUTREMENT, et pourquoi il peut :
+              là, la valeur est parfois COMPOSÉE — « 178 · 4 120 → 4 298 » — et se
+              coupe à ses espaces ordinaires. Un total ne l'est jamais : c'est un
+              montant, d'un bloc. Le repli est la seule issue qui lui reste.
+            */
+            <div
+              key={column.key}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
+            >
               <dt className="eyebrow shrink-0 text-muted">{column.header}</dt>
               <dd
                 /* `numeric` SANS `whitespace-nowrap`, pour la raison mesurée dans
@@ -1095,7 +1133,7 @@ function PiedDeTotaux<T>({
                    `Intl` pose des espaces insécables DANS un montant, qui reste
                    donc entier de lui-même. */
                 className={cn(
-                  'min-w-0 text-right text-body font-medium',
+                  'ml-auto min-w-0 text-right text-body font-medium',
                   column.numeric && 'numeric',
                 )}
               >
