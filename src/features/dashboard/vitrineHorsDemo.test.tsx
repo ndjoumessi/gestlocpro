@@ -83,8 +83,27 @@ describe('vitrines, dans la démonstration seulement', () => {
     // flotterait alors au bas de la barre, à séparer le vide du vide.
     await renderApp('/app')
 
-    const laterale = screen.getByRole('navigation', { name: 'Sections du produit' })
-    const pied = laterale.parentElement?.querySelector('.mt-auto')
+    /*
+      TROUVÉ PAR SON MARQUEUR, ET NON PAR `.mt-auto`.
+      
+      Ce cas cherchait le pied par une CLASSE — `.mt-auto` — et depuis le frère du
+      `<nav>`. Le lot qui a mis la barre en trois zones a retiré cette marge, à
+      juste titre : elle poussait le pied vers le bas DANS un conteneur qui
+      défilait, ce qui ne veut rien dire. Le `<nav>` a par ailleurs cessé d'être
+      l'enfant direct de l'`<aside>` : il vit maintenant dans la zone mobile.
+      
+      Les deux repères ont donc lâché en même temps, et c'est le garde de ce cas
+      qui l'a dit — « le conteneur de pied a disparu : ce garde ne vérifie plus
+      rien ». C'est exactement ce qu'un cas doit faire quand ce qu'il interroge
+      change de forme : rougir en le nommant, plutôt que passer au vert en ne
+      trouvant plus rien à contrôler.
+      
+      `data-zone` est ce que la barre déclare maintenant : un contrat de structure,
+      interrogeable sans lire une feuille de style — et qui survit au prochain
+      remaniement de mise en page, ce qu'aucune des deux anciennes prises ne
+      faisait.
+    */
+    const pied = document.querySelector('[data-zone="pied"]')
     expect(pied, 'le conteneur de pied a disparu : ce garde ne vérifie plus rien').not.toBeNull()
     expect(pied?.className).not.toMatch(/border-t/)
   })
