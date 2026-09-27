@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, EmptyState } from '@/components/primitives/DataTable'
@@ -60,6 +60,49 @@ import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
  * diminutif. Un refus se contournerait par un renommage ; une QUESTION posée au
  * bon moment coûte trois secondes et arrête la faute.
  */
+/**
+ * UNE ADRESSE QUI SE COUPE OÙ ELLE A UN SENS.
+ *
+ * ═══ CE QUE `break-words` SEUL DONNAIT ═══
+ *
+ * « arsene@example.co » puis « m » seul sur la ligne suivante. `overflow-wrap`
+ * n'autorise la coupe QUE parce que le mot ne tient pas, et il coupe alors au
+ * dernier caractère qui entre — au milieu du domaine de premier niveau. Relevé
+ * à l'écran sur deux des quatre membres de la démonstration.
+ *
+ * ═══ NI TRONCATURE, NI TRAIT D'UNION ═══
+ *
+ * La troncature a été refusée ici, et la raison est écrite sur la fiche :
+ * l'adresse est ce qui IDENTIFIE un compte — c'est sur elle que le retrait de
+ * son propre accès se refuse — et « charles@exam… » n'identifie plus personne.
+ *
+ * Le trait d'union conditionnel que ce dépôt emploie pour ses libellés
+ * (`U+00AD`) serait pire qu'inutile : il DESSINE un tiret au point de coupe, et
+ * un tiret dans une adresse en fait une autre adresse. On lit « exam-ple.com »
+ * et on la recopie fausse.
+ *
+ * ═══ `<wbr>` : UNE COUPE POSSIBLE, AUCUN CARACTÈRE ═══
+ *
+ * L'élément n'a pas de contenu et ne rend aucun glyphe, coupure ou pas. Le
+ * `textContent` du nœud reste donc l'adresse EXACTE — ce qui importe pour la
+ * copie, pour la recherche du navigateur, et pour les cas de ce dépôt qui
+ * comparent une adresse à celle de la session.
+ *
+ * LES POINTS DE COUPE SONT APRÈS `@` ET APRÈS CHAQUE POINT, les seules
+ * frontières qu'une adresse possède : la boîte, le domaine, ses sous-domaines.
+ * `break-words` reste en dessous comme filet, pour l'adresse dont un seul
+ * segment serait déjà trop long.
+ */
+function adresseSecable(adresse: string) {
+  const segments = adresse.split(/(?<=[@.])/)
+  return segments.map((segment, rang) => (
+    <Fragment key={rang}>
+      {segment}
+      {rang < segments.length - 1 && <wbr />}
+    </Fragment>
+  ))
+}
+
 function memePersonne(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return true
   const cle = (n: string) =>
@@ -479,13 +522,13 @@ export function Access() {
                         {t('app.access.unlinkTenant')}
                       </Button>
                     )}
-                    /* LE NOM DE LA PERSONNE DANS LE NOM ACCESSIBLE — la règle
-                       est celle que `Meters` a écrite pour ses douze boutons
-                       « Corriger » (« douze boutons à la suite ne disent pas
-                       lequel on active ») et que `Portfolio` applique à ses
-                       liens de logement. Quatre membres, quatre boutons
-                       identiques : celui-ci retire l'accès de quelqu'un, et
-                       c'est le geste où l'homonymie coûte le plus cher. */
+                    {/* LE NOM DE LA PERSONNE DANS LE NOM ACCESSIBLE — la règle
+                        est celle que `Meters` a écrite pour ses douze boutons
+                        « Corriger » (« douze boutons à la suite ne disent pas
+                        lequel on active ») et que `Portfolio` applique à ses
+                        liens de logement. Quatre membres, quatre boutons
+                        identiques : celui-ci retire l'accès de quelqu'un, et
+                        c'est le geste où l'homonymie coûte le plus cher. */}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -634,10 +677,14 @@ export function Access() {
                 {/* `break-words` ET NON `truncate` : l'adresse est ce qui
                     IDENTIFIE un compte — c'est sur elle que le retrait de son
                     propre accès se refuse — et une adresse coupée à
-                    « charles@exam… » ne l'identifie plus. */}
+                    « charles@exam… » ne l'identifie plus. Les points de coupe
+                    viennent d'`adresseSecable` : voir son en-tête pour ce que
+                    `break-words` seul donnait. */}
                 <div className="min-w-0">
                   <p className="font-medium break-words">{m.fullName}</p>
-                  <p className="text-body break-words text-muted">{m.email}</p>
+                  <p className="text-body break-words text-muted">
+                    {adresseSecable(m.email)}
+                  </p>
                 </div>
               </div>
               <StatusPill tone={m.role === 'owner' ? 'info' : 'neutral'} size="sm">
