@@ -110,14 +110,56 @@ export async function servirLaPrevisualisation(nom, port) {
   const base = `http://127.0.0.1:${port}`
   await exigerUnPortLibre(nom, base, port)
 
+  /*
+    ═══ `detached` — SANS LUI, LE KILL MANQUAIT SA CIBLE ═══
+
+    Ce fichier savait déjà que « `npx` est le fils, Vite le petit-fils » : c'est
+    écrit dans son en-tête, à propos de la surveillance de la mort du fils.
+    `fils.kill()` visait donc `npx`, et le PETIT-FILS — celui qui ÉCOUTE — lui
+    survivait. Les trois chemins de sortie ci-dessous étaient corrects, et les
+    trois tuaient le mauvais processus.
+
+    MESURÉ LE 2026-09-27, et deux fois dans la même heure : deux relevés lancés
+    de suite sur le MÊME port échouent au pré-vol du second, avec la plainte
+    « quelque chose répond déjà sur 4193 ». Le coupable est le petit-fils du
+    premier, dont la ligne de commande est bien `node …/vite preview --port 4193`.
+    Trois de ces orphelins tenaient 4193, 4197 et 4198 ; aucune interruption au
+    clavier n'était en cause, et les portes s'étaient terminées normalement.
+
+    C'est aussi ce que `port-libre.mjs` appelle « un orphelin d'un passage
+    interrompu » sans jamais pouvoir dire d'où il vient : la plupart du temps il
+    ne vient d'aucune interruption, mais d'un `kill` qui ne portait pas assez
+    loin.
+
+    `detached` fait du fils le CHEF de son groupe, et le petit-fils y entre : un
+    signal envoyé au groupe — `-pid` — les emporte tous les deux. Sans
+    `unref()` : on veut garder la main sur lui, pas le laisser vivre sa vie.
+  */
   const fils = spawn(
     'npx',
     ['vite', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
-    { cwd: RACINE, stdio: 'ignore' },
+    { cwd: RACINE, stdio: 'ignore', detached: true },
   )
 
+  /**
+   * Emporte le groupe entier, `npx` et le serveur qu'il a lancé.
+   *
+   * `SIGKILL` et non `SIGTERM` : on ne négocie pas la libération d'un port avec
+   * un processus dont on vient de décider la mort, et un serveur qui s'attarde
+   * une seconde de trop fait échouer le pré-vol de la porte suivante — c'est le
+   * défaut même que ce bloc corrige. Le `catch` couvre le groupe déjà parti, qui
+   * n'est pas une erreur.
+   */
+  const emporterLeGroupe = () => {
+    try {
+      process.kill(-fils.pid, 'SIGKILL')
+    } catch {
+      /* déjà parti, ou jamais né */
+    }
+  }
+
   const emporter = () => {
-    fils.kill()
+    emporterLeGroupe()
     process.exit(130)
   }
   process.once('SIGINT', emporter)
@@ -143,17 +185,18 @@ export async function servirLaPrevisualisation(nom, port) {
     tombe bien : `kill` est synchrone. Le `catch` couvre le fils déjà mort, qui
     n'est pas une erreur.
   */
-  process.once('exit', () => {
-    try {
-      fils.kill()
-    } catch {
-      /* déjà parti */
-    }
-  })
+  process.once('exit', emporterLeGroupe)
 
-  if (await attendreUneReponse(base)) return fils
+  if (await attendreUneReponse(base)) {
+    /* LE GROUPE EST RENDU AVEC LE FILS : les portes appellent `serveur.kill()`
+       à la fin de leur `finally`, et ce `kill`-là manquait la même cible que les
+       trois autres. Une seule ligne à changer chez elles serait une ligne à
+       oublier ; on remplace donc la méthode sur l'objet qu'elles reçoivent. */
+    fils.kill = emporterLeGroupe
+    return fils
+  }
 
-  fils.kill()
+  emporterLeGroupe()
   throw new Error(
     `${nom} : le serveur de prévisualisation n’a pas répondu sur ${base} ` +
       `après ${(ESSAIS * PAS_MS) / 1000} s.`,

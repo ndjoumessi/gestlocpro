@@ -173,6 +173,7 @@ import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { argv, exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
+import { TEMOIN, laColonneNormalePeutEtreANous, releverLeTemoin } from './temoin-de-la-machine.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
@@ -595,8 +596,46 @@ const PLAFONDS = [
   { adresse: '/adresse-qui-n-existe-pas', largeur: 1280, plafond: 900, plafondLarge: 900 },
 ]
 
-/** La colonne que la machine qui tourne possède — voir l'en-tête. */
-const COLONNE_A_NOUS = !POLICE_LARGE || Boolean(process.env.CI)
+/**
+ * LA COLONNE QUE LA MACHINE QUI TOURNE POSSÈDE — MESURÉE, PLUS SUPPOSÉE.
+ *
+ * Cette ligne s'écrivait `!POLICE_LARGE || Boolean(process.env.CI)` : sans
+ * commutateur, TOUTE machine était réputée être la machine de développement, où
+ * `system-ui` vaut SF Pro. Un conteneur d'exécution, la machine d'un nouveau
+ * contributeur, n'importe quel Linux : la porte y jugeait des plafonds qu'aucune
+ * de ses mesures ne concerne. `plafond-vitrine` en a rendu un verdict rouge le
+ * 2026-09-27, rapporté comme une dette — voir `temoin-de-la-machine.mjs`, qui
+ * porte les relevés et la preuve que la page n'avait rien gagné.
+ *
+ * `system-ui` est donc MESURÉ contre la face de repli, dans la même exécution et
+ * sans aucune constante inscrite. Le commutateur garde sa règle : sa colonne
+ * appartient à la porte publique, que `CI` désigne.
+ */
+let colonneANous = POLICE_LARGE ? Boolean(process.env.CI) : true
+let temoinDeLaMachine = null
+
+/**
+ * ET LE DÉPASSEMENT NE SUIT PAS LA MÊME RÈGLE QUE LE MOU — deux questions, deux
+ * conditions, et la première rédaction de ce lot les avait confondues.
+ *
+ * LE MOU (« le plafond est au-dessus de la mesure ») ne vaut que sur la machine
+ * qui POSSÈDE la colonne : ailleurs, l'écart mesuré n'est pas du mou, c'est une
+ * différence de police. Inchangé.
+ *
+ * LE DÉPASSEMENT, lui, garde sa valeur dès que la colonne mesurée est celle qui
+ * s'applique à la passe en cours : une croissance de CONTENU se voit dans les
+ * DEUX passes — l'en-tête de `plafond-vitrine` le montre sur le lot de la police
+ * des titres, poussé en normal ET en large. On le juge donc en police large
+ * MÊME hors `CI` : c'est la seule colonne qu'une machine autre que celle de
+ * développement reproduise, et la taire supprimerait le dernier garde-fou
+ * disponible en local. Sur le conteneur de ce lot, cette passe rend deux des
+ * quatre plafonds de la vitrine EXACTS au pixel.
+ *
+ * Ce qui disparaît est le seul verdict qu'aucune mesure ne soutenait : le
+ * dépassement de la colonne NORMALE sur une machine dont `system-ui` n'est pas
+ * celui de la colonne. C'est celui qui a produit le faux rapport.
+ */
+let depassementJuge = true
 
 function plafondDe(p) {
   if (!POLICE_LARGE) return p.plafond
@@ -748,6 +787,15 @@ try {
       await page
         .waitForFunction(() => document.fonts.status === 'loaded', null, { timeout: 3000 })
         .catch(() => {})
+      /* UNE FOIS SUFFIT : le témoin décrit la MACHINE, pas l'écran. Il est relevé
+         sur la première page ouverte plutôt que dans une page à lui. */
+      if (temoinDeLaMachine === null) {
+        temoinDeLaMachine = await releverLeTemoin(page)
+        if (!POLICE_LARGE) {
+        colonneANous = laColonneNormalePeutEtreANous(temoinDeLaMachine)
+        depassementJuge = colonneANous
+      }
+      }
       if (!(await page.evaluate(POSER_L_ARBRE))) arbresEnMouvement.push(nom)
       /*
         A-T-ON SEULEMENT VU L'ATTENTE ? Le drapeau est lu ICI, après que l'arbre
@@ -836,14 +884,26 @@ try {
       releve.push({ nom, hDoc, plafond, ...p })
       if (RELEVER) continue
 
-      if (COLONNE_A_NOUS && plafond > hDoc) {
+      if (colonneANous && plafond > hDoc) {
         plaintes.push(
           `${nom} : ${plafond - hDoc} px de MOU — le plafond (${plafond}) est au-dessus\n` +
             `   de la mesure (${hDoc}). Il ne refuse donc plus ce qu'il prétend refuser.\n` +
             `   Descendez-le à ${hDoc} : c'est un gain, et un gain non inscrit se redépense.`,
         )
       }
-      if (hDoc > plafond) {
+      /*
+        JUGÉ SOUS LA MÊME CONDITION QUE LE MOU, et cette asymétrie était le
+        défaut : le mou consultait la colonne, le dépassement non. Une machine
+        étrangère ne pouvait donc pas signaler un plafond trop haut, mais pouvait
+        REFUSER un écran sur un plafond qui n'est pas le sien — et c'est dans ce
+        sens-là que l'erreur coûte, puisqu'elle s'annonce comme une dette.
+
+        CE N'EST PAS UN ASSOUPLISSEMENT : une croissance de CONTENU se voit dans
+        les DEUX passes, comme l'en-tête de `plafond-vitrine` le montre sur le lot
+        de la police des titres. Ce qui disparaît est le verdict qu'aucune mesure
+        ne soutenait.
+      */
+      if (depassementJuge && hDoc > plafond) {
         plaintes.push(
           `${nom} : ${hDoc} px de document pour un plafond de ${plafond}.\n` +
             `   ${hDoc - plafond} px de plus qu'au dernier relevé. La coquille est gardée à part\n` +
@@ -971,18 +1031,48 @@ console.log(
       : ''),
 )
 
+/* AU VERT AUSSI, et c'est le point : un vert obtenu sur une colonne qui n'est
+   pas la nôtre n'est pas une assurance. Il ne se disait qu'au rouge. */
+if (!colonneANous) {
+  const nom = POLICE_LARGE ? 'plafondLarge' : 'plafond'
+  console.log(
+    depassementJuge
+      ? /* POLICE LARGE HORS `CI` : le dépassement vaut, le mou non — voir la note
+           des deux conditions. */
+        `\n  Colonne ${nom} : dépassement JUGÉ, mou NON jugé — cette machine ne\n` +
+          '  possède pas la colonne, seule la porte publique la possède.\n'
+      : `\n  Colonne ${nom} NON JUGÉE : cette machine ne la possède pas ` +
+          `(« ${TEMOIN} » : system-ui ${temoinDeLaMachine?.systeme} px, ` +
+          `repli ${temoinDeLaMachine?.repli} px).\n` +
+          '  Les hauteurs sont un RELEVÉ, pas un verdict. Pour juger ici :\n' +
+          '  MESURER_EN_POLICE_LARGE=1 node scripts/plafond-hauteurs.mjs\n',
+  )
+}
+
 if (plaintes.length > 0) {
   console.error(`\n✗ plafond-hauteurs : ${plaintes.length} plainte(s).\n`)
   for (const p of plaintes) console.error('  ▸ ' + p + '\n')
   console.error(
     `  Colonne jugée : ${POLICE_LARGE ? 'plafondLarge' : 'plafond'} — ` +
-      `${COLONNE_A_NOUS ? 'cette machine la possède' : "cette machine ne la possède PAS, le mou n'est pas jugé"}.\n`,
+      `${
+        colonneANous
+          ? 'cette machine la possède'
+          : `cette machine ne la possède PAS, aucun plafond n’est jugé — « ${TEMOIN} » : ` +
+            `system-ui ${temoinDeLaMachine?.systeme} px, repli ${temoinDeLaMachine?.repli} px`
+      }.\n`,
   )
   exit(1)
 }
 
 console.log(
-  `\n✓ plafond-hauteurs : ${inspectes}/${ATTENDUS} points sous leur plafond de hauteur de document,\n` +
-    '  et aucun plafond au-dessus de sa mesure. Ce script ne dit RIEN de ce que cette\n' +
+  /* « SOUS LEUR PLAFOND » SERAIT FAUX quand aucun plafond n'est jugé : c'est ce
+     genre de phrase qui a fait prendre un relevé pour un verdict. */
+  `\n✓ plafond-hauteurs : ${inspectes}/${ATTENDUS} points ${
+    colonneANous
+      ? 'sous leur plafond de hauteur de document,\n  et aucun plafond au-dessus de sa mesure.'
+      : depassementJuge
+        ? 'sous leur plafond de hauteur de document\n  (le mou n’est pas jugé ici — voir la ligne ci-dessus).'
+        : 'RELEVÉS — aucun plafond jugé ici, voir la ligne ci-dessus.'
+  } Ce script ne dit RIEN de ce que cette\n` +
     '  hauteur contient — voir son en-tête.',
 )
