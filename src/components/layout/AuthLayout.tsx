@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
@@ -41,6 +41,49 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   const t = useT()
   useDocumentTitle(documentTitle ?? title)
+
+  /*
+    ═══ LA RÉPONSE À UN FORMULAIRE N'ÉTAIT ANNONCÉE À PERSONNE ═══
+
+    Trois pages de ce parcours REMPLACENT leur formulaire par leur réponse :
+    « Vérifiez votre boîte » après une demande de lien, « Mot de passe changé »
+    après sa réinitialisation, « Compte créé » au bout de l'inscription. Le
+    bouton qu'on vient de presser part avec le formulaire, et rien ne prend sa
+    place : le focus retombe sur `body`, c'est-à-dire en TÊTE DE DOCUMENT, et
+    le clavier doit retraverser l'en-tête, le lien de retour et les trois
+    réglages pour atteindre la réponse. Rien n'est annoncé au passage — le
+    bandeau paraît avec son texte déjà dedans, et un lecteur d'écran ne
+    surveille pas une région qui vient de naître.
+
+    L'ASSISTANT D'INSCRIPTION A LE MÊME DÉFAUT, d'une autre forme : son bouton
+    « Continuer » SURVIT au changement d'étape, donc le focus ne tombe pas —
+    il reste au BAS d'un formulaire entièrement neuf, dont les champs sont tous
+    au-dessus de lui. `window.scrollTo({ top: 0 })` déplace la page ; le curseur
+    reste où il était, et là non plus rien n'est annoncé.
+
+    LE FOCUS SUR LE TITRE RÉPARE LES DEUX MOITIÉS À LA FOIS, et ce n'est pas une
+    invention de ce lot : `EcranSysteme` porte la même manœuvre et le même
+    raisonnement écrit, pour les quatre écrans système. « Une région vivante
+    annonce les CHANGEMENTS d'une région DÉJÀ PRÉSENTE ; insérée avec son texte
+    déjà dedans, le comportement dépend du lecteur d'écran. Déplacer le focus
+    sur le titre est uniforme. » Le clavier repart alors du haut du nouvel écran.
+
+    JAMAIS À L'ARRIVÉE SUR LA PAGE. Le premier rendu ne prend pas le focus : rien
+    n'a changé, personne n'a rien demandé, et voler le curseur au chargement
+    empêcherait la première tabulation d'atteindre l'en-tête. L'effet ne se
+    déclenche donc qu'au CHANGEMENT de titre — ce qui est exactement le signal
+    qu'une page d'authentification donne quand elle change de propos.
+  */
+  const titreRef = useRef<HTMLHeadingElement>(null)
+  const premierRendu = useRef(true)
+
+  useEffect(() => {
+    if (premierRendu.current) {
+      premierRendu.current = false
+      return
+    }
+    titreRef.current?.focus()
+  }, [title])
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
@@ -152,7 +195,12 @@ export function AuthLayout({
                 mesure sont sur la ligne elle-même, dans `BrandPanel`. Sous `xl`
                 les deux corps sont égaux, et c'est l'encre pleine du panneau,
                 pas sa taille, qui le fait parler. */}
-            <h1 className="display-app text-balance">{title}</h1>
+            {/* `tabIndex={-1}` : un titre n'est pas un arrêt de tabulation, mais
+                il doit pouvoir RECEVOIR le focus par programme. Le tabulateur ne
+                le rencontrera jamais ; seul l'effet ci-dessus l'y pose. */}
+            <h1 ref={titreRef} tabIndex={-1} className="display-app text-balance">
+              {title}
+            </h1>
             {subtitle && <p className="mt-3 text-body-l text-pretty text-muted">{subtitle}</p>}
 
             <div className="mt-8">{children}</div>
