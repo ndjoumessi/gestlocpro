@@ -50,7 +50,20 @@ describe('la barre basse', () => {
     const barre = screen.getByRole('navigation', { name: /rapide|quick/i })
     const libelles = Array.from(
       barre.querySelectorAll<HTMLElement>('[data-mesure="libelle-barre-basse"]'),
-    ).map((el) => el.textContent?.trim() ?? '')
+      /*
+        LE TRAIT D'UNION CONDITIONNEL NE COMPTE PAS POUR UN SIGNE.
+
+        `U+00AD` est INVISIBLE et de largeur nulle tant que la ligne ne casse pas
+        à son endroit ; quand elle y casse, il devient un tiret en FIN de ligne,
+        jamais un caractère de plus dans le mot. Le plafond ci-dessous parle de ce
+        qu'on LIT dans une gélule de barre basse — sept signes —, pas du nombre de
+        points de code que la chaîne transporte.
+
+        Sans ce retrait, « Re\u00ADports » comptait pour huit et ce cas refusait
+        la césure que `mesure-ui` venait d'exiger : deux portes du même dépôt qui
+        se contredisent sur le même libellé, chacune ayant raison de son côté.
+      */
+    ).map((el) => (el.textContent ?? '').replaceAll('\u00AD', '').trim())
     expect(libelles.length).toBeGreaterThan(0)
     for (const libelle of libelles) {
       expect(libelle, `« ${libelle} » porte une espace`).not.toMatch(/\s/)
