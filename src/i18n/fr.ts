@@ -928,6 +928,9 @@ export const fr = {
        * l'appel, sans préjuger de la raison ni de l'ancienneté.
        */
       outstanding: 'Reste à percevoir',
+      /* RIEN N'EST ATTENDU — voir `Dashboard` : sans bail actif, « 100 % du
+         loyer attendu » annonçait un arriéré total sous un reste de zéro. */
+      nothingExpected: 'Aucun loyer attendu ce mois-ci.',
       outstandingShare: '{percent} % du loyer attendu',
       queueTitle: 'À traiter',
       queueCount: '{count} en attente',

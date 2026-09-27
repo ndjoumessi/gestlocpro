@@ -86,7 +86,26 @@ export function Dashboard() {
   // étaient une constante qui ne se recoupait avec rien.
   const kpis = computeKpis(units, readings)
   const { expected, collected, outstanding, occupied, vacant, occupancy, maxOverdueDays } = kpis
-  const collectedShare = expected === 0 ? 0 : Math.round((collected / expected) * 100)
+  /*
+    ═══ RIEN N'EST ATTENDU, ET DEUX LÉGENDES L'IGNORAIENT ═══
+
+    Des immeubles, des logements, aucun bail encore signé : `computeKpis` somme
+    sur les logements OCCUPÉS, donc `expected` et `collected` valent zéro. C'est
+    l'état d'un compte qui vient de saisir son parc, et il dure des jours.
+
+    LA GARDE CONTRE LA DIVISION PAR ZÉRO FABRIQUAIT LA PHRASE. `collectedShare`
+    est écrasé à zéro faute de dénominateur — correct —, et les deux notes qui
+    s'en déduisent devenaient fausses : « 100 % du loyer attendu » sous un reste
+    de 0 FCFA annonce un arriéré TOTAL là où personne ne doit rien, et « 0 % du
+    dû » rapporte l'encaissé à un dû qui n'existe pas.
+
+    Un pourcentage sans dénominateur n'est pas un pourcentage. On le remplace
+    donc par ce qui est vrai — il n'y a pas de loyer attendu — plutôt que de
+    retirer la note : un zéro sans légende se lit aussi bien « tout est réglé »,
+    et c'est l'autre moitié du malentendu.
+  */
+  const rienAttendu = expected === 0
+  const collectedShare = rienAttendu ? 0 : Math.round((collected / expected) * 100)
   /* La variation du mois sur le mois précédent, quand il y en a un — voir
      `variationDesEncaissements`, qui rend `null` plutôt qu'un zéro trompeur. */
   const variation = variationDesEncaissements(collected, COLLECTIONS)
@@ -460,7 +479,11 @@ export function Dashboard() {
            * troisième. C'est ce que les quatre nombres de cette rangée sont
            * censés faire, et ce que `screens.test.tsx` garde par ailleurs.
            */
-          note={t('app.dashboard.outstandingShare', { percent: 100 - collectedShare })}
+          note={
+            rienAttendu
+              ? t('app.dashboard.nothingExpected')
+              : t('app.dashboard.outstandingShare', { percent: 100 - collectedShare })
+          }
         />
         {/*
           LA SEULE CARTE DU PRODUIT QUI AIT UN PASSÉ, ET ELLE LE MONTRE.
@@ -494,7 +517,15 @@ export function Dashboard() {
               ? t('app.dashboard.vsPrevious', {
                   amount: money(variation.base, { compact: true }),
                 })
-              : t('app.dashboard.collectedShare', { percent: collectedShare })
+              : /* LA MÊME DIVISION, À L'AUTRE BOUT : sans dû, la part de dû n'a
+                   pas de sens. La phrase est celle de la carte voisine, parce que
+                   c'est le même fait — et elle ne s'y répète pas : l'une des deux
+                   notes est toujours la comparaison au mois précédent dès qu'il y
+                   a eu un encaissement, et s'il n'y en a jamais eu, ce fait-là
+                   est la seule chose à dire des deux cartes. */
+                rienAttendu
+                ? t('app.dashboard.nothingExpected')
+                : t('app.dashboard.collectedShare', { percent: collectedShare })
           }
         />
         <StatCard
@@ -780,7 +811,26 @@ export function Dashboard() {
                       >
                         {building.name}
                       </span>
-                      <span className="text-label text-muted">{building.district}</span>
+                      {/*
+                        CE QUE « 0/0 » NE DIT PAS — et l'écran Parc l'a déjà
+                        tranché, dans ces termes : « le rapport est exact et
+                        muet : il faut savoir le lire pour comprendre qu'il n'y
+                        a pas encore de logement, là où la phrase le dit ». Il
+                        écrit « aucun logement » à côté du quartier ; cette
+                        tuile-ci laissait le rapport se déchiffrer, sur le même
+                        parc et le même immeuble.
+
+                        LA MENTION S'AJOUTE, ELLE NE REMPLACE PAS : la pastille
+                        garde son « 0/0 », qui est exact. Même geste, même clé,
+                        même place qu'au Parc — un second mot pour le même fait
+                        rouvrirait deux vocabulaires.
+                      */}
+                      <span className="text-label text-muted">
+                        {building.district}
+                        {inBuilding.length === 0
+                          ? ` · ${t('app.portfolio.buildingEmpty')}`
+                          : ''}
+                      </span>
                     </span>
                     {/*
                       UN RATIO D'OCCUPATION N'EST PAS UN VERDICT.

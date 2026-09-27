@@ -661,6 +661,7 @@ export const en: Dictionary = {
       collected: 'Collected this month',
       vsPrevious: 'vs. {amount} last month',
       outstanding: 'Still to collect',
+      nothingExpected: 'No rent due this month.',
       outstandingShare: '{percent}% of the rent due',
       queueTitle: 'To handle',
       queueCount: '{count} waiting',
