@@ -528,6 +528,25 @@ export function Decisions() {
     },
     {
       key: 'what',
+      /*
+        ═══ CE QUI NOMME UNE DÉCISION EST L'ACTION, PAS SA DATE ═══
+
+        Aucune des trois colonnes ne portait de rôle, et `role` est facultatif :
+        les trois tombaient donc dans le `contexte`. En fiches — la forme que ce
+        registre prend sous 64 rem — la carte n'avait AUCUNE ligne de tête, juste
+        trois couples empilés, « Quand : 12 mars 2026 », « Quoi : Loyer appelé »,
+        « Par qui : Awa ». Rien ne nommait la carte. En tableau, aucune ligne
+        n'avait de nom, et le `<th scope="row">` que `DataTable` pose désormais
+        n'avait aucune colonne à poser.
+
+        L'IDENTITÉ EST « QUOI », ET LA DATE RESTE EN PREMIÈRE COLONNE. Les deux
+        ne se disputent pas : le rôle dit ce qui NOMME la ligne, la position dit
+        comment on la BALAIE. Un registre se lit comme une chronologie — c'est
+        écrit au-dessus, et la date garde donc sa place —, mais « 12 mars 2026 »
+        ne nomme pas une décision : trois décisions du même jour porteraient le
+        même nom, et c'est justement le cas ordinaire d'un registre.
+      */
+      role: 'identite',
       header: t('app.decisions.colWhat'),
       /* LE DÉTAIL SOUS L'ACTION, et non dans une quatrième colonne :
          il n'existe pas pour toutes les décisions, et une colonne à

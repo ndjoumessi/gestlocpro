@@ -162,20 +162,47 @@ export function MesDonnees() {
     ? NATURES_DU_DOSSIER.reduce((somme, nature) => somme + dossier[nature].length, 0)
     : 0
 
+  /*
+    ═══ AUCUNE DE CES TROIS COLONNES NE DISAIT CE QU'ELLE ÉTAIT ═══
+
+    `role` est facultatif, et il manquait aux trois. Ce silence a deux prix,
+    l'un pour l'œil et l'autre pour la voix :
+
+    EN FICHES — la forme que cet écran prend sous 64 rem, donc sur le téléphone
+    qui est l'appareil du marché visé — une colonne sans rôle tombe dans le
+    `contexte`, c'est-à-dire dans la liste de définitions. La carte n'avait donc
+    AUCUNE ligne de tête : trois couples empilés, « Nature : Loyers », « Lignes :
+    42 », « Fichier : [Télécharger] », dont le dernier met un bouton dans un
+    `<dd>`. Rien ne nommait la carte, et le geste qu'elle offre se lisait comme
+    une définition.
+
+    EN TABLEAU, aucune ligne n'avait de nom : c'est le défaut que le lot
+    précédent a corrigé dans `DataTable` — l'identité devient
+    `<th scope="row">` — et il ne pouvait rien faire ici, puisque aucune colonne
+    ne se déclarait comme telle.
+
+    LA NATURE EST L'IDENTITÉ : c'est elle qui nomme la ligne, et « 42 » n'a de
+    sens qu'à côté d'elle. Le COMPTE est la valeur, à droite dans la carte comme
+    dans le tableau. Le FICHIER est un geste, donc il rejoint la rangée des
+    gestes au lieu de se faire passer pour une donnée.
+  */
   const colonnes: Column<NatureDuDossier>[] = [
     {
       key: 'nature',
+      role: 'identite',
       header: t('app.data.nature'),
       render: (nature) => t(cleDeNature(nature)),
     },
     {
       key: 'lignes',
+      role: 'valeur',
       header: t('app.data.rows'),
       numeric: true,
       render: (nature) => String(dossier?.[nature].length ?? 0),
     },
     {
       key: 'fichier',
+      role: 'geste',
       header: t('app.data.file'),
       render: (nature) => (
         <Button
@@ -224,12 +251,36 @@ export function MesDonnees() {
           l'écran rend des fiches, et un squelette tabulaire y promettrait une
           forme que le contenu ne prend pas. */}
       {etat === 'attente' && <SkeletonTable rows={NATURES_DU_DOSSIER.length} fiches />}
-      {etat === 'demonstration' && <Notice tone="accent">{t('app.data.demo')}</Notice>}
-      {etat === 'echec' && <Notice tone="danger">{t('app.data.failed')}</Notice>}
+      {/*
+        ═══ CES DEUX RÉPONSES N'ÉTAIENT ANNONCÉES À PERSONNE ═══
+
+        Les deux paraissent APRÈS un clic, en remplacement du squelette, et le
+        bouton qui les a demandées reste où il est : rien ne bouge, rien n'est dit,
+        et qui n'a pas les yeux sur l'écran ne sait pas si sa demande a abouti.
+        Un bandeau inséré avec son texte déjà dedans n'est pas annoncé — c'est ce
+        que `Toast` et `EcranSysteme` ont chacun payé.
+
+        `alert` POUR L'ÉCHEC, `status` POUR LE RESTE : l'échec interrompt, la
+        démonstration attend son tour. Même partage que les toasts, pour la même
+        raison — interrompre pour une nouvelle sans conséquence apprend à ignorer
+        les interruptions.
+      */}
+      {etat === 'demonstration' && (
+        <Notice tone="accent" role="status">
+          {t('app.data.demo')}
+        </Notice>
+      )}
+      {etat === 'echec' && (
+        <Notice tone="danger" role="alert">
+          {t('app.data.failed')}
+        </Notice>
+      )}
 
       {dossier && (
         <>
-          <Notice tone="ok">
+          {/* Le dossier prêt est la RÉPONSE au même clic : `status`, comme les
+              deux ci-dessus, et non `alert` — un succès n'a rien à couper. */}
+          <Notice tone="ok" role="status">
             {t('app.data.ready', { date: d.fullDate(partiesDeDate(new Date(dossier.exporteLe))) })}
           </Notice>
           <DataTable
@@ -267,8 +318,12 @@ export function MesDonnees() {
                 onChange={(e) => setCompris(e.currentTarget.checked)}
               />
             </div>
+            {/* LE REFUS D'UNE FERMETURE DE COMPTE, et c'est le plus grave des
+                trois : le bouton se rallume, la case reste cochée, et rien ne dit
+                que le geste a échoué. On peut le represser en croyant qu'il n'a
+                pas été pris. */}
             {fermeture === 'echec' && (
-              <Notice tone="danger" className="mt-3">
+              <Notice tone="danger" role="alert" className="mt-3">
                 {t('app.data.closeFailed')}
               </Notice>
             )}
