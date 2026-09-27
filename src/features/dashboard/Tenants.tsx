@@ -888,7 +888,7 @@ export function Tenants() {
                 descendre sous la largeur intrinsèque de son contenu ». La chaîne
                 était rétablie d'un cran, et se rompait au suivant.
               */
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 <span
                   aria-hidden="true"
                   className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"

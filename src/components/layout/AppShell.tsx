@@ -1351,7 +1351,25 @@ function Sidebar({
         data-zone="entete"
         className={cn(
           'shrink-0 border-b border-border pb-4',
-          railed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-2 px-1.5',
+          /*
+            `gap-1.5 px-1` DÉPLIÉ, ET CES QUATRE PIXELS SONT MESURÉS.
+
+            La porte a refusé cette rangée de 5 px, 76 fois : le logo mesure 178 px
+            au minimum — « GestLocPro » est un mot INSÉCABLE, il ne se réduit pas —,
+            le bouton 44, l'écart 8, le retrait 12. Soit 242 pour un bord intérieur
+            à 231 px, la largeur fixe du panneau.
+
+            On ne tronque pas la marque : « GestLocP… » dans le coin haut gauche du
+            produit n'est pas une économie, c'est une faute. Ce sont donc l'écart et
+            le retrait de CETTE rangée qui cèdent — 4 px chacun, les seuls pixels de
+            la barre qui ne portent rien.
+
+            REPLIÉ, RIEN À RENDRE : la marque n'est plus qu'un carré de 42 px et la
+            bascule descend sous elle.
+          */
+          railed
+            ? 'flex flex-col items-center gap-2'
+            : 'flex items-center gap-1.5 px-1',
         )}
       >
         {wide ? (
@@ -1416,14 +1434,37 @@ function Sidebar({
                   key={profile.value}
                   className={cn(
                     'relative flex min-h-11 cursor-pointer items-center rounded-sm px-2.5 text-label',
-                    'transition-colors duration-150',
+                    /* LE MÊME VOCABULAIRE QUE LES ENTRÉES DE NAVIGATION, et il
+                       fallait le lui donner : ces trois étiquettes sont des
+                       commandes de la même barre, on les active du même geste, et
+                       elles ne rendaient rien sous le doigt là où les entrées
+                       s'enfoncent désormais. Deux retours différents pour un même
+                       clic, à dix centimètres d'écart, c'est ce qu'on remarque
+                       sans savoir le nommer. */
+                    'transition-[background-color,color,transform] duration-150 ease-out',
+                    'active:translate-y-px',
                     'has-[:focus-visible]:outline has-[:focus-visible]:outline-2',
                     'has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent-ink',
                     active
-                      ? 'bg-accent-tint font-semibold text-accent-ink shadow-[inset_2px_0_0_var(--color-accent)]'
+                      ? 'bg-accent-tint font-semibold text-accent-ink'
                       : 'text-muted hover:bg-surface-sunken',
                   )}
                 >
+                  {active && (
+                    /* MÊME GÉLULE QUE L'ENTRÉE COURANTE, et pour la même raison :
+                       l'ombre intérieure qu'elle remplace était un trait droit
+                       peint dans une boîte arrondie, donc rognée à ses deux
+                       extrémités — elle s'amincissait dans la courbe au lieu de
+                       s'arrêter. Le rayon d'ici est plus petit que celui des
+                       entrées, ce qui rendait la bavure plus visible encore.
+
+                       `aria-hidden` : le bouton radio porte déjà son état coché,
+                       et c'est lui que les technologies d'assistance annoncent. */
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-accent"
+                    />
+                  )}
                   <input
                     type="radio"
                     name="active-profile"
@@ -2132,7 +2173,35 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
       className={({ isActive }) =>
         cn(
           'relative flex min-h-11 items-center gap-2.5 rounded-md px-2.5 text-label no-underline',
-          'transition-colors duration-150',
+          /*
+            `transform` EST NOMMÉ, ET IL LE FAUT. `transition-colors` ne cadence
+            pas l'enfoncement : le dépôt l'a déjà payé sur `IconButton` — « un
+            `transition-colors` ne timait pas cette propriété : l'enfoncement
+            claquait ici et se déroulait là, pour un geste identique ». Même
+            jeton, même durée, même courbe que les boutons.
+
+            `prefers-reduced-motion` n'a pas besoin d'être répété : la règle
+            globale de `tokens.css` ramène toute durée de transition à 0,001 ms.
+          */
+          'transition-[background-color,color,transform] duration-150 ease-out',
+          /*
+            L'ENFONCEMENT AU CLIC, ET C'EST LE SEUL CONTRÔLE DU PRODUIT QUI NE
+            L'AVAIT PAS.
+
+            Les six variantes de `Button` portent `active:translate-y-px`, et
+            `IconButton` avec elles. Les douze entrées de navigation — les
+            commandes qu'on active le plus souvent de toute l'application — ne
+            rendaient rien sous le doigt : on cliquait, et il ne se passait
+            visiblement rien jusqu'à ce que l'écran suivant se peigne. Sur une
+            route qui charge, c'est le temps qu'il faut pour croire qu'on a
+            manqué le lien et cliquer une seconde fois.
+
+            UN PIXEL, PAS UNE MISE À L'ÉCHELLE : `translate-y-px` est ce que le
+            reste du produit fait, et il ne déplace rien autour de lui. C'est la
+            règle que ce dépôt tient partout — l'état pressé se peint, il ne
+            remet pas la page en page.
+          */
+          'active:translate-y-px',
           wide ? 'justify-start' : 'justify-center',
           isActive
             /* L'ACTIF PORTE DU TEXTE D'ACCENT, et non plus l'encre ordinaire.
@@ -2140,16 +2209,47 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
                blanc à 14 % — la seule chose qui se voie sur du presque-noir. Sur
                fond clair, le lavis d'accent et l'encre d'accent vont ensemble :
                6,12 mesuré, et l'œil retrouve l'écran courant à la couleur avant
-               de lire le mot. Le filet de 2 px reste : trois signaux valent
+               de lire le mot. Le repère de 3 px reste : trois signaux valent
                mieux qu'un lavis seul pour qui distingue mal le bleu, et il
                reprend `--color-accent`, qui tient 5,17 sur ce lavis. */
-            ? 'bg-accent-tint font-semibold text-accent-ink shadow-[inset_2px_0_0_var(--color-accent)]'
+            ? 'bg-accent-tint font-semibold text-accent-ink'
             : 'text-muted hover:bg-surface-sunken hover:text-ink',
         )
       }
     >
-      <Icon name={item.icon} size={17} />
-      {wide && <span className="min-w-0 flex-1 truncate">{label}</span>}
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            /*
+              LE REPÈRE EST UNE GÉLULE POSÉE, PLUS UNE OMBRE INTÉRIEURE.
+
+              C'était `shadow-[inset_2px_0_0_…]` : un filet droit peint À
+              L'INTÉRIEUR d'une boîte à coins arrondis, donc ROGNÉ par le rayon à
+              ses deux extrémités. Le trait s'amincissait en haut et en bas et
+              mourait dans la courbe — à l'œil, une bavure plutôt qu'un repère.
+
+              Une gélule de 3 px, centrée sur la hauteur et arrondie, se lit comme
+              un objet DÉPOSÉ : elle a ses propres extrémités, elle ne dépend plus
+              du rayon de ce qu'elle borde, et elle survit au prochain changement
+              d'arrondi de la rangée.
+
+              ELLE VAUT AUSSI POUR LE RAIL REPLIÉ, et c'est là qu'elle compte le
+              plus : sans libellé, il n'y a pas de graisse pour dire « ici ». Le
+              lavis et l'encre étant tous deux de la COULEUR, l'entrée courante
+              ne se distinguait alors que par elle — ce que `couleur-non-seule`
+              refuse ailleurs. La PRÉSENCE d'une forme est un signal qui ne tient
+              pas à la teinte.
+
+              `aria-hidden` : elle redit ce qu'`aria-current` dit déjà, et
+              `NavLink` le pose tout seul sur l'entrée active.
+            */
+            <span
+              aria-hidden="true"
+              className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full bg-accent"
+            />
+          )}
+          <Icon name={item.icon} size={17} />
+          {wide && <span className="min-w-0 flex-1 truncate">{label}</span>}
       {/* Une pastille à zéro disparaît : « 0 impayé » n'est pas une alerte. */}
       {item.badge && count(item.badge.count) > 0 && (
         /*
@@ -2182,7 +2282,9 @@ function SidebarLink({ item, wide }: { item: NavItem; wide: boolean }) {
           {count(item.badge.count)}
         </Badge>
       )}
-      {!wide && <span className="sr-only">{label}</span>}
+          {!wide && <span className="sr-only">{label}</span>}
+        </>
+      )}
     </NavLink>
   )
 }
