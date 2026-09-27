@@ -266,17 +266,56 @@ export function MiniBarChart({
         remplir et se vider, la rangée garde sa hauteur et ses voisines leur
         place.
       */}
-      <div className="mt-3 flex h-6 items-center justify-between gap-3">
-        <span
-          aria-hidden="true"
-          className="eyebrow text-muted"
-        >
-          {bars[0]?.label}
-        </span>
+      {/*
+        ═══ LA LECTURE N'AVAIT PAS LA PLACE DE S'ÉCRIRE, ET C'EST MESURÉ ═══
 
+        Cette rangée porte trois choses : le premier mois de la série, la valeur
+        de la colonne visée, le dernier mois. Les deux repères prenaient leur
+        largeur intrinsèque — `eyebrow`, donc sans retour à la ligne — et la
+        lecture se contentait du reste.
+
+        RELEVÉ AU NAVIGATEUR à 320 px, racine 22 px (la colonne que ce dépôt
+        reproduit), colonne du milieu visée au clavier :
+
+          /                 91 px offerts pour 189 demandés  « Apr 1 306 000 FCFA »
+          /demo/portail      0 px offerts pour 104 demandés  « Mar 17 m³ »
+          /demo/portail      0 px offerts pour 132 demandés  « Mar 192 kWh »
+
+        Sur la vitrine, le montant était COUPÉ EN DEUX — un prospect lisait
+        « 1 306 000 » réduit de moitié par l'ellipse. Sur l'espace du locataire,
+        la case valait ZÉRO : le relevé qu'on vient de toucher ne s'affichait
+        NULLE PART. C'est exactement la promesse que l'en-tête de ce bloc fait —
+        « la valeur s'inscrit toujours au même endroit » — et elle ne tenait pas
+        à la largeur du marché visé.
+
+        ═══ LES REPÈRES CÈDENT LA RANGÉE, PARCE QU'ON NE LIT JAMAIS LES DEUX ═══
+
+        Ils disent où la série COMMENCE et où elle FINIT ; la lecture dit quel
+        mois on TOUCHE, et elle porte déjà son propre libellé. Les garder pendant
+        qu'on lit une colonne, c'est payer deux fois pour la même question. Ils
+        reviennent dès que le doigt part, et leur raison d'être — « sans eux, la
+        seule façon de savoir de quel mois on parlait était de survoler » — vaut
+        au repos, qui est précisément le moment où ils sont là.
+
+        AUCUN PIXEL DE HAUTEUR N'EST AJOUTÉ : la rangée garde son `h-6`, et
+        `items-center` ne dépend d'aucune ligne de base — voir juste au-dessus.
+        Ce qui change est la LARGEUR offerte, et les deux écarts partent avec les
+        repères.
+      */}
+      <div className="mt-3 flex h-6 items-center justify-between gap-3">
+        {active === null && (
+          <span aria-hidden="true" className="eyebrow shrink-0 text-muted">
+            {bars[0]?.label}
+          </span>
+        )}
+
+        {/* `flex-1` EST LA SECONDE MOITIÉ DU CORRECTIF, et il manquait : sans
+            lui, la case se dimensionnait à son CONTENU et n'obtenait la rangée
+            entière que par accident. Avec `min-w-0`, elle prend ce qui reste et
+            l'ellipse ne s'applique qu'au-delà. */}
         <span
           aria-live="polite"
-          className="min-w-0 truncate text-center text-body font-medium text-ink"
+          className="min-w-0 flex-1 truncate text-center text-body font-medium text-ink"
         >
           {active !== null && (
             <>
@@ -290,12 +329,11 @@ export function MiniBarChart({
           )}
         </span>
 
-        <span
-          aria-hidden="true"
-          className="eyebrow text-muted"
-        >
-          {bars[bars.length - 1]?.label}
-        </span>
+        {active === null && (
+          <span aria-hidden="true" className="eyebrow shrink-0 text-muted">
+            {bars[bars.length - 1]?.label}
+          </span>
+        )}
       </div>
 
       {/* Le mois en cours est encore ouvert : sa colonne est plus basse sans
