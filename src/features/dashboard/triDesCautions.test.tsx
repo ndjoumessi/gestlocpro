@@ -41,7 +41,13 @@ describe('le tri des cautions', () => {
     /* Le compte d'une pastille est celui des LIGNES qu'elle rend : deux rendus
        indépendants qui doivent tomber d'accord, plutôt qu'un nombre figé dans
        le cas — le jeu de démonstration peut changer. */
-    const lignes = () => within(main).getAllByRole('row').length - 1 // l'en-tête
+    /* LES LIGNES DU CORPS, ET NON « TOUTES MOINS L'EN-TÊTE ». Le tableau porte
+       désormais un `<tfoot>` qui somme ses colonnes d'argent, et sa rangée EST
+       une rangée — `getAllByRole('row')` a raison de la rendre. C'est la
+       soustraction qui supposait qu'un tableau n'a qu'une rangée qui n'est pas
+       une donnée. On interroge donc le corps, qui est l'endroit où les données
+       vivent, et le cas ne se remettra pas à compter faux au prochain pied. */
+    const lignes = () => main.querySelectorAll('tbody tr').length
     for (const pastille of pastilles) {
       const attendu = compteDe(pastille)
       await user.click(pastille)

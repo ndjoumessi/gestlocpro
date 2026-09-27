@@ -644,6 +644,8 @@ export function Meters() {
       <DataTable<MeterReading>
         caption={t('app.meters.title')}
         rows={relevesVisibles}
+        /* `READINGS` est ce que le tri par état découpe. */
+        lignesEnTout={READINGS.length}
         rowKey={(reading) => reading.unitId}
         fiches
         columns={[
@@ -764,6 +766,39 @@ export function Meters() {
                       ? t('app.meters.firstReading')
                       : t('app.meters.noPrice')}
                 </StatusPill>
+              )
+            },
+            /*
+              LA SOMME DES MONTANTS QUI EXISTENT, et les lignes disent lesquelles
+              manquent.
+
+              Toutes les lignes ne portent pas un montant : un relevé sans index,
+              un premier relevé sans départ, un tarif non saisi rendent une
+              pastille ambre à la place. Le pied additionne donc un
+              SOUS-ENSEMBLE des lignes affichées — ce qui serait un piège si rien
+              ne le disait, et c'est précisément pourquoi il est plus honnête ici
+              qu'en carte : les pastilles sont dans la MÊME colonne, trois lignes
+              au-dessus du total. On voit ce qui n'y entre pas. La carte
+              « Total refacturé » du haut a besoin, elle, d'une note — « {done}
+              sur {total} saisis » — pour dire la même chose.
+
+              AUCUN MONTANT : LE TIRET, PAS ZÉRO. Filtré sur « relevé manquant »,
+              aucune ligne ne porte de montant, et « 0 FCFA » se lirait « rien à
+              refacturer » là où la vérité est « rien n'a encore été relevé ».
+              C'est la distinction que le tableau de bord vient de trancher pour
+              ses deux barres de refacturation, dans les mêmes termes.
+            */
+            total: (releves) => {
+              const montants = releves
+                .map((r) => montantRefacture(r))
+                .filter((m): m is number => m !== null)
+              return montants.length === 0 ? (
+                <span className="text-muted">—</span>
+              ) : (
+                money(
+                  montants.reduce((somme, m) => somme + m, 0),
+                  { compact: true },
+                )
               )
             },
           },

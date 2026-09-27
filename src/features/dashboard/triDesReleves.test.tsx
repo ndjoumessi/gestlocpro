@@ -23,7 +23,12 @@ function compteDe(bouton: HTMLElement): number {
   return Number(chiffres![1])
 }
 
-const lignes = () => within(screen.getByRole('main')).getAllByRole('row').length - 1
+/* LES LIGNES DU CORPS, ET NON « TOUTES MOINS L'EN-TÊTE ». Le tableau porte
+   désormais un `<tfoot>` qui somme sa colonne de refacturation, et sa rangée EST
+   une rangée — `getAllByRole('row')` a raison de la rendre. C'est la
+   soustraction qui supposait qu'un tableau n'a qu'une seule rangée qui ne soit
+   pas une donnée. On interroge donc le corps, là où les données vivent. */
+const lignes = () => screen.getByRole('main').querySelectorAll('tbody tr').length
 
 describe('le tri des relevés', () => {
   it('trie par état de relevé, et chaque pastille rend son propre compte', async () => {

@@ -20,7 +20,12 @@ import { attendreLeChargement, renderApp, screen, within } from '@/test/render'
  * ne mesurent que `/demo`, de voir ce sélecteur BASCULER.
  */
 
-const lignes = () => within(screen.getByRole('main')).getAllByRole('row').length - 1
+/* LES LIGNES DU CORPS, ET NON « TOUTES MOINS L'EN-TÊTE ». Le tableau porte
+   désormais un `<tfoot>` qui somme sa colonne de refacturation, et sa rangée EST
+   une rangée — `getAllByRole('row')` a raison de la rendre. C'est la
+   soustraction qui supposait qu'un tableau n'a qu'une seule rangée qui ne soit
+   pas une donnée. On interroge donc le corps, là où les données vivent. */
+const lignes = () => screen.getByRole('main').querySelectorAll('tbody tr').length
 
 describe('la période des relevés', () => {
   it('nomme la période qu’elle affiche, et non le mois d’aujourd’hui', async () => {

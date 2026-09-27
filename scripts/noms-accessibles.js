@@ -324,6 +324,75 @@
   }
 
   /*
+    ═══ TROISIÈME RÈGLE : LE NOM ACCESSIBLE CONTIENT LE LIBELLÉ VISIBLE ═══
+
+    WCAG 2.5.3, « Label in Name ». Qui commande son appareil à la voix dit ce
+    qu'il LIT : « cliquer sur Retirer l'accès ». La commande vocale cherche cette
+    chaîne dans le nom accessible — si le nom ne la contient pas, le bouton est
+    à l'écran, lisible, et inatteignable.
+
+    ═══ CE QUI L'A FAIT ÉCRIRE, ET C'EST LE LOT D'AVANT ═══
+
+    La deuxième règle ci-dessus a fait renommer vingt-neuf gestes homonymes, en
+    posant un `aria-label` qui ajoute la donnée distinctive AU libellé visible.
+    Deux de ces noms ont été écrits de travers :
+
+      « Relier un locataire — {name} »   pour un bouton qui affiche « Relier à une fiche »
+      « Remove {name}'s access »          pour un bouton qui affiche « Remove access »
+
+    LE PREMIER A ÉTÉ PRIS LE JOUR MÊME, par un cas qui rend l'écran en français.
+    LE SECOND A ÉTÉ LIVRÉ : aucun cas ne rend l'écran en anglais, et le
+    possessif anglais coupe le libellé en deux — « Remove Diane's access » ne
+    contient pas « Remove access ». C'est une faute d'accessibilité dans la
+    moitié des langues du produit, introduite par le lot qui en corrigeait une
+    autre, et découverte par hasard : `modales` ne pouvait plus ouvrir la modale
+    — « RevokeAccess@1280/en : le bouton qui l'ouvre est introuvable ».
+
+    UN NOM QUE LA VOIX N'ATTEINT PAS EST UN NOM QUE L'AUTOMATISATION N'ATTEINT
+    PAS. C'est la même chaîne, cherchée de la même façon. La porte des modales
+    l'a donc signalé sans savoir ce qu'elle signalait ; cette règle-ci le nomme,
+    et elle le fait DANS LES DEUX LANGUES, puisque `mesure-ui` parcourt les deux.
+
+    ═══ CE QU'ELLE REGARDE, ET CE QU'ELLE NE PEUT PAS REGARDER ═══
+
+    Seules les commandes dont le nom vient d'un `aria-label` ET qui portent un
+    texte visible : c'est le seul cas où les deux chaînes existent et peuvent
+    diverger. Un bouton nommé par son contenu les a identiques par construction.
+
+    LA COMPARAISON IGNORE LA CASSE ET LES ESPACES, et rien d'autre. Elle ne
+    normalise ni les apostrophes ni les tirets : « l'accès » et « l’accès » sont
+    deux chaînes, et si le libellé visible en porte une et le nom l'autre, la
+    voix échoue pour de vrai. Une comparaison indulgente rendrait le vert que
+    l'utilisateur n'a pas.
+
+    ELLE NE DIT RIEN DE L'ORDRE : WCAG demande que le libellé soit CONTENU, pas
+    qu'il commence le nom. « Quittance de mars — A1 » et « A1 — Quittance de
+    mars » passent tous deux, et c'est conforme.
+  */
+  const labelsDeTravers = []
+  let nommeesParLabel = 0
+
+  for (const el of document.querySelectorAll(COMMANDES)) {
+    if (el.closest('[aria-hidden="true"]')) continue
+    if (!visible(el)) continue
+    const label = netto(el.getAttribute('aria-label'))
+    if (!label) continue
+    const visibleTexte = texteVisibleAuxOutils(el)
+    /* Pas de texte visible : rien à contenir. Un bouton d'icône nommé par son
+       seul `aria-label` est le cas normal, et c'est la première règle qui le
+       garde. */
+    if (!visibleTexte) continue
+    nommeesParLabel++
+    const sansCasse = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (sansCasse(label).includes(sansCasse(visibleTexte))) continue
+    labelsDeTravers.push({
+      label,
+      visible: visibleTexte,
+      html: netto(el.outerHTML).slice(0, 160),
+    })
+  }
+
+  /*
     ON REND LE NOMBRE D'ÉLÉMENTS REGARDÉS, et pas seulement les fautifs.
 
     Même raison qu'en contraste : « zéro commande anonyme » et « zéro commande
@@ -331,5 +400,13 @@
     qui n'a pas fini de peindre, et cette sonde rendrait le plus rassurant des
     verts. Le compte permet à `mesure-ui.mjs` de refuser ce vert-là.
   */
-  return { anonymes: items.length, items, examinees, homonymes, groupes }
+  return {
+    anonymes: items.length,
+    items,
+    examinees,
+    homonymes,
+    groupes,
+    labelsDeTravers,
+    nommeesParLabel,
+  }
 })()

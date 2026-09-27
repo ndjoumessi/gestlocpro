@@ -580,6 +580,23 @@ export const fr = {
   app: {
     period: 'Période',
     total: 'Total',
+    /**
+     * L'INTITULÉ DU PIED D'UN TABLEAU QUI SOMME — voir `DataTable.lignesEnTout`.
+     *
+     * « lignes » ET NON LE NOM DE L'OBJET, et c'est un arbitrage. Cinq écrans
+     * portent ce pied — cautions, paiements, parc, locataires, relevés — et cinq
+     * paires de clés auraient dit la même chose cinq fois, avec cinq accords à
+     * tenir. Le nom de la collection est déjà écrit deux fois au-dessus : dans le
+     * titre de la page, et dans la légende du tableau que les lecteurs d'écran
+     * annoncent en y entrant. « ligne » est d'ailleurs le mot juste ici — c'est
+     * de rangées de tableau qu'on parle, et c'est ce qu'on compte.
+     */
+    totalRows: 'Total · {count} lignes',
+    totalRows_one: 'Total · {count} ligne',
+    /* LA FORME FILTRÉE. Le dénominateur est ce qui empêche de lire le pied comme
+       une contradiction de la carte d'indicateur du haut. */
+    totalRowsOf: 'Total · {count} lignes sur {all}',
+    totalRowsOf_one: 'Total · {count} ligne sur {all}',
     exportStatement: 'Exporter le relevé',
     recordPayment: 'Enregistrer un paiement',
     /**

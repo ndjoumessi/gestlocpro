@@ -69,6 +69,52 @@ export interface Column<T> {
   width?: string
   /** Où la colonne va dans la FICHE — voir `RoleDeColonne`. */
   role?: RoleDeColonne
+  /**
+   * LE TOTAL DE LA COLONNE, AU PIED DE LA COLONNE.
+   *
+   * ═══ CE QUE CINQ ÉCRANS DEMANDAIENT DE FAIRE DE TÊTE ═══
+   *
+   * Cinq tableaux du produit portent une colonne d'argent, et les cinq offrent
+   * leur somme AILLEURS — en carte d'indicateur, tout en haut de la page. Tant
+   * que la table montre toutes ses lignes, les deux nombres coïncident et
+   * personne ne remarque rien.
+   *
+   * Les cinq tables FILTRENT. Relevé dans le code de chacune : la table rend un
+   * sous-ensemble — `visibles` sur les cautions et les locataires,
+   * `relevesVisibles` sur les relevés, `rows` sur les paiements et le parc, ce
+   * dernier filtré par une RECHERCHE LIBRE — quand les cartes du haut se
+   * calculent sur la population ENTIÈRE. Dès qu'on filtre, plus aucun nombre à
+   * l'écran ne décrit ce qu'on regarde : la carte parle d'un ensemble qu'on ne
+   * voit plus, et la colonne qu'on voit n'a pas de somme.
+   *
+   * C'est le cas de l'écran des cautions filtré sur « en cours d'arbitrage » —
+   * exactement la population qu'on vient traiter, d'après le commentaire de son
+   * propre filtre : « c'est la population "en arbitrage" qu'on vient traiter ».
+   * On y arrive pour savoir combien d'argent est en jeu, et c'est le seul état
+   * de l'écran où le chiffre n'existe nulle part.
+   *
+   * ═══ POURQUOI AU PIED, ET NON DANS UNE SIXIÈME CARTE ═══
+   *
+   * Une somme appartient à la colonne qu'elle somme. Au pied, elle est alignée
+   * sous ses termes — même axe, mêmes chiffres tabulaires — et se lit sans
+   * quitter des yeux ce dont elle parle. Une carte de plus en haut ajouterait un
+   * nombre à comparer à distance, c'est-à-dire le défaut qu'on répare.
+   *
+   * ═══ FACULTATIF, ET SUR LA COLONNE — PAS SUR LA TABLE ═══
+   *
+   * `total` est déclaré PAR COLONNE parce que c'est la colonne qui sait si elle
+   * s'additionne. Une date ne se somme pas ; un relevé rendu « 178 · 4 120 →
+   * 4 298 » non plus, et la porte de ce choix est que personne ne peut écrire
+   * `total` sur une colonne sans avoir à dire QUOI additionner.
+   *
+   * IL REÇOIT LES LIGNES RENDUES, et c'est tout le point : la somme d'un
+   * tableau filtré porte sur ce que le tableau montre. Une somme qui recevrait
+   * la population entière serait la carte du haut, une deuxième fois.
+   *
+   * IL NE DIT QUE L'ARITHMÉTIQUE. L'intitulé du pied — « Total · 3 lignes sur
+   * 5 » — est écrit par la primitive, pas par la colonne : voir `lignesEnTout`.
+   */
+  total?: (rows: T[]) => ReactNode
 }
 
 export interface DataTableProps<T> {
@@ -93,6 +139,37 @@ export interface DataTableProps<T> {
    * réponse par défaut.
    */
   fiches?: boolean
+  /**
+   * COMBIEN DE LIGNES LA TABLE AURAIT SANS FILTRE — pour l'intitulé du pied.
+   *
+   * ═══ LE SEUL CHIFFRE QUE LA PRIMITIVE NE PEUT PAS CONNAÎTRE ═══
+   *
+   * Le pied somme ce qu'on VOIT — c'est sa raison d'être, écrite sur
+   * `Column.total`. Mais une somme de sous-ensemble doit dire qu'elle en est
+   * une : « Total · 813 000 FCFA » sous une carte d'indicateur qui annonce
+   * 1 226 000 se lit comme une contradiction, et le lecteur a raison de
+   * s'arrêter — deux totaux d'argent qui ne s'accordent pas, sur le même écran,
+   * c'est ce qu'on appelle une erreur.
+   *
+   * « Total · 3 lignes sur 5 » lève la contradiction en une lecture. Et c'est
+   * l'écran qui doit fournir le 5 : la primitive ne reçoit que les lignes qu'on
+   * lui donne à rendre, elle ne saura jamais combien ont été écartées.
+   *
+   * ═══ POURQUOI L'INTITULÉ EST ÉCRIT ICI ET NON PAR L'APPELANT ═══
+   *
+   * Cinq écrans portent un pied. Leur laisser rédiger la phrase aurait produit
+   * cinq formulations du même fait, et la première divergence n'aurait rougi
+   * nulle part. L'appelant fournit un NOMBRE ; la phrase est une, et les deux
+   * formes du tableau — rangée de pied et carte de total — la partagent.
+   *
+   * ═══ OMISE, LE PIED DIT SIMPLEMENT LE COMPTE ═══
+   *
+   * Une table non filtrée n'a pas de dénominateur à annoncer : le pied écrit
+   * « Total · 3 lignes », qui est vrai et complet. Égale au nombre de lignes
+   * rendues, elle est traitée de même — un filtre qui ne retire rien n'a rien à
+   * signaler, et « 5 lignes sur 5 » ferait chercher ce qui manque.
+   */
+  lignesEnTout?: number
   /**
    * REGROUPE LES LIGNES — en fiches ET au tableau.
    *
@@ -329,6 +406,24 @@ const ALTITUDE_TENUE = { zIndex: 'var(--z-sticky)' } as const
  * et non seulement qu'il est ouvert ou fermé. `aria-expanded` seul dit un état
  * sans dire de quoi.
  */
+/**
+ * L'INTITULÉ DU PIED, écrit une fois pour les deux formes.
+ *
+ * Voir `lignesEnTout` pour le pourquoi de la phrase. Elle est calculée ici plutôt
+ * que dans chacune des deux formes parce que c'est exactement le genre de couple
+ * que ce fichier a déjà vu diverger : le `<tfoot>` et la carte de total doivent
+ * annoncer le même sous-ensemble, et un écran qui lirait « 3 lignes sur 5 » au
+ * large et « 3 lignes » à l'étroit ferait douter de celui des deux qui compte.
+ */
+function intituleDuTotal(t: ReturnType<typeof useT>, rendues: number, enTout?: number): string {
+  /* `enTout` PLUS PETIT QUE `rendues` NE SE PRODUIT PAS, et s'il se produisait ce
+     serait un appelant qui compte mal : on retombe alors sur la phrase sans
+     dénominateur plutôt que d'écrire « 5 lignes sur 3 ». */
+  return enTout === undefined || enTout <= rendues
+    ? t('app.totalRows', { count: rendues })
+    : t('app.totalRowsOf', { count: rendues, all: enTout })
+}
+
 export function idDuGroupe(cle: string): string {
   return `groupe-${cle}`
 }
@@ -355,6 +450,7 @@ export function DataTable<T>({
   rowKey,
   empty,
   fiches,
+  lignesEnTout,
   groupePar,
 }: DataTableProps<T>) {
   /*
@@ -450,6 +546,7 @@ export function DataTable<T>({
         columns={columns}
         rows={rows}
         rowKey={rowKey}
+        lignesEnTout={lignesEnTout}
         groupePar={groupePar}
       />
     )
@@ -686,6 +783,125 @@ export function DataTable<T>({
         ) : (
           <tbody>{rows.map(rangee)}</tbody>
         )}
+
+        {/*
+          LE PIED N'EXISTE QUE SI UNE COLONNE SE SOMME — voir `Column.total`.
+
+          ═══ UN SEUL PIED, MÊME GROUPÉ, ET C'EST UN CHOIX ═══
+
+          Le parc groupe ses logements par immeuble, et une somme PAR IMMEUBLE
+          serait juste. Elle n'est pas rendue ici : l'en-tête de groupe du parc
+          porte déjà le rapport d'occupation de son immeuble, donc l'endroit où
+          un total d'immeuble irait est déjà occupé par un autre chiffre, et
+          arbitrer entre les deux est une décision de cet écran-là. Le pied de
+          table somme ce que la TABLE montre — ce qui est la question à laquelle
+          aucun nombre de l'écran ne répondait.
+
+          ═══ `<tfoot>` ET NON UNE DERNIÈRE RANGÉE DU CORPS ═══
+
+          Une somme n'est pas un enregistrement. Dans un `<tbody>`, elle
+          compterait comme une ligne de plus — un lecteur d'écran annoncerait
+          « 4 lignes » là où il y en a trois et un total, et toute mesure qui
+          parcourt les rangées la prendrait pour une donnée. `<tfoot>` est
+          exactement ce que la somme EST, et le navigateur le sait.
+
+          L'INTITULÉ EST UN `<th scope="row">`, pour la raison écrite plus haut à
+          propos de la colonne d'identité : « Total · 3 cautions sur 5 » NOMME sa
+          rangée, et sans en-tête de ligne la lecture du pied donne un montant nu.
+        */}
+        {/*
+          IL FAUT AU MOINS DEUX TERMES POUR QU'IL Y AIT UNE SOMME.
+
+          ZÉRO LIGNE : le parc déclare ses groupes, donc un immeuble SANS logement
+          rend bien sa table — en-tête de groupe et gestes compris — avec aucune
+          rangée. « Total · 0 ligne sur 0 » sous un tableau vide n'est pas une
+          somme : c'est le même défaut que l'anneau qui se peignait vide, et le
+          dépôt vient de le trancher.
+
+          UNE SEULE LIGNE : le pied RECOPIERAIT cette ligne. Ce n'est pas faux,
+          c'est un doublon — et le cas n'est pas théorique, c'est l'écran des
+          paiements vu par un LOCATAIRE, qui n'y voit que son propre bail. Il aurait
+          gagné une rangée disant « Total · 1 ligne » sous l'unique montant qu'elle
+          répète. Le cloisonnement du locataire a d'ailleurs relevé exactement ce
+          défaut, en comptant trois rangées là où l'écran n'a qu'un bail.
+        */}
+        {rows.length > 1 && colonnes.some((c) => c.total) && (
+          <tfoot>
+            <tr
+              data-total=""
+              /* UN FILET ÉPAIS, et c'est la convention comptable : le trait qui
+                 sépare les termes de leur somme est plus marqué que ceux qui
+                 séparent les termes entre eux. Sans lui, le pied se lit comme
+                 une onzième ligne du tableau. */
+              className="border-t-2 border-border-strong bg-surface-sunken"
+            >
+              {/*
+                L'INTITULÉ COUVRE LES COLONNES QUI NE SOMMENT PAS, et ce n'est pas
+                de l'esthétique comptable.
+
+                Mesuré : la colonne d'identité des cautions est BORNÉE à 5,5rem,
+                celle des paiements aussi. « Total · 3 lignes sur 5 » y tient trois
+                fois moins ; la cellule aurait donc élargi la colonne, et avec elle
+                la table — sur un écran dont la table défile déjà. Le pied aurait
+                fait grandir le tableau qu'il résume.
+
+                Coiffer les colonnes de tête règle les deux choses d'un coup : la
+                phrase a la place de toutes celles qui n'ont rien à additionner, et
+                chaque somme reste à l'aplomb de sa colonne. C'est aussi la forme
+                qu'un tableau comptable prend depuis toujours.
+
+                LA PORTÉE S'ARRÊTE AU PREMIER MASQUAGE. Une colonne
+                `hideOnMobile` disparaît sous `sm`, et un `colSpan` qui l'aurait
+                couverte décalerait alors tout le pied d'un cran — les sommes
+                glisseraient sous les mauvaises colonnes. Le cas ne se produit pas
+                sur les cinq écrans d'aujourd'hui, qui rendent des fiches sous
+                1024 px ; il se produirait sur une table sans `fiches`, et la garde
+                coûte une ligne.
+              */}
+              {(() => {
+                const premierTotal = colonnes.findIndex((c) => c.total)
+                const premierMasque = colonnes.findIndex((c) => c.hideOnMobile)
+                let portee = premierTotal > 0 ? premierTotal : 1
+                if (premierMasque > 0 && premierMasque < portee) portee = premierMasque
+                return (
+                  <>
+                    <th
+                      scope="row"
+                      colSpan={portee}
+                      className="px-4 py-3 text-left align-middle font-medium whitespace-nowrap"
+                    >
+                      {intituleDuTotal(t, rows.length, lignesEnTout)}
+                    </th>
+                    {colonnes.slice(portee).map((column) => (
+                      <td
+                        key={column.key}
+                        data-colonne-tenue={estTenue(column) ? column.role : undefined}
+                        style={estTenue(column) ? ALTITUDE_TENUE : undefined}
+                        className={cn(
+                          'px-4 py-3 align-middle font-medium',
+                          column.numeric && 'numeric text-right whitespace-nowrap',
+                          /* LE MÊME MASQUAGE QUE L'EN-TÊTE ET LE CORPS. Une
+                             cellule de pied qui resterait quand sa colonne part
+                             décalerait tout le pied d'un cran — la somme des
+                             loyers se retrouverait sous les surfaces. */
+                          column.hideOnMobile && 'hidden sm:table-cell',
+                          estTenue(column) && COLONNE_COLLANTE,
+                          /* LE FOND SUIT SA RANGÉE, comme dans le corps et
+                             l'en-tête : creusé ici, puisque le pied l'est. Une
+                             cellule collante transparente laisse défiler le
+                             contenu SOUS elle. */
+                          estTenue(column) && 'bg-surface-sunken',
+                        )}
+                      >
+                        {column.total ? column.total(rows) : null}
+                      </td>
+                    ))}
+                  </>
+                )
+              })()}
+            </tr>
+          </tfoot>
+        )}
       </table>
       </div>
   )
@@ -748,6 +964,7 @@ function ListeDeFiches<T>({
   columns,
   rows,
   rowKey,
+  lignesEnTout,
   groupePar,
 }: Omit<DataTableProps<T>, 'empty' | 'fiches'>) {
   if (groupePar) {
@@ -785,16 +1002,109 @@ function ListeDeFiches<T>({
             </ul>
           </section>
         ))}
+        {/* LE TOTAL APRÈS TOUS LES GROUPES, comme le `<tfoot>` vient après tous
+            les `<tbody>` : un seul pied pour ce que la liste montre. */}
+        <PiedDeTotaux columns={colonnesDeFiche} rows={rows} lignesEnTout={lignesEnTout} />
       </div>
     )
   }
 
   return (
-    <ul aria-label={caption} className="flex flex-col gap-2">
-      {rows.map((row) => (
-        <Fiche key={rowKey(row)} row={row} columns={columns} />
-      ))}
-    </ul>
+    <>
+      <ul aria-label={caption} className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <Fiche key={rowKey(row)} row={row} columns={columns} />
+        ))}
+      </ul>
+      <PiedDeTotaux columns={columns} rows={rows} lignesEnTout={lignesEnTout} />
+    </>
+  )
+}
+
+/**
+ * LE MÊME PIED, EN FICHES — et sans lui la correction n'aurait pas eu lieu.
+ *
+ * ═══ POURQUOI IL EXISTE ═══
+ *
+ * Quatre des cinq écrans qui somment demandent `fiches`, donc rendent une liste
+ * de cartes sous 1024 px — tablette en portrait et téléphone compris. N'écrire le
+ * total que dans le `<tfoot>` l'aurait donné aux postes de bureau et retiré au
+ * téléphone, c'est-à-dire à l'appareil principal du marché que ce produit vise.
+ *
+ * C'est mot pour mot la leçon que ce fichier a déjà payée une fois, écrite dans
+ * l'en-tête de `ListeDeFiches` : « `hideOnMobile` RETIRAIT jusqu'à six colonnes
+ * sur onze […] sur le marché que ce produit vise, où le téléphone est l'appareil
+ * principal, la moitié de la donnée n'existait pas ». Une somme visible seulement
+ * au large serait la même faute, sur le nombre qui résume tous les autres.
+ *
+ * ═══ HORS DE LA LISTE, ET NON EN DERNIÈRE FICHE ═══
+ *
+ * Même argument que `<tfoot>` contre une dernière rangée du corps : un total
+ * n'est pas un enregistrement. En `<li>`, il porterait le compte de la liste à
+ * N+1 et un lecteur d'écran annoncerait « liste, 4 éléments » pour trois
+ * cautions et une somme.
+ *
+ * ═══ UN `<dl>`, PARCE QUE C'EST CE QUE LA FICHE FAIT DÉJÀ ═══
+ *
+ * Chaque total est un couple nom/valeur — « Total consigné : 1 226 000 FCFA » —
+ * et le corps de la fiche emploie déjà `<dl>` pour cette raison, écrite là-bas :
+ * « un lecteur d'écran y annonce le terme avant sa définition ». Le pied ne peut
+ * pas se passer de ces noms : au tableau, la colonne les porte en haut ; ici, il
+ * n'y a pas de colonne.
+ */
+function PiedDeTotaux<T>({
+  columns,
+  rows,
+  lignesEnTout,
+}: {
+  columns: Column<T>[]
+  rows: T[]
+  lignesEnTout?: number
+}) {
+  const t = useT()
+  /* LA PREMIÈRE COLONNE EST ÉCARTÉE ICI AUSSI, et pour la même raison qu'au pied
+     du tableau : sa cellule est l'intitulé. Les deux formes doivent porter les
+     mêmes sommes — une colonne totalisée d'un côté et pas de l'autre serait un
+     nombre qui apparaît en tournant son téléphone. */
+  const totalisees = columns.filter((c, rang) => c.total && rang > 0)
+  /* MÊME GARDE QU'AU PIED DU TABLEAU : il faut au moins deux termes pour qu'il y
+     ait une somme, et rien à sommer ne s'écrit pas. */
+  if (totalisees.length === 0 || rows.length < 2) return null
+
+  return (
+    <div
+      data-total=""
+      /* LE MÊME VOCABULAIRE QU'UNE FICHE — coins, filet, ombre — et le fond
+         CREUSÉ, qui est ce qui le distingue des cartes qu'il somme. Au tableau,
+         c'est le filet épais qui joue ce rôle ; ici, les cartes sont déjà
+         séparées les unes des autres, donc un trait de plus ne séparerait rien. */
+      className="mt-2 rounded-lg border border-divider bg-surface-sunken p-4 shadow-e1"
+    >
+      <p className="text-body font-medium">
+        {intituleDuTotal(t, rows.length, lignesEnTout)}
+      </p>
+      {/* LA LISTE EST NON VIDE ICI — la sortie anticipée au-dessus s'en charge.
+          Un second garde aurait laissé croire qu'elle peut l'être. */}
+      <dl className="mt-2 flex flex-col gap-1.5">
+        {totalisees.map((column) => (
+            <div key={column.key} className="flex items-baseline justify-between gap-3">
+              <dt className="eyebrow shrink-0 text-muted">{column.header}</dt>
+              <dd
+                /* `numeric` SANS `whitespace-nowrap`, pour la raison mesurée dans
+                   le corps de la fiche : la colonne de droite est étroite, et
+                   `Intl` pose des espaces insécables DANS un montant, qui reste
+                   donc entier de lui-même. */
+                className={cn(
+                  'min-w-0 text-right text-body font-medium',
+                  column.numeric && 'numeric',
+                )}
+              >
+                {column.total!(rows)}
+              </dd>
+            </div>
+        ))}
+      </dl>
+    </div>
   )
 }
 

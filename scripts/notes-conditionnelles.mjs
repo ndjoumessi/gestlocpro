@@ -119,9 +119,21 @@ async function preparerLExport(page) {
   await page.waitForTimeout(350)
 }
 
-/** « Relier à une fiche » vit sur la rangée d'un membre sans fiche. */
+/**
+ * « Relier à une fiche » vit sur la rangée d'un membre sans fiche.
+ *
+ * L'ANCRE EST UN PRÉFIXE, ET CE N'EST PLUS UN RELÂCHEMENT. Le nom accessible de
+ * ce bouton porte désormais la PERSONNE — « Relier à une fiche — Diane Fotso » —
+ * parce que quatre boutons homonymes se suivaient sur cette liste. WCAG 2.5.3
+ * exige que ce nom CONTIENNE le libellé visible, donc le libellé est toujours le
+ * début du nom : un préfixe est l'ancre exacte de cette règle, quand `$` ancrait
+ * sur l'absence de tout complément.
+ *
+ * ELLE A ÉTÉ TROUVÉE EN ROUGE, et c'est ce qui la fait écrire ici : le lot qui a
+ * renommé ces gestes a jugé cette porte hors de sa portée. Elle ne l'était pas.
+ */
 async function ouvrirLaLiaison(page) {
-  await page.getByRole('button', { name: /^Relier à une fiche$/ }).first().click()
+  await page.getByRole('button', { name: /^Relier à une fiche/ }).first().click()
   await page.waitForTimeout(350)
 }
 

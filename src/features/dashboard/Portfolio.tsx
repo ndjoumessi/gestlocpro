@@ -1444,6 +1444,10 @@ export function Portfolio() {
       <DataTable<Unit>
         caption={t('app.portfolio.title')}
         rows={rows}
+        /* `unitesAffichees` est ce que la RECHERCHE découpe — le parc du mois
+           consulté, qui n'est pas forcément le parc d'aujourd'hui. Prendre
+           `units` ferait annoncer un dénominateur que cet écran ne montre pas. */
+        lignesEnTout={unitesAffichees.length}
         rowKey={(unit) => unit.id}
         fiches
         /**
@@ -1631,6 +1635,31 @@ export function Portfolio() {
                 </>
               ) : (
                 money(unit.rent, { compact: true })
+              ),
+            /*
+              LES LOTS VACANTS SORTENT DE LA SOMME, et cet écran l'a déjà tranché
+              deux fois dans ces termes : « Pas le loyer du parc plein : un lot
+              vide n'appelle rien, et l'additionner ferait lire un revenu qui
+              n'existe pas ». `loyersAttendus` et `loyerDe` appliquent la règle
+              tous les deux ; le pied de la colonne l'applique aussi.
+
+              C'EST DONC LA SEULE COLONNE DU PRODUIT DONT LE PIED NE SOMME PAS SES
+              PROPRES CELLULES, et l'écart est celui que la cellule ANNONCE : sur
+              un lot vide, elle écrit le montant suivi de « attendu ». Le pied
+              somme ce qui est appelé, la ligne dit ce qui manque — c'est la
+              répartition que le commentaire de `loyerDe` décrit déjà.
+
+              ET IL SOMME LES LIGNES AFFICHÉES, là où la carte du haut somme le
+              parc : la recherche libre de cet écran filtre la table sans toucher
+              aux cartes, donc chercher « Bonamoussadi » ne donnait plus aucun
+              total pour ce qu'on avait sous les yeux.
+            */
+            total: (unites) =>
+              money(
+                unites
+                  .filter((u) => u.status !== 'vacant')
+                  .reduce((somme, u) => somme + u.rent, 0),
+                { compact: true },
               ),
           },
           {

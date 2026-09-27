@@ -415,6 +415,14 @@ export const en: Dictionary = {
   app: {
     period: 'Period',
     total: 'Total',
+    /* See the French entry for why this counts « rows » and not deposits,
+       units or readings. */
+    totalRows: 'Total · {count} rows',
+    totalRows_one: 'Total · {count} row',
+    /* The plural stays on `all` in the singular form: « Total · 1 of 5 rows »
+       counts the five, which is the number the reader is comparing against. */
+    totalRowsOf: 'Total · {count} of {all} rows',
+    totalRowsOf_one: 'Total · {count} of {all} rows',
     exportStatement: 'Export statement',
     recordPayment: 'Record a payment',
     exported: 'Statement exported as CSV · {file}',
@@ -1522,7 +1530,26 @@ export const en: Dictionary = {
       linkField: 'Tenant record',
       linkHint: 'The unit follows the name: that is what tells two identical names apart.',
       linked: 'Record linked · the tenant now sees their unit',
-      revokeMemberFor: 'Remove {name}’s access',
+      /*
+        « Remove access — {name} » AND NOT « Remove {name}'s access », which read
+        better and broke the rule.
+
+        The visible label is « Remove access ». WCAG 2.5.3 (Label in Name)
+        requires the accessible name to CONTAIN it, so that someone who says
+        « remove access » to a voice control reaches this button. « Remove
+        Diane's access » does not contain the string: the possessive splits the
+        label in two, and the command matches nothing.
+
+        The French half of this pair was caught the same day it was written and
+        corrected — « Relier un locataire » → « Relier à une fiche — {name} ».
+        This one shipped, because the guard that caught it reads the FRENCH
+        dictionary only. `modales` found it the next day, and the way it found it
+        is worth keeping in mind: not as an accessibility complaint, but as a
+        button its probe could no longer open — « RevokeAccess@1280/en : le
+        bouton qui l'ouvre est introuvable ». A name that voice control cannot
+        reach is a name automation cannot reach either.
+      */
+      revokeMemberFor: 'Remove access — {name}',
       linkTenantFor: 'Link to a record — {name}',
       unlinkTenantFor: 'Unlink record — {name}',
       revokeMember: 'Remove access',

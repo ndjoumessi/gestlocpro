@@ -405,6 +405,74 @@ const HORS_PORTEE = {
   d'avant sont identiques au pixel, dans les deux colonnes — le libellé le plus
   court des trois (« Conditions », « Terms ») tient sur la ligne déjà repliée.
 */
+/*
+  CE QUE LE PIED DES COLONNES COÛTE — ET POURQUOI AUCUN NOMBRE N'EST INSCRIT ICI.
+
+  ═══ LE RELEVÉ, SUR LE CONTENEUR D'EXÉCUTION DU 2026-09-27 ═══
+
+  Les cinq tableaux d'argent ont gagné une rangée de pied qui somme leurs
+  colonnes — et, sous 1024 px où quatre d'entre eux passent en fiches, une carte
+  de total à la place de cette rangée. Huit points grandissent :
+
+    /demo/cautions@1280      900 →  946    +46
+    /demo/paiements@1280    1483 → 1530    +47
+    /demo/releves@1280      1402 → 1450    +48
+    /demo/locataires@360    4380 → 4474    +94
+    /demo/paiements@360     3373 → 3466    +93
+    /demo/releves@360       3753 → 3847    +94
+    /demo/parc@360          4232 → 4350   +118
+    /demo/cautions@360      2121 → 2270   +149
+
+  À 1280, les trois valeurs disent la même chose : UNE RANGÉE DE TABLEAU, au
+  rembourrage près des autres. À 360, c'est une carte — intitulé, puis une ligne
+  par colonne sommée — donc le prix suit le NOMBRE de colonnes d'argent de
+  l'écran : un loyer sur le parc et les locataires, trois montants sur les
+  cautions, qui est le point le plus cher de la liste et le seul à dépasser 100 px.
+
+  CE QU'ILS ACHÈTENT : le seul nombre pour lequel on ouvre ces écrans. Les cinq
+  offraient déjà leurs totaux en cartes d'indicateur, calculées sur la population
+  ENTIÈRE, et les cinq tableaux filtrent — par état, et par recherche libre sur le
+  parc. Dès qu'on filtrait, plus aucun nombre de l'écran ne décrivait ce qu'on
+  regardait. Voir `Column.total` dans `DataTable`.
+
+  POURQUOI LA CARTE PLUTÔT QUE LA SEULE RANGÉE, puisqu'elle coûte deux à trois
+  fois plus cher : quatre de ces cinq écrans rendent des FICHES sous 1024 px, donc
+  sur téléphone et tablette en portrait. Un total qui n'existerait qu'au large
+  serait la faute que ce dépôt a déjà payée avec `hideOnMobile` — « sur le marché
+  que ce produit vise, où le téléphone est l'appareil principal, la moitié de la
+  donnée n'existait pas » —, cette fois sur le nombre qui résume tous les autres.
+
+  ═══ AUCUN PLAFOND N'EST MODIFIÉ, ET C'EST LA RÈGLE DE CE FICHIER ═══
+
+  Les deux colonnes appartiennent à deux machines, et l'en-tête ci-dessus le
+  répète : `plafond` vient du portable de développement sous macOS, `plafondLarge`
+  de l'exécuteur Ubuntu de l'intégration continue, et « la colonne large ne se
+  déduit jamais de l'autre » — treize des quarante-quatre points differaient de
+  −67 à +21 px, et deux pages juridiques composent PLUS SERRÉ sous DejaVu que sur
+  le portable.
+
+  LE CONTENEUR DE CE LOT NE REPRODUIT NI L'UNE NI L'AUTRE. Son témoin le dit :
+  « Créer mon espace » mesure 146,13 px en `system-ui` comme en DejaVu nommée,
+  donc `system-ui` EST le repli et la colonne normale ne peut pas être la sienne ;
+  et `MESURER_EN_POLICE_LARGE` y impose Verdana, absente, qui retombe sur une face
+  plus ÉTROITE que `system-ui`. Les huit nombres ci-dessus sont donc un RELEVÉ
+  d'une troisième machine, utile comme ordre de grandeur — une rangée de tableau,
+  une carte par colonne sommée — et non comme plafond.
+
+  LES DEUX COLONNES ATTENDENT DONC UN RELEVÉ pour ces huit points : `plafond` sur
+  la machine de développement, `plafondLarge` par le travail `polices` de
+  l'intégration continue, comme les entrées précédentes de cet en-tête le citent
+  avec leur numéro d'exécution. Un écart marqué avec les ordres de grandeur
+  ci-dessus est lui-même un signal — le pied est une rangée de texte sur une
+  ligne, il ne devrait pas dépendre beaucoup de la police.
+
+  CE QUE LE MÊME CONTENEUR MESURE AU COMMIT PRÉCÉDENT, pour que ce lot ne se voie
+  pas reprocher ce qui ne lui appartient pas : `/demo/acces@360` rend 3377 px pour
+  2187, et `/demo/acces@1280` 1654 px pour 1192 — AUX MÊMES PIXELS, `src/` remonté
+  au commit précédent. Cette dérive-là préexiste et n'est pas de ce lot ; elle
+  n'est pas interprétable ici, puisque cette machine ne juge aucune des deux
+  colonnes.
+*/
 const PLAFONDS = [
   /* 360 px — 23 écrans */
   { adresse: '/inscription', largeur: 360, plafond: 1371, plafondLarge: 1371 },

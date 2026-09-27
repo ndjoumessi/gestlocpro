@@ -365,6 +365,13 @@ export function Deposits() {
         <DataTable<Deposit>
           caption={t('app.deposits.title')}
           rows={visibles}
+          /* `deposits` ET NON `TOUTES` : le locataire ne voit que sa caution, et
+             son pied doit dire « 1 ligne », pas « 1 sur 5 ». Le dénominateur est
+             la population que CE lecteur a le droit de voir — comme les trois
+             cartes du haut, calculées sur le même `deposits` pour la même raison,
+             « sans quoi il lirait "total consigné" sur les cautions de ses
+             voisins ». */
+          lignesEnTout={deposits.length}
           rowKey={(d) => d.unitId}
           fiches
           /* Sans cela, l'écran servait des en-têtes de colonnes au-dessus du
@@ -405,6 +412,16 @@ export function Deposits() {
               header: t('app.deposits.amountHeld'),
               numeric: true,
               render: (d) => money(d.held, { compact: true }),
+              /* LES TROIS SOMMES DU PIED PORTENT SUR CE QUI EST AFFICHÉ, quand
+                 les trois cartes du haut portent sur le parc entier. C'est ce
+                 que le filtre par état rendait introuvable : « 2 en cours
+                 d'arbitrage » est le chiffre le plus actionnable de l'écran — son
+                 propre commentaire le dit —, on filtre dessus pour les traiter, et
+                 l'argent en jeu n'était alors écrit nulle part. */
+              total: (ds) => money(
+                ds.reduce((somme, d) => somme + d.held, 0),
+                { compact: true },
+              ),
             },
             {
               key: 'withheld',
@@ -419,6 +436,19 @@ export function Deposits() {
                 ) : (
                   <span className="text-muted">—</span>
                 ),
+              /* LE SIGNE RESTE, ET LA COULEUR AUSSI : une retenue est une
+                 soustraction sur chaque ligne, elle l'est encore une fois
+                 sommée. Un total positif là où les termes sont négatifs ferait
+                 lire l'inverse de ce que la colonne dit. Rien de retenu : le
+                 tiret des lignes, plutôt qu'un zéro qu'on croirait calculé. */
+              total: (ds) => {
+                const somme = ds.reduce((s, d) => s + d.withheld, 0)
+                return somme === 0 ? (
+                  <span className="text-muted">—</span>
+                ) : (
+                  <span className="text-danger">−{money(somme, { compact: true })}</span>
+                )
+              },
             },
             {
               key: 'balance',
@@ -436,6 +466,18 @@ export function Deposits() {
                 ) : (
                   <span className="font-medium">{money(soldeDeCaution(d), { compact: true })}</span>
                 ),
+              /* LA MÊME RÈGLE QUE LE TOTAL DU HAUT, et il fallait la rappeler
+                 ici : une caution RENDUE n'est plus une dette. La colonne écrit
+                 « — » sur ces lignes ; les sommer les ferait rentrer dans le
+                 total par la porte du pied, et l'écran annoncerait de nouveau
+                 devoir un argent déjà reparti — le défaut que la carte du haut a
+                 mis un lot à corriger. */
+              total: (ds) => money(
+                ds
+                  .filter((d) => d.status !== 'returned')
+                  .reduce((somme, d) => somme + soldeDeCaution(d), 0),
+                { compact: true },
+              ),
             },
             {
               key: 'status',

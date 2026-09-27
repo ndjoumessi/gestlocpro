@@ -332,7 +332,16 @@ const MODALES = [
     voie, pas pour la bénir.
   */
   { nom: 'CreerFiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Créer une fiche locataire$|^Create a tenant record$/, defil: { 360: 602, 1280: 239 }, defilLarge: { 360: 628, 1280: 261 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RelierLaFiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche$|^Link to a record$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /* ANCRE EN PRÉFIXE, MÊME RAISON QUE `CorrigerFiche` CI-DESSUS : le nom
+     accessible porte la PERSONNE depuis le lot du 2026-09-27 — « Relier à une
+     fiche — Diane Fotso » —, parce que quatre boutons homonymes se suivaient sur
+     cette liste. WCAG 2.5.3 impose que ce nom CONTIENNE le libellé visible, donc
+     le libellé reste le début du nom et le préfixe est l'ancre exacte.
+
+     TROUVÉE EN ROUGE, PAS ANTICIPÉE : ce lot-là a jugé cette porte hors de sa
+     portée. Elle ne l'était pas — deux entrées de ce registre et une de
+     `notes-conditionnelles` visaient les noms qu'il renommait. */
+  { nom: 'RelierLaFiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche|^Link to a record/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'OpenWork', fichier: 'features/dashboard/OpenWorkModal.tsx', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$|^Open a job$/, defil: { 360: 130, 1280: 0 }, defilLarge: { 360: 138, 1280: 0 }, avant: { 360: 1056, 1280: 913 } },
   { nom: 'RecordPayment', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$|^Record a payment$/, defil: { 360: 460, 1280: 40 }, defilLarge: { 360: 493, 1280: 47 }, avant: { 360: 522, 1280: 236 } },
   /*
@@ -502,7 +511,10 @@ const MODALES = [
   */
   { nom: 'SettleDeposit', fichier: 'features/dashboard/Deposits.tsx', adresse: '/demo/cautions', bouton: /^Arbitrer$|^Settle$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 10, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'RemoveTenant', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Retirer la fiche de |^Remove .+’s record$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
-  { nom: 'RevokeAccess', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès$|^Remove access$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /* ANCRE EN PRÉFIXE — voir `RelierLaFiche`. « Retirer l'accès — Diane Fotso » :
+     c'est le geste où l'homonymie coûtait le plus cher, quatre boutons
+     identiques dont celui qu'on active retire l'accès de quelqu'un. */
+  { nom: 'RevokeAccess', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Retirer l’accès|^Remove access/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     SUPPRIMER UN IMMEUBLE : LA SONDE EN CRÉE UN D'ABORD.
 
@@ -590,7 +602,10 @@ const MODALES = [
     l'acte est un enregistrement au dossier plus une notification à un compte,
     et elle n'a ni l'un ni l'autre. Elle le dit, au lieu de se taire.
   */
-  { nom: 'FormalNotice', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure$|^Serve notice$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /* ANCRE EN PRÉFIXE — voir `RelierLaFiche`. Le nom porte le LOGEMENT depuis le
+     lot du 2026-09-27 : « Mettre en demeure — A3 ». Trois boutons se suivaient
+     sous le même nom, sur le geste le plus lourd du produit. */
+  { nom: 'FormalNotice', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Mettre en demeure|^Serve notice/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
 ]
 
 /**

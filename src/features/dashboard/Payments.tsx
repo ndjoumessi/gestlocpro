@@ -525,6 +525,9 @@ export function Payments() {
       <DataTable<Unit>
         caption={t('app.payments.title')}
         rows={rows}
+        /* `leases` est la population que le filtre découpe — les baux actifs,
+           c'est-à-dire ce que cet écran montre quand on ne filtre rien. */
+        lignesEnTout={leases.length}
         rowKey={(unit) => unit.id}
         fiches
         empty={
@@ -695,6 +698,35 @@ export function Payments() {
                 </span>
               )
             },
+            /*
+              LE SOLDE DU PARC AFFICHÉ — le seul chiffre pour lequel on vient ici.
+
+              LA MÊME RÈGLE QUE LA LIGNE, à la lettre : cumulé quand l'historique
+              existe, écart du mois sinon. Deux règles différentes entre une
+              colonne et son pied donneraient une somme qui ne fait pas la somme
+              de ce qu'on voit — et personne ne le verrait, puisqu'additionner dix
+              lignes à la main est exactement ce qu'on n'a pas fait.
+
+              LES AVANCES SE COMPENSENT, et c'est voulu : un locataire qui a payé
+              d'avance réduit ce que le parc doit encaisser. C'est la même
+              arithmétique que la carte « reste à percevoir » du haut, dont ce
+              pied est la version filtrée.
+            */
+            total: (unites) => {
+              const solde = unites.reduce(
+                (somme, unit) =>
+                  somme + (periodes.length > 0 ? soldeCumule(unit) : unit.rent - unit.paid),
+                0,
+              )
+              if (solde === 0)
+                return <span className="text-muted">{money(0, { compact: true })}</span>
+              return (
+                <span className={cn(solde > 0 ? 'text-danger' : 'text-ok')}>
+                  {solde > 0 ? '−' : '+'}
+                  {money(Math.abs(solde), { compact: true })}
+                </span>
+              )
+            },
           },
           ...(periodes.length > 0
             ? periodes.map((periode) => ({
@@ -718,12 +750,27 @@ export function Payments() {
                   numeric: true,
                   hideOnMobile: true,
                   render: (unit: Unit) => money(unit.rent, { compact: true }),
+                  /* CES DEUX COLONNES N'EXISTENT QUE SANS HISTORIQUE — dès qu'une
+                     période est facturée, la grille des mois prend leur place.
+                     Elles sont donc le seul état de l'écran où « dû » et
+                     « encaissé » sont des colonnes, et le seul où leur somme
+                     manquait. */
+                  total: (unites: Unit[]) =>
+                    money(
+                      unites.reduce((somme, unit) => somme + unit.rent, 0),
+                      { compact: true },
+                    ),
                 },
                 {
                   key: 'paid',
                   header: t('app.payments.paid'),
                   numeric: true,
                   render: (unit: Unit) => money(unit.paid, { compact: true }),
+                  total: (unites: Unit[]) =>
+                    money(
+                      unites.reduce((somme, unit) => somme + unit.paid, 0),
+                      { compact: true },
+                    ),
                 },
               ]),
           {

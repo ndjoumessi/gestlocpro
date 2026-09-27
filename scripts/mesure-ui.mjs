@@ -4047,6 +4047,17 @@ let ciblesDeSurface = 0
 const commandesHomonymes = new Map()
 /** Combien de listes ont été regardées — voir la sonde, qui dit pourquoi. */
 let listesExaminees = 0
+/**
+ * LES NOMS QUI NE CONTIENNENT PAS LEUR LIBELLÉ VISIBLE — WCAG 2.5.3.
+ *
+ * Troisième règle de la sonde des noms, et voir son en-tête pour ce qui l'a fait
+ * écrire : le lot qui a renommé vingt-neuf gestes homonymes en a écrit deux de
+ * travers, dont un — anglais — a été LIVRÉ, faute qu'aucun cas ne rende cet écran
+ * en anglais. Cette porte parcourt les deux langues.
+ */
+const labelsDeTravers = new Map()
+/** Combien de commandes portaient un `aria-label` ET un texte visible. */
+let nommeesParLabel = 0
 const commandesAnonymes = new Map()
 let nomsExamines = 0
 /** Points (écran × largeur × langue) où la sonde des noms s'est exécutée. */
@@ -4454,6 +4465,16 @@ try {
             commandesHomonymes.set(cle, { ...h, ou: `${adresse} ${largeur}px ${langue}` })
           }
         }
+        /* LE LIBELLÉ VISIBLE DANS LE NOM — troisième règle de la même sonde.
+           Retenus par COUPLE (label, visible) : le même bouton se rapporte sur
+           douze largeurs, et c'est une seule faute. */
+        nommeesParLabel += noms.nommeesParLabel ?? 0
+        for (const l of noms.labelsDeTravers ?? []) {
+          const cle = `${l.label}|${l.visible}`
+          if (!labelsDeTravers.has(cle)) {
+            labelsDeTravers.set(cle, { ...l, ou: `${adresse} ${largeur}px ${langue}` })
+          }
+        }
         for (const item of noms.items) {
           const cle = `${item.balise}|${item.role}|${item.classes}`
           if (!commandesAnonymes.has(cle)) {
@@ -4763,6 +4784,13 @@ try {
           const cle = `${nom}|${h.groupe}|${h.nom}`
           if (!commandesHomonymes.has(cle)) {
             commandesHomonymes.set(cle, { ...h, ou: `surface ${nom}` })
+          }
+        }
+        nommeesParLabel += noms.nommeesParLabel ?? 0
+        for (const l of noms.labelsDeTravers ?? []) {
+          const cle = `${nom}|${l.label}|${l.visible}`
+          if (!labelsDeTravers.has(cle)) {
+            labelsDeTravers.set(cle, { ...l, ou: `surface ${nom}` })
           }
         }
         /* `pointsDeNom` N'EST PAS incrémenté : sa garde exige l'égalité exacte
@@ -5862,6 +5890,42 @@ if (commandesHomonymes.size > 0) {
   process.exit(1)
 }
 
+/*
+  ═══ LE NOM ACCESSIBLE CONTIENT LE LIBELLÉ VISIBLE — WCAG 2.5.3 ═══
+
+  Le pendant de la règle ci-dessus, et sa dette : renommer un geste pour le
+  distinguer de ses homonymes consiste à AJOUTER une donnée au libellé visible.
+  L'ajouter mal casse la commande vocale, qui cherche dans le nom accessible ce
+  que l'utilisateur LIT à l'écran.
+
+  ELLE EST NÉE D'UNE FAUTE LIVRÉE, la sienne : le lot qui a posé vingt-neuf de ces
+  noms en a écrit un — anglais — qui ne contient pas son libellé, « Remove Diane's
+  access » pour un bouton qui affiche « Remove access ». Son jumeau français a été
+  pris le jour même par un cas qui rend l'écran en français ; celui-là est passé,
+  parce qu'aucun cas ne rend cet écran en anglais. Cette porte-ci parcourt les deux
+  langues, ce qui est exactement ce qui manquait.
+
+  ET ELLE A ÉTÉ TROUVÉE PAR HASARD, ce qui vaut d'être écrit : `modales` a signalé
+  « le bouton qui l'ouvre est introuvable ». Un nom que la voix n'atteint pas est
+  un nom que l'automatisation n'atteint pas — même chaîne, même recherche. La
+  porte des modales l'a donc vu sans savoir ce qu'elle voyait ; celle-ci le nomme.
+*/
+if (labelsDeTravers.size > 0) {
+  console.error(
+    `\n✗ mesure-ui : ${labelsDeTravers.size} nom(s) accessible(s) qui ne contiennent pas ` +
+      `le libellé visible de leur commande, sur ${nommeesParLabel} examinée(s).\n` +
+      "   Qui commande à la voix dit ce qu'il LIT : « cliquer sur Retirer l'accès ».\n" +
+      '   Si le nom ne contient pas cette chaîne, le bouton est à l’écran, lisible,\n' +
+      '   et inatteignable (WCAG 2.5.3). Le complément s’AJOUTE au libellé — «\n' +
+      '   Retirer l’accès — Diane Fotso » —, il ne le reformule pas.\n',
+  )
+  for (const l of labelsDeTravers.values()) {
+    console.error(`  ▸ ${l.ou} — nom « ${l.label} » pour le libellé « ${l.visible} »`)
+    console.error(`     ${l.html}\n`)
+  }
+  process.exit(1)
+}
+
 if (commandesAnonymes.size > 0) {
   console.error(
     `\n✗ mesure-ui : ${commandesAnonymes.size} forme(s) de commande sans nom accessible, ` +
@@ -6701,6 +6765,8 @@ console.log(
     `écarts de la sonde déclarés dans \`scripts/noms-accessibles.js\`.\n` +
     `  ${listesExaminees} liste(s) et tableau(x) examinés pour l'HOMONYMIE de leurs gestes, ` +
     `aucun nom porté\n  par trois commandes ou plus — on les atteint l'un après l'autre à la tabulation.\n` +
+    `  ${nommeesParLabel} commande(s) nommée(s) par \`aria-label\` PAR-DESSUS un texte visible, ` +
+    `toutes\n  contenant ce texte (WCAG 2.5.3) — dans les deux langues.\n` +
     `  ${ciblesSondees} cibles sondées au point de contact sur ${pointsDeCible} points ` +
       `(${LARGEURS.length} largeurs × ${LANGUES.length} langues, thème ${THEME_DE_GEOMETRIE}), ` +
       `aucune sous ${PLANCHER_CIBLE} px hors les ${Object.keys(CIBLES_EXEMPTES).length} exemptions motivées.`,

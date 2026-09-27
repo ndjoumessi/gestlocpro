@@ -851,6 +851,8 @@ export function Tenants() {
       <DataTable<Unit>
         caption={t('app.tenants.title')}
         rows={visibles}
+        /* `leases` est ce que le filtre d'état ET la recherche découpent. */
+        lignesEnTout={leases.length}
         rowKey={(unit) => unit.id}
         fiches
         columns={[
@@ -949,6 +951,22 @@ export function Tenants() {
             header: t('app.portfolio.rent'),
             numeric: true,
             render: (unit) => money(unit.rent, { compact: true }),
+            /*
+              PAS DE LOT VACANT À ÉCARTER ICI, contrairement au parc : `leases` ne
+              contient que des baux, donc chaque ligne appelle un loyer. La somme
+              des cellules est la bonne somme.
+
+              CE QUE LE PIED AJOUTE : cet écran filtre par ÉTAT — « regarde les
+              trois en retard », dit son propre commentaire — et cherche aussi par
+              nom et par téléphone. Filtré sur « en retard », il montrait trois
+              baux et un total de carte portant sur les douze. Le loyer en jeu sur
+              les lignes retenues n'était écrit nulle part.
+            */
+            total: (unites) =>
+              money(
+                unites.reduce((somme, unit) => somme + unit.rent, 0),
+                { compact: true },
+              ),
           },
           {
             key: 'status',
