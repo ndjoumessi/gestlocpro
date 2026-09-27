@@ -53,6 +53,16 @@ const DURATION = 4500
 const SORTIE_MS = 150
 
 /**
+ * COMBIEN DE TOASTS TIENNENT À L'ÉCRAN EN MÊME TEMPS.
+ *
+ * Trois est un arbitrage, pas une constante arithmétique : trois messages de deux
+ * lignes font déjà 180 px au-dessus de la barre basse, et le quatrième mangerait
+ * le contenu qu'on vient de modifier. Il est NOMMÉ parce qu'il se lisait avant
+ * dans un `slice(-2)` — un `-2` pour un plafond de trois, qu'il fallait décoder.
+ */
+const PLAFOND = 3
+
+/**
  * L'écart entre deux toasts empilés, en pixels — miroir du `gap-2` d'avant.
  *
  * Il est passé d'une classe à un nombre parce que l'empilement n'est plus une
@@ -214,6 +224,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   */
   const sorties = useRef(new Map<number, number>())
 
+  /* `dismiss` est défini plus bas et `notify` l'appelle : une référence évite
+     de réordonner le fichier ou de recréer `notify` à chaque rendu — ce qui
+     casserait la mémoïsation que tout le produit consomme par `useToast`. */
+  const dismissRef = useRef<(id: number) => void>(() => {})
+
+  /*
+    LE MIROIR DES TOASTS PRÉSENTS, lu par l'écrêtage.
+
+    `notify` doit savoir COMBIEN de toasts occupent l'écran pour évincer le plus
+    ancien, et il ne peut pas le faire depuis l'intérieur du calculateur d'état :
+    évincer, c'est appeler `dismiss`, qui pose une minuterie et change un autre
+    état. Un calculateur que React rejoue — il le fait, en double sous
+    `StrictMode` — poserait deux minuteries. Le miroir sort donc la lecture du
+    calculateur ; il est remis à jour au rendu, et `notify` l'avance lui-même pour
+    le cas de deux messages dans la même image.
+  */
+  const presents = useRef<Toast[]>([])
+  presents.current = toasts
+
   const dismiss = useCallback((id: number) => {
     // Déjà en train de sortir : ni double marquage, ni seconde minuterie. La
     // croix, la minuterie de 4,5 s et le bouton d'action peuvent viser le même
@@ -237,6 +266,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  dismissRef.current = dismiss
+
   useEffect(() => {
     const minuteries = sorties.current
     return () => {
@@ -248,10 +279,44 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const notify = useCallback<ToastContextValue['notify']>((message, options) => {
     const id = nextId.current++
     setTempo('arrivee')
-    setToasts((current) => [
-      ...current.slice(-2),
-      { id, message, tone: options?.tone ?? 'neutral', action: options?.action },
-    ])
+
+    /*
+      ═══ LE TROISIÈME TOAST TUAIT LE PREMIER D'UN BOND ═══
+
+      L'écrêtage s'écrivait `current.slice(-2)` : le plus ancien quittait le
+      tableau dans la même image, sans `sortant`, sans décalage gelé, sans les
+      150 ms de sortie que tout le reste de ce fichier existe pour garantir. Il
+      emportait surtout son `action` — « Annuler », « Voir la quittance » — que
+      cinq appelants attachent : deux enregistrements rapides suivis d'un échec
+      effaçaient le rattrapage qu'on visait du doigt.
+
+      ET LES FANTÔMES COMPTAIENT. `slice` ne distingue pas un toast vivant d'un
+      toast en train de sortir : pendant 150 ms, un mort occupait une place et
+      pouvait évincer un vivant. On écrête donc sur les VIVANTS, et l'évincé
+      part par `dismiss` — le chemin déjà écrit, idempotent, qui lui rend sa
+      sortie.
+
+      `PLAFOND` est nommé : trois toasts est un arbitrage, pas une constante
+      arithmétique qu'on relit dans un `-2`.
+    */
+    const vivants = presents.current.filter(
+      (toast) => !toast.sortant && !sorties.current.has(toast.id),
+    )
+    for (const toast of vivants.slice(0, Math.max(0, vivants.length - (PLAFOND - 1)))) {
+      dismissRef.current(toast.id)
+    }
+
+    const nouveau: Toast = {
+      id,
+      message,
+      tone: options?.tone ?? 'neutral',
+      action: options?.action,
+    }
+    /* Le miroir est avancé ICI, avant le rendu qui le remettra à jour : deux
+       `notify` dans la même image compteraient sinon la même place deux fois. */
+    presents.current = [...presents.current, nouveau]
+    setToasts((current) => [...current, nouveau])
+
   }, [])
 
   const value = useMemo(() => ({ notify }), [notify])
@@ -272,10 +337,34 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
 
-      {/* `polite` : annoncé sans voler le focus de l'utilisateur. */}
+      {/*
+        ═══ LA PAROLE A QUITTÉ CE CONTENEUR ═══
+
+        Il était lui-même la région vivante, figée `aria-live="polite"` pour les
+        TROIS tons. Trois conséquences, toutes payées par l'échec :
+
+        1. UN ÉCHEC ATTENDAIT SON TOUR. `polite` fait la queue derrière la parole
+           en cours ; « L'action a échoué » passait donc après un « Enregistré »
+           qui n'apprend rien, et le nœud qui le portait était détruit à 4 650 ms
+           — l'annonce pouvait mourir avant d'être dite. Vingt et un appels de ce
+           produit posent un `tone: 'danger'` : un loyer non enregistré, une
+           invitation qui échoue, un paiement non transmis.
+        2. LA VOIX SUIVAIT L'ANIMATION. La région surveillait un sous-arbre qui
+           monte, glisse, se replace et se démonte, avec `aria-atomic="false"` :
+           chaque mutation était une occasion d'annoncer un fragment.
+        3. UN SEUL NIVEAU POUR TOUT. Rien ne distinguait la confirmation, qui
+           peut attendre, de l'échec, qui ne peut pas.
+
+        CHAQUE TOAST EST DÉSORMAIS SA PROPRE RÉGION, et porte le niveau de son
+        ton. Une paire de régions cachées et permanentes aurait été l'autre
+        solution ; elle a été écrite, mesurée, puis retirée : elle écrit la phrase
+        DEUX FOIS dans la page — une pour l'œil, une pour la voix — donc la fait
+        rencontrer deux fois à qui navigue au lecteur d'écran. Le motif `alert`
+        d'ARIA n'a pas ce défaut : un nœud inséré avec son texte est annoncé
+        parce qu'il est inséré.
+      */}
       <div
-        aria-live="polite"
-        aria-atomic="false"
+        data-toasts
         // `max(base, env(…))` et non `calc(base + env(…))` : le toast FLOTTE,
         // rien n'est peint jusqu'au bord. L'inset porte déjà la garde qu'il
         // faut contre la barre de gestes ; l'additionner propulserait une
@@ -350,8 +439,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
  *  - PAS de bouton de fermeture — corrigé. C'est le minimum : sans lui, un
  *    message reste 4,5 s quoi qu'il arrive, et l'action qu'il propose disparaît
  *    sous les doigts de qui la vise. Le bouton NE PREND PAS le focus à
- *    l'apparition : la région reste `polite`, une notification s'annonce, elle
- *    n'interrompt pas. Un focus volé arracherait le curseur du champ en cours
+ *    l'apparition : annoncer n'est pas focaliser, même pour un `alert`. Un focus volé arracherait le curseur du champ en cours
  *    de saisie — plus grave que le message manqué.
  *
  *  - PAS de pause au survol ni au focus — corrigé aussi, et pour une raison
@@ -468,17 +556,36 @@ function ToastItem({
           encore atteindre une croix devenue invisible ; or qui a le focus DANS le
           toast suspend l'effacement (voir la minuterie ci-dessus), donc ce cas
           suppose de tabuler VERS un toast qu'on ne voit plus, dans la fenêtre de
-          son fondu. Le risque en face porte sur la seule chose que le toast sache
-          faire : annoncer. Cette région est `aria-live="polite"`, et les
-          techniques d'assistance y suivent les mutations du sous-arbre ; poser
-          `inert` — qui implique la sémantique d'`aria-hidden` sur toute la
-          descendance — sur un nœud d'une région vivante est un geste dont l'effet
-          sur une annonce EN COURS n'a pas été mesuré ici. Entre 150 ms de
-          focalisabilité résiduelle et le risque d'étouffer l'annonce, on garde
-          l'annonce. `aria-hidden` seul ne le menace pas : `aria-relevant` vaut par
-          défaut `additions text`, une disparition ne s'annonce pas.
+          son fondu. `aria-hidden` suffit donc, et il ne menace pas l'annonce que
+          ce nœud porte désormais lui-même : `aria-relevant` vaut par défaut
+          `additions text`, une disparition ne se dit pas. `inert`, qui implique
+          la sémantique d'`aria-hidden` sur toute la descendance d'un nœud devenu
+          région vivante, a un effet non mesuré ici sur une annonce EN COURS ;
+          entre 150 ms de focalisabilité résiduelle et le risque d'étouffer un
+          message commencé, on garde le message.
         */
         aria-hidden={sortant || undefined}
+        /*
+          ═══ CE TOAST EST SA PROPRE RÉGION VIVANTE, ET PORTE LE NIVEAU DE SON TON ═══
+
+          `alert` pour l'échec — implicitement `assertive`, donc il INTERROMPT la
+          parole en cours —, `status` pour le reste, qui peut attendre son tour.
+          C'était la vraie faute du conteneur unique : un « L'action a échoué »
+          derrière la file d'un « Enregistré », sur un nœud détruit à 4 650 ms.
+
+          `aria-atomic` VAUT VRAI, et c'est ce qui répare le second défaut : la
+          phrase est lue ENTIÈRE, avec le rattrapage qu'elle propose
+          (« Annuler »), au lieu d'être recomposée fragment par fragment au fil
+          des mutations d'un sous-arbre qui s'animait.
+
+          LE NŒUD NAÎT AVEC SON TEXTE, et c'est le motif `alert` d'ARIA tel qu'il
+          est spécifié : ce qui déclenche l'annonce est l'INSERTION de la région.
+          C'est aussi ce qui permet de n'écrire la phrase qu'une fois — une région
+          cachée et permanente en aurait demandé une seconde copie, rencontrée
+          deux fois par qui navigue au lecteur d'écran.
+        */
+        role={toast.tone === 'danger' ? 'alert' : 'status'}
+        aria-atomic="true"
         className={cn(
           sortant ? 'animate-rise-out' : 'animate-rise',
           // Conditionnel, jamais deux classes de la même propriété côte à côte :

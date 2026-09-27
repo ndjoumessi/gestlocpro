@@ -22,8 +22,11 @@ describe('le conteneur des toasts', () => {
         <p>contenu</p>
       </ToastProvider>,
     )
-    const conteneur = container.parentElement!.querySelector('[aria-live="polite"]')
-    expect(conteneur, 'la région vivante des toasts').not.toBeNull()
+    /* `[data-toasts]` ET NON `[aria-live]` : le conteneur a CESSÉ d'être la
+       région vivante — chaque toast est la sienne, au niveau de son ton. Voir
+       `annonceDesToasts.test.tsx`. */
+    const conteneur = container.parentElement!.querySelector('[data-toasts]')
+    expect(conteneur, 'le conteneur visible des toasts').not.toBeNull()
     expect(conteneur!.className).toContain('bottom-[var(--h-barre-basse,0px)]')
     expect(conteneur!.className).not.toMatch(/\bbottom-0\b/)
   })
