@@ -15,7 +15,7 @@ import { Combobox } from './Combobox'
  *   1. dès la fermeture, la liste a quitté l'ARBRE D'ACCESSIBILITÉ — une requête
  *      par rôle ne la trouve plus, et ses OPTIONS non plus ;
  *   2. à cet instant précis, elle est pourtant encore PEINTE — elle est dans le
- *      document, en train de finir `animate-pop-out` ;
+ *      document, en train de finir `surface-pop-sortie` ;
  *   3. et elle finit par partir pour de bon.
  *
  * Aucun des trois ne se suffit. Le premier seul est vrai d'une liste qui se

@@ -22,7 +22,7 @@ import { CurrencySwitcher } from '@/components/controls/CurrencySwitcher'
  *   1. dès la fermeture, le panneau a quitté l'ARBRE D'ACCESSIBILITÉ — une
  *      requête par rôle ne le trouve plus ;
  *   2. à cet instant précis, il est pourtant encore PEINT — il est dans le
- *      document, en train de finir `animate-pop-out` ;
+ *      document, en train de finir `surface-pop-sortie` ;
  *   3. et il finit par partir pour de bon.
  *
  * Aucun des trois ne se suffit. Le premier seul est vrai d'un panneau qui se

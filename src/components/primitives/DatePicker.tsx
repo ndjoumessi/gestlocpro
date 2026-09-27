@@ -15,7 +15,7 @@ import { useSortieDifferee } from '@/lib/useSortieDifferee'
    la même ligne. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
-/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+/** Durée de la sortie, en miroir de `surface-pop-sortie` (`--duration-fast`). */
 const SORTIE_MS = 150
 
 /**
@@ -617,7 +617,7 @@ export function DatePicker({
             aria-hidden={sortant || undefined}
             {...(sortant ? INERTE : {})}
             className={cn(
-              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
               'fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3',
             )}
           >
@@ -1005,7 +1005,7 @@ export function MonthPicker({
             aria-hidden={sortant || undefined}
             {...(sortant ? INERTE : {})}
             className={cn(
-              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
               'fixed w-max max-w-[calc(100vw-1rem)] rounded-lg border border-divider bg-surface p-3 shadow-e3',
             )}
           >

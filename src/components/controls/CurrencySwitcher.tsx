@@ -11,7 +11,7 @@ import { useSortieDifferee } from '@/lib/useSortieDifferee'
    un étalement conditionnel de cet objet — voir `Modal.tsx:14`. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
-/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+/** Durée de la sortie, en miroir de `surface-pop-sortie` (`--duration-fast`). */
 const SORTIE_MS = 150
 
 export interface CurrencySwitcherProps {
@@ -133,7 +133,7 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
           aria-hidden={sortant || undefined}
           {...(sortant ? INERTE : {})}
           className={cn(
-            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+            sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
             // 52 → 64 : la ligne porte désormais un nom et non plus un code,
             // et « Dollar américain ($) » suivi de « USD » ne tenait pas dans
             // 208 px sans se couper.
@@ -141,7 +141,7 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
             'border border-divider bg-surface p-1 shadow-e2',
           )}
           /* `right-0` sous le bouton, sans renversement : l'origine est le coin
-             haut-droit. `gl-pop` n'en pose aucune, et la liste grandissait donc
+             haut-droit. `surface-pop` n'en pose aucune, et la liste grandissait donc
              depuis son centre — elle venait de nulle part. */
           style={{ zIndex: 'var(--z-dropdown)', transformOrigin: 'top right' }}
         >

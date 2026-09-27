@@ -706,8 +706,9 @@
   /* ELLES VIVAIENT HORS DE `@theme`, « parce qu'elles sont réutilisées en CSS
      brut ». LA RAISON ÉTAIT FAUSSE, et son contre-exemple était six lignes plus
      haut : `--ease-drawer` est dans `@theme`, ne sert QUE dans du CSS brut
-     (`animation: gl-drawer-in var(--duration-slow) var(--ease-drawer)`), et est
-     bien émis. Tailwind v4 n'élague pas un jeton que la feuille elle-même cite.
+     (`transition: transform var(--duration-slow) var(--ease-drawer)`, dans
+     `surface-tiroir` — l'exemple citait une image clé `gl-drawer-in` qui n'existe
+     plus depuis la conversion des surfaces en transitions), et est bien émis. Tailwind v4 n'élague pas un jeton que la feuille elle-même cite.
 
      MESURÉ avant de les déplacer, le 2026-09-25 : paquet de 74 660 octets avant
      comme après, à l'octet près ; les trois déclarations passent du `:root` non
@@ -1395,31 +1396,6 @@
   }
 }
 
-@keyframes gl-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Le miroir de `gl-pop`, et `0.96` est le MÊME nombre qu'à l'entrée : rien, dans
-   le monde réel, ne se réduit à néant. Une sortie vers `scale(0)` ferait
-   s'effondrer la fenêtre sur un point, ce qu'aucun objet ne fait en partant. */
-@keyframes gl-pop-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-}
-
 @keyframes gl-grow-x {
   from {
     transform: scaleX(0);
@@ -1696,75 +1672,6 @@
   }
 }
 
-/* Le tiroir de navigation mobile, et le voile qui l'accompagne. Le panneau est
-   `fixed` et RECOUVRE la page : `translateX` ne déplace donc aucun voisin et ne
-   coûte pas de remise en page — c'est l'inverse exact du rail de bureau, qui
-   pousse le contenu et se replie pour cette raison d'un seul bloc. */
-@keyframes gl-drawer-in {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes gl-drawer-out {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-100%);
-  }
-}
-
-/* LA FEUILLE DU BAS, sous `sm`, et c'est la MÊME CLASSE DE GESTE que le tiroir :
-   un panneau qui entre par un bord de la fenêtre. Seul le bord change — le bas
-   au lieu de la gauche —, d'où les mêmes durées et la même courbe. La modale
-   sous `sm` est déjà une feuille de mise en page (`items-end`, `rounded-t-lg`
-   seul) ; elle s'animait pourtant en `gl-pop`, un `scale` CENTRÉ, qui n'a aucun
-   bord d'où venir ni où retomber.
-
-   `translateY` et non `bottom` : la feuille est dans un conteneur `fixed` qu'elle
-   recouvre, rien ne se remet en page derrière elle. `100%` est sa propre hauteur,
-   qui varie d'une modale à l'autre — c'est précisément ce qu'on veut, la feuille
-   part de juste sous le bord quelle que soit sa taille. */
-@keyframes gl-feuille {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes gl-feuille-out {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-
-@keyframes gl-voile-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes gl-voile-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
 @utility animate-rise {
   animation: gl-rise var(--duration-slow) var(--ease-out) both;
 }
@@ -1778,66 +1685,158 @@
   animation: gl-rise-out var(--duration-fast) var(--ease-out) both;
 }
 
-@utility animate-pop {
-  animation: gl-pop var(--duration-base) var(--ease-out) both;
+/*
+  ═══ DES TRANSITIONS, ET NON DES IMAGES-CLÉS — DEUX DÉFAUTS L'ONT DÉCIDÉ ═══
+
+  Ces onze classes étaient des animations — `gl-pop`, `gl-feuille`, `gl-drawer-*`,
+  `gl-voile-*` —, posées en `both`. Deux conséquences, relevées sur le produit et
+  gardées depuis par `scripts/surfaces-animees.mjs` :
+
+  1. UNE ANIMATION QUI REMPLIT ÉCRASE CE QUI PLACE LA SURFACE. `MenuDeDebordement`
+     se renverse au bas de la fenêtre et remonte son panneau par une translation
+     EN LIGNE. Une animation bat une déclaration en ligne, et `both` ne rend pas
+     la main à la fin du geste : `transform` en ligne valait `translateY(-100%)`,
+     `transform` calculée `matrix(1, 0, 0, 1, 0, 0)`. Le menu recouvrait son
+     propre déclencheur et débordait de 69 px SOUS le bord de la fenêtre —
+     exactement ce que le renversement existait pour éviter. D'où `--surface-dx`
+     et `--surface-dy` : le placement entre dans la MÊME déclaration que le
+     geste, au lieu de lui disputer la propriété.
+
+  2. UNE ANIMATION REPART DE SON `from`, ELLE NE SE RE-CIBLE PAS. Fermer pendant
+     l'entrée remplaçait `gl-pop` par `gl-pop-out`, dont la première image est
+     `opacity: 1`. Mesuré au double-clic : présence 0,342 à l'image du clic, puis
+     1,000 à la suivante, puis le fondu — le panneau FLASHAIT à pleine opacité
+     pour s'en aller, et deux trames plus tôt il flashait sans avoir jamais été
+     vu. Une transition part de la valeur COURANTE. C'est la règle que
+     `Toast.tsx` portait déjà écrite pour son replacement, et que la phrase d'à
+     côté niait pour les panneaux : « une entrée et une sortie jouent UNE fois et
+     n'ont pas à être interrompues ». `useSortieDifferee` la démentait déjà par
+     une branche à lui — il gère la RÉOUVERTURE PENDANT LA SORTIE.
+
+  CE QUE LA CONVERSION COÛTE, ET IL FAUT LE DIRE. L'entrée dépend de
+  `@starting-style` : sans lui, la surface PARAÎT à son état final au lieu
+  d'entrer. Mesuré dans le paquet du 2026-09-27, la règle est bien émise par
+  Tailwind v4 depuis un `@utility`, y compris sous la variante `max-sm:`. Là où
+  le moteur l'ignore, la sortie continue de se jouer et seule l'entrée se perd :
+  la dégradation tombe du bon côté, mais elle existe, et elle n'existait pas avec
+  des images clés.
+
+  LES TEMPOS NE BOUGENT PAS D'UNE MILLISECONDE. On change le mécanisme, pas le
+  mouvement : 200/150 pour `pop`, 300/200 pour la feuille et le tiroir, les ~70 %
+  que `docs/PLAN.md:119` demande à toute sortie, et la même courbe à l'aller
+  qu'au retour — c'est le même geste rejoué à l'envers, pas un second geste.
+*/
+
+/* `--surface-dx` / `--surface-dy` : le décalage de PLACEMENT, composé avec le
+   geste plutôt qu'en concurrence avec lui. Nul par défaut, donc sans effet pour
+   les surfaces qui se placent par `top` / `right` — c'est-à-dire toutes sauf le
+   menu renversé. */
+@utility surface-pop {
+  opacity: 1;
+  transform: translate(var(--surface-dx, 0px), var(--surface-dy, 0px)) scale(1);
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+
+  /* `0.96`, ET LE MÊME NOMBRE AUX DEUX BOUTS : rien, dans le monde réel, ne se
+     réduit à néant. Une surface qui entrerait de `scale(0)` sortirait de nulle
+     part, et une qui y retournerait s'effondrerait sur un point — ce qu'aucun
+     objet ne fait en partant. */
+  @starting-style {
+    opacity: 0;
+    transform: translate(var(--surface-dx, 0px), var(--surface-dy, 0px)) scale(0.96);
+  }
 }
 
 /*
   LA MÊME ENTRÉE, EN 150 ms AU LIEU DE 200 — ET C'EST DÉLIBÉRÉMENT PLUS COURT
   QUE SES VOISINES.
 
-  `animate-pop` sert les panneaux qu'on ouvre d'un geste et qu'on regarde
-  arriver : une modale, un menu, un calendrier. La LISTE CHERCHABLE de
-  `Combobox` a un troisième mode d'ouverture que ceux-là n'ont pas — la
-  PREMIÈRE FRAPPE ouvre la liste en même temps qu'elle la filtre
-  (`Combobox.tsx`, `onChange`). Là, ce qu'on attend n'est pas une surface qui se
-  présente, ce sont les options qui répondent à ce qu'on vient de taper. Cent
-  cinquante millisecondes restent dans la bande des menus déroulants et sont le
-  plus court que les jetons de ce dépôt offrent : on ne descend pas plus bas
-  faute de jeton, et on ne remonte pas à 200 pour « harmoniser » — l'écart de
-  50 ms EST le réglage, pas un oubli.
+  `surface-pop` sert les panneaux qu'on ouvre d'un geste et qu'on regarde
+  arriver : une modale, un menu, un calendrier. La LISTE CHERCHABLE de `Combobox`
+  a un troisième mode d'ouverture que ceux-là n'ont pas — la PREMIÈRE FRAPPE
+  ouvre la liste en même temps qu'elle la filtre (`Combobox.tsx`, `onChange`).
+  Là, ce qu'on attend n'est pas une surface qui se présente, ce sont les options
+  qui répondent à ce qu'on vient de taper. Cent cinquante millisecondes restent
+  dans la bande des menus déroulants et sont le plus court que les jetons de ce
+  dépôt offrent : on ne descend pas plus bas faute de jeton, et on ne remonte pas
+  à 200 pour « harmoniser » — l'écart de 50 ms EST le réglage, pas un oubli.
 
-  Aucune image clé nouvelle, aucun jeton nouveau : c'est `gl-pop`, à la durée
-  `--duration-fast` que `animate-pop-out` emploie déjà. La sortie de cette liste
-  reste `animate-pop-out`, donc entrée et sortie y courent à la même vitesse —
-  ce qui est la conséquence du raccourcissement de l'entrée, et non un second
-  choix.
+  Sa sortie reste `surface-pop-sortie`, donc entrée et sortie y courent à la même
+  vitesse — conséquence du raccourcissement de l'entrée, et non un second choix.
 */
-@utility animate-pop-fast {
-  animation: gl-pop var(--duration-fast) var(--ease-out) both;
+@utility surface-pop-vite {
+  opacity: 1;
+  transform: translate(var(--surface-dx, 0px), var(--surface-dy, 0px)) scale(1);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translate(var(--surface-dx, 0px), var(--surface-dy, 0px)) scale(0.96);
+  }
 }
 
-/* La sortie est plus courte que l'entrée — 150 ms contre 200, soit les ~70 % que
-   `docs/PLAN.md:119` demande. Même courbe qu'à l'entrée : c'est le même geste
-   rejoué à l'envers, pas un second geste. */
-@utility animate-pop-out {
-  animation: gl-pop-out var(--duration-fast) var(--ease-out) both;
+/* La sortie est plus courte que l'entrée — 150 ms contre 200. */
+@utility surface-pop-sortie {
+  opacity: 0;
+  transform: translate(var(--surface-dx, 0px), var(--surface-dy, 0px)) scale(0.96);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
-/* La sortie est plus courte que l'entrée : 200 ms contre 300, soit les ~70 %
-   que `docs/PLAN.md:119` demande. Une surface qui arrive se présente, une
-   surface qui part ne doit plus retenir le regard. Le voile et le panneau
-   partagent exactement les mêmes durées pour qu'ils voyagent ENSEMBLE ; seule
-   la courbe diffère, l'opacité n'ayant pas de distance à parcourir. */
-@utility animate-drawer-in {
-  animation: gl-drawer-in var(--duration-slow) var(--ease-drawer) both;
+/* LE TIROIR DE NAVIGATION MOBILE. Le panneau est `fixed` et RECOUVRE la page :
+   `translateX` ne déplace donc aucun voisin et ne coûte pas de remise en page —
+   c'est l'inverse exact du rail de bureau, qui pousse le contenu et se replie
+   pour cette raison d'un seul bloc.
+
+   IL GLISSE SUR `--ease-drawer`, ET NON SUR `--ease-out` : c'est la courbe
+   d'iOS, reprise telle quelle par Ionic pour ses panneaux latéraux. `--ease-out`
+   est calibré pour de petits déplacements — 6 px pour `animate-rise` — où la fin
+   de course ne se voit pas ; sur les 288 px du panneau, elle se voit, et le
+   panneau semble s'arrêter avant d'être arrivé.
+
+   La sortie fait 200 ms contre 300 : une surface qui arrive se présente, une
+   surface qui part ne doit plus retenir le regard. */
+@utility surface-tiroir {
+  transform: translateX(0);
+  transition: transform var(--duration-slow) var(--ease-drawer);
+
+  @starting-style {
+    transform: translateX(-100%);
+  }
 }
 
-@utility animate-drawer-out {
-  animation: gl-drawer-out var(--duration-base) var(--ease-drawer) both;
+@utility surface-tiroir-sortie {
+  transform: translateX(-100%);
+  transition: transform var(--duration-base) var(--ease-drawer);
 }
 
-/* Le tempo du TIROIR, à la milliseconde, et pas celui de `pop` : 300 ms à
-   l'entrée, 200 à la sortie — les ~70 % que `docs/PLAN.md:119` demande. Ce n'est
-   pas un alignement décoratif, c'est la même distance parcourue par le même
-   genre de surface. Le voile qui l'accompagne emprunte pour cette raison la
-   paire `animate-voile-drawer-*`, voir le docbloc des voiles plus bas. */
-@utility animate-feuille {
-  animation: gl-feuille var(--duration-slow) var(--ease-drawer) both;
+/* LA FEUILLE DU BAS, sous `sm`, et c'est la MÊME CLASSE DE GESTE que le tiroir :
+   un panneau qui entre par un bord de la fenêtre. Seul le bord change — le bas
+   au lieu de la gauche —, d'où les mêmes durées et la même courbe. La modale
+   sous `sm` est déjà une feuille de mise en page (`items-end`, `rounded-t-lg`
+   seul) ; elle s'animait pourtant comme `pop`, un `scale` CENTRÉ, qui n'a aucun
+   bord d'où venir ni où retomber.
+
+   `translateY` et non `bottom` : la feuille est dans un conteneur `fixed` qu'elle
+   recouvre, rien ne se remet en page derrière elle. `100%` est sa propre hauteur,
+   qui varie d'une modale à l'autre — c'est précisément ce qu'on veut, la feuille
+   part de juste sous le bord quelle que soit sa taille. */
+@utility surface-feuille {
+  transform: translateY(0);
+  transition: transform var(--duration-slow) var(--ease-drawer);
+
+  @starting-style {
+    transform: translateY(100%);
+  }
 }
 
-@utility animate-feuille-out {
-  animation: gl-feuille-out var(--duration-base) var(--ease-drawer) both;
+@utility surface-feuille-sortie {
+  transform: translateY(100%);
+  transition: transform var(--duration-base) var(--ease-drawer);
 }
 
 /*
@@ -1849,32 +1848,45 @@
   accompagne — et comme les surfaces n'ont pas toutes le même tempo, un voile
   générique ne peut pas être juste pour toutes.
 
-  Mesuré : `animate-voile-in`/`-out`, écrits pour le tiroir (300/200 ms), ont été
-  adoptés tels quels par la modale, qui court en 200/150. Le fond de la modale
-  continuait donc de noircir 100 ms APRÈS que le panneau se soit posé, et sa
-  sortie était tranchée à 150 ms sur une disparition prévue pour 200. Le défaut
-  ne venait pas d'une valeur fausse mais d'un NOM trop large : rien, dans
-  `animate-voile-in`, ne disait à quel tempo il appartenait.
+  Mesuré : un voile unique écrit pour le tiroir (300/200 ms) avait été adopté tel
+  quel par la modale, qui court en 200/150. Le fond de la modale continuait donc
+  de noircir 100 ms APRÈS que le panneau se soit posé, et sa sortie était
+  tranchée à 150 ms sur une disparition prévue pour 200. Le défaut ne venait pas
+  d'une valeur fausse mais d'un NOM trop large : rien, dans ce nom, ne disait à
+  quel tempo il appartenait.
 
-  D'où le suffixe de surface. Les images clés, elles, restent partagées — une
-  opacité de 0 à 1 n'a qu'une façon de s'écrire. Seules les enveloppes diffèrent.
+  D'où le suffixe de surface. Seule l'opacité voyage ici — un voile n'a aucune
+  distance à parcourir —, d'où `--ease-out` des deux côtés et non la courbe du
+  panneau qu'il accompagne.
 */
-@utility animate-voile-drawer-in {
-  animation: gl-voile-in var(--duration-slow) var(--ease-out) both;
+@utility voile-tiroir {
+  opacity: 1;
+  transition: opacity var(--duration-slow) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
 }
 
-@utility animate-voile-drawer-out {
-  animation: gl-voile-out var(--duration-base) var(--ease-out) both;
+@utility voile-tiroir-sortie {
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
 }
 
-/* Le tempo de `animate-pop` / `animate-pop-out`, à la milliseconde : la modale
-   et son voile doivent partir et arriver ensemble. */
-@utility animate-voile-pop-in {
-  animation: gl-voile-in var(--duration-base) var(--ease-out) both;
+/* Le tempo de `surface-pop` / `surface-pop-sortie`, à la milliseconde : la
+   modale et son voile doivent partir et arriver ensemble. */
+@utility voile-pop {
+  opacity: 1;
+  transition: opacity var(--duration-base) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
 }
 
-@utility animate-voile-pop-out {
-  animation: gl-voile-out var(--duration-fast) var(--ease-out) both;
+@utility voile-pop-sortie {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
 
 /* Entrée d'une barre de progression : un seul élément par jauge, aucun décalage

@@ -9,7 +9,7 @@ import { Modal } from './Modal'
  *
  * La mise en page le disait déjà : `items-end` sous `sm`, `rounded-t-lg` sans
  * `rounded-b`, la zone sûre du bas portée par le pied. Le MOUVEMENT, lui,
- * disait l'inverse — `animate-pop`, un `scale(0.96) → 1` centré, qui n'a pas de
+ * disait l'inverse — le geste de `pop`, un `scale(0.96) → 1` centré, qui n'a pas de
  * bord d'où venir. Une surface collée au bas de l'écran monte de ce bord et y
  * retombe ; c'est le même geste que le tiroir, d'où le même tempo (300/200).
  *
@@ -39,24 +39,26 @@ import { Modal } from './Modal'
  * fabrique le CSS de tout motif qu'il y reconnaît ; une classe citée en clair
  * entrerait dans la feuille livrée au seul titre d'avoir servi d'assertion.
  */
-const SOUS = ['max', 'sm:animate'].join('-')
-const DES = 'sm:animate-'
+const SOUS = ['max', 'sm:surface'].join('-')
+const DES = 'sm:surface-'
+const SOUS_VOILE = ['max', 'sm:voile'].join('-')
+const DES_VOILE = 'sm:voile-'
 
 const FEUILLE = [SOUS, 'feuille'].join('-')
-const FEUILLE_OUT = [SOUS, 'feuille', 'out'].join('-')
+const FEUILLE_OUT = [SOUS, 'feuille', 'sortie'].join('-')
 const POP = `${DES}pop`
-const POP_OUT = `${DES}pop-out`
+const POP_OUT = `${DES}pop-sortie`
 
-const VOILE_TIROIR_IN = [SOUS, 'voile', 'drawer', 'in'].join('-')
-const VOILE_TIROIR_OUT = [SOUS, 'voile', 'drawer', 'out'].join('-')
-const VOILE_POP_IN = `${DES}voile-pop-in`
-const VOILE_POP_OUT = `${DES}voile-pop-out`
+const VOILE_TIROIR_IN = [SOUS_VOILE, 'tiroir'].join('-')
+const VOILE_TIROIR_OUT = [SOUS_VOILE, 'tiroir', 'sortie'].join('-')
+const VOILE_POP_IN = `${DES_VOILE}pop`
+const VOILE_POP_OUT = `${DES_VOILE}pop-sortie`
 
 /**
  * Les JETONS de la classe, pas la chaîne.
  *
- * `toContain` sur la chaîne entière serait une fausse garde : `animate-feuille`
- * est un préfixe de `animate-feuille-out`, donc une sortie posée à la place
+ * `toContain` sur la chaîne entière serait une fausse garde : `surface-feuille`
+ * est un préfixe de `surface-feuille-sortie`, donc une sortie posée à la place
  * d'une entrée passerait sans bruit. L'égalité sur les jetons ferme ce trou.
  */
 function jetons(noeud: Element): string[] {
@@ -116,7 +118,7 @@ describe('la modale est une feuille sous `sm`', () => {
 
   /**
    * LE VOILE SUIT LE PANNEAU AUX DEUX TAILLES, et c'est un défaut déjà payé
-   * une fois dans ce dépôt : `animate-voile-in`, écrit pour le tiroir, avait été
+   * une fois dans ce dépôt : un voile unique, écrit pour le tiroir, avait été
    * adopté par la modale, dont le fond continuait de noircir 100 ms après que le
    * panneau se soit posé (`tokens.css`, docbloc des voiles). Une feuille au
    * tempo du tiroir et un voile au tempo de `pop` rejoueraient exactement ce

@@ -16,7 +16,7 @@ import { useSortieDifferee } from '@/lib/useSortieDifferee'
    est un étalement conditionnel de cet objet. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
-/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+/** Durée de la sortie, en miroir de `surface-pop-sortie` (`--duration-fast`). */
 const SORTIE_MS = 150
 
 const SECTIONS = [
@@ -508,7 +508,7 @@ export function PublicHeader() {
             aria-hidden={sortant || undefined}
             {...(sortant ? INERTE : {})}
             className={cn(
-              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
               ancre
                 ? /*
                     ANCRÉ ET DIMENSIONNÉ À SON CONTENU. `w-max` prend la largeur

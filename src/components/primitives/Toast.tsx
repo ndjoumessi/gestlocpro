@@ -510,11 +510,22 @@ function ToastItem({
       toast se replacerait d'un bond à la fin de son entrée. Séparés, la coquille
       glisse pendant que le contenu monte.
 
-      C'est aussi le bon partage selon la règle : une entrée et une sortie jouent
-      UNE fois et n'ont pas à être interrompues, un replacement peut l'être à tout
-      instant — un troisième toast peut arriver pendant que le deuxième descend —
-      et une transition se re-cible depuis sa position courante là où une animation
-      repartirait de zéro.
+      Le partage reste bon, mais SA MOTIVATION ÉTAIT FAUSSE ET L'A COÛTÉ AILLEURS.
+      Il était écrit ici « une entrée et une sortie jouent UNE fois et n'ont pas à
+      être interrompues, un replacement peut l'être à tout instant ». La seconde
+      moitié est juste — un troisième toast peut arriver pendant que le deuxième
+      descend. LA PREMIÈRE NE L'EST PAS : `useSortieDifferee` porte une branche
+      dédiée à la RÉOUVERTURE PENDANT LA SORTIE, donc le dépôt savait déjà que ces
+      gestes-là s'interrompent. Onze classes de panneau ont vécu en images clés sur
+      cette phrase, et deux défauts en sont sortis — un flash à pleine opacité pour
+      s'en aller, un renversement de menu écrasé par le remplissage. `tokens.css`
+      en porte le relevé, `scripts/surfaces-animees.mjs` la garde.
+
+      Ce qui reste vrai, et qui est la vraie raison des deux nœuds : une transition
+      se re-cible depuis sa position courante là où une animation repartirait de
+      zéro. Le toast garde son entrée en images clés — elle ne dispute sa propriété
+      à personne, la coquille portant seule le replacement — et c'est le seul
+      endroit du dépôt où ce partage rend le raisonnement valable.
 
       `translate3d` plutôt que `translateY` : un seul axe suffirait, mais la forme
       à trois composantes est celle qui promet la couche composée sur les moteurs

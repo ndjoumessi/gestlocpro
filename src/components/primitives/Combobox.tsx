@@ -13,7 +13,7 @@ import { controlClasses } from './Field'
    `DatePicker.tsx:16`, et la même ligne. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
-/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+/** Durée de la sortie, en miroir de `surface-pop-sortie` (`--duration-fast`). */
 const SORTIE_MS = 150
 
 export interface OptionCombobox {
@@ -428,7 +428,7 @@ export function Combobox({
           aria-hidden={sortant || undefined}
           {...(sortant ? INERTE : {})}
           className={cn(
-            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop-fast',
+            sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop-vite',
             /*
               ELLE GRANDIT DEPUIS SON BORD HAUT, ET C'EST UNE LECTURE DES
               CLASSES, PAS UNE SUPPOSITION.
@@ -448,7 +448,7 @@ export function Combobox({
               le champ, puisque les deux ont la même largeur. Aucun coin n'est
               plus proche qu'un autre.
 
-              Sans origine, `gl-pop` fait grandir depuis le CENTRE : la liste
+              Sans origine, `surface-pop` fait grandir depuis le CENTRE : la liste
               débordait alors vers le haut en s'ouvrant, par-dessus le champ
               qu'on vient de cliquer.
             */

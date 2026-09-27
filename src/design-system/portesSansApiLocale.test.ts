@@ -82,7 +82,17 @@ const SCRIPTS = join(RACINE, 'scripts')
  * fin, aucun effet de bord. L'instrument partagé n'est pas universel, et c'est
  * une mesure qui l'a dit.
  */
-const PORTES_ANONYMES = ['plafond-coquille.mjs', 'mesure-ui.mjs']
+const PORTES_ANONYMES = [
+  'plafond-coquille.mjs',
+  'mesure-ui.mjs',
+  /* `surfaces-animees.mjs` : elle n'ouvre pas `/app` mais `/demo`, et le motif
+     vaut quand même. `SessionProvider` enveloppe l'espace de démonstration comme
+     le reste ; ses écrans se montent donc après la réponse à `/auth/me`, et ce
+     que cette porte mesure — la trame où une surface commence à sortir — est
+     précisément ce qu'un montage différé décale. Elle est entrée dans la liste
+     AVEC la coupure, et non après l'avoir payée. */
+  'surfaces-animees.mjs',
+]
 
 /** Celles qui doivent joindre l'API, et pourquoi. */
 const EXEMPTES = new Map([

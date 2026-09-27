@@ -19,13 +19,13 @@ const INERTE = { inert: '' } as unknown as { inert?: string }
 
   Sous `sm` la modale est une FEUILLE collée au bas de l'écran : elle monte de ce
   bord et y retombe, au tempo du tiroir — même classe de geste, un panneau qui
-  entre par un bord (`animate-feuille` / `-out`, 300/200 ms). Dès `sm` elle se
-  recentre et reprend `animate-pop` / `-out`, 200/150.
+  entre par un bord (`surface-feuille` / `-out`, 300/200 ms). Dès `sm` elle se
+  recentre et reprend `surface-pop` / `-out`, 200/150.
 */
-/** Miroir de `animate-pop-out` (`--duration-fast`), dès `sm`. */
+/** Miroir de `surface-pop-sortie` (`--duration-fast`), dès `sm`. */
 const SORTIE_POP_MS = 150
 
-/** Miroir de `animate-feuille-out` (`--duration-base`), sous `sm`. */
+/** Miroir de `surface-feuille-sortie` (`--duration-base`), sous `sm`. */
 const SORTIE_FEUILLE_MS = 200
 
 export interface ModalProps {
@@ -274,13 +274,13 @@ export function Modal({
           // UN VOILE PAR TEMPO, ET LA MODALE EN A DEUX. Il doit démarrer et
           // finir sur la même image que ce pour quoi il assombrit : sous `sm`
           // c'est la feuille, qui court au tempo du tiroir (300/200), donc la
-          // paire du tiroir ; dès `sm` c'est `animate-pop` (200/150), donc la
+          // paire du tiroir ; dès `sm` c'est `surface-pop` (200/150), donc la
           // paire `pop`. Un voile resté sur un seul des deux tempos est
           // exactement le défaut qu'un lot antérieur a refermé — voir le docbloc
           // des voiles dans `tokens.css`.
           sortant
-            ? 'max-sm:animate-voile-drawer-out sm:animate-voile-pop-out'
-            : 'max-sm:animate-voile-drawer-in sm:animate-voile-pop-in',
+            ? 'max-sm:voile-tiroir-sortie sm:voile-pop-sortie'
+            : 'max-sm:voile-tiroir sm:voile-pop',
         )}
       />
 
@@ -298,8 +298,8 @@ export function Modal({
           // Le point de rupture reste à Tailwind : sous `sm` la feuille monte
           // du bord bas et y retombe, dès `sm` la fenêtre se pose au centre.
           sortant
-            ? 'max-sm:animate-feuille-out sm:animate-pop-out'
-            : 'max-sm:animate-feuille sm:animate-pop',
+            ? 'max-sm:surface-feuille-sortie sm:surface-pop-sortie'
+            : 'max-sm:surface-feuille sm:surface-pop',
           'relative flex max-h-[92dvh] w-full flex-col overflow-hidden',
           'rounded-t-lg border border-divider bg-surface shadow-e3 sm:rounded-lg',
           SIZES[size],

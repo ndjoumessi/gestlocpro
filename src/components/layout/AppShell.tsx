@@ -42,7 +42,7 @@ const INERTE = { inert: '' } as unknown as { inert?: string }
 
 /**
  * Durée de sortie des deux PANNEAUX ANCRÉS de la barre, en miroir de
- * `animate-pop-out` (`--duration-fast`).
+ * `surface-pop-sortie` (`--duration-fast`).
  *
  * Ce n'est PAS le tempo du tiroir, qui court en 300/200 (`:418`) : un panneau
  * de 256 px qui traverserait la même durée qu'un tiroir pleine hauteur
@@ -420,8 +420,8 @@ export function AppShell() {
   const contentRef = useRef<HTMLDivElement>(null)
 
   /* Le tiroir reste MONTÉ le temps de sortir : 200 ms, la valeur de
-     `--duration-base` que portent `animate-drawer-out` et
-     `animate-voile-drawer-out` — le voile du TIROIR, qui partage son tempo.
+     `--duration-base` que portent `surface-tiroir-sortie` et
+     `voile-tiroir-sortie` — le voile du TIROIR, qui partage son tempo.
      `tiroirMonte` ne pilote que la présence des nœuds ; tout le reste — la
      fermeture au passage en grand écran, le focus, le lien d'évitement — reste
      accroché à `drawerOpen`. Le focus surtout : le poser sur `tiroirMonte`
@@ -645,8 +645,8 @@ export function AppShell() {
               className={cn(
                 'fixed inset-0 cursor-default bg-scrim lg:hidden',
                 tiroirSortant
-                  ? 'animate-voile-drawer-out pointer-events-none'
-                  : 'animate-voile-drawer-in',
+                  ? 'voile-tiroir-sortie pointer-events-none'
+                  : 'voile-tiroir',
               )}
               style={{ zIndex: 'var(--z-overlay)' }}
             />
@@ -657,7 +657,7 @@ export function AppShell() {
               onToggleRail={() => setDrawerOpen(false)}
               className={cn(
                 'fixed inset-y-0 left-0 flex w-72 lg:hidden',
-                tiroirSortant ? 'animate-drawer-out pointer-events-none' : 'animate-drawer-in',
+                tiroirSortant ? 'surface-tiroir-sortie pointer-events-none' : 'surface-tiroir',
               )}
               style={{ zIndex: 'var(--z-overlay)' }}
               dialogLabel={t('nav.primaryNav')}
@@ -1753,7 +1753,7 @@ function MenuReglages() {
           aria-label={t('nav.settings')}
           /* `right-0` + `mt-2` : ancré sous son bouton, aligné à droite. Il ne
              se renverse pas — la barre est en haut de l'écran — donc l'origine
-             est fixe, et c'est le coin haut-droit. Sans elle, `gl-pop` le
+             est fixe, et c'est le coin haut-droit. Sans elle, `surface-pop` le
              faisait grandir depuis son centre. */
           style={{ zIndex: 'var(--z-popover)', transformOrigin: 'top right' }}
           // Pendant la sortie, le panneau n'existe plus que pour l'œil : il
@@ -1765,7 +1765,7 @@ function MenuReglages() {
              anglais et laissait du vide en français. La liste réclame ce qu'il
              lui faut, entre un plancher lisible et le filet du bord d'écran. */
           className={cn(
-            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+            sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
             'absolute right-0 mt-2 w-max min-w-60 max-w-[calc(100vw-2.5rem)] rounded-md border border-border bg-paper p-4 shadow-lg',
           )}
         >
@@ -1953,7 +1953,7 @@ function MenuCompte() {
             aria-hidden={sortant || undefined}
             {...(sortant ? INERTE : {})}
             className={cn(
-              sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+              sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
               'absolute right-0 mt-2 flex w-64 flex-col gap-1 rounded-md border border-border bg-paper p-2 shadow-lg',
             )}
           >

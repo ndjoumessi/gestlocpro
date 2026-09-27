@@ -46,7 +46,7 @@ const SORTIE_MS = 150
   fabrique le CSS de tout motif qu'il y reconnaît ; une classe citée en clair
   entrerait dans la feuille livrée au seul titre d'avoir servi d'assertion.
 */
-const POP_OUT = ['animate', 'pop', 'out'].join('-')
+const POP_OUT = ['surface', 'pop', 'sortie'].join('-')
 
 /**
  * `open` BASCULE, la modale RESTE MONTÉE.

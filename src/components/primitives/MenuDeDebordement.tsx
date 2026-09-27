@@ -20,7 +20,7 @@ import { useSortieDifferee } from '@/lib/useSortieDifferee'
    c'est le raisonnement de `Modal.tsx:14`, et la même ligne. */
 const INERTE = { inert: '' } as unknown as { inert?: string }
 
-/** Durée de la sortie, en miroir de `animate-pop-out` (`--duration-fast`). */
+/** Durée de la sortie, en miroir de `surface-pop-sortie` (`--duration-fast`). */
 const SORTIE_MS = 150
 
 /**
@@ -308,7 +308,7 @@ export function MenuDeDebordement({
           ref={panneau}
           /*
             L'ORIGINE SUIT LE RENVERSEMENT, ce qui est toute la raison d'écrire
-            une origine ici. `gl-pop` n'en pose aucune : le panneau grandissait
+            une origine ici. `surface-pop` n'en pose aucune : le panneau grandissait
             depuis son propre CENTRE, donc depuis nulle part. Ancré à droite, il
             part du coin haut-droit quand il tombe et du coin bas-droit quand il
             se renverse — dans les deux cas du déclencheur, qui est juste là.
@@ -317,16 +317,34 @@ export function MenuDeDebordement({
             zIndex: 'var(--z-popover)',
             transformOrigin: versLeHaut ? 'bottom right' : 'top right',
             /* FIXE ET ANCRÉ AU DÉCLENCHEUR quand il faut échapper au rognage.
-               `translateY(-100%)` remonte le panneau au-dessus de son ancre
-               dans le cas renversé : on n'a qu'une coordonnée haute, et un
-               `bottom` calculé demanderait la hauteur du panneau avant de
-               l'avoir peint. */
+               Une remontée de sa propre hauteur place le panneau au-dessus de
+               son ancre dans le cas renversé : on n'a qu'une coordonnée haute,
+               et un `bottom` calculé demanderait la hauteur du panneau avant de
+               l'avoir peint.
+
+               ═══ CE DÉCALAGE PASSE PAR UNE VARIABLE, ET IL LE FAUT ═══
+
+               Il était écrit `transform: 'translateY(-100%)'`, en ligne. Le
+               panneau portait en même temps une ANIMATION d'entrée qui remplit
+               `transform` — et une animation bat une déclaration en ligne, y
+               compris après sa fin, tant qu'elle remplit. MESURÉ sur
+               `/demo/parc` en 1280 × 600 : `transform` en ligne valait bien
+               `translateY(-100%)`, `transform` calculée rendait
+               `matrix(1, 0, 0, 1, 0, 0)`. Le renversement était donc MORT — le
+               menu recouvrait le bouton qui l'ouvre et débordait de 69 px sous
+               le bord de la fenêtre, c'est-à-dire exactement ce que le
+               renversement existe pour éviter.
+
+               `--surface-dy` entre dans la MÊME déclaration que le geste
+               (`tokens.css`, `surface-pop`), qui compose le placement et
+               l'échelle au lieu de les mettre en concurrence.
+               `scripts/surfaces-animees.mjs` garde les deux faits d'écran. */
             ...(echappe && ancre
               ? {
                   position: 'fixed' as const,
                   top: versLeHaut ? ancre.top - TAILLE_DU_DECLENCHEUR : ancre.top,
                   right: ancre.right,
-                  transform: versLeHaut ? 'translateY(-100%)' : undefined,
+                  ...(versLeHaut ? { '--surface-dy': '-100%' } : {}),
                 }
               : {}),
           }}
@@ -337,7 +355,7 @@ export function MenuDeDebordement({
           aria-hidden={sortant || undefined}
           {...(sortant ? INERTE : {})}
           className={cn(
-            sortant ? 'animate-pop-out pointer-events-none' : 'animate-pop',
+            sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
             /*
               IL ÉPOUSE SON CONTENU. `w-64` posait 256 px quoi qu'il porte :
               deux mots de sept lettres flottaient dans une dalle plus large
