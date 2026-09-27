@@ -91,10 +91,34 @@ function serveur(leases: typeof OCCUPATIONS | []) {
   return faux
 }
 
+/**
+ * ═══ `attendreLeChargement` SE SATISFAIT PAR VACUITÉ, ET LE CI L'A MONTRÉ ═══
+ *
+ * Elle attend ZÉRO région `aria-busy="true"`. Si le squelette n'est pas encore
+ * monté — ce qui arrive quand la machine est lente —, il n'y a rien d'occupé et
+ * elle rend la main SUR LE CHAMP, avant la donnée. L'attente est vraie et ne
+ * mesure rien.
+ *
+ * MESURÉ le 2026-09-28 : le cas du titre de document a rougi sur l'exécuteur de
+ * l'intégration continue — « expected 'Dossier du logement · GestLocPro' to
+ * contain 'Résidence Essos — B7' » — et passe cinq fois sur cinq en local, où la
+ * suite entière prend 90 s contre 464 s là-bas. Ce n'est pas le produit : c'est
+ * l'attente qui se terminait avant le nom.
+ *
+ * ON ATTEND DONC LA DONNÉE, ET NON L'IMMOBILITÉ. `findByRole` réessaie jusqu'à ce
+ * que le titre RÉSOLU soit là — le nom du logement, qui ne peut venir que du
+ * serveur. Ce n'est pas un délai allongé ni un `waitFor` posé pour faire passer :
+ * c'est la condition que les cinq cas supposaient déjà tous, restée implicite.
+ *
+ * CE QUE ÇA NE RÉPARE PAS : `attendreLeChargement` reste satisfiable par vacuité
+ * pour les 344 autres fichiers. La corriger toucherait toute la suite et n'est pas
+ * de ce lot ; elle est nommée dans le rapport.
+ */
 async function ouvrirLeDossier(leases: typeof OCCUPATIONS | [] = OCCUPATIONS) {
   serveur(leases)
   await renderApp(`/app/parc/${UNITE}`, { session: sessionProprietaire() })
   await attendreLeChargement()
+  await screen.findByRole('heading', { level: 1, name: /Résidence Essos — B7/ })
 }
 
 describe('dossier d’un logement', () => {

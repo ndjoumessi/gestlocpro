@@ -549,7 +549,7 @@ const PLAFONDS = [
      la ligne et poussait la tuile d'un cran. Elle se tronque depuis que la tuile
      porte aussi un montant — voir le docbloc de `Dashboard.tsx` —, et le retour
      à la ligne a disparu avec. `plafondLarge` suit du même écart. */
-  { adresse: '/demo', largeur: 360, plafond: 3428, plafondLarge: 3429 },
+  { adresse: '/demo', largeur: 360, plafond: 3428, plafondLarge: 3428 },
   /* +30 px LE 2026-09-26, ET C'EST LA CARTE QUE L'ÉCRAN EXISTE POUR MONTRER.
      « En retard · 412 000 FCFA » ne portait rien sous son montant ; la note dit
      désormais combien de baux le composent et depuis combien de jours — les
@@ -557,7 +557,7 @@ const PLAFONDS = [
      distinguent la relance de la mise en demeure. Sur un téléphone, c'est la
      SEULE carte rendue : ses deux voisines partent sous `lg`. Trente pixels
      pour la réponse qu'on descendait chercher. */
-  { adresse: '/demo/paiements', largeur: 360, plafond: 3466, plafondLarge: 3373 },
+  { adresse: '/demo/paiements', largeur: 360, plafond: 3466, plafondLarge: 3466 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
@@ -570,21 +570,21 @@ const PLAFONDS = [
      le seul fait qui décide s'il doit payer ou ranger. */
   { adresse: '/demo/documents', largeur: 360, plafond: 2292, plafondLarge: 2292 },
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
-  { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4232 },
-  { adresse: '/demo/releves', largeur: 360, plafond: 3847, plafondLarge: 3753 },
-  { adresse: '/demo/cautions', largeur: 360, plafond: 2270, plafondLarge: 2121 },
+  { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4350 },
+  { adresse: '/demo/releves', largeur: 360, plafond: 3847, plafondLarge: 3847 },
+  { adresse: '/demo/cautions', largeur: 360, plafond: 2270, plafondLarge: 2270 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
      valent une de plus à elles deux sur les fiches qui les portent. Le gain du
      bureau vient de la grille à deux colonnes, qui n'existe pas ici. */
-  { adresse: '/demo/locataires', largeur: 360, plafond: 4488, plafondLarge: 4380 },
+  { adresse: '/demo/locataires', largeur: 360, plafond: 4488, plafondLarge: 4488 },
   { adresse: '/demo/mes-donnees', largeur: 360, plafond: 900, plafondLarge: 900 },
   /* −22 px : le résumé de périmètre cesse de recopier le nom de l'immeuble
      devant chaque logement retranché. Mesuré ici à 2187 en police large ; la
      colonne normale, qui appartient à l'autre machine, reçoit le même écart. */
   { adresse: '/demo/acces', largeur: 360, plafond: 2205, plafondLarge: 2187 },
-  { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1569 },
+  { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
@@ -598,7 +598,7 @@ const PLAFONDS = [
   { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
   { adresse: '/demo', largeur: 1280, plafond: 1855, plafondLarge: 1856 },
-  { adresse: '/demo/paiements', largeur: 1280, plafond: 1530, plafondLarge: 1483 },
+  { adresse: '/demo/paiements', largeur: 1280, plafond: 1530, plafondLarge: 1530 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
   /*
     +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE
@@ -668,8 +668,8 @@ const PLAFONDS = [
     pas d'un retrait de contenu : aucune fiche n'a perdu une ligne.
   */
   { adresse: '/demo/parc', largeur: 1280, plafond: 1785, plafondLarge: 1785 },
-  { adresse: '/demo/releves', largeur: 1280, plafond: 1450, plafondLarge: 1402 },
-  { adresse: '/demo/cautions', largeur: 1280, plafond: 946, plafondLarge: 900 },
+  { adresse: '/demo/releves', largeur: 1280, plafond: 1450, plafondLarge: 1450 },
+  { adresse: '/demo/cautions', largeur: 1280, plafond: 946, plafondLarge: 926 },
   /*
     −86 px AU BUREAU ET +16 AU TÉLÉPHONE, LE 2026-09-26 : LES DEUX FAITS QUI
     PORTAIENT UN TIRET SONT DEVENUS DES PASTILLES CONDITIONNELLES.

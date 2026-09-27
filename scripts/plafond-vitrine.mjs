@@ -322,7 +322,12 @@ const PLAFONDS = [
     dire plutôt que de l'habiller d'une explication. Ce qui est mesuré est le
     total ; ce qui est acquis est qu'aucune croissance de plus ne passera.
 
-    LA COLONNE LARGE N'EST PAS TOUCHÉE, et c'est la porte elle-même qui l'exige :
+    LA COLONNE LARGE VIENT DU CI, relevée par le travail `polices` le 2026-09-28 :
+    11400 → 11384 et 10969 → 10953 à 360 px, seize pixels de mou chacune ; les deux
+    plafonds de 1280 étaient déjà EXACTS au pixel (8177 et 8131) et ne bougent pas.
+
+    ET IL FAUT DIRE POURQUOI ELLE NE VIENT PAS D'ICI, parce que j'ai failli
+    l'écrire :
     « Colonne plafondLarge : dépassement JUGÉ, mou NON jugé — cette machine ne
     possède pas la colonne, seule la porte publique la possède. » Un relevé local
     en `MESURER_EN_POLICE_LARGE=1` rend ici 11813 / 11472 / 8269 / 8248, c'est-à-
@@ -330,8 +335,8 @@ const PLAFONDS = [
     ne touche pas non plus. Ce sont les polices de cette machine, pas la page.
     Cette colonne se relève sur l'exécuteur de l'intégration continue.
   */
-  { largeur: 360, langue: 'fr', plafond: 11384, plafondLarge: 11400, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 11066, plafondLarge: 10969, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'fr', plafond: 11384, plafondLarge: 11384, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 11066, plafondLarge: 10953, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
