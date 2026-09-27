@@ -44,8 +44,13 @@ function colonne(rang: number) {
     .getAllByRole('row')
     .slice(1)
     .map((ligne) => {
-      const cellules = within(ligne).getAllByRole('cell')
-      return cellules[rang]
+      /* LES ENFANTS DE LA RANGÉE, et non `getAllByRole('cell')` : la colonne
+         d'identité est un `<th scope="row">` — elle NOMME la ligne, voir
+         `enTeteDeLigne.test.tsx` — donc son rôle est `rowheader` et elle sort
+         d'une recherche de cellules. Les rangs comptés ici sont ceux des
+         colonnes du tableau ; les prendre sur une liste qui en saute une les
+         décalerait toutes d'un cran. */
+      return ligne.children[rang] as HTMLElement | undefined
     })
     .filter((cellule): cellule is HTMLElement => Boolean(cellule))
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { useT } from '@/i18n/I18nProvider'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { Icon } from './Icon'
 
@@ -410,6 +411,15 @@ export function DataTable<T>({
   */
   const enTableau = useAuDela(AU_DELA_LG)
 
+  /* AVANT LES DEUX SORTIES ANTICIPÉES, et pour la même raison qui a fait monter
+     `useAuDela` ici : un crochet appelé plus bas ne s'exécuterait pas sur un
+     tableau vide ni sur la forme en fiches, donc l'ordre des crochets changerait
+     au moment précis où la première donnée arrive.
+
+     Il sert au seul nom que ce primitif écrive lui-même : celui, non montré, de
+     la colonne de gestes. Voir l'en-tête du tableau. */
+  const t = useT()
+
   /*
     L'ÉTAT VIDE NE DOIT PAS AVALER LES GROUPES DÉCLARÉS.
 
@@ -488,14 +498,54 @@ export function DataTable<T>({
     non. Recopier ce corps aurait fait deux rangées à faire vieillir ensemble,
     et c'est exactement le motif que ce fichier refuse déjà pour les fiches.
   */
+  /**
+   * CE QUI NOMME LA LIGNE EST UN EN-TÊTE DE LIGNE, PAS UNE CELLULE.
+   *
+   * ═══ CE QUE LE TABLEAU NE DISAIT PAS ═══
+   *
+   * Les huit tableaux de ce produit rendaient TOUTES leurs cellules en `<td>`.
+   * En-têtes de colonne, oui, `scope="col"` compris ; en-têtes de LIGNE, aucun.
+   * Un lecteur d'écran qui parcourt un tableau annonce, à chaque déplacement,
+   * les en-têtes de la cellule atteinte : sans en-tête de ligne, la lecture de
+   * la colonne des loyers du parc donne « 145 000 FCFA », « 110 000 FCFA »,
+   * « 95 000 FCFA » — trois montants et aucun logement. Il fallait revenir en
+   * première colonne après chaque valeur pour savoir de qui l'on parlait, ce
+   * qui est précisément le travail que `scope` existe pour supprimer.
+   *
+   * CE N'EST PAS UNE COMMODITÉ, c'est le contrat que la FORME EN FICHES tient
+   * déjà : là, l'identité est la ligne de tête de la carte, et rien ne peut
+   * l'en séparer. Les deux formes rendent la même donnée ; elles doivent la
+   * nommer pareil.
+   *
+   * LE RÔLE EST DÉJÀ DÉCLARÉ, et c'est ce qui rend la correction gratuite :
+   * `identite` signifie « ce qui NOMME la ligne », en une seule colonne, depuis
+   * le premier jour de ce fichier. Aucun appelant n'a rien à dire de plus.
+   *
+   * ═══ CE QUE LE `<th>` NE DOIT PAS CHANGER ═══
+   *
+   * UN PIXEL. `font-normal` et `text-left` défont ce que le navigateur ajoute
+   * de lui-même à un `<th>` — gras et centrage — car la graisse appartient au
+   * rendu de la colonne, qui porte son propre `font-medium`, et le centrage
+   * n'a jamais été voulu. Sans ces deux classes, la colonne d'identité de huit
+   * écrans deviendrait gras sur gras, centrée.
+   */
+  const identite = colonnes.find((c) => c.role === 'identite')
+
   const rangee = (row: T) => (
     <tr
       key={rowKey(row)}
       className="border-b border-divider last:border-0"
     >
-      {colonnes.map((column, rang) => (
-        <td
+      {colonnes.map((column, rang) => {
+        /* MÊME NŒUD, MÊME STYLE, MÊME ORDRE — seule la balise change. La
+           dupliquer en deux branches aurait fait deux listes de classes à
+           faire vieillir ensemble, et ce fichier refuse déjà ce motif pour la
+           rangée elle-même. */
+        const Cellule = column === identite ? 'th' : 'td'
+        return (
+        <Cellule
           key={column.key}
+          scope={column === identite ? 'row' : undefined}
           data-colonne-tenue={estTenue(column) ? column.role : undefined}
           style={estTenue(column) ? ALTITUDE_TENUE : undefined}
           className={cn(
@@ -534,11 +584,21 @@ export function DataTable<T>({
       column.hideOnMobile && 'hidden sm:table-cell',
       estTenue(column) && COLONNE_COLLANTE,
       estTenue(column) && 'bg-surface',
+      /* Voir la note au-dessus : ce qu'un `<th>` s'ajoute tout seul. Le
+         `text-left` est CONDITIONNÉ à l'absence de `numeric`, qui pose
+         `text-right` deux lignes plus haut : deux classes de la même propriété
+         côte à côte ne se départageraient que par l'ordre de la feuille
+         produite par Tailwind, que rien ici ne contrôle. Aucune colonne
+         d'identité n'est aujourd'hui numérique — la garde est là pour celle
+         qui le sera. */
+      column === identite && 'font-normal',
+      column === identite && !column.numeric && 'text-left',
           )}
         >
           {column.render(row)}
-        </td>
-      ))}
+        </Cellule>
+        )
+      })}
     </tr>
   )
 
@@ -572,7 +632,27 @@ export function DataTable<T>({
                   estTenue(column) && 'bg-surface-sunken',
                 )}
               >
-                {column.header}
+                {/*
+                  ═══ UNE COLONNE SANS NOM N'EST PAS UNE COLONNE SANS NOM POUR TOUT LE MONDE ═══
+
+                  Cinq écrans déclarent `header: ''` sur leur colonne de gestes :
+                  à l'œil, un en-tête vide au-dessus d'un menu à trois points est
+                  la bonne réponse — écrire « Gestes » là ajouterait un mot que
+                  personne ne lit. Mais un `<th>` VIDE ne se tait pas pour
+                  autant : un lecteur d'écran qui entre dans cette colonne
+                  annonce « colonne 7, vide », et la liste des en-têtes du
+                  tableau — celle par laquelle on s'oriente avant de le lire —
+                  porte un trou.
+
+                  Le nom est donc DIT sans être MONTRÉ, et il est donné ici plutôt
+                  qu'imposé aux cinq appelants : la colonne de gestes est le seul
+                  cas où l'en-tête est vide à dessein, et `role` le dit déjà. Un
+                  écran qui voudrait nommer sa colonne autrement n'a qu'à écrire
+                  son `header` — c'est lui qui gagne.
+                */}
+                {column.header || (column.role === 'geste' ? (
+                  <span className="sr-only">{t('common.rowActions')}</span>
+                ) : null)}
               </th>
             ))}
           </tr>

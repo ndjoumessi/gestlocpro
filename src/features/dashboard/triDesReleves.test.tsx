@@ -75,7 +75,7 @@ describe('le tri des relevés', () => {
       /* Le PREMIER `span` de la cellule, et non son texte entier : la colonne
          d'unité empile le libellé et, sous `sm`, le nom du locataire — « A5 »
          suivi de « Aline Tchoumi » sans séparateur dans le DOM. */
-      .map((r) => r.querySelector('td span')?.textContent?.trim() ?? '')
+      .map((r) => r.querySelector('th span')?.textContent?.trim() ?? '')
     expect(rendus.length, 'la démonstration porte des relevés manquants').toBeGreaterThan(0)
     for (const unite of rendus) {
       expect(phrase, `la note ne nomme pas ${unite}, que la pastille rend`).toContain(unite)

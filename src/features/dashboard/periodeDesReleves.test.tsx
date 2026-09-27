@@ -84,7 +84,7 @@ describe('la période des relevés', () => {
 
     const rangee = within(screen.getByRole('main'))
       .getAllByRole('row')
-      .find((r) => r.querySelector('td span')?.textContent?.trim() === 'A1')
+      .find((r) => r.querySelector('th span')?.textContent?.trim() === 'A1')
     expect(rangee, 'A1 doit figurer en juillet').toBeDefined()
     expect(rangee!.textContent).toContain('324')
     expect(rangee!.textContent).toContain('342')

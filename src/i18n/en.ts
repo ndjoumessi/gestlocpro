@@ -94,6 +94,7 @@ export const en: Dictionary = {
     hidePassword: 'Hide password',
     selectPlaceholder: 'Select…',
     listTruncated: 'Shortened list: narrow your search.',
+    rowActions: 'Actions',
     listEmpty: 'No match for this search.',
     monthRange: 'Pick between {debut} and {fin}.',
     monthFrom: 'Pick from {debut} onwards.',

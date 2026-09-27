@@ -189,6 +189,11 @@ export const fr = {
     listTruncated: 'Liste raccourcie : affinez votre recherche.',
     /* LA LISTE VIDE — voir `Combobox` : elle rendait un tiret muet sous la
        promesse d'un mot. */
+    /* LE NOM, NON MONTRÉ, DE LA COLONNE DE GESTES — voir `DataTable` : cinq
+       écrans y déclarent un en-tête vide, ce qui est juste à l'œil et laisse un
+       trou dans la liste des en-têtes par laquelle on s'oriente au lecteur
+       d'écran. */
+    rowActions: 'Gestes',
     listEmpty: 'Aucun résultat pour cette recherche.',
     /* LA FRAPPE REFUSÉE — voir `useSaisieFiltree` : le champ absorbait la
        touche en silence, et la contrainte n'était écrite nulle part. */
