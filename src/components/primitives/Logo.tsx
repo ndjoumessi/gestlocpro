@@ -156,8 +156,24 @@ export function Logo({
     )
   }
 
+  /*
+    ═══ LE SOUS-TITRE ENTRE DANS LE NOM — WCAG 2.5.3 ═══
+
+    Le nom valait `BRAND` seul, et un `aria-label` ÉCRASE le contenu. Quand le logo
+    porte un `caption` — le nom du parc dans la barre latérale, « Parc de
+    démonstration » en démonstration —, ce mot est à l'écran, lisible, et
+    disparaissait du nom accessible : le lien s'annonçait « GestLocPro » pour un
+    libellé visible « GestLocPro Parc de démonstration ». Mesuré sur sept surfaces
+    le 2026-09-27, dans les deux langues.
+
+    L'`aria-label` RESTE plutôt que d'être retiré, et la raison est le mot-marque :
+    le contenu est `GestLoc<span>Pro</span>`, deux nœuds qu'un `span` inline sépare
+    pour colorer trois lettres. Laisser le nom se calculer sur le contenu le
+    rendrait dépendant de la façon dont un navigateur recolle ces deux nœuds. Écrit
+    ici, il vaut « GestLocPro » d'un seul tenant, quoi qu'il arrive au balisage.
+  */
   return (
-    <Link to={to} className={classes} aria-label={BRAND}>
+    <Link to={to} className={classes} aria-label={caption ? `${BRAND} ${caption}` : BRAND}>
       {content}
     </Link>
   )

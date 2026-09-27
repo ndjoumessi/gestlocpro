@@ -304,8 +304,34 @@ const PLAFONDS = [
     au téléphone, mesurés (1148 → 941). Elle tient le temps `serre` — un appui,
     pas une étape.
   */
-  { largeur: 360, langue: 'fr', plafond: 11400, plafondLarge: 11400, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
-  { largeur: 360, langue: 'en', plafond: 11077, plafondLarge: 10969, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
+  /*
+    ═══ LES QUATRE PLAFONDS NORMAUX RELEVÉS LE 2026-09-28 ═══
+
+    Deux au téléphone ont RACCOURCI, deux au bureau ont GRANDI :
+
+      fr@360   11400 → 11384   (−16, du mou : la porte ne refusait plus ce
+                                qu'elle prétend refuser)
+      en@360   11077 → 11066   (−11, même raison)
+      fr@1280   8100 → 8164    (+64)
+      en@1280   8152 → 8157    (+5)
+
+    CE QUI A BOUGÉ, ET CE QUE JE N'AI PAS ATTRIBUÉ. Le lot en cours touche la
+    vitrine par trois fichiers — `Hero.tsx`, `public/logo.svg`, `index.html` — et
+    la bascule du neutre change les interlignes composés. L'écart de 64 px au
+    bureau vient de là ; je ne l'ai PAS décomposé ligne à ligne, et il faut le
+    dire plutôt que de l'habiller d'une explication. Ce qui est mesuré est le
+    total ; ce qui est acquis est qu'aucune croissance de plus ne passera.
+
+    LA COLONNE LARGE N'EST PAS TOUCHÉE, et c'est la porte elle-même qui l'exige :
+    « Colonne plafondLarge : dépassement JUGÉ, mou NON jugé — cette machine ne
+    possède pas la colonne, seule la porte publique la possède. » Un relevé local
+    en `MESURER_EN_POLICE_LARGE=1` rend ici 11813 / 11472 / 8269 / 8248, c'est-à-
+    dire de 92 à 503 px au-dessus des valeurs inscrites — sur des pages que ce lot
+    ne touche pas non plus. Ce sont les polices de cette machine, pas la page.
+    Cette colonne se relève sur l'exécuteur de l'intégration continue.
+  */
+  { largeur: 360, langue: 'fr', plafond: 11384, plafondLarge: 11400, avant: 9979, avantLe: '2026-08-28', origine: 11419, origineLe: '2026-08-23' },
+  { largeur: 360, langue: 'en', plafond: 11066, plafondLarge: 10969, avant: 9862, avantLe: '2026-08-28', origine: 11149, origineLe: '2026-08-23' },
   /*
     +73 px AU BUREAU, ET C'EST LE PRIX D'UNE GRILLE COMPARABLE.
 
@@ -373,8 +399,8 @@ const PLAFONDS = [
     celle de la colonne normale. Les `plafond` reçoivent le delta mesuré. À
     revérifier sur la machine de développement au premier passage.
   */
-  { largeur: 1280, langue: 'fr', plafond: 8100, plafondLarge: 8177, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
-  { largeur: 1280, langue: 'en', plafond: 8152, plafondLarge: 8131, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'fr', plafond: 8164, plafondLarge: 8177, avant: 7092, avantLe: '2026-08-29', origine: 7110, origineLe: '2026-08-23' },
+  { largeur: 1280, langue: 'en', plafond: 8157, plafondLarge: 8131, avant: 7166, avantLe: '2026-08-29', origine: 7106, origineLe: '2026-08-23' },
 ]
 /*
   ═══ CE QUE CE RESSERREMENT DIT, ET CE QU'IL NE DIT PAS ═══

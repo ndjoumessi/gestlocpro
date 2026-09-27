@@ -53,7 +53,7 @@ const COTES = [192, 512, 1024]
 const ECHANTILLONS = 4
 
 /** Le tracé, dans les 32 unités de la marque — voir `public/logo.svg`. */
-const ACCENT = [0x25, 0x63, 0xeb]
+const ACCENT = [0x63, 0x5b, 0xff]
 const SUR_ACCENT = [0xff, 0xff, 0xff]
 const CARRES = [
   { x: 6.9, y: 6.9, c: 7.6, r: 2, opacite: 1 },

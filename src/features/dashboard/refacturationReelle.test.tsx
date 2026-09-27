@@ -143,7 +143,7 @@ describe('corriger un relevé', () => {
     await renderApp('/demo/releves')
     await attendreLeChargement()
 
-    expect(screen.getAllByRole('button', { name: /^Corriger les relevés — / }).length)
+    expect(screen.getAllByRole('button', { name: /^Modifier les relevés — / }).length)
       .toBeGreaterThan(0)
   })
 
@@ -156,7 +156,7 @@ describe('corriger un relevé', () => {
     const utilisateur = userEvent.setup()
 
     await utilisateur.click(
-      screen.getAllByRole('button', { name: /^Corriger les relevés — / })[0]!,
+      screen.getAllByRole('button', { name: /^Modifier les relevés — / })[0]!,
     )
     const modale = await screen.findByRole('dialog')
 
@@ -174,7 +174,7 @@ describe('corriger un relevé', () => {
     const utilisateur = userEvent.setup()
 
     await utilisateur.click(
-      screen.getAllByRole('button', { name: /^Corriger les relevés — / })[0]!,
+      screen.getAllByRole('button', { name: /^Modifier les relevés — / })[0]!,
     )
     const modale = await screen.findByRole('dialog')
     expect(within(modale).getByText(/point de départ au mois suivant/)).toBeInTheDocument()
@@ -187,7 +187,7 @@ describe('corriger un relevé', () => {
     const utilisateur = userEvent.setup()
 
     await utilisateur.click(
-      screen.getAllByRole('button', { name: /^Corriger les relevés — / })[0]!,
+      screen.getAllByRole('button', { name: /^Modifier les relevés — / })[0]!,
     )
     const modale = await screen.findByRole('dialog')
 

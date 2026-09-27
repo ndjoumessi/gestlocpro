@@ -148,8 +148,38 @@ const MOTIF_SUPPRESSION = 'aucun écran ne supprime encore une photo confirmée 
  * suppression lui donnerait d'effacer la pièce qui l'accuse — et aucun écran de
  * bailleur ne retire encore une photo confirmée.
  */
+/**
+ * ═══ QUATRE ROUTES DE PLUS, ET C'EST LA MÊME AVANCE ASSUMÉE ═══
+ *
+ * Le stockage des pièces d'une demande de document — envoi, confirmation en deux
+ * temps, lecture, retrait — est arrivé côté SERVEUR le 2026-09-26, avec sa
+ * migration (`20260925140000_piece_fournie`), ses gardes d'atomicité et son
+ * inscription au registre des décisions. Aucun appel de `src/api/client.ts` ne
+ * compose encore ces chemins : l'écran est le lot suivant.
+ *
+ * CE QUE CES EXEMPTIONS NE DISENT PAS, et il faut l'écrire ici plutôt que de le
+ * laisser croire : elles ne rendent pas la fonctionnalité livrée. Elles disent
+ * que l'ordre serveur-puis-client est DÉLIBÉRÉ, ce que la forme des quatre routes
+ * confirme — un envoi en deux temps ne se conçoit pas écran d'abord. Le jour où
+ * l'écran arrive, la péremption du registre nommera ces quatre entrées une par
+ * une, et c'est ainsi que les trois exemptions photo sont parties.
+ *
+ * LA CONFIRMATION EST LA PLUS EXPOSÉE des quatre : sans client, rien ne confirme
+ * jamais un envoi, donc toute pièce déposée reste en attente. Ce n'est pas un
+ * défaut de la route, c'est la moitié manquante — et c'est la raison pour
+ * laquelle ces entrées sont des exemptions et non des décisions.
+ */
+const MOTIF_PIECE = 'stockage des pièces livré côté serveur au lot du 2026-09-26 ; l’écran est le lot suivant'
+
 const ROUTES_EXEMPTES = registre('route', [
   ['DELETE /api/parks/*/photos/*', MOTIF_SUPPRESSION],
+  ['POST /api/parks/*/document-requests/*/files', `${MOTIF_PIECE} — envoi d’une pièce`],
+  [
+    'POST /api/parks/*/document-files/*/confirmation',
+    `${MOTIF_PIECE} — second temps de l’envoi : sans client, aucune pièce n’est jamais confirmée`,
+  ],
+  ['GET /api/parks/*/document-files/*', `${MOTIF_PIECE} — lecture d’une pièce`],
+  ['DELETE /api/parks/*/document-files/*', `${MOTIF_PIECE} — retrait d’une pièce`],
 ])
 
 async function fichiers(depart, extensions) {

@@ -97,6 +97,7 @@ export const en: Dictionary = {
     rowActions: 'Actions',
     listEmpty: 'No match for this search.',
     monthRange: 'Pick between {debut} and {fin}.',
+    monthOnly: 'Only {debut} is available.',
     monthFrom: 'Pick from {debut} onwards.',
     monthUntil: 'Pick up to {fin}.',
     onlyDigits: 'This field only accepts digits.',
@@ -736,6 +737,8 @@ export const en: Dictionary = {
       scheduleEmptyBody:
         'Every rent called has been collected. This list fills itself as soon as a due date passes.',
       breakdownTitle: 'Portfolio breakdown',
+      breakdownTitleMoney: 'Outstanding by building',
+      breakdownOutstanding: 'outstanding',
       legendRent: 'Rent',
       legendWater: 'Water',
       legendPower: 'Electricity',
@@ -823,8 +826,11 @@ export const en: Dictionary = {
       remove: 'Remove',
       deleteUnit: 'Remove unit {unit}',
       deleteUnitBlocked: 'Cannot remove — {unit} has history in the portfolio',
-      deleteUnitReason:
-        'This unit carries payments or a lease: removing it would erase its history.',
+      moveUnit: 'Move',
+      moveUnitLeft: 'Move left',
+      moveUnitRight: 'Move right',
+      unitMoved: '{unit} — position {rang} of {total}',
+      deleteUnitReason: 'Payments or a lease are attached.',
       deleteUnitTitle: 'Remove {unit}?',
       deleteUnitBody:
         'This unit has never held a lease, a reading or any works. Removal is permanent.',
@@ -1010,7 +1016,7 @@ export const en: Dictionary = {
       corrected: '{count} readings corrected',
       corrected_one: '{count} reading corrected',
       removed: 'Reading removed',
-      correctLine: 'Correct readings — {unit}',
+      correctLine: 'Edit readings — {unit}',
       removeWater: 'Remove the water reading',
       removePower: 'Remove the electricity reading',
       confirmRemove: 'Confirm removal',
@@ -1431,6 +1437,7 @@ export const en: Dictionary = {
         document: {
           fulfilled: 'Document provided',
           declined: 'Document request refused',
+          file_delete: 'Document withdrawn',
         },
         inspection: {
           record: 'Inspection recorded',
@@ -1650,11 +1657,21 @@ export const en: Dictionary = {
       addTenant: 'Create a tenant record',
       noAccount: 'No account',
       remindOne: 'Send reminder',
-      remindFor: 'Send a reminder to {name}',
+      /* L'ARTICLE SUFFISAIT À ROMPRE LA CONTENANCE. Le bouton dit « Send
+         reminder » ; « Send a reminder to … » contient les deux mots mais pas la
+         CHAÎNE, et c'est la chaîne que prononce qui commande à la voix. Le
+         français passait déjà — « Relancer {name} » contient « Relancer ». */
+      remindFor: 'Send reminder — {name}',
       fileLinkFor: 'File — {unit}',
       fileLink: 'File',
       actionsFor: 'Actions for {name}',
-      editFor: 'Edit {name}’s record',
+      /* « CORRECT » ET NON « EDIT » : le bouton de cet écran affiche
+         `app.tenants.edit`, qui vaut « Correct » en anglais. Le français était
+         déjà d'accord avec lui — « Corriger la fiche de … » — et seul l'anglais
+         reformulait. Dix cas, et c'est le défaut que la porte dit chercher :
+         « un lot a renommé vingt-neuf gestes homonymes et en a écrit deux de
+         travers, dont un — anglais — a été LIVRÉ ». */
+      editFor: 'Correct {name}’s record',
       removeFor: 'Remove {name}’s record',
       removeBlocked: 'Only the owner can remove a record',
       searchLabel: 'Search by tenant, unit or phone number',

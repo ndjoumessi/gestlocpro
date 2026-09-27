@@ -1402,9 +1402,32 @@ function Sidebar({
         point de tabulation de plus n'apporterait rien et ferait une halte muette
         avant chaque section.
       */}
+      {/*
+        `relative` EST CE QUI REND CETTE CLÔTURE ÉTANCHE, et c'est la moitié
+        invisible de cette boîte.
+
+        Une boîte de défilement ne rogne que les éléments absolus dont elle est le
+        BLOC CONTENEUR. Restée statique, elle laisse s'échapper tout descendant en
+        `position: absolute` — donc tout `sr-only` — qui va alors étendre le
+        défilement du DOCUMENT au lieu du sien.
+
+        MESURÉ le 2026-09-27 : la boîte découpe 193 px sur la hauteur, et le
+        `<legend class="sr-only">Profil actif</legend>` du sélecteur de point de
+        vue lui échappait — sur LES DIX-HUIT pages connectées à 1280 px, aucune
+        exceptée. `plafond-coquille` était vert : ce n'est pas la coquille qui
+        fuyait, c'est cette boîte-ci.
+
+        `DataTable` porte déjà la règle, et le rail des logements vient de
+        l'appliquer pour lui-même — « la matrice des droits a fait fuir 268 px de
+        cette façon ». La boîte qui CONTIENT tout ne l'avait pas.
+
+        SANS DÉCALAGE NI `z-index` : rien ne bouge à l'œil, et aucun contexte
+        d'empilement n'est créé — ce qui compte, `altitudes.test.ts` gardant les
+        niveaux.
+      */}
       <div
         data-zone="navigation"
-        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4"
+        className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4"
       >
 
       {/*

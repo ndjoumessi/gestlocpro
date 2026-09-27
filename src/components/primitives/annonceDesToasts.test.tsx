@@ -49,7 +49,7 @@ const SORTIE_MS = 150
 /** Miroir de `PLAFOND` dans `Toast.tsx` : combien de toasts tiennent à l'écran. */
 const PLAFOND = 3
 
-const RISE_OUT = ['animate', 'rise', 'out'].join('-')
+const RISE_OUT = ['surface', 'monte', 'sortie'].join('-')
 
 /**
  * Un banc d'essai qui sait poser les trois tons et une action de rattrapage.

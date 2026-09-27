@@ -680,11 +680,42 @@ const SEGMENT = 'inline-flex items-center justify-center gap-1.5 px-3.5 text-lab
  * plein est celui de la couche active, où elle se détache de l'encre ; le ton
  * pâle celui des boutons du dessous.
  */
+/**
+ * LA PASTILLE DE REMISE — UN JETON, DONC INSÉCABLE ET INCOMPRESSIBLE.
+ *
+ * ═══ CE QU'ELLE RENDAIT ═══
+ *
+ * « Annuel −20 % » : la pastille se coupait entre « −20 » et « % », devenait un
+ * DISQUE de 36 × 38 px et emplissait la hauteur du segment. Relevé au navigateur
+ * à 1024 px — donc pas une affaire d'écran étroit : le segment faisait 102 px de
+ * large, la pastille 36, soit moins que son contenu.
+ *
+ * ═══ LA CHAÎNE N'ÉTAIT QUE LE DÉCLENCHEUR ═══
+ *
+ * `yearlySave` vaut « −20 % » avec une espace SÉCABLE en français, là où
+ * l'anglais dit « −20% » sans espace — d'où un défaut propre à une langue. Mais
+ * cinq autres chaînes de `fr.ts` emploient la même espace avant `%` et aucune
+ * insécable n'existe dans le fichier : corriger celle-ci en aurait fait une
+ * exception que rien ne défend, et aurait laissé la pastille coupable pour le
+ * contenu suivant.
+ *
+ * ═══ CE QUI EST FERMÉ ICI ═══
+ *
+ * Une pilule à coins ronds est un objet VISUELLEMENT ATOMIQUE : coupée, elle ne
+ * devient pas moins lisible, elle devient autre chose. Aucun contenu ne rend ce
+ * comportement souhaitable. `whitespace-nowrap` l'empêche de se couper,
+ * `shrink-0` l'empêche d'être comprimée sous la largeur de son contenu — et il
+ * faut les DEUX : sans le second, le parent lui prend sa largeur et elle déborde
+ * au lieu de se couper, un défaut échangé contre l'autre.
+ *
+ * Le segment qui la porte est `flex-1 basis-0 min-w-0` : il distribue la largeur
+ * et ne protège rien. C'est donc à la pastille de tenir sa taille.
+ */
 function Remise({ ton, children }: { ton: 'plein' | 'pale'; children: string }) {
   return (
     <span
       className={cn(
-        'rounded-full px-1.5 py-0.5 numeric text-label',
+        'shrink-0 whitespace-nowrap rounded-full px-1.5 py-0.5 numeric text-label',
         ton === 'plein' ? 'bg-accent text-on-accent' : 'bg-accent-tint text-accent-ink',
       )}
     >

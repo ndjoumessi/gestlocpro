@@ -234,7 +234,36 @@ const MODALES = [
     polices rendent la même valeur. La première exécution de CE script fait foi
     sur la mienne.
   */
-  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 581, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
+  /*
+    ═══ 581 → 603 ET 736 → 757 : LA PREMIÈRE EXÉCUTION DE CE SCRIPT A EU LIEU ═══
+
+    Le paragraphe juste au-dessus le dit : « CES QUATRE NOMBRES N'ONT PAS ÉTÉ
+    RELEVÉS PAR CE SCRIPT [...] La première exécution de CE script fait foi sur la
+    mienne. » Elle a eu lieu le 2026-09-28, deux fois de suite, et elle rend :
+
+      ParkSettings@360         fr 603  ·  en 517     (plafond tenu : 581)
+      ParkSettings·devise@360  fr 757  ·  en 649     (plafond tenu : 736)
+      ParkSettings@1280        fr 294  ·  en 251     (déjà juste)
+      ParkSettings·devise@1280 fr 405  ·  en 362     (déjà juste)
+
+    LA RÉPRODUCTION À LA MAIN S'ÉTAIT TROMPÉE SUR UN POINT PRÉCIS, et c'est celui
+    qui compte : elle concluait que « les deux langues et les deux polices rendent
+    la même valeur ». Les deux langues DIVERGENT de 86 px à 360 — le français
+    compose plus long, et c'est lui qui fixe le plafond puisque l'entrée n'en porte
+    qu'un par largeur. Un plafond calé sur l'anglais laisserait passer le
+    français ; c'est exactement ce qui vient d'arriver.
+
+    `defilLarge` N'EST PAS TOUCHÉ. Ce script n'a pas le témoin de machine que
+    `plafond-hauteurs` et `plafond-vitrine` portent — il ne sait donc pas si la
+    machine qui l'exécute possède la colonne qu'il juge. Faute de ce témoin, je
+    n'écris que la colonne que les deux autres portes ont mesurée comme étant à
+    nous, et je laisse la police large à l'intégration continue.
+
+    CE QUE JE N'AI PAS FAIT, ET QUI SERAIT LE VRAI CORRECTIF : donner à ce script
+    le témoin de machine de ses deux sœurs. C'est une pièce d'instrument, pas un
+    correctif de produit, et ce lot n'a pas à la porter.
+  */
+  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 603, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -274,7 +303,8 @@ const MODALES = [
 
        Mêmes réserves de provenance que ci-dessus : reproduction au navigateur,
        et non relevé par ce script. */
-    defil: { 360: 736, 1280: 405 },
+    /* 736 → 757 : voir le relevé du 2026-09-28, au-dessus de `ParkSettings`. */
+    defil: { 360: 757, 1280: 405 },
     defilLarge: { 360: 736, 1280: 405 },
     avant: { 360: 35, 1280: 0 },
   },
@@ -587,7 +617,7 @@ const MODALES = [
      fiches mobiles —, sans quoi cette garde ne l'ouvrirait qu'à une largeur
      sur deux. Le geste ne paraît que sur un impayé ou un partiel ; la
      démonstration en porte quatre, donc le bouton existe aux deux largeurs. */
-  { nom: 'RelancerLocataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Relancer .|^Send a reminder to /, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  { nom: 'RelancerLocataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Relancer .|^Send reminder — /, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'RemindOverdue', fichier: 'features/dashboard/Payments.tsx', adresse: '/demo/paiements', bouton: /^Relancer les retards$|^Chase arrears$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LA MISE EN DEMEURE ENTRE, ET C'EST UN LOT QUI L'A OUVERTE.

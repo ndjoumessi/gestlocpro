@@ -144,12 +144,12 @@
 
 @theme {
   /* ---- Surfaces claires ------------------------------------------------ */
-  --color-canvas: #eceef3; /* fond application */
-  --color-paper: #f6f8fb; /* fond zone principale */
+  --color-canvas: #e9eef4; /* fond application */
+  --color-paper: #f6f9fc; /* fond zone principale */
   --color-surface: #ffffff; /* cartes */
-  --color-surface-sunken: #f1f3f8; /* zones creusées, en-têtes de table */
-  --color-border: #dbe0e9;
-  --color-border-strong: #b6bfcf;
+  --color-surface-sunken: #eff4f9; /* zones creusées, en-têtes de table */
+  --color-border: #e6ebf1;
+  --color-border-strong: #c8d2de;
   /* LISERÉ DES CONTRÔLES DE SAISIE — et non `--color-border` ni `-strong`.
 
      Un champ vide est un rectangle blanc sur une carte blanche : sa frontière
@@ -163,9 +163,31 @@
      des cartes DOIT rester discret (`separateurs.test.ts` le borne entre 8 et
      16 points de clarté) et la frontière d'un champ DOIT être vue. Assombrir
      `--color-border` aurait fait rougir l'une pour verdir l'autre.
-     Relevés : 3,50 sur --surface, 3,29 sur --paper (`lisereDesControles.test.ts`). */
-  --color-border-control: #7f8a9a;
-  --color-divider: #dee3ec;
+     ═══ #7d8fa4 → #76889c : DEUX DES QUATRE FONDS ÉTAIENT SOUS LE SEUIL ═══
+
+     La bascule du neutre vers le froid a fait perdre à cette paire ce qui lui
+     restait. Mesuré le 2026-09-27, avec l'ancienne valeur froide :
+
+       sur --canvas #e9eef4         2,84  ← refusé au navigateur, /connexion
+       sur --surface-sunken #eff4f9 2,99  ← sous le seuil, et personne ne le disait
+       sur --paper #f6f9fc          3,14
+       sur --surface #ffffff        3,31
+
+     L'ANCIENNE VALEUR CHAUDE TENAIT TOUT JUSTE — #7f8a9a rendait 3,00 sur
+     l'ancien --canvas #eceef3, c'est-à-dire le seuil au centième près. Le froid
+     a éclairci le jeton ET le fond ; il ne restait aucune marge à dépenser.
+
+     CE QUI L'A TROUVÉ, ET CE QUI NE L'A PAS TROUVÉ. L'audit au navigateur, sur
+     `/connexion` — le seul écran où les champs sont posés NUS sur le fond
+     d'application, sans carte. `lisereDesControles.test.ts` était vert pendant ce
+     temps : sa liste de fonds s'arrêtait à --surface et --paper. Elle énumère
+     désormais les quatre, et c'est elle qui refuse en premier maintenant.
+
+     Relevés de la valeur retenue : 3,12 sur --canvas, 3,29 sur --surface-sunken,
+     3,44 sur --paper, 3,64 sur --surface. La teinte est conservée au dixième de
+     degré (H 212) : c'est une correction de clarté, pas de couleur. */
+  --color-border-control: #76889c;
+  --color-divider: #e8edf3;
 
   /* Crête du balayage de squelette, sur `--color-surface-sunken`.
      Un jeton à elle, et non `--color-border` emprunté : le balayage n'est pas
@@ -175,38 +197,56 @@
      à 16,8 parce que l'écart entre creux et bordure y est bien plus grand.
      Réglée ici à ΔL* -17,1, l'égal perceptif du sombre. Voir squelette.test.ts,
      qui tient les deux thèmes dans la même fourchette. */
-  --color-skeleton-sweep: #bac3d3; /* ΔL* 17,3 sur le creux — 17,1 avant */
+  --color-skeleton-sweep: #bac6d4; /* ΔL* 16,6 sur le creux */
 
   /* ---- Encres ---------------------------------------------------------- */
-  --color-ink: #131a22; /* texte principal · 16.47 sur --paper */
-  --color-ink-2: #232f3b; /* surface sombre élevée, survol bouton sombre */
-  --color-ink-3: #3e4854;
-  --color-muted: #5b646f; /* texte secondaire · 5.64 sur --paper, 6.00 sur --surface */
-  --color-muted-soft: #6a737e; /* >=18px ou non-textuel uniquement */
+  --color-ink: #0a2540; /* texte principal · 14.70 sur --paper */
+  --color-ink-2: #123350; /* surface sombre élevée, survol bouton sombre */
+  --color-ink-3: #2c4b68;
+  --color-muted: #425466; /* texte secondaire · 7.38 sur --paper, 7.80 sur --surface */
+  --color-muted-soft: #697386; /* >=18px ou non-textuel uniquement */
 
   /* ---- Accent (marque) -------------------------------------------------- */
   /**
-   * L'ACCENT EST DEVENU BLEU, ET IL A CHANGÉ DE RÔLE EN MÊME TEMPS.
+   * L'ACCENT EST VIOLET DEPUIS LE 2026-09-27, ET C'EST UNE DEMANDE.
+   *
+   * ═══ CE QU'IL REMPLACE, ET POURQUOI LA RAISON D'HIER TIENT ENCORE ═══
    *
    * L'or `#c58e3e` ne tenait que 2,87:1 sur blanc : il ne pouvait JAMAIS porter
    * de texte sur fond clair, et toute la famille était construite autour de
-   * cette infirmité — un jeton `-ink` bien plus sombre pour les liens, une règle
-   * `.bg-accent` qui refixait l'encre, des contournements sur cinq écrans.
+   * cette infirmité. Le bleu `#2563eb` a levé l'infirmité — 5,17 sur blanc dans
+   * les deux sens — et c'est CETTE propriété qu'on a voulu conserver en
+   * changeant de teinte, pas la teinte elle-même.
    *
-   * `#2563eb` tient 5,17:1 SUR BLANC et porte du blanc à 5,17 : il peut être à
-   * la fois le fond d'une action et un texte lisible. C'est ce qui permet au
-   * bouton primaire de cesser d'être presque noir.
+   * `#635bff` tient 4,70:1 sur blanc ET porte du blanc à 4,70. Il reste donc à
+   * la fois un fond d'action et un texte lisible, avec 0,2 de marge au-dessus
+   * du seuil là où le bleu en avait 0,67. La marge a MAIGRI : c'est le prix de
+   * la teinte demandée, et il est écrit ici plutôt que découvert au prochain lot
+   * qui voudra éclaircir un fond.
    *
-   * Les vingt et une paires de la famille ont été mesurées dans les DEUX
-   * thèmes avant d'être écrites, contre les surfaces refroidies du lot
-   * précédent : zéro échec. Les ratios ci-dessous sont ces relevés.
+   * ═══ CE QUE LA MARGE PLUS COURTE INTERDIT ═══
+   *
+   * Posé en TEXTE, `#635bff` ne tient que sur `--color-surface`. Sur `--paper`
+   * il tombe à 4,45 et sur `--canvas` à 4,03 — sous le seuil. D'où
+   * `--color-accent-ink` `#5449e8` pour tout ce qui se LIT : 5,69 sur le papier,
+   * 5,15 sur le fond d'application. La distinction existait déjà du temps de
+   * l'or ; elle avait presque cessé de servir avec le bleu, elle redevient
+   * obligatoire.
+   *
+   * ═══ D'OÙ VIENT LA VALEUR ═══
+   *
+   * D'une page de référence donnée par Nelson (`uupm.cc/demo/payment-gateway`),
+   * dont la palette est celle de Stripe. Elle n'a pas été relevée à l'œil : les
+   * couleurs ont été lues sur les aplats RÉELLEMENT PEINTS de la page, puis
+   * chaque paire de cette famille a été mesurée dans les deux thèmes avant
+   * d'être écrite. Les ratios ci-dessous sont ces relevés.
    */
-  --color-accent: #2563eb; /* L'ACTION : fond de bouton, 5.17 sous du blanc */
-  --color-accent-hover: #1d4ed8; /* 6.70 sous du blanc */
+  --color-accent: #635bff; /* L'ACTION : fond de bouton, 4.70 sous du blanc */
+  --color-accent-hover: #4b45e0; /* 6.51 sous du blanc */
   --color-on-accent: #ffffff; /* ce qui se pose SUR l'accent */
-  --color-accent-ink: #1d4ed8; /* liens et labels · 6.30 sur --paper, 5.77 sur --canvas */
-  --color-accent-ink-hover: #1e40af; /* 8.20 sur --paper */
-  --color-accent-on-dark: #93bbfd; /* accent sur --ink-2 · 6.99 */
+  --color-accent-ink: #5449e8; /* liens et labels · 5.69 sur --paper, 5.15 sur --canvas */
+  --color-accent-ink-hover: #4438c7; /* 7.54 sur --paper */
+  --color-accent-on-dark: #b3aeff; /* accent sur --ink-2 · 6.45 */
   /**
    * Or posé sur `--color-ink`, et qui s'inverse AVEC lui.
    *
@@ -219,10 +259,10 @@
    * D'où un jeton nommé d'après le fond qu'il accompagne plutôt que d'après sa
    * couleur : quoi que devienne `--color-ink`, celui-ci suit.
    */
-  --color-accent-on-ink: #609afa; /* 6.26 sur --ink clair */
-  --color-accent-tint: #eff5ff; /* porte --accent-ink à 6.12 */
-  --color-accent-tint-2: #dbe8fe;
-  --color-accent-border: #bfd7fe;
+  --color-accent-on-ink: #a9a4ff; /* 6.99 sur --ink clair */
+  --color-accent-tint: #f0efff; /* porte --accent-ink à 5.29 */
+  --color-accent-tint-2: #e0ddff;
+  --color-accent-border: #c7c3ff;
 
   /* ---- Teintes de données ---------------------------------------------- */
   /* Une série de graphique n'est pas un aplat décoratif : elle porte
@@ -232,12 +272,12 @@
      dont chaque teinte a été mesurée sur blanc ET sur `--color-ink`, les deux
      fonds sur lesquels un graphique s'affiche.
 
-     L'ACCENT EST DEVENU BLEU ET L'ÉCHELLE RESTE, pour une raison qui n'est plus
-     celle-là. `--color-accent` #2563eb passe le seuil sur blanc — 5,17 — mais
-     retombe à 3,13 contre la carte du thème sombre, où il ne fait plus
-     qu'effleurer les 3:1. Et surtout il DÉSIGNE L'ACTION depuis qu'il peint le
-     bouton primaire : une série peinte de la couleur des boutons se lirait
-     comme une chose à cliquer. Une raison de contraste a cédé la place à une
+     L'ACCENT A CHANGÉ DEUX FOIS ET L'ÉCHELLE RESTE, pour une raison qui n'est
+     plus celle-là. `--color-accent` passe le seuil sur blanc — 4,70 pour le
+     violet #635bff, 5,17 pour le bleu qui l'a précédé — mais l'argument de
+     contraste a cédé la place à un argument de VOCABULAIRE : l'accent désigne
+     L'ACTION depuis qu'il peint le bouton primaire, et une série peinte de la
+     couleur des boutons se lirait comme une chose à cliquer. Une raison de contraste a cédé la place à une
      raison de vocabulaire ; la conclusion, elle, n'a pas bougé.
 
      C'est cette phrase-là que `Alerts.tsx` citait comme AUTORITÉ pour refuser
@@ -255,8 +295,9 @@
 
      LA DEMANDE ÉTAIT « ALIGNER SUR L'ACCENT », ET CE N'EST PAS CE QUI EST FAIT
      — parce que les deux paragraphes ci-dessus tiennent toujours. Peindre une
-     série en #2563eb ferait lire une donnée comme un bouton, et c'est le seul
-     argument de ce fichier qui n'a jamais dépendu d'un relevé.
+     série de la couleur de l'accent — #2563eb alors, #635bff depuis — ferait lire
+     une donnée comme un bouton, et c'est le seul argument de ce fichier qui n'a
+     jamais dépendu d'un relevé.
 
      CE QUI EST FAIT : la MÊME FAMILLE FROIDE, à saturation nettement plus
      basse. L'accent tient 84 % de saturation ; l'échelle va de 65 % à 8 %, et
@@ -696,7 +737,7 @@
      C'est celle d'iOS, reprise telle quelle par Ionic pour ses panneaux
      latéraux : un départ franc, puis une longue décélération qui tient jusqu'au
      bord. `--ease-out` est calibré pour de petits déplacements — 6 px pour
-     `animate-rise` — où la fin de course ne se voit pas ; sur les 288 px du
+     `surface-monte` — où la fin de course ne se voit pas ; sur les 288 px du
      panneau, elle se voit, et le panneau semble s'arrêter avant d'être arrivé.
      Valeurs à ne pas arrondir : le zéro en troisième position est ce qui rend
      l'arrivée aussi plate. */
@@ -878,13 +919,13 @@
     /* L'ordre d'élévation du thème clair est conservé, à l'envers :
        canvas < sunken < paper < raised < surface. Une carte reste ce qu'il y
        a de plus haut, donc de plus clair. */
-    --color-canvas: #0a0d11; /* fond application */
-    --color-paper: #0f1319; /* fond zone principale */
-    --color-surface: #1c2128; /* cartes */
-    --color-surface-sunken: #0d1116; /* zones creusées, en-têtes de table */
-    --color-border: #2c333c;
-    --color-border-strong: #4b5563;
-    --color-border-control: #6b7583; /* 3,47 sur --surface, 3,99 sur --paper */
+    --color-canvas: #060f1c; /* fond application */
+    --color-paper: #0a1628; /* fond zone principale */
+    --color-surface: #0f1d32; /* cartes */
+    --color-surface-sunken: #081322; /* zones creusées, en-têtes de table */
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-border-strong: #2c3d55;
+    --color-border-control: #8b9cb4; /* 6,05 sur --surface, 6,49 sur --paper */
     /* SÉPARATEUR RELEVÉ — #252b34 le laissait à ΔL* 4,8 de --color-surface.
 
        LE DÉFAUT, ET IL EST PROPRE AU SOMBRE. En clair, le séparateur est plus
@@ -907,13 +948,13 @@
        dixième près. Il monte à 16,9 sur le papier et 17,8 sur le creusé, plus
        haut qu'en clair — c'est le prix de l'inversion, et il se paie sur le
        seul élément des deux écrans qui y soit posé. */
-    --color-divider: #2f3740;
+    --color-divider: #2c3d55;
 
     /* Le sombre garde la valeur qui marchait déjà — c'est le clair qui était
        en défaut. `--color-border-strong` y monterait à ΔL* 30, soit une crête
        deux fois plus marquée qu'en clair : le balayage cesserait d'être un
        reflet pour devenir une barre qui passe. */
-    --color-skeleton-sweep: #2e3540; /* ΔL* 17,0 sur le creux — 16,8 avant */
+    --color-skeleton-sweep: #26354b; /* ΔL* 17,0 sur le creux — 16,8 avant */
 
     /* ---- Encres ---------------------------------------------------------- */
     /* ATTENTION — `--color-ink` bascule du texte vers une teinte CLAIRE. Il
@@ -922,11 +963,11 @@
        deux ne peuvent pas gagner. Le rôle d'encre l'emporte — il est de loin
        le plus fréquent — et les surfaces qui doivent RESTER sombres figent le
        jeton pour elles-mêmes, voir « Surfaces qui ne basculent pas » plus bas. */
-    --color-ink: #e8eaee; /* texte principal · 15.46 sur --paper, 13.44 sur --surface */
-    --color-ink-2: #d1d5dc; /* survol de la surface inversée · 10.99 sur --surface */
-    --color-ink-3: #b3b9c2; /* 8.20 sur --surface */
-    --color-muted: #a2a8b2; /* texte secondaire · 7.79 sur --paper, 6.77 sur --surface */
-    --color-muted-soft: #878e98; /* 4.90 sur --surface — >=18px ou non textuel */
+    --color-ink: #ffffff; /* texte principal · 15.46 sur --paper, 13.44 sur --surface */
+    --color-ink-2: #dfe6f0; /* survol de la surface inversée · 10.99 sur --surface */
+    --color-ink-3: #bcc8d8; /* 8.20 sur --surface */
+    --color-muted: #a3b3c9; /* texte secondaire · 7.79 sur --paper, 6.77 sur --surface */
+    --color-muted-soft: #8496ae; /* 4.90 sur --surface — >=18px ou non textuel */
 
     /* ---- Accent (marque) -------------------------------------------------- */
     /* `--color-accent` NE BOUGE PAS d'un thème à l'autre, et c'est nouveau :
@@ -936,21 +977,21 @@
        seuil de 3:1 exigé d'un élément d'interface : le bouton se détache de son
        fond sans changer de couleur. Une marque qui garde sa teinte au basculement
        est une marque, pas deux. */
-    --color-accent: #2563eb; /* 5.17 sous du blanc · 3.13 sur --surface sombre */
-    --color-accent-hover: #1d4ed8; /* 6.70 sous du blanc */
+    --color-accent: #635bff; /* 5.17 sous du blanc · 3.13 sur --surface sombre */
+    --color-accent-hover: #7a73ff; /* 6.70 sous du blanc */
     --color-on-accent: #ffffff;
     /* Le voile s'ASSOMBRIT en sombre plutôt que de rester identique : posé sur
        une page déjà sombre, un noir à 55 % ne détache plus assez la modale du
        fond. C'est le seul jeton dont la version sombre est plus opaque, et non
        plus claire. */
     --color-scrim: rgba(0, 0, 0, 0.68);
-    --color-accent-ink: #93bbfd; /* liens et labels · 9.55 sur --paper, 8.30 sur --surface */
-    --color-accent-ink-hover: #bfd7fe; /* 11.07 sur --surface */
-    --color-accent-on-dark: #93bbfd; /* inchangé : sert les panneaux figés, 6.99 sur l'ink-2 figé */
-    --color-accent-on-ink: #1d4ed8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
-    --color-accent-tint: #152238; /* lavis, porte --accent-ink à 8.17 */
-    --color-accent-tint-2: #1b2c48; /* fond de ::selection */
-    --color-accent-border: #2b4677;
+    --color-accent-ink: #a9a4ff; /* liens et labels · 9.55 sur --paper, 8.30 sur --surface */
+    --color-accent-ink-hover: #c4c1ff; /* 11.07 sur --surface */
+    --color-accent-on-dark: #b3aeff; /* inchangé : sert les panneaux figés, 6.99 sur l'ink-2 figé */
+    --color-accent-on-ink: #5449e8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
+    --color-accent-tint: #161a33; /* lavis, porte --accent-ink à 8.17 */
+    --color-accent-tint-2: #1e2144; /* fond de ::selection */
+    --color-accent-border: #35357a;
 
     /* ---- Teintes de données ---------------------------------------------- */
     /* Les contreparties sombres existaient déjà — mesurées sur `--color-ink`,
@@ -978,11 +1019,11 @@
     /* Éclaircis et désaturés. Chaque couleur pleine sert DEUX fois : en texte
        sur la surface (`text-ok`), et en fond de pastille sous `text-on-dark`
        (`bg-ok`) — d'où deux ratios par ton. */
-    --color-ok: #74bd95; /* 7.13 sur --surface · porte --on-dark à 7.53 */
+    --color-ok: #36b37e; /* 7.13 sur --surface · porte --on-dark à 7.53 */
     --color-ok-tint: #182a20; /* porte --ok à 6.80 */
     --color-ok-border: #31493a;
 
-    --color-warn: #e0b877; /* 6.87 sur --surface */
+    --color-warn: #ffab00; /* 6.87 sur --surface */
     --color-warn-tint: #2e2417; /* porte --warn à 6.60 */
     --color-warn-border: #54421f;
 
@@ -1033,34 +1074,34 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-canvas: #0a0d11;
-  --color-paper: #0f1319;
-  --color-surface: #1c2128;
-  --color-surface-sunken: #0d1116;
-  --color-border: #2c333c;
-  --color-border-strong: #4b5563;
-  --color-border-control: #6b7583;
+  --color-canvas: #060f1c;
+  --color-paper: #0a1628;
+  --color-surface: #0f1d32;
+  --color-surface-sunken: #081322;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: #2c3d55;
+  --color-border-control: #8b9cb4;
   /* Voir la note du bloc `prefers-color-scheme: dark` : ΔL* 4,8 sur la carte. */
-  --color-divider: #2f3740;
-  --color-skeleton-sweep: #2e3540;
+  --color-divider: #2c3d55;
+  --color-skeleton-sweep: #26354b;
 
-  --color-ink: #e8eaee;
-  --color-ink-2: #d1d5dc;
-  --color-ink-3: #b3b9c2;
-  --color-muted: #a2a8b2;
-  --color-muted-soft: #878e98;
+  --color-ink: #ffffff;
+  --color-ink-2: #dfe6f0;
+  --color-ink-3: #bcc8d8;
+  --color-muted: #a3b3c9;
+  --color-muted-soft: #8496ae;
 
-  --color-accent: #2563eb;
-  --color-accent-hover: #1d4ed8;
+  --color-accent: #635bff;
+  --color-accent-hover: #7a73ff;
   --color-on-accent: #ffffff;
   --color-scrim: rgba(0, 0, 0, 0.68);
-  --color-accent-ink: #93bbfd;
-  --color-accent-ink-hover: #bfd7fe;
-  --color-accent-on-dark: #93bbfd;
-  --color-accent-on-ink: #1d4ed8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
-  --color-accent-tint: #152238;
-  --color-accent-tint-2: #1b2c48;
-  --color-accent-border: #2b4677;
+  --color-accent-ink: #a9a4ff;
+  --color-accent-ink-hover: #c4c1ff;
+  --color-accent-on-dark: #b3aeff;
+  --color-accent-on-ink: #5449e8; /* 5.56 sur --ink sombre, où l'encre est CLAIRE */
+  --color-accent-tint: #161a33;
+  --color-accent-tint-2: #1e2144;
+  --color-accent-border: #35357a;
 
   --color-data-1: #f6f8fb;
   --color-data-2: #6f9fd4;
@@ -1076,11 +1117,11 @@
   --color-data-5-on-dark: #d3d8de;
   --color-data-6-on-dark: #b3c7bd;
 
-  --color-ok: #74bd95;
+  --color-ok: #36b37e;
   --color-ok-tint: #182a20;
   --color-ok-border: #31493a;
 
-  --color-warn: #e0b877;
+  --color-warn: #ffab00;
   --color-warn-tint: #2e2417;
   --color-warn-border: #54421f;
 
@@ -1126,8 +1167,8 @@
    ========================================================================= */
 
 .on-dark {
-  --color-ink: #131a22;
-  --color-ink-2: #232f3b;
+  --color-ink: #0a2540;
+  --color-ink-2: #123350;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: rgba(255, 255, 255, 0.68);
   --color-on-dark-faint: rgba(255, 255, 255, 0.58);
@@ -1149,9 +1190,10 @@
    aplat, et `Card tone="dark"` y était invisible pour la même raison.
 
    L'ÉTAU, ET IL ÉTAIT RÉEL. Éclaircir la bande était bloqué par un seul
-   élément : le bouton primaire de l'appel final, `bg-accent` #2563eb, qui tient
-   3,39:1 sur #131a22 et passe SOUS le seuil non textuel de 3:1 dès que le fond
-   s'éclaircit — 3,13 sur la carte, 2,95 un cran plus haut, 2,76 au-delà. La
+   élément : le bouton primaire de l'appel final, `bg-accent` — #2563eb au moment
+   où cet étau a été mesuré, #635bff depuis le 2026-09-27 —, qui tenait
+   3,39:1 sur #131a22 et passait SOUS le seuil non textuel de 3:1 dès que le fond
+   s'éclaircissait — 3,13 sur la carte, 2,95 un cran plus haut, 2,76 au-delà. La
    carte posait le plancher (une bande qui vaudrait #1c2128 se confondrait avec
    elle), le bouton posait le plafond, et il n'existait AUCUNE valeur entre les
    deux. Cherché par balayage sur toute la famille froide : le meilleur couple
@@ -1236,20 +1278,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .on-dark {
-    --color-ink: #252e45;
-    --color-ink-2: #323d59;
-    --color-accent: #93bbfd;
-    --color-accent-hover: #bfd7fe;
-    --color-on-accent: #131a22;
+    --color-ink: #123350;
+    --color-ink-2: #1a4265;
+    --color-accent: #b3aeff;
+    --color-accent-hover: #c4c1ff;
+    --color-on-accent: #123350;
   }
 }
 
 :root[data-theme='dark'] .on-dark {
-  --color-ink: #252e45;
-  --color-ink-2: #323d59;
-  --color-accent: #93bbfd;
-  --color-accent-hover: #bfd7fe;
-  --color-on-accent: #131a22;
+  --color-ink: #123350;
+  --color-ink-2: #1a4265;
+  --color-accent: #b3aeff;
+  --color-accent-hover: #c4c1ff;
+  --color-on-accent: #123350;
 }
 
 /* CETTE RÈGLE A DISPARU AVEC SA CAUSE, et il faut dire laquelle.
@@ -1317,7 +1359,31 @@
     *::after {
       animation-duration: 0.001ms !important;
       animation-iteration-count: 1 !important;
-      transition-duration: 0.001ms !important;
+      /*
+        ═══ LE MOUVEMENT PART, LES FONDUS RESTENT (2026-09-27) ═══
+
+        Il y avait ici `transition-duration: 0.001ms !important`, qui supprimait
+        TOUTE transition — y compris les fondus de couleur du survol, du focus et
+        des états. Or ce réglage système demande moins de mouvement, pas moins de
+        renseignement : une couleur qui change progressivement aide à comprendre
+        ce qui vient de se passer et ne donne le vertige à personne. C'est le
+        mouvement — ce qui se déplace, grandit, glisse — qui est en cause.
+
+        On restreint donc la LISTE DES PROPRIÉTÉS au lieu d'annuler la durée.
+        `transform` et `clip-path` n'y sont pas : ils cessent d'être interpolés et
+        sautent à leur valeur finale, ce qui est exactement ce qu'on veut. Les
+        durées propres à chaque composant restent en vigueur pour ce qui reste —
+        un fondu de 150 ms garde ses 150 ms.
+
+        CE QUE ÇA COÛTE, ET IL FAUT LE DIRE : une propriété de mouvement inventée
+        plus tard et absente de cette liste ne sera plus neutralisée par
+        omission — elle le sera par défaut, puisque la liste est FERMÉE. Le sens
+        de l'échange est le bon, mais il inverse la charge : avant, tout était
+        coupé et il fallait y penser pour épargner ; maintenant il faut y penser
+        pour autoriser un fondu nouveau.
+      */
+      transition-property: opacity, color, background-color, border-color, fill, stroke,
+        box-shadow, text-decoration-color !important;
       /* LES DÉLAIS AUSSI. Une durée à zéro ne supprime pas un `animation-delay` :
          les colonnes des graphes, échelonnées de 35 ms chacune avec
          `fill-mode: both`, restaient figées à `scaleY(0.02)` pendant leur délai
@@ -1369,41 +1435,6 @@
 /* ============================================================================
    Animations
    ========================================================================= */
-
-@keyframes gl-rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* Le miroir de `gl-rise`, et les 6 px sont les MÊMES qu'à l'entrée : le toast
-   monte de sous le bord bas, il y redescend. Il ne part ni de côté ni en
-   rétrécissant — un message qui se retire reprend le chemin par lequel il est
-   venu, c'est la seule cohérence spatiale qu'un coin d'écran permet. */
-@keyframes gl-rise-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
-@keyframes gl-grow-x {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
 
 @keyframes gl-grow-y {
   from {
@@ -1672,17 +1703,58 @@
   }
 }
 
-@utility animate-rise {
-  animation: gl-rise var(--duration-slow) var(--ease-out) both;
+/*
+  LA SURFACE QUI MONTE DE SON BORD — le toast, et la carte du hero.
+
+  EN TRANSITION DEPUIS LE 2026-09-27, et pour la raison qui a fait convertir les
+  onze classes de panneau le matin du même jour : une image clé de sortie repart
+  de son `from`, qui est l'état de REPOS. Congédier un toast pendant son entrée
+  le faisait donc sauter à pleine opacité pour s'en aller. Son entrée dure
+  300 ms — la plus longue du dépôt —, donc la fenêtre pour l'attraper était la
+  plus large de toutes les surfaces, et c'est celle qui avait gardé le défaut.
+
+  CE QUI N'A PAS ÉTÉ MESURÉ, ET IL FAUT LE DIRE : le saut a été relevé au
+  navigateur sur sept nœuds de panneau (présence 0,342 puis 1,000), jamais sur
+  le toast lui-même — aucun geste de la démonstration n'en lève un. La
+  conversion repose sur l'identité du mécanisme, lisible dans les images clés
+  qu'elle remplace, pas sur un relevé de ce nœud-ci.
+
+  `transform: none` AU REPOS, ET NON `translateY(0)`. Les deux se peignent
+  pareil et ne se valent pas : une matrice identité fait du nœud le BLOC
+  CONTENEUR de ses descendants `position: fixed`, et ce dépôt a déjà payé ce
+  défaut — `<main>` portait l'ancienne animation, et la modale, `fixed inset-0`,
+  se posait 41 px sous le bord de la fenêtre (`scripts/modales.mjs`). `none` ne
+  crée aucun bloc conteneur ; la transition interpole quand même, l'identité
+  étant le point de départ implicite de toute transformation.
+
+  Les 6 px sont les MÊMES aux deux bouts : le toast monte de sous le bord bas, il
+  y redescend. Il ne part ni de côté ni en rétrécissant — un message qui se
+  retire reprend le chemin par lequel il est venu, c'est la seule cohérence
+  spatiale qu'un coin d'écran permet.
+
+  Et la sortie fait la MOITIÉ de l'entrée, comme partout ici : un toast entre
+  pour être lu, il sort pour libérer le coin. `--duration-fast` est la borne que
+  `SORTIE_MS` recopie dans `Toast.tsx` ; les deux nombres se lisent ensemble.
+*/
+@utility surface-monte {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
-/* MOITIÉ DE LA DURÉE DE L'ENTRÉE, comme partout ailleurs ici — `pop` fait
-   200/150, la feuille et le tiroir 300/200. Un toast entre pour être lu, il sort
-   pour libérer le coin : personne n'attend la fin d'un départ. `--duration-fast`
-   est aussi la borne que `SORTIE_MS` recopie dans `Toast.tsx` ; les deux nombres
-   se lisent ensemble. */
-@utility animate-rise-out {
-  animation: gl-rise-out var(--duration-fast) var(--ease-out) both;
+@utility surface-monte-sortie {
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 /*
@@ -1749,21 +1821,27 @@
 }
 
 /*
-  LA MÊME ENTRÉE, EN 150 ms AU LIEU DE 200 — ET C'EST DÉLIBÉRÉMENT PLUS COURT
-  QUE SES VOISINES.
+  LA MÊME ENTRÉE, EN 150 ms AU LIEU DE 200, ET POSÉE PAR UN SEUL APPELANT.
 
-  `surface-pop` sert les panneaux qu'on ouvre d'un geste et qu'on regarde
-  arriver : une modale, un menu, un calendrier. La LISTE CHERCHABLE de `Combobox`
-  a un troisième mode d'ouverture que ceux-là n'ont pas — la PREMIÈRE FRAPPE
-  ouvre la liste en même temps qu'elle la filtre (`Combobox.tsx`, `onChange`).
-  Là, ce qu'on attend n'est pas une surface qui se présente, ce sont les options
-  qui répondent à ce qu'on vient de taper. Cent cinquante millisecondes restent
-  dans la bande des menus déroulants et sont le plus court que les jetons de ce
-  dépôt offrent : on ne descend pas plus bas faute de jeton, et on ne remonte pas
-  à 200 pour « harmoniser » — l'écart de 50 ms EST le réglage, pas un oubli.
+  ═══ CE QUE L'HISTOIRE DE CE JETON DIT DE LUI ═══
 
-  Sa sortie reste `surface-pop-sortie`, donc entrée et sortie y courent à la même
-  vitesse — conséquence du raccourcissement de l'entrée, et non un second choix.
+  Il est né du constat que la LISTE CHERCHABLE de `Combobox` a un mode
+  d'ouverture que les autres panneaux n'ont pas : la PREMIÈRE FRAPPE ouvre la
+  liste en même temps qu'elle la filtre. Ce qu'on y attend n'est pas une surface
+  qui se présente, ce sont les options qui répondent — d'où 150 ms au lieu de
+  200, le plus court que les jetons offrent.
+
+  LA CONCLUSION ÉTAIT TIMIDE, et une revue de mouvement l'a dit le 2026-09-27 :
+  un geste clavier ne s'anime pas du tout. `Combobox` ne pose donc plus ce jeton
+  que sur l'ouverture AU POINTEUR — la frappe, la flèche du bas et la tabulation
+  ouvrent la liste sans entrée. Les 150 ms restent justes pour le clic, qui est
+  bien un geste qu'on regarde arriver ; elles ne s'interposent plus entre une
+  frappe et sa réponse.
+
+  Sa sortie reste `surface-pop-sortie` dans tous les cas, donc entrée et sortie y
+  courent à la même vitesse quand il y a une entrée. Une liste qui disparaîtrait
+  d'un coup sous les doigts se lirait comme une panne : c'est le départ qu'on
+  n'attend pas, pas celui qu'on ne voit pas.
 */
 @utility surface-pop-vite {
   opacity: 1;
@@ -1794,7 +1872,7 @@
 
    IL GLISSE SUR `--ease-drawer`, ET NON SUR `--ease-out` : c'est la courbe
    d'iOS, reprise telle quelle par Ionic pour ses panneaux latéraux. `--ease-out`
-   est calibré pour de petits déplacements — 6 px pour `animate-rise` — où la fin
+   est calibré pour de petits déplacements — 6 px pour `surface-monte` — où la fin
    de course ne se voit pas ; sur les 288 px du panneau, elle se voit, et le
    panneau semble s'arrêter avant d'être arrivé.
 
@@ -1889,15 +1967,31 @@
   transition: opacity var(--duration-fast) var(--ease-out);
 }
 
-/* Entrée d'une barre de progression : un seul élément par jauge, aucun décalage
-   qui l'accompagne. Les 700 ms d'origine étaient donc 700 ms d'attente nette
-   avant que le taux d'occupation soit lisible — sur l'Android d'entrée de gamme
-   visé, la donnée arrivait après le doigt. La croissance se lit entièrement
-   dans les 300 ms du jeton lent : c'est une seule dimension qui varie, l'œil
-   n'a rien à suivre d'autre. */
-@utility animate-grow-x {
-  animation: gl-grow-x var(--duration-slow) var(--ease-out) both;
-  transform-origin: left;
+/*
+  ENTRÉE D'UNE JAUGE — UN BALAYAGE, ET NON PLUS UNE ÉCHELLE.
+
+  Elle naissait de `scaleX(0)`, ce que ce fichier interdit dix lignes plus haut à
+  propos de `pop` : rien, dans le monde réel, ne se réduit à néant. Et le défaut
+  ne s'arrêtait pas là. La barre est un `rounded-full` : `scaleX` écrase le RAYON
+  avec le reste, donc les deux bouts de la pilule s'aplatissent pendant toute la
+  croissance et ne reprennent leur forme qu'à la dernière image. On voyait une
+  barrette à bouts carrés s'étirer, puis s'arrondir.
+
+  `clip-path` découpe au lieu de déformer : la pilule a sa forme finale dès la
+  première image, et c'est le RIDEAU qui bouge. Mêmes durée et courbe qu'avant —
+  les 300 ms du jeton lent, après que 700 ms aient été mesurées comme de
+  l'attente nette sur l'Android d'entrée de gamme visé.
+
+  L'idiome n'est pas neuf ici : `Choice.tsx` anime déjà un `clip-path` pour la
+  pastille de ses segments, et pour la même raison — découper ne déforme pas.
+*/
+@utility jauge-arrive {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path var(--duration-slow) var(--ease-out);
+
+  @starting-style {
+    clip-path: inset(0 100% 0 0);
+  }
 }
 
 /* Entrée des barres d'un graphe. Ici la durée déclarée n'est pas la durée

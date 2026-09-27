@@ -21,6 +21,8 @@
   },
   "include": [
     "vite.config.ts",
+    "src/components/primitives/remiseInsecable.test.tsx",
+    "src/design-system/defilementProgramme.test.ts",
     "src/design-system/theme.test.ts",
     "src/design-system/chasseFixe.test.ts",
     "src/design-system/altitudes.test.ts",

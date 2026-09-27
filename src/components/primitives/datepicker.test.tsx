@@ -33,7 +33,7 @@ const calendrier = () => screen.getByRole('dialog', { name: /calendrier/i })
 async function ouvrirEn(user: ReturnType<typeof userEvent.setup>, annee: number, mois: number) {
   await user.click(champ())
   // Année d'abord — la remontée du panneau, en place des menus natifs.
-  await user.click(within(calendrier()).getByLabelText('Année'))
+  await user.click(within(calendrier()).getByLabelText(/^Année \d/))
   while (within(calendrier()).queryByRole('button', { name: String(annee) }) === null) {
     await user.click(within(calendrier()).getByLabelText(/années précédentes/i))
   }
@@ -172,7 +172,7 @@ describe('sélecteur de mois', () => {
     // mois inviterait à cliquer une date qui n'existe pas dans la donnée.
     expect(cases()).toHaveLength(12)
 
-    await user.click(within(panneau()).getByLabelText('Année'))
+    await user.click(within(panneau()).getByLabelText(/^Année \d/))
     while (within(panneau()).queryByRole('button', { name: '2023' }) === null) {
       await user.click(within(panneau()).getByLabelText(/années précédentes/i))
     }
@@ -221,7 +221,7 @@ describe('aucun rendu du navigateur dans les panneaux', () => {
     expect(panneau.querySelectorAll('option')).toHaveLength(0)
 
     // Et l'année est bien atteignable : c'est ce que le menu apportait.
-    await user.click(within(panneau).getByLabelText('Année'))
+    await user.click(within(panneau).getByLabelText(/^Année \d/))
     expect(within(panneau).getByRole('button', { name: '2026' })).toBeInTheDocument()
     expect(panneau.querySelectorAll('select')).toHaveLength(0)
   })
@@ -232,7 +232,7 @@ describe('aucun rendu du navigateur dans les panneaux', () => {
     await user.click(champMois())
 
     expect(panneau().querySelectorAll('select')).toHaveLength(0)
-    await user.click(within(panneau()).getByLabelText('Année'))
+    await user.click(within(panneau()).getByLabelText(/^Année \d/))
     expect(panneau().querySelectorAll('select')).toHaveLength(0)
     expect(within(panneau()).getByRole('button', { name: '2026' })).toBeInTheDocument()
   })

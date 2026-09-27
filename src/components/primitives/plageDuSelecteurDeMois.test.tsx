@@ -81,6 +81,40 @@ describe('la plage du sélecteur de mois', () => {
     expect(phrase, 'la fenêtre autorisée n’est écrite nulle part').toMatch(/2020/)
   })
 
+  /**
+   * UNE FENÊTRE D'UN SEUL MOIS NE SE DIT PAS « DE X À X ».
+   *
+   * C'est le cas le plus fréquent du produit, et l'en-tête de ce fichier le dit
+   * depuis sa naissance : « la démonstration resserre `min` et `max` sur UN
+   * mois, celui du dernier relevé ». La phrase rendue était pourtant « Choix
+   * possible de Septembre 2026 à Septembre 2026. » — deux bornes identiques
+   * récitées comme un intervalle, en français comme en anglais (« Pick between
+   * September 2026 and September 2026 »).
+   *
+   * Le cas d'à côté affirmait la présence du millésime (`/2020/`) sur une
+   * fenêtre de trois mois : il ne pouvait pas voir celui-ci, et le voir lui
+   * aurait demandé de compter les occurrences plutôt que d'en trouver une.
+   *
+   * On compte donc, et sur le NOM DU MOIS plutôt que sur l'année : une année
+   * apparaît deux fois dans « de janvier 2020 à mars 2020 » sans que la phrase
+   * soit fautive. C'est la répétition du mois ENTIER qui dit la faute.
+   */
+  it('nomme le mois UNE fois quand la fenêtre n’en contient qu’un', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SelecteurBorne min="2020-02" max="2020-02" />)
+
+    const panneau = await ouvrirLePanneau(user)
+    const decrit = panneau.getAttribute('aria-describedby')
+    expect(decrit, 'la plage ne décrit pas le panneau').toBeTruthy()
+
+    const phrase = document.getElementById(decrit!)?.textContent ?? ''
+    const occurrences = phrase.match(/février 2020/gi)?.length ?? 0
+    expect(
+      occurrences,
+      `la fenêtre d'un seul mois se récite en intervalle : « ${phrase} »`,
+    ).toBe(1)
+  })
+
   it('ne dit rien quand rien n’est borné', async () => {
     /* LA MOITIÉ QU'ON OUBLIE : l'immense majorité des champs de date de ce
        produit n'a pas de bornes, et le panneau ne doit pas gagner une ligne

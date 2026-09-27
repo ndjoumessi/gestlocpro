@@ -114,7 +114,12 @@ describe('la répartition du parc', () => {
   it('rend le même ton à un immeuble plein et à un immeuble troué', async () => {
     parcMixte()
     await renderApp('/app', { session: SESSION_PROPRIETAIRE })
-    await screen.findByText(/répartition du parc/i)
+    /* LE TITRE DE CETTE CARTE DÉPEND DU RÔLE depuis que le propriétaire y lit
+       l'impayé par immeuble : « Impayé par immeuble » pour lui, « Répartition du
+       parc » pour le gestionnaire délégué, qui n'en voit pas l'argent. On attend
+       donc l'un ou l'autre. Ce que ce fichier garde — le TON de la pastille
+       d'occupation — n'a pas bougé d'un cheveu. */
+    await screen.findByText(/impayé par immeuble|répartition du parc/i)
 
     const pastilles = pastillesDeRatio()
 
@@ -136,7 +141,12 @@ describe('la répartition du parc', () => {
   it('emploie le ton que le produit donne déjà à une vacance', async () => {
     parcMixte()
     await renderApp('/app', { session: SESSION_PROPRIETAIRE })
-    await screen.findByText(/répartition du parc/i)
+    /* LE TITRE DE CETTE CARTE DÉPEND DU RÔLE depuis que le propriétaire y lit
+       l'impayé par immeuble : « Impayé par immeuble » pour lui, « Répartition du
+       parc » pour le gestionnaire délégué, qui n'en voit pas l'argent. On attend
+       donc l'un ou l'autre. Ce que ce fichier garde — le TON de la pastille
+       d'occupation — n'a pas bougé d'un cheveu. */
+    await screen.findByText(/impayé par immeuble|répartition du parc/i)
 
     /*
       `neutral` n'est pas un choix de goût : c'est ce que `PAYMENT_TONES` associe

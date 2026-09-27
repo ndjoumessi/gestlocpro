@@ -382,7 +382,7 @@ function GrilleAnnees({
             className={cn(
               'numeric min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
               !estChoisie && 'hover:bg-surface-sunken',
-              estChoisie && 'bg-ink font-medium text-on-dark',
+              estChoisie && 'bg-accent font-medium text-on-accent',
               estCourante && !estChoisie && 'ring-1 ring-accent-ink',
             )}
           >
@@ -420,6 +420,12 @@ export function DatePicker({
   const d = useDates()
 
   const choisi = enJour(value)
+
+  /* LA VALEUR LISIBLE, NOMMÉE UNE FOIS : elle est à la fois le contenu du bouton,
+     sa description (`aria-describedby`) et la fin de son nom accessible. Trois
+     lecteurs pour une seule expression — l'écrire trois fois les laisserait
+     diverger. */
+  const valeurLisible = choisi ? d.fullDate(enParts(choisi)) : t('common.datePlaceholder')
   const aujourdHui = useMemo(() => {
     const n = new Date()
     return { annee: n.getFullYear(), mois: n.getMonth(), jour: n.getDate() }
@@ -564,7 +570,27 @@ export function DatePicker({
         aria-haspopup="dialog"
         aria-expanded={ouvert}
         aria-describedby={[idDeLaValeur, ariaDescribedBy].filter(Boolean).join(' ')}
-        aria-label={ariaLabel}
+        /*
+          ═══ LE NOM CONTIENT LA VALEUR LISIBLE — WCAG 2.5.3 ═══
+
+          Il valait `ariaLabel` seul. Un `aria-label` ÉCRASE le contenu : le
+          bouton affiche « Septembre 2026 » et s'annonçait « Mois affiché », donc
+          le texte lisible disparaissait du nom. Qui commande à la voix dit ce
+          qu'il LIT — « cliquer sur Septembre 2026 » — et ne trouvait aucune
+          cible. Mesuré le 2026-09-27 : quatre déclencheurs, sur sept surfaces et
+          dans les deux langues, tous pour la même raison.
+
+          LE CHAMP RESTE DEVANT, LA VALEUR S'AJOUTE. L'ordre importe : un lecteur
+          d'écran qui atteint le bouton veut d'abord savoir DE QUOI il s'agit.
+          `aria-describedby` continue de citer la valeur — ce qui est redondant
+          avec le nom, mais c'est le prix d'un `aria-label`, et ce dépôt a écrit
+          pourquoi la description existe : « le lecteur d'écran entendait "Date du
+          versement, bouton" sans savoir si une date était choisie ».
+
+          SANS `ariaLabel`, RIEN NE CHANGE : le bouton est alors nommé par le
+          `<label>` de son `Field`, et son contenu reste son nom.
+        */
+        aria-label={ariaLabel ? `${ariaLabel} ${valeurLisible}` : undefined}
         aria-required={required || undefined}
         onClick={() => {
           setCurseur(choisi ?? aujourdHui)
@@ -589,7 +615,7 @@ export function DatePicker({
             lecteur d'écran entendait « Date du versement, bouton » sans savoir
             si une date était choisie. */}
         <span id={idDeLaValeur} className={cn(!choisi && 'text-muted')}>
-          {choisi ? d.fullDate(enParts(choisi)) : t('common.datePlaceholder')}
+          {valeurLisible}
         </span>
         <Icon name="calendar" size={16} className="shrink-0 text-muted" />
       </button>
@@ -655,7 +681,12 @@ export function DatePicker({
                   {vue === 'jours' && (
                     <button
                       type="button"
-                      aria-label={t('common.dateMonth')}
+                      /* LE NOM CONTIENT LE MOIS AFFICHÉ — WCAG 2.5.3. Écrit
+                         `t('common.dateMonth')` seul, ce bouton s'annonçait
+                         « Mois » alors qu'il affiche « septembre » : le mot
+                         lisible disparaissait du nom, et l'`aria-label` écrase
+                         le contenu. Le champ reste devant, la valeur s'ajoute. */
+                      aria-label={`${t('common.dateMonth')} ${nomsMois[curseur.mois]}`}
                       onClick={() => setVue('mois')}
                       className="min-h-11 cursor-pointer rounded-md px-2 text-body font-medium hover:bg-surface-sunken"
                     >
@@ -664,7 +695,9 @@ export function DatePicker({
                   )}
                   <button
                     type="button"
-                    aria-label={t('common.dateYear')}
+                    /* Même raison qu'au bouton du mois, juste au-dessus :
+                       « Année » ne contenait pas le « 2026 » qu'on lit. */
+                    aria-label={`${t('common.dateYear')} ${curseur.annee}`}
                     onClick={() => {
                       setPageAnnees(pageDe(curseur.annee))
                       setVue('annees')
@@ -725,7 +758,7 @@ export function DatePicker({
                     className={cn(
                       'min-h-11 cursor-pointer rounded-md px-2 text-body transition-colors duration-150',
                       !estChoisi && 'hover:bg-surface-sunken',
-                      estChoisi && 'bg-ink font-medium text-on-dark',
+                      estChoisi && 'bg-accent font-medium text-on-accent',
                     )}
                   >
                     {nom}
@@ -776,7 +809,7 @@ export function DatePicker({
                           // un texte réel et cliquable — voir tokens.css.
                           horsMois && !estChoisi && 'text-muted',
                           !estChoisi && 'hover:bg-surface-sunken',
-                          estChoisi && 'bg-ink text-on-dark font-medium',
+                          estChoisi && 'bg-accent text-on-accent font-medium',
                           // Aujourd'hui se marque par un cerne, jamais par la
                           // seule couleur : le jour choisi porte déjà un fond
                           // plein, et deux aplats voisins ne se distingueraient
@@ -889,6 +922,14 @@ export function MonthPicker({
     return { annee: Number(m[1]), mois }
   }, [value])
 
+  /* LA VALEUR LISIBLE, NOMMÉE UNE FOIS : elle est à la fois le contenu du bouton,
+     sa description (`aria-describedby`) et la fin de son nom accessible. Trois
+     lecteurs pour une seule expression — l'écrire trois fois les laisserait
+     diverger. */
+  const valeurLisible = choisi
+    ? d.monthYear(enParts({ ...choisi, jour: 1 }))
+    : t('common.monthPlaceholder')
+
   const [annee, setAnnee] = useState(() => (choisi ?? courant).annee)
   /** Même remontée que le calendrier : les mois, puis douze années par page. */
   const [vue, setVue] = useState<'mois' | 'annees'>('mois')
@@ -921,7 +962,13 @@ export function MonthPicker({
       const [an, mois] = cle.split('-')
       return d.monthYear({ year: Number(an), month: Number(mois) - 1 })
     }
-    if (min && max) return t('common.monthRange', { debut: enMois(min), fin: enMois(max) })
+    if (min && max) {
+      /* LES DEUX BORNES PEUVENT SE CONFONDRE, et c'est le cas fréquent : la
+         démonstration resserre la fenêtre sur le mois du dernier relevé. Rendue
+         par `monthRange`, elle se lisait « de Septembre 2026 à Septembre 2026 ». */
+      if (min === max) return t('common.monthOnly', { debut: enMois(min) })
+      return t('common.monthRange', { debut: enMois(min), fin: enMois(max) })
+    }
     return min ? t('common.monthFrom', { debut: enMois(min) }) : t('common.monthUntil', { fin: enMois(max!) })
   }, [min, max, d, t])
 
@@ -960,7 +1007,27 @@ export function MonthPicker({
         aria-haspopup="dialog"
         aria-expanded={ouvert}
         aria-describedby={[idDeLaValeur, ariaDescribedBy].filter(Boolean).join(' ')}
-        aria-label={ariaLabel}
+        /*
+          ═══ LE NOM CONTIENT LA VALEUR LISIBLE — WCAG 2.5.3 ═══
+
+          Il valait `ariaLabel` seul. Un `aria-label` ÉCRASE le contenu : le
+          bouton affiche « Septembre 2026 » et s'annonçait « Mois affiché », donc
+          le texte lisible disparaissait du nom. Qui commande à la voix dit ce
+          qu'il LIT — « cliquer sur Septembre 2026 » — et ne trouvait aucune
+          cible. Mesuré le 2026-09-27 : quatre déclencheurs, sur sept surfaces et
+          dans les deux langues, tous pour la même raison.
+
+          LE CHAMP RESTE DEVANT, LA VALEUR S'AJOUTE. L'ordre importe : un lecteur
+          d'écran qui atteint le bouton veut d'abord savoir DE QUOI il s'agit.
+          `aria-describedby` continue de citer la valeur — ce qui est redondant
+          avec le nom, mais c'est le prix d'un `aria-label`, et ce dépôt a écrit
+          pourquoi la description existe : « le lecteur d'écran entendait "Date du
+          versement, bouton" sans savoir si une date était choisie ».
+
+          SANS `ariaLabel`, RIEN NE CHANGE : le bouton est alors nommé par le
+          `<label>` de son `Field`, et son contenu reste son nom.
+        */
+        aria-label={ariaLabel ? `${ariaLabel} ${valeurLisible}` : undefined}
         aria-required={required || undefined}
         onClick={() => {
           setAnnee((choisi ?? courant).annee)
@@ -974,7 +1041,7 @@ export function MonthPicker({
         )}
       >
         <span id={idDeLaValeur} className={cn(!choisi && 'text-muted')}>
-          {choisi ? d.monthYear(enParts({ ...choisi, jour: 1 })) : t('common.monthPlaceholder')}
+          {valeurLisible}
         </span>
         <Icon name="calendar" size={16} className="shrink-0 text-muted" />
       </button>
@@ -1026,7 +1093,9 @@ export function MonthPicker({
               {vue === 'mois' ? (
                 <button
                   type="button"
-                  aria-label={t('common.dateYear')}
+                  /* Même raison qu'au bouton d'année du sélecteur de DATE :
+                     « Année » ne contenait pas le « 2026 » qu'on lit (WCAG 2.5.3). */
+                  aria-label={`${t('common.dateYear')} ${annee}`}
                   onClick={() => {
                     setPageAnnees(pageDe(annee))
                     setVue('annees')
@@ -1087,7 +1156,7 @@ export function MonthPicker({
                       'min-h-11 rounded-md px-2 text-body transition-colors duration-150',
                       ferme ? 'cursor-not-allowed text-muted opacity-45' : 'cursor-pointer',
                       !estChoisi && !ferme && 'hover:bg-surface-sunken',
-                      estChoisi && 'bg-ink font-medium text-on-dark',
+                      estChoisi && 'bg-accent font-medium text-on-accent',
                       // Le mois courant se cerne, il ne se colore pas : le mois
                       // choisi porte déjà un fond plein, et deux aplats voisins
                       // ne se distingueraient pas en niveaux de gris.

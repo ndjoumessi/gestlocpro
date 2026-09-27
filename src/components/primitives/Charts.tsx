@@ -705,7 +705,7 @@ export function StackedBarChart({
                   la forme, en écho au libellé barré qui l'accompagne. */}
               <span
                 aria-hidden="true"
-                className={cn('size-2.5 rounded-legende transition-shadow duration-150')}
+                className={cn('size-2.5 rounded-legende')}
                 style={
                   shown
                     ? { background: SERIES_COLORS[key] }
@@ -974,7 +974,7 @@ export function StackedBarChart({
                 <span
                   className={cn(
                     'animate-grow-y flex w-full flex-col-reverse',
-                    'rounded-t-bar transition-shadow duration-150',
+                    'rounded-t-bar',
                   )}
                   style={{
                     height: `${(totalsPrimaires[index] / max) * 100}%`,
@@ -1096,7 +1096,7 @@ export function StackedBarChart({
               return (
                 <span key={bar.key ?? bar.label} className="flex min-w-0 flex-1 items-end justify-center">
                   <span
-                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-bar transition-shadow duration-150"
+                    className="animate-grow-y flex w-full flex-col-reverse rounded-t-bar"
                     style={{
                       height: `${(totalBas / maxSecondaire) * 100}%`,
                       animationDelay: `${index * 35}ms`,
@@ -1581,14 +1581,26 @@ export function DonutChart({
                   strokeWidth={exterieur - interieur}
                   strokeDasharray={`${fraction * c} ${(1 - fraction) * c}`}
                   strokeDashoffset={-debut * c}
-                  /* Seul l'épaississement de la part visée est animé : `r` et
-                     `stroke-width`, qui varient au survol et au focus par
-                     `croissance`. Le balayage des arcs au changement de donnée
-                     (`stroke-dasharray` / `stroke-dashoffset`) n'a jamais été
-                     voulu, et `transition: all` l'animait. `ease-out` est dit
-                     explicitement : sans lui Tailwind applique sa propre courbe,
-                     qu'aucun jeton de ce dépôt ne nomme. */
-                  className="transition-[r,stroke-width] duration-150 ease-out"
+                  /* PLUS AUCUNE TRANSITION ICI, ET C'EST UN RETRAIT (2026-09-27).
+                     L'épaississement de la part visée — `r` et `stroke-width`,
+                     qui varient au survol et au focus par `croissance` — courait
+                     sur 150 ms. Deux raisons de le supprimer plutôt que de le
+                     déplacer : ce sont des propriétés de GÉOMÉTRIE SVG, que le
+                     compositeur ne prend pas, donc 150 ms de recalcul par image
+                     sur l'écran le plus dense du produit ; et c'est un état de
+                     SURVOL, vu des dizaines de fois par jour, où la règle est de
+                     réduire ou de retirer. Un focus qui se pose instantanément
+                     est en outre ce qu'attend qui navigue au clavier.
+
+                     `transform: scale()` n'était PAS le remède : il grossirait
+                     l'anneau entier, alors que ce qui doit épaissir est un
+                     segment. Le seul remède équivalent était le retrait.
+
+                     CE QUE LE RETRAIT PRÉSERVE : le balayage des arcs au
+                     changement de donnée (`stroke-dasharray` / `-offset`) n'a
+                     jamais été voulu, et un `transition: all` l'animait autrefois.
+                     Sans transition du tout, il ne peut plus revenir par
+                     inadvertance. */
                   // -90° pour démarrer à midi plutôt qu'à 3 h.
                   transform="rotate(-90 50 50)"
                 />
@@ -1632,7 +1644,26 @@ export function DonutChart({
                 'text-left text-body transition-colors duration-150',
                 active === slice.etat ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
               )}
-              aria-label={`${slice.label} — ${money(slice.value, { compact: true })}, ${nombres.percent(Math.round(fraction * 100))}`}
+              /*
+                LE TIRET CADRATIN EST PARTI D'ENTRE LES DEUX MORCEAUX VISIBLES.
+
+                Le nom valait « Payé — 950 000 FCFA, 68 % » pour un bouton dont le
+                texte lisible est « Payé » puis « 950 000 FCFA ». Les deux mots y
+                étaient, mais le tiret s'intercalait ENTRE eux : le libellé visible
+                n'était plus une sous-chaîne du nom, et c'est la sous-chaîne que
+                prononce qui commande à la voix (WCAG 2.5.3). Huit cas mesurés le
+                2026-09-27, dans les deux langues.
+
+                LE TIRET RESTE AILLEURS, et c'est la différence à tenir : dans
+                « Retirer l'accès — Diane Fotso », il sépare le libellé visible d'un
+                COMPLÉMENT qui le suit. Ici il tombait au milieu du libellé
+                lui-même. La règle du dépôt est intacte — le complément s'ajoute —,
+                c'est sa ponctuation qui était mal placée.
+
+                LA VIRGULE DEVANT LE POURCENTAGE RESTE : lui est bien un
+                complément, il n'est écrit nulle part dans le bouton.
+              */
+              aria-label={`${slice.label} ${money(slice.value, { compact: true })}, ${nombres.percent(Math.round(fraction * 100))}`}
             >
               {/* LA MÊME JAUGE QUE LA GRILLE DES PAIEMENTS, et c'est le point.
                   Une légende qui porterait une forme absente de l'anneau
@@ -1777,7 +1808,7 @@ export function ProgressBar({
         className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-sunken"
       >
         <span
-          className={cn('animate-grow-x block h-full rounded-full', colors[tone])}
+          className={cn('jauge-arrive block h-full rounded-full', colors[tone])}
           style={{ width: `${value}%` }}
         />
       </div>

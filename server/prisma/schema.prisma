@@ -895,7 +895,66 @@ model DocumentRequest {
   resolvedById String? @db.Uuid
   resolvedBy   UserAccount? @relation("DocumentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
 
+  /// Les pièces effectivement remises. Voir `DocumentRequestFile`.
+  files DocumentRequestFile[]
+
   @@index([leaseId, status])
+}
+
+/// LA PIÈCE ELLE-MÊME, et non plus la promesse d'une pièce.
+///
+/// `DocumentRequest` savait dire `fulfilled` sans qu'aucun fichier ne change de
+/// main : le gestionnaire marquait « fournie », le locataire lisait « fournie »,
+/// et rien n'était fourni. L'écran l'avouait — « le gestionnaire reçoit la
+/// demande et vous répond dans cet espace » —, ce qui était la bonne réponse
+/// tant que le produit ne savait rien recevoir. Il sait.
+///
+/// CALQUÉE SUR `InspectionPhoto`, DÉLIBÉRÉMENT. Même dépôt, même contrat
+/// `reserver`/`confirmer`/`lire`/`supprimer`, mêmes colonnes, même règle : les
+/// OCTETS vivent dans le dépôt sous `storageKey`, cette table ne porte que ce
+/// qui doit être interrogeable, cloisonné et daté. Une seconde forme aurait
+/// demandé un second balayage des clés orphelines, et c'est le genre de
+/// duplication qu'on paie des années.
+///
+/// PLUSIEURS FICHIERS PAR DEMANDE, et non un seul. Un scan d'attestation tient
+/// rarement en une page, et imposer l'unicité pousserait à fusionner les pages
+/// HORS du produit — donc à déposer un fichier que personne n'a vu se former.
+/// La demande est honorée dès qu'une pièce confirmée s'y rattache ; `status`
+/// reste ce qui fait foi, parce que c'est un geste humain et non un compte.
+model DocumentRequestFile {
+  id        String @id @default(uuid()) @db.Uuid
+  requestId String @db.Uuid
+  /// CASCADE, pour la raison qui vaut chez `InspectionPhoto` : une demande
+  /// supprimée n'a plus de pièce à justifier, et la ligne survivante pointerait
+  /// vers une clé que plus rien ne relie à un parc — donc que plus aucun
+  /// contrôle d'appartenance ne saurait protéger.
+  request   DocumentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  /// La clé dans le dépôt d'objets. UNIQUE : deux lignes visant le même objet
+  /// feraient d'une suppression une fuite pour l'autre.
+  storageKey String @unique
+
+  /// ANNONCÉS à la réservation, REMPLACÉS par ce que le serveur mesure à la
+  /// confirmation. Tant que `confirmedAt` est nul, ils ne valent que la parole
+  /// du déposant — et rien de non confirmé n'est jamais servi.
+  ///
+  /// Le PDF est ici la valeur ATTENDUE, là où `InspectionPhoto` ne voit que des
+  /// images : une pièce fournie est normalement un scan. Le dépôt sait le
+  /// reconnaître et le rend en pièce jointe — voir `enPieceJointe`.
+  contentType String
+  sizeBytes   Int
+
+  /// L'horodatage du SERVEUR, seul instant où il a constaté les octets. Même
+  /// raison qu'à la photo d'une réserve : une date d'appareil se change dans
+  /// les réglages de l'appareil.
+  confirmedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+  /// Le balayage des réservations jamais montées interroge cette colonne seule
+  /// — `confirmedAt IS NULL AND createdAt < …`. Voir `photosJamaisMontees`.
+  @@index([confirmedAt])
 }
 
 model WorkReferenceCounter {

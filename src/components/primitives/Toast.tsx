@@ -44,7 +44,7 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 const DURATION = 4500
 
 /**
- * Miroir de `animate-rise-out` (`--duration-fast`), en millisecondes.
+ * Miroir de `surface-monte-sortie` (`--duration-fast`), en millisecondes.
  *
  * Elle NE SE PAIE PAS sur les 4 500 ms de lecture : le message reste lisible et
  * intact tout ce temps, la sortie s'ajoute après. `sortieDeToast.test.tsx` mesure
@@ -78,8 +78,8 @@ const ECART = 8
  * Les voisins ne bougent jamais pour eux-mêmes : ils bougent parce qu'un toast
  * est arrivé ou parce qu'un toast est parti. Leur glissement appartient donc à
  * cet événement-là et en prend la durée — sans quoi un seul geste se lirait en
- * deux temps. L'arrivée dure `--duration-slow` comme `animate-rise` ; le départ
- * `--duration-fast` comme `animate-rise-out`, et le fondu du partant se termine
+ * deux temps. L'arrivée dure `--duration-slow` comme `surface-monte` ; le départ
+ * `--duration-fast` comme `surface-monte-sortie`, et le fondu du partant se termine
  * alors exactement quand ses voisins ont fini de descendre.
  */
 const TEMPO_MS = { arrivee: 300, depart: 150 } as const
@@ -504,8 +504,8 @@ function ToastItem({
       deux.
 
       Les deux mouvements portent sur `transform` et ne peuvent donc pas vivre sur
-      le même élément : l'entrée est une ANIMATION (`gl-rise`, qui écrase la
-      transformation en ligne pendant toute sa durée), le replacement est une
+      le même élément : l'entrée est une TRANSITION sur le nœud de contenu
+      (`surface-monte`), le replacement est une
       TRANSITION vers un décalage calculé. Superposés, l'animation gagne, et le
       toast se replacerait d'un bond à la fin de son entrée. Séparés, la coquille
       glisse pendant que le contenu monte.
@@ -598,7 +598,7 @@ function ToastItem({
         role={toast.tone === 'danger' ? 'alert' : 'status'}
         aria-atomic="true"
         className={cn(
-          sortant ? 'animate-rise-out' : 'animate-rise',
+          sortant ? 'surface-monte-sortie' : 'surface-monte',
           // Conditionnel, jamais deux classes de la même propriété côte à côte :
           // `pointer-events-none` et `-auto` ne se départagent que par l'ordre de
           // la feuille produite par Tailwind, que rien ici ne contrôle.

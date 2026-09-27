@@ -6,7 +6,12 @@ import { lien, useBase } from '@/lib/base'
 import { DataTable, EmptyState, idDuGroupe } from '@/components/primitives/DataTable'
 import { PaymentStatusPill } from '@/components/primitives/StatusPill'
 import { ProgressBar, StatCard } from '@/components/primitives/Charts'
-import { MenuDeDebordement, MenuElement } from '@/components/primitives/MenuDeDebordement'
+import {
+  MenuAxe,
+  MenuDeDebordement,
+  MenuElement,
+  MenuSeparateur,
+} from '@/components/primitives/MenuDeDebordement'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import {
   Skeleton,
@@ -35,7 +40,7 @@ import { ParkSettingsModal } from './ParkSettingsModal'
 import { AddUnitModal } from './AddUnitModal'
 import { EditBuildingModal } from './EditBuildingModal'
 import { EditUnitModal } from './EditUnitModal'
-import { RailDeLogements } from './RailDeLogements'
+import { RailDeLogements, useDeplacementDeFiche } from './RailDeLogements'
 import { NewTenantModal } from './Tenants'
 import { MonthPicker } from '@/components/primitives/DatePicker'
 import { Card } from '@/components/primitives/Card'
@@ -847,6 +852,18 @@ export function Portfolio() {
                           >
                             {t('app.tenants.edit')}
                           </MenuElement>
+                          {/* L'ALTERNATIVE AU GLISSEMENT — WCAG 2.5.7. Voir
+                              `RailDeLogements`, qui porte l'ordre et le
+                              contexte. Les deux entrées s'éteignent aux
+                              extrémités plutôt que de disparaître : un menu dont
+                              la longueur change d'une fiche à l'autre se relit à
+                              chaque ouverture. */}
+                          <DeplacerLaFiche cle={unit.id} libelle={unit.label} />
+                          {/* LA DESTRUCTION SE SÉPARE DU RESTE. Quatre entrées
+                              de trois natures — modifier, ranger, détruire — se
+                              lisaient au même poids ; la seule irréversible
+                              n'était détachée de rien. */}
+                          <MenuSeparateur />
                           <MenuElement
                             icone="close"
                             ton="danger"
@@ -1906,5 +1923,30 @@ function PortfolioSkeleton() {
         </div>
       </SkeletonRegion>
     </>
+  )
+}
+
+/**
+ * LES DEUX GESTES DE DÉPLACEMENT D'UNE FICHE, dans son menu.
+ *
+ * Hors d'un rail — une fiche montée seule dans un cas de test — le contexte est
+ * nul et rien ne s'affiche : le composant ne suppose pas son parent.
+ */
+function DeplacerLaFiche({ cle, libelle }: { cle: string; libelle: string }) {
+  const t = useT()
+  const rail = useDeplacementDeFiche()
+  if (!rail) return null
+  return (
+    <MenuAxe
+      libelle={t('app.portfolio.moveUnit')}
+      gauche={{
+        nomAccessible: `${t('app.portfolio.moveUnitLeft')} — ${libelle}`,
+        onClick: rail.peutAller(cle, -1) ? () => rail.deplacer(cle, -1, libelle) : undefined,
+      }}
+      droite={{
+        nomAccessible: `${t('app.portfolio.moveUnitRight')} — ${libelle}`,
+        onClick: rail.peutAller(cle, 1) ? () => rail.deplacer(cle, 1, libelle) : undefined,
+      }}
+    />
   )
 }

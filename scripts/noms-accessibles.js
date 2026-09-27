@@ -149,10 +149,61 @@
     et la mention lisible vit dans un `sr-only` à côté. Lire le texte brut
     donnerait « * » pour nom à ce qui n'en a pas.
   */
+  /*
+    ═══ `textContent` COLLE LES FRÈRES, ET LA RÈGLE 2.5.3 EN MOURAIT ═══
+
+    Il était lu à plat : `clone.textContent`. Or `textContent` concatène les nœuds
+    SANS le moindre séparateur. Une légende écrite
+    `<span>Payé</span><span>950 000 FCFA</span>` rendait donc « Payé950 000 FCFA »,
+    une chaîne qu'AUCUN nom bien formé ne peut contenir — huit plaintes du
+    2026-09-27 accusaient des composants sains, et la faute était ici.
+
+    LA SÉPARATION SUIT LE `display`, ET NON LA STRUCTURE. Premier jet : joindre
+    TOUS les enfants par une espace. C'était faux, et une garde l'a dit tout de
+    suite — `GestLoc<span>Pro</span>` devenait « GestLoc Pro », donc le nom de
+    marque se fendait en deux. Un navigateur ne fait pas cela : il n'introduit de
+    frontière de mot que là où la mise en forme en produit une. Un `span` INLINE
+    posé pour colorer trois lettres n'en produit aucune, et un lecteur d'écran dit
+    bien « GestLocPro ».
+
+    Ce qui produit une frontière, c'est un enfant qui n'est pas `inline`. Les deux
+    `span` de la légende sont des éléments d'un conteneur `flex` : le navigateur les
+    BLOQUIFIE — leur `display` calculé vaut `block` — et c'est très exactement là
+    que la voix marque un temps. On lit donc le `display` calculé, seule source qui
+    distingue les deux cas.
+
+    LA FRONTIÈRE COMPTE DES DEUX CÔTÉS. Un bloc sépare de ce qui le PRÉCÈDE comme
+    de ce qui le SUIT : n'insérer l'espace qu'avant recollerait
+    `<span bloc>Payé</span>reste` en « Payéreste ». On insère donc entre deux
+    morceaux dès que l'un des deux porte une boîte de bloc.
+
+    `display: contents` est tenu pour inline — il n'a pas de boîte, donc il ne
+    produit aucune frontière. Aucun cas dans le dépôt aujourd'hui.
+  */
+  const enBloc = (n) => {
+    if (n.nodeType !== 1) return false
+    const d = getComputedStyle(n).display
+    return d !== 'contents' && !d.startsWith('inline')
+  }
+
+  const texteDesEnfants = (noeud) => {
+    if (noeud.nodeType === 3) return noeud.textContent || ''
+    if (noeud.nodeType !== 1) return ''
+    if (noeud.getAttribute('aria-hidden') === 'true') return ''
+    const parts = []
+    for (const enfant of noeud.childNodes) {
+      const texte = texteDesEnfants(enfant)
+      if (!texte) continue
+      parts.push({ texte, bloc: enBloc(enfant) })
+    }
+    return parts.reduce(
+      (acc, p, i) => acc + (i > 0 && (p.bloc || parts[i - 1].bloc) ? ' ' : '') + p.texte,
+      '',
+    )
+  }
+
   const texteVisibleAuxOutils = (el) => {
-    const clone = el.cloneNode(true)
-    for (const c of clone.querySelectorAll('[aria-hidden="true"]')) c.remove()
-    const t = netto(clone.textContent)
+    const t = netto(texteDesEnfants(el))
     if (t) return t
     // Une commande qui n'est qu'une image tient son nom de l'`alt` de celle-ci.
     for (const enfant of el.querySelectorAll('img[alt], [aria-label]')) {

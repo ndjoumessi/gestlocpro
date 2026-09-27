@@ -1070,6 +1070,120 @@ describe('demandes de documents', () => {
     const vue = await portefeuille(locataire)
     expect(vue.body.documentRequests.some((d: DemandeApi) => d.id === laSienne.id)).toBe(false)
   })
+
+  /*
+    LA PIÈCE FOURNIE — ce qui manquait pour que « fournie » cesse d'être un mot.
+
+    Le §1.3 de l'inventaire avait été refermé par une PHRASE : l'écran disait
+    « le gestionnaire reçoit la demande et vous répond dans cet espace », faute
+    de savoir recevoir quoi que ce soit. Il sait désormais.
+
+    LE CAS QUI PORTE LE LOT est celui du voisin. Le dépôt et la suppression
+    appartiennent au bailleur ; la LECTURE appartient aussi au locataire, et
+    c'est la seule règle de ce bloc qui dépende du rôle. Une lecture cloisonnée
+    par l'unité au lieu du bail laisserait Charles ouvrir la pièce de son voisin
+    — le genre de fuite qu'aucun écran ne montre.
+  */
+  describe('les pièces jointes à une demande', () => {
+    const PDF = Buffer.from('%PDF-1.7\n' + 'x'.repeat(128))
+
+    /** Le parcours complet, de la demande à la pièce confirmée. */
+    async function pieceFournie() {
+      const demande = await demander(locataire, uniteDuLocataire, 'goodStanding')
+      expect(demande.status, JSON.stringify(demande.body)).toBe(201)
+      const requestId = demande.body.request.id as string
+
+      const reserve = await request(serveur)
+        .post(`/api/parks/${parkId}/document-requests/${requestId}/files`)
+        .set('Cookie', proprio)
+        .send({ contentType: 'application/pdf', sizeBytes: PDF.length })
+      expect(reserve.status, JSON.stringify(reserve.body)).toBe(201)
+
+      const depot = await request(serveur)
+        .put(reserve.body.envoi.url)
+        .set(reserve.body.envoi.entetes)
+        .send(PDF)
+      expect(depot.status).toBe(204)
+
+      const confirmee = await request(serveur)
+        .post(`/api/parks/${parkId}/document-files/${reserve.body.file.id}/confirmation`)
+        .set('Cookie', proprio)
+      expect(confirmee.status, JSON.stringify(confirmee.body)).toBe(200)
+
+      return { requestId, fileId: reserve.body.file.id as string }
+    }
+
+    it('mène une pièce du dépôt du gestionnaire à la lecture du locataire', async () => {
+      const { fileId } = await pieceFournie()
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/document-files/${fileId}`)
+        .set('Cookie', locataire)
+      expect(vue.status, JSON.stringify(vue.body)).toBe(200)
+      expect(vue.body.file.contentType).toBe('application/pdf')
+      expect(vue.body.file.sizeBytes).toBe(PDF.length)
+      expect(vue.body.file.confirmedAt).not.toBeNull()
+      // La clé de stockage ne sort JAMAIS comme un champ.
+      expect(vue.body.file.storageKey).toBeUndefined()
+
+      const octets = await request(serveur).get(vue.body.lecture.url)
+      expect(octets.status).toBe(200)
+      expect(
+        octets.headers['content-disposition'],
+        'un PDF servi en ligne exécuterait son JavaScript sur notre origine',
+      ).toMatch(/^attachment/)
+    })
+
+    it('ne laisse pas un locataire lire la pièce d’un voisin', async () => {
+      const { fileId } = await pieceFournie()
+
+      const voisin = await inscrire('nadia@example.com')
+      const compte = await prisma.userAccount.findUniqueOrThrow({
+        where: { email: 'nadia@example.com' },
+      })
+      await prisma.membership.create({
+        data: { userId: compte.id, parkId, role: 'tenant' },
+      })
+      await prisma.tenant.updateMany({
+        where: { parkId, fullName: 'Mireille Fotso' },
+        data: { userId: compte.id },
+      })
+
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/document-files/${fileId}`)
+        .set('Cookie', voisin.cookie)
+      // 404 et non 403 : un 403 confirmerait que la pièce existe.
+      expect(vue.status).toBe(404)
+    })
+
+    it('ne sert pas une pièce réservée mais jamais montée', async () => {
+      const demande = await demander(locataire, uniteDuLocataire, 'residence')
+      const reserve = await request(serveur)
+        .post(`/api/parks/${parkId}/document-requests/${demande.body.request.id}/files`)
+        .set('Cookie', proprio)
+        .send({ contentType: 'application/pdf', sizeBytes: PDF.length })
+      expect(reserve.status).toBe(201)
+
+      /* La ligne existe, les octets non. Servir une adresse ici ferait lire
+         « fournie » sur une pièce que personne n'a montée. */
+      const vue = await request(serveur)
+        .get(`/api/parks/${parkId}/document-files/${reserve.body.file.id}`)
+        .set('Cookie', locataire)
+      expect(vue.status).toBe(404)
+    })
+
+    it('refuse au locataire de déposer lui-même une pièce', async () => {
+      const demande = await demander(locataire, uniteDuLocataire, 'leaseCopy')
+
+      const reserve = await request(serveur)
+        .post(`/api/parks/${parkId}/document-requests/${demande.body.request.id}/files`)
+        .set('Cookie', locataire)
+        .send({ contentType: 'application/pdf', sizeBytes: PDF.length })
+      // C'est le gestionnaire qui FOURNIT : la demande vient de l'autre côté.
+      expect([403, 404]).toContain(reserve.status)
+    })
+  })
+
 })
 
 /**

@@ -387,6 +387,144 @@ export function MenuDeDebordement({
 const TAILLE_DU_DECLENCHEUR = 44
 
 /** Une entrée de menu. Elle referme le panneau en même temps qu'elle agit. */
+/**
+ * UN TRAIT ENTRE DEUX NATURES DE GESTE.
+ *
+ * Le menu d'une fiche portait quatre entrées de trois natures — modifier,
+ * ranger, détruire — au même poids visuel. La seule irréversible n'était
+ * séparée de rien.
+ *
+ * `role="separator"` EST LÉGITIME DANS UN `menu` : l'en-tête de ce fichier dit
+ * qu'un menu « n'admet que des `menuitem` parmi ses descendants SIGNIFIANTS »,
+ * et ARIA admet précisément le séparateur à côté d'eux. Il ne compte pas dans
+ * le « 2 sur 3 » annoncé, ce qui est exactement ce qu'on veut : il sépare, il
+ * ne se choisit pas.
+ *
+ * `my-1` et non une marge plus large : ce qu'on veut est une COUPURE, pas une
+ * respiration. Un trait qui flotte se lit comme un vide et le menu paraît
+ * inachevé.
+ */
+export function MenuSeparateur() {
+  return <div role="separator" className="my-1 h-px bg-divider" />
+}
+
+/**
+ * UN AXE, DEUX SENS, UNE SEULE RANGÉE.
+ *
+ * ═══ CE QUE DEUX RANGÉES COÛTAIENT ═══
+ *
+ * « Déplacer à gauche » et « Déplacer à droite » occupaient deux entrées de
+ * menu. C'est un contrôle, pas deux décisions : l'axe s'y lisait comme deux
+ * choix étrangers l'un à l'autre, et le menu doublait de hauteur pour le dire.
+ * Le chevron y était en outre redondant — « à gauche » nomme déjà la direction
+ * que le glyphe répétait.
+ *
+ * ═══ DEUX `menuitem` DANS UNE RANGÉE, ET LA RÈGLE TIENT ═══
+ *
+ * La `div` qui les aligne ne porte aucun rôle : elle n'est pas un descendant
+ * SIGNIFIANT, et les deux seuls descendants signifiants restent des `menuitem`.
+ * Le décompte annoncé par la synthèse vocale reste juste, et les deux cibles
+ * restent deux alternatives à un seul pointeur — ce qu'exige WCAG 2.5.7 de tout
+ * geste obtenu par glissement.
+ *
+ * `size-11` — 44 px — sur chaque flèche : ce sont des cibles au doigt comme les
+ * autres, et le dépôt en a une garde.
+ *
+ * FERMÉE PLUTÔT QUE RETIRÉE aux extrémités, pour la raison que `MenuElement`
+ * écrit déjà à propos de ses entrées closes : un geste qui disparaît fait
+ * chercher ce qu'on a mal fait. Et `aria-disabled` plutôt que `disabled`, même
+ * motif — l'état s'annonce et la cible reste atteignable au clavier.
+ */
+export function MenuAxe({
+  libelle,
+  gauche,
+  droite,
+}: {
+  libelle: string
+  gauche: { nomAccessible: string; onClick?: () => void }
+  droite: { nomAccessible: string; onClick?: () => void }
+}) {
+  /* `FermerLeMenu` N'EST PLUS CONSOMMÉ ICI — voir le `onClick` plus bas : un axe
+     est un réglage répété, il ne referme pas le panneau qui le porte. */
+  const sens = (nom: 'chevronLeft' | 'chevronRight', c: { nomAccessible: string; onClick?: () => void }) => {
+    const ferme = c.onClick === undefined
+    return (
+      <button
+        type="button"
+        role="menuitem"
+        aria-label={c.nomAccessible}
+        aria-disabled={ferme || undefined}
+        /*
+          ═══ L'AXE NE REFERME PAS LE PANNEAU, ET C'EST LA DIFFÉRENCE AVEC UNE
+              ENTRÉE ═══
+
+          Il appelait `fermer()` avant d'agir, comme `MenuElement`. La raison
+          d'être de `MenuElement` ne s'applique pas ici : ses entrées sont des
+          DÉCISIONS — corriger, retirer — dont une seule se prend à la fois, et le
+          panneau qui se ferme est la confirmation qu'elle est partie. Un axe est
+          un RÉGLAGE RÉPÉTÉ.
+
+          CE QUE ÇA COÛTAIT : déplacer une fiche de quatre rangs demandait quatre
+          cycles ouvrir-naviguer-activer, le panneau clignotant à chaque pas, et
+          — avant la région vivante du rail — sans le moindre retour entre deux.
+          Le contrôle se fermait lui-même après chaque usage.
+
+          RIEN NE MANQUE POUR EN SORTIR : le panneau se ferme par Échap, par clic
+          extérieur et au défilement, et `usePiegeDeFocus` tient les trois.
+
+          ET LES DEUX FLÈCHES SE TIENNENT À JOUR PENDANT QU'IL EST OUVERT :
+          `peutAller` lit l'ordre AFFICHÉ, recalculé à chaque rendu, donc la
+          flèche se ferme bien quand la fiche atteint le bout — sans quoi on
+          pousserait dans le vide sur un panneau qui ne se referme plus.
+        */
+        onClick={ferme ? undefined : () => c.onClick?.()}
+        className={cn(
+          'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
+          'transition-colors duration-150',
+          ferme
+            ? 'cursor-not-allowed text-muted opacity-45'
+            : 'cursor-pointer text-ink hover:bg-surface-sunken',
+        )}
+      >
+        <Icon name={nom} size={16} className="opacity-70" />
+      </button>
+    )
+  }
+  return (
+    /* `pr-1` et non `pr-3` : les deux cibles portent leur propre rembourrage de
+       44 px, et l'ajouter au leur décollerait la seconde du bord du panneau. */
+    /* `role="group"` AVEC SON NOM : ARIA admet un groupe parmi les enfants d'un
+       `menu`, et c'est ce que cette rangée est — un ensemble nommé de deux
+       entrées liées. Le nom n'est pas décoratif : sans lui, un lecteur d'écran
+       annoncerait deux flèches sans dire de quoi elles sont les deux sens, et
+       `menusLicites` refuse d'ailleurs un groupe anonyme. */
+    <div role="group" aria-label={libelle} className="flex min-h-11 w-full items-center gap-2.5 rounded-md pl-3 pr-1">
+      {/*
+        UNE CALE, PAS UNE ICÔNE, ET C'EST UN CHOIX.
+
+        Relevé sur la capture : sans elle, « Déplacer » commençait dans la
+        COLONNE DES ICÔNES quand « Corriger » et « Retirer » commençaient 26 px
+        plus loin — trois libellés à trois abscisses dans un menu de quatre
+        lignes. Les mêmes `gap-2.5` et la même largeur de 16 px que l'icône de
+        `MenuElement` remettent la colonne d'aplomb.
+
+        AUCUNE ICÔNE DU JEU NE VEUT DIRE « DÉPLACER » — ni `layers`, ni
+        `arrowRight`, ni `sliders`, qui sert déjà « Corriger ». En emprunter une
+        dirait quelque chose de faux à la place de ne rien dire, et le dépôt
+        refuse ailleurs exactement cet emprunt : « un jeton que le code
+        contourne n'est pas un jeton ». Les deux flèches, à droite, portent déjà
+        le sens du geste.
+      */}
+      <span aria-hidden="true" className="w-4 shrink-0" />
+      <span className="flex-1 text-body text-ink">{libelle}</span>
+      <span className="flex shrink-0 gap-1">
+        {sens('chevronLeft', gauche)}
+        {sens('chevronRight', droite)}
+      </span>
+    </div>
+  )
+}
+
 export function MenuElement({
   icone,
   onClick,

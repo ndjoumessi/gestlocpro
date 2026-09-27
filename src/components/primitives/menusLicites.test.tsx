@@ -91,6 +91,35 @@ function intrus(menu: HTMLElement): string[] {
 
   for (const el of Array.from(menu.querySelectorAll('*'))) {
     if (el.closest(ENTREES_LICITES.map((r) => `[role="${r}"]`).join(','))) continue
+    /*
+      ═══ `group` EST ADMIS, ET SON CONTENU AVEC (2026-09-27) ═══
+
+      ARIA donne au rôle `menu` trois enfants possibles : une ENTRÉE, un
+      SÉPARATEUR, et un GROUPE. Cette garde n'en connaissait que deux, et elle a
+      refusé un groupe légitime : la rangée « Déplacer », qui porte un libellé et
+      DEUX cibles fléchées pour un seul axe — un contrôle, là où deux entrées de
+      menu séparées lisaient l'axe comme deux décisions étrangères.
+
+      CE N'EST PAS UN DESSERREMENT, et la nuance décide de tout : un groupe
+      PORTE UN NOM (`aria-label`) et se déclare comme un ensemble. Un lecteur
+      d'écran y annonce « Déplacer, groupe, 2 éléments » — donc rien n'est
+      effacé, qui est le défaut exact que cette garde existe pour empêcher. Les
+      intrus d'origine restent refusés : le `div` d'identité et le filet nu du
+      menu de compte ne déclaraient RIEN, ils n'étaient pas des groupes nommés.
+
+      LE CONTENU D'UN GROUPE N'EST PAS INSPECTÉ, et c'est la contrepartie qu'il
+      faut dire : un `<Button>` caché dans un groupe passerait désormais. On
+      échange une règle qui refusait du licite contre une règle qui admet une
+      zone non inspectée — et on exige en retour qu'un groupe soit NOMMÉ, faute
+      de quoi il redevient un intrus, puisqu'un groupe sans nom n'apporte rien
+      qu'une exemption.
+    */
+    const groupe = el.closest('[role="group"]')
+    if (groupe) {
+      if (groupe.getAttribute('aria-label')?.trim()) continue
+      fautes.push(`<${el.tagName.toLowerCase()} dans un groupe SANS NOM>`)
+      continue
+    }
     const role = el.getAttribute('role')
     if (ENTREES_LICITES.includes(role ?? '') || role === 'separator') continue
     fautes.push(`<${el.tagName.toLowerCase()} role=${role ?? '—'}> « ${(el.textContent ?? '').trim().slice(0, 40)} »`)

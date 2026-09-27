@@ -57,6 +57,7 @@ const MODELES_VECUS = [
   'Building',
   'Deposit',
   'DocumentRequest',
+  'DocumentRequestFile',
   'Inspection',
   'InspectionFinding',
   'InspectionPhoto',
@@ -127,6 +128,16 @@ const SANS_TRACE_ATOMIQUE: { route: string; motif: string }[] = [
       'fichier, la confirmation échoue, et l’on retire une ligne qui n’a jamais désigné ' +
       'une preuve. Rien n’a été vécu — la photo n’a figuré sur aucun écran, personne ne ' +
       'peut la chercher. Consigner ce retrait remplirait le registre de non-événements.',
+  },
+  {
+    route: '/:parkId/document-files/:fileId/confirmation',
+    motif:
+      'MÊME CHEMIN, MÊME ARGUMENT que la confirmation d’une photo, juste au-dessus : la ' +
+      'ligne ne part que sur le REJET du dépôt, et une pièce non confirmée n’est servie ' +
+      'à personne — la route de lecture refuse `confirmedAt` nul, et le cas « ne sert pas ' +
+      'une pièce réservée mais jamais montée » le tient. Aucun locataire n’a donc pu la ' +
+      'voir ni la chercher. Le RETRAIT D’UNE PIÈCE FOURNIE, lui, est tracé : il vit dans ' +
+      'la route DELETE, sous `document.file_delete`, et dans la même transaction.',
   },
 ]
 

@@ -89,8 +89,22 @@ export function CurrencySwitcher({ tone = 'light', className }: CurrencySwitcher
            d'écart — « DEVISE / DEVISE Euro (€) ». Ce que le bouton MONTRE est
            la valeur choisie, qui se suffit : « Euro (€) » n'a pas besoin qu'on
            lui dise que c'est une devise. Le nom accessible, lui, reste — un
-           lecteur d'écran n'a pas la ligne sous les yeux. */
-        aria-label={t('common.currency')}
+           lecteur d'écran n'a pas la ligne sous les yeux.
+
+           ═══ ET IL REMPLAÇAIT LE LIBELLÉ VISIBLE — WCAG 2.5.3 ═══
+
+           Écrit `aria-label={t('common.currency')}` seul, il RENDAIT le nom
+           « Devise » à un bouton qui affiche « FCFA ». Un `aria-label` écrase le
+           contenu : le mot lisible à l'écran disparaissait du nom. Qui commande à
+           la voix dit ce qu'il LIT — « cliquer sur FCFA » — et ne trouvait aucune
+           cible. Mesuré le 2026-09-27 sur cinq surfaces, dans les deux langues.
+
+           LA VALEUR S'AJOUTE, LE CHAMP RESTE DEVANT. C'est la règle du dépôt —
+           « le complément s'AJOUTE au libellé, il ne le reformule pas » — prise
+           dans l'autre sens : ici c'est le CHAMP qui est le complément, et la
+           valeur le libellé. L'ordre « Devise FCFA » garde l'annonce utile au
+           lecteur d'écran tout en contenant ce qui est écrit. */
+        aria-label={`${t('common.currency')} ${CURRENCY_DEFS[currency].label}`}
         className={cn(
           // Hauteur alignée sur le sélecteur de langue, qui est un contrôle
           // groupé et fait donc 50px et non 44. Voir --size-control-group.

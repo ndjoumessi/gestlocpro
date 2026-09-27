@@ -147,6 +147,28 @@ export function Combobox({
   const idVide = `${idChamp}-vide`
 
   const [ouvert, setOuvert] = useState(false)
+  /**
+   * CETTE OUVERTURE-CI VIENT-ELLE DU POINTEUR ? Elle seule s'animera.
+   *
+   * La liste a trois façons de s'ouvrir, et une seule est un geste qu'on REGARDE
+   * arriver : le clic. Les deux autres — la première frappe, qui ouvre en même
+   * temps qu'elle filtre, et la flèche du bas — sont initiées au clavier, et ce
+   * qu'on y attend n'est pas une surface qui se présente, ce sont les options
+   * qui répondent. Une entrée animée y met 150 ms entre la frappe et la réponse,
+   * cinquante fois par formulaire rempli au clavier.
+   *
+   * La règle appliquée est celle du mouvement : un geste clavier ne s'animate
+   * pas. Le raccourcissement de 200 à 150 ms qui vivait ici était la conclusion
+   * timide du même raisonnement.
+   *
+   * LE FOCUS COMPTE COMME CLAVIER, et c'est un choix : il vient le plus souvent
+   * d'une tabulation. Un clic qui donne le focus passe par `onClick` juste après
+   * et rallume l'animation — l'ordre des deux gestionnaires le garantit.
+   *
+   * LA SORTIE S'ANIME DANS TOUS LES CAS : personne n'attend la fin d'un départ,
+   * et une liste qui disparaît d'un coup sous les doigts se lit comme une panne.
+   */
+  const [ouvertAuPointeur, setOuvertAuPointeur] = useState(false)
   /* La liste reste PEINTE le temps de sa sortie, puis se démonte. `monte`
      commande la seule présence dans l'arbre ; `ouvert` commande TOUT le reste —
      Échap, le clic extérieur, le départ du focus, la sélection, le libellé
@@ -276,6 +298,7 @@ export function Combobox({
       e.preventDefault()
       if (!ouvert) {
         setOuvert(true)
+        setOuvertAuPointeur(false)
         ouvertParFocus.current = false
         return
       }
@@ -380,11 +403,13 @@ export function Combobox({
           onChange={(e) => {
             setSaisie(e.target.value)
             setOuvert(true)
+            setOuvertAuPointeur(false)
             ouvertParFocus.current = false
           }}
           onFocus={() => {
             if (!ouvrirAuFocus) return
             setOuvert(true)
+            setOuvertAuPointeur(false)
             /* OUVERTE PAR LE FOCUS, ET NON PAR UN GESTE — voir `ouvertParFocus`
                plus haut : c'est ce qui décide si Échap appartient à cette liste
                ou à la modale qui la contient. */
@@ -392,6 +417,7 @@ export function Combobox({
           }}
           onClick={() => {
             setOuvert(true)
+            setOuvertAuPointeur(true)
             ouvertParFocus.current = false
           }}
           // Le focus ne suffit pas : après un choix, la liste se referme mais
@@ -428,7 +454,7 @@ export function Combobox({
           aria-hidden={sortant || undefined}
           {...(sortant ? INERTE : {})}
           className={cn(
-            sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop-vite',
+            sortant ? 'surface-pop-sortie pointer-events-none' : ouvertAuPointeur && 'surface-pop-vite',
             /*
               ELLE GRANDIT DEPUIS SON BORD HAUT, ET C'EST UNE LECTURE DES
               CLASSES, PAS UNE SUPPOSITION.

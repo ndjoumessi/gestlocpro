@@ -7455,6 +7455,245 @@ parksRouter.delete(
   },
 )
 
+/* ══════════════════════════════════════════════════════════════════════════
+   LA PIÈCE FOURNIE SUR UNE DEMANDE DE DOCUMENT
+
+   Quatre routes calquées sur celles de la photo d'une réserve, et calquées
+   VOLONTAIREMENT : même dépôt, même contrat en deux temps, mêmes refus. Ce qui
+   diffère tient en deux points, et ce sont les deux seuls endroits à relire.
+
+   1. LE TYPE. Une pièce fournie est normalement un PDF — un scan d'attestation.
+      Le dépôt sait le reconnaître et le rend en PIÈCE JOINTE, jamais en ligne :
+      un PDF affiché exécuterait son propre JavaScript sur notre origine. Les
+      images restent acceptées, parce qu'on photographie parfois un document
+      qu'on n'a pas su scanner.
+
+   2. QUI LIT. Le dépôt et la suppression appartiennent au bailleur et à son
+      gestionnaire — c'est eux qui fournissent. Mais la LECTURE appartient aussi
+      au locataire : une pièce qu'il a demandée et qu'il ne peut pas ouvrir ne
+      lui a pas été fournie. C'est la seule route de ce bloc dont le
+      cloisonnement dépend du rôle, et `perimetreDuLecteur` la porte seule.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Ce qu'une pièce montre à l'API. La clé de stockage n'en fait pas partie. */
+const champsPiece = {
+  id: true,
+  requestId: true,
+  contentType: true,
+  sizeBytes: true,
+  confirmedAt: true,
+  createdAt: true,
+} as const
+
+const schemaReservationPiece = z.object({
+  /**
+   * Le PDF EN TÊTE, parce que c'est le cas normal : une attestation arrive
+   * scannée. Les trois images suivent, pour le document qu'on photographie
+   * faute de scanner — ce qui est fréquent sur le marché visé.
+   *
+   * La liste reste FERMÉE, pour la raison qui vaut chez la photo : elle compose
+   * l'en-tête que le dépôt exigera, et une valeur libre y ferait entrer ce que
+   * le navigateur voudra bien exécuter en la resservant.
+   */
+  contentType: z.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']),
+  sizeBytes: z.number().int().positive().max(PLAFOND_PAR_OBJET_OCTETS),
+})
+
+/**
+ * Le périmètre de LECTURE d'une pièce, qui dépend du rôle.
+ *
+ * Le bailleur et son gestionnaire lisent ce que leur périmètre d'unités leur
+ * laisse voir. Le locataire ne lit QUE les pièces des demandes portées par SON
+ * bail — pas celles de son voisin, pas celles du locataire qui l'a précédé dans
+ * le même logement. D'où la clause sur `tenant.userId` plutôt que sur l'unité :
+ * c'est le bail qui porte la demande, et c'est lui qui doit cloisonner.
+ */
+function perimetreDuLecteur(role: string, compteId: string): Prisma.DocumentRequestWhereInput {
+  return role === 'tenant' ? { lease: { tenant: { userId: compteId } } } : {}
+}
+
+/** Une pièce du parc, cherchée AVEC son cloisonnement et jamais filtrée après. */
+async function pieceDuParc(
+  fileId: string,
+  parkId: string,
+  perimetreUnite: Prisma.UnitWhereInput,
+  acces: Prisma.DocumentRequestWhereInput = {},
+) {
+  return prisma.documentRequestFile.findFirst({
+    where: {
+      id: fileId,
+      request: { lease: { unit: { building: { parkId }, ...perimetreUnite } }, ...acces },
+    },
+    select: { ...champsPiece, storageKey: true },
+  })
+}
+
+/**
+ * Réserve une place pour une pièce fournie.
+ *
+ * La ligne naît AVANT les octets, comme chez la photo : le dépôt ne passe pas
+ * par l'API, et une clé sans ligne serait introuvable — donc impossible à
+ * balayer. `confirmedAt` nul dit que rien n'est encore prouvé.
+ */
+parksRouter.post(
+  '/:parkId/document-requests/:requestId/files',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const perimetreUnite = porteeDesUnites(req.adhesion!)
+    const requestId = z.string().uuid().parse(req.params.requestId)
+    const corps = schemaReservationPiece.parse(req.body)
+
+    // Cherchée AVEC le `parkId` : sans cela, une demande devinée permettrait
+    // d'accrocher une pièce au dossier d'un autre parc.
+    const demande = await prisma.documentRequest.findFirst({
+      where: { id: requestId, lease: { unit: { building: { parkId }, ...perimetreUnite } } },
+      select: { id: true },
+    })
+    if (!demande) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const reservation = await leStockage().reserver(corps.contentType, corps.sizeBytes)
+
+    const piece = await prisma.documentRequestFile.create({
+      data: {
+        requestId: demande.id,
+        storageKey: reservation.cle,
+        // ANNONCÉS, pas mesurés. `confirmedAt` nul le dit.
+        contentType: corps.contentType,
+        sizeBytes: corps.sizeBytes,
+      },
+      select: champsPiece,
+    })
+
+    res.status(201).json({
+      file: piece,
+      // La clé n'apparaît QUE là, dans une adresse signée et périssable.
+      envoi: {
+        url: reservation.url,
+        methode: reservation.methode,
+        entetes: reservation.entetes,
+        expireLe: reservation.expireLe,
+      },
+    })
+  },
+)
+
+/**
+ * Confirme qu'une pièce est montée, et POSE SA DATE.
+ *
+ * Seul instant où le serveur regarde ce qui a été déposé : il n'a pas vu les
+ * octets passer. Il en tire le poids réel, la nature réelle, et l'heure à
+ * laquelle il a constaté les deux. Rien ne lit `req.body` — une date d'appareil
+ * se change dans les réglages de l'appareil.
+ */
+parksRouter.post(
+  '/:parkId/document-files/:fileId/confirmation',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const fileId = z.string().uuid().parse(req.params.fileId)
+    const piece = await pieceDuParc(fileId, parkId, porteeDesUnites(req.adhesion!))
+    if (!piece) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const confirmation = await leStockage().confirmer(piece.storageKey, piece.contentType)
+    if (!confirmation.accepte) {
+      /* LA LIGNE PART AVEC LES OCTETS REFUSÉS. Garder une ligne dont le dépôt a
+         rejeté le contenu laisserait une pièce qui se dit fournie et ne s'ouvre
+         pas — pire qu'une case vide, qui au moins se voit. */
+      await leStockage().supprimer(piece.storageKey)
+      await prisma.documentRequestFile.delete({ where: { id: piece.id } })
+      res.status(422).json({ error: confirmation.motif })
+      return
+    }
+
+    const maj = await prisma.documentRequestFile.update({
+      where: { id: piece.id },
+      data: {
+        contentType: confirmation.typeMime,
+        sizeBytes: confirmation.octets,
+        confirmedAt: new Date(),
+      },
+      select: champsPiece,
+    })
+
+    res.json({ file: maj })
+  },
+)
+
+/**
+ * Rend une adresse de lecture, signée et périssable.
+ *
+ * LA SEULE ROUTE DE CE BLOC OUVERTE AU LOCATAIRE, et c'est le point : une pièce
+ * qu'il a demandée et qu'il ne peut pas ouvrir ne lui a pas été fournie. Son
+ * cloisonnement passe par `perimetreDuLecteur`, donc par SON bail.
+ */
+parksRouter.get(
+  '/:parkId/document-files/:fileId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager', 'tenant'),
+  async (req: Request, res: Response) => {
+    const { parkId, role } = req.adhesion!
+    const fileId = z.string().uuid().parse(req.params.fileId)
+    const piece = await pieceDuParc(
+      fileId,
+      parkId,
+      porteeDesUnites(req.adhesion!),
+      perimetreDuLecteur(role, req.compteId!),
+    )
+    /* NON CONFIRMÉE : introuvable. Une réservation sans octets rendrait une
+       adresse vers le vide, et le locataire lirait « fournie » sur une pièce
+       que personne n'a montée. */
+    if (!piece || !piece.confirmedAt) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const adresse = await leStockage().lire(piece.storageKey)
+    res.json({ file: { ...piece, storageKey: undefined }, lecture: adresse })
+  },
+)
+
+/** Retire une pièce, ses octets d'abord. */
+parksRouter.delete(
+  '/:parkId/document-files/:fileId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const fileId = z.string().uuid().parse(req.params.fileId)
+    const piece = await pieceDuParc(fileId, parkId, porteeDesUnites(req.adhesion!))
+    if (!piece) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await leStockage().supprimer(piece.storageKey)
+    await prisma.$transaction(async (tx) => {
+      await tx.documentRequestFile.delete({ where: { id: piece.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'document.file_delete',
+          entity: 'DocumentRequest',
+          entityId: piece.requestId,
+          payload: { fileId: piece.id },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)
+
 /**
  * Appel de loyers : émet les échéances du mois pour tous les baux en cours.
  *

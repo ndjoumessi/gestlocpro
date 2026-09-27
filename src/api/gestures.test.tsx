@@ -33,9 +33,11 @@ async function choisirLeMois(
   const [annee, mois] = iso.split('-').map(Number)
   await user.click(screen.getByLabelText(champ))
   const panneau = screen.getByRole('dialog', { name: /choix du mois/i })
-  // Libellé EXACT : le panneau porte aussi « Année précédente » et « Année
+  // LE CHIFFRE FAIT LA DISTINCTION. Le bouton de remontée s'appelle désormais
+  // « Année 2026 » — son nom doit contenir le « 2026 » qu'il affiche (WCAG 2.5.3) —
+  // et le panneau porte aussi « Année précédente » et « Année
   // suivante » sur ses deux flèches.
-  await user.click(within(panneau).getByLabelText('Année'))
+  await user.click(within(panneau).getByLabelText(/^Année \d/))
   while (within(panneau).queryByRole('button', { name: String(annee) }) === null) {
     await user.click(within(panneau).getByLabelText(/années précédentes/i))
   }
@@ -61,7 +63,7 @@ async function choisirLaDate(
   // La remontée du panneau : année, puis mois, puis jour. Les menus natifs ont
   // disparu — celui des années dépliait quarante et une entrées rendues par le
   // système, en travers de l'écran.
-  await user.click(within(calendrier).getByLabelText('Année'))
+  await user.click(within(calendrier).getByLabelText(/^Année \d/))
   while (within(calendrier).queryByRole('button', { name: String(annee) }) === null) {
     await user.click(within(calendrier).getByLabelText(/années précédentes/i))
   }

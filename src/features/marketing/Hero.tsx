@@ -188,7 +188,7 @@ function HeroPreview({
         `overflow-hidden` : la barre est à fleur du bord haut, et ce sont les
         coins arrondis de la carte qui portent la forme.
       */}
-      <Card flush elevation="e3" className="animate-rise overflow-hidden p-0">
+      <Card flush elevation="e3" className="surface-monte overflow-hidden p-0">
         <div
           aria-hidden="true"
           className="flex items-center gap-2 border-b border-divider bg-surface-sunken px-4 py-3"

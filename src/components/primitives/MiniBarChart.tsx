@@ -190,7 +190,7 @@ export function MiniBarChart({
               aria-label={`${bar.label} — ${bar.value === null ? emptyLabel : lire(bar.value)}`}
             >
               <span
-                className="animate-grow-y w-full rounded-t-bar transition-shadow duration-150"
+                className="animate-grow-y w-full rounded-t-bar"
                 style={{
                   // Une période inconnue garde un filet de 2 px : la colonne
                   // reste visible et cliquable — sans quoi le trou se lirait

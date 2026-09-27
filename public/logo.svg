@@ -17,7 +17,7 @@
     LES COULEURS SONT ÉCRITES EN CLAIR, ET C'EST LE SEUL ENDROIT OÙ C'EST JUSTE :
     ce fichier est servi comme une ressource statique, hors de la feuille de
     style, et ne peut donc lire aucun jeton de couleur. Les valeurs sont celles des
-    jetons — #2563eb et #ffffff — et l'accent de marque ne change pas avec le
+    jetons — #635bff et #ffffff — et l'accent de marque ne change pas avec le
     thème, délibérément. Le composant, lui, n'écrit aucune couleur.
 
     AUCUN « deux tirets » DANS CE COMMENTAIRE : XML les interdit à l'intérieur
@@ -28,11 +28,16 @@
 
     LES OPACITÉS SONT CELLES DE LA MARQUE, et une mesure l'a décidé contre une
     prévision. On attendait que le carré à 0,22 disparaisse à 16 px ; échantillonné
-    au pixel sur le rendu réel, il vaut rgb(85,133,239) sur un fond rgb(37,99,235)
+    au pixel sur le rendu réel, il valait rgb(85,133,239) sur un fond rgb(37,99,235)
     — 1,47:1, faible mais séparé. Le relever aurait changé le signe pour corriger
     un défaut qui n'existait pas.
+
+    LE FOND A CHANGÉ LE 2026-09-27, et ce relevé n'a PAS été refait au pixel :
+    la composition donne #857fff sur #635bff, soit 1,45:1, à deux centièmes de
+    l'échantillon précédent. C'est un CALCUL, pas une mesure — écrit ici pour que
+    personne ne prenne l'un pour l'autre.
   -->
-  <rect width="32" height="32" rx="10" fill="#2563eb"/>
+  <rect width="32" height="32" rx="10" fill="#635bff"/>
   <g fill="#ffffff">
     <rect x="6.9" y="6.9" width="7.6" height="7.6" rx="2"/>
     <rect x="17.5" y="6.9" width="7.6" height="7.6" rx="2"/>

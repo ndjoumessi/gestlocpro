@@ -76,8 +76,32 @@ const MEDIA = declarations(corps(corps(NU, '@media (prefers-color-scheme: dark)'
 const ATTRIBUT = declarations(corps(NU, ":root[data-theme='dark']"))
 
 const JETON = '--color-border-control'
-/** Ce qui entoure un champ : la carte, ou la zone principale quand il est nu. */
-const FONDS = ['--color-surface', '--color-paper'] as const
+/**
+ * TOUT CE QUI PEUT ENTOURER UN CHAMP — ET LA LISTE EN OUBLIAIT LA MOITIÉ.
+ *
+ * Elle valait `['--color-surface', '--color-paper']` : la carte, et la zone
+ * principale. Deux fonds sur quatre. Ce qui manquait est exactement ce qui a
+ * cassé le 2026-09-27, quand le neutre est passé du chaud au froid :
+ *
+ *   `--color-border-control` #7d8fa4 sur `--color-canvas` #e9eef4  →  2.84
+ *
+ * Relevé par l'audit AU NAVIGATEUR sur `/connexion`, où les champs sont posés
+ * NUS sur le fond d'application — il n'y a pas de carte sur cet écran. Cette
+ * garde-ci était verte pendant ce temps : elle mesurait deux fonds que le défaut
+ * n'empruntait pas. Et `--color-surface-sunken` tombait AUSSI sous le seuil, à
+ * 2,99, sans qu'aucune des deux portes ne le dise.
+ *
+ * C'EST LA LEÇON QUE L'EN-TÊTE DE `tokens.css` ÉCRIT DÉJÀ, et elle vient de se
+ * rejouer sur ce jeton-ci : « un ratio est écrit ICI CONTRE UN FOND, et le
+ * jeton, lui, part servir sur toute sa famille ». Une garde qui n'énumère pas
+ * toute la famille achète de la confiance sans la mériter.
+ */
+const FONDS = [
+  '--color-surface',
+  '--color-paper',
+  '--color-canvas',
+  '--color-surface-sunken',
+] as const
 const SEUIL = 3
 
 describe('le jeton du liseré de contrôle', () => {
@@ -90,7 +114,7 @@ describe('le jeton du liseré de contrôle', () => {
   it.each([
     ['clair', CLAIR],
     ['sombre', MEDIA],
-  ])('tient au moins 3:1 sur la surface et sur le papier — %s', (_nom, jetons) => {
+  ])('tient au moins 3:1 sur les quatre fonds qui peuvent l’entourer — %s', (_nom, jetons) => {
     const liseré = jetons.get(JETON)!
     for (const fond of FONDS) {
       const mesure = ratio(liseré, jetons.get(fond)!)

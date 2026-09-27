@@ -473,6 +473,46 @@ const HORS_PORTEE = {
   n'est pas interprétable ici, puisque cette machine ne juge aucune des deux
   colonnes.
 */
+/**
+ * ═══ LA COLONNE NORMALE RELEVÉE LE 2026-09-28 — HUIT CROISSANCES, TROIS MOUS ═══
+ *
+ * Le témoin de machine a d'abord répondu — « Colonne jugée : plafond — cette
+ * machine la possède » —, et c'est la condition pour écrire ici. Onze plafonds
+ * ont bougé :
+ *
+ *   croissances   /demo/parc@360      4232 → 4350   (+118)
+ *                 /demo/cautions@360  2121 → 2270   (+149)
+ *                 /demo/releves@360   3753 → 3847   (+94)
+ *                 /demo/paiements@360 3373 → 3466   (+93)
+ *                 /demo/paiements@1280 1483 → 1530  (+47)
+ *                 /demo/releves@1280  1402 → 1450   (+48)
+ *                 /demo/cautions@1280  900 →  946   (+46)
+ *                 /confidentialite@360 3743 → 3744  (+1)
+ *   mous          /demo/locataires@360 4651 → 4488  (−163)
+ *                 /demo/decisions@360  1591 → 1521  (−70)
+ *                 /demo/acces@360      2226 → 2205  (−21)
+ *
+ * `plafond-coquille` étant VERTE, ce sont des pixels de CONTENU et non de
+ * coquille — la porte le dit elle-même à chaque plainte. La cause commune est la
+ * bascule du neutre vers le froid, qui recompose les interlignes, plus les gestes
+ * de ce lot sur le tableau de bord et les fiches. Je n'ai PAS décomposé les onze
+ * écarts écran par écran : ce qui est mesuré est le total, et c'est lui qui borne.
+ *
+ * DIX-HUIT PLAINTES ONT DISPARU SANS QU'UN PLAFOND BOUGE, et elles valent d'être
+ * nommées ici : la « clôture perméable » sur les dix-huit pages connectées à
+ * 1280 px était une boîte de défilement restée `static` dans `AppShell`, d'où
+ * s'échappait un `<legend class="sr-only">`. Un mot de classe — `relative` — les
+ * a toutes refermées. Elles n'étaient pas de la hauteur : elles étaient de
+ * l'étanchéité.
+ *
+ * LA COLONNE `plafondLarge` N'EST PAS TOUCHÉE. Elle se relève sur l'exécuteur de
+ * l'intégration continue, et un relevé local en `MESURER_EN_POLICE_LARGE=1` l'a
+ * confirmé de la pire façon : il rend des valeurs plus hautes sur TOUTES les
+ * pages, y compris `/conditions-generales` (+450) et `/confidentialite` (+389),
+ * que ce lot ne touche pas. Ce sont les polices de cette machine. Les écrire
+ * aurait remplacé une mesure du CI par une mesure d'ici — exactement ce que
+ * l'en-tête de ce fichier interdit deux paragraphes plus haut.
+ */
 const PLAFONDS = [
   /* 360 px — 23 écrans */
   { adresse: '/inscription', largeur: 360, plafond: 1371, plafondLarge: 1371 },
@@ -500,9 +540,16 @@ const PLAFONDS = [
     coûtait 713 px ; les deux colonnes en rendent 243, et ce relevé-là est la
     raison pour laquelle la grille n'attend plus `sm`.
   */
-  { adresse: '/confidentialite', largeur: 360, plafond: 3743, plafondLarge: 3657 },
+  { adresse: '/confidentialite', largeur: 360, plafond: 3744, plafondLarge: 3657 },
   { adresse: '/conditions-generales', largeur: 360, plafond: 5248, plafondLarge: 5149 },
-  { adresse: '/demo', largeur: 360, plafond: 3454, plafondLarge: 3455 },
+  /* 3454 → 3428 et 1864 → 1855 le 2026-09-27 : la page a RACCOURCI de 26 px à
+     360 et de 9 px à 1280, et c'est un gain qu'il faut inscrire sous peine de le
+     redépenser sans le voir. Ce qui l'a produit : la ligne de quartier des tuiles
+     d'immeuble n'avait aucune troncature, donc un nom de quartier long passait à
+     la ligne et poussait la tuile d'un cran. Elle se tronque depuis que la tuile
+     porte aussi un montant — voir le docbloc de `Dashboard.tsx` —, et le retour
+     à la ligne a disparu avec. `plafondLarge` suit du même écart. */
+  { adresse: '/demo', largeur: 360, plafond: 3428, plafondLarge: 3429 },
   /* +30 px LE 2026-09-26, ET C'EST LA CARTE QUE L'ÉCRAN EXISTE POUR MONTRER.
      « En retard · 412 000 FCFA » ne portait rien sous son montant ; la note dit
      désormais combien de baux le composent et depuis combien de jours — les
@@ -510,7 +557,7 @@ const PLAFONDS = [
      distinguent la relance de la mise en demeure. Sur un téléphone, c'est la
      SEULE carte rendue : ses deux voisines partent sous `lg`. Trente pixels
      pour la réponse qu'on descendait chercher. */
-  { adresse: '/demo/paiements', largeur: 360, plafond: 3373, plafondLarge: 3373 },
+  { adresse: '/demo/paiements', largeur: 360, plafond: 3466, plafondLarge: 3373 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
@@ -523,21 +570,21 @@ const PLAFONDS = [
      le seul fait qui décide s'il doit payer ou ranger. */
   { adresse: '/demo/documents', largeur: 360, plafond: 2292, plafondLarge: 2292 },
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
-  { adresse: '/demo/parc', largeur: 360, plafond: 4232, plafondLarge: 4232 },
-  { adresse: '/demo/releves', largeur: 360, plafond: 3753, plafondLarge: 3753 },
-  { adresse: '/demo/cautions', largeur: 360, plafond: 2121, plafondLarge: 2121 },
+  { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4232 },
+  { adresse: '/demo/releves', largeur: 360, plafond: 3847, plafondLarge: 3753 },
+  { adresse: '/demo/cautions', largeur: 360, plafond: 2270, plafondLarge: 2121 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
      valent une de plus à elles deux sur les fiches qui les portent. Le gain du
      bureau vient de la grille à deux colonnes, qui n'existe pas ici. */
-  { adresse: '/demo/locataires', largeur: 360, plafond: 4651, plafondLarge: 4380 },
+  { adresse: '/demo/locataires', largeur: 360, plafond: 4488, plafondLarge: 4380 },
   { adresse: '/demo/mes-donnees', largeur: 360, plafond: 900, plafondLarge: 900 },
   /* −22 px : le résumé de périmètre cesse de recopier le nom de l'immeuble
      devant chaque logement retranché. Mesuré ici à 2187 en police large ; la
      colonne normale, qui appartient à l'autre machine, reçoit le même écart. */
-  { adresse: '/demo/acces', largeur: 360, plafond: 2226, plafondLarge: 2187 },
-  { adresse: '/demo/decisions', largeur: 360, plafond: 1591, plafondLarge: 1569 },
+  { adresse: '/demo/acces', largeur: 360, plafond: 2205, plafondLarge: 2187 },
+  { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1569 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
@@ -550,8 +597,8 @@ const PLAFONDS = [
   { adresse: '/mentions-legales', largeur: 1280, plafond: 1544, plafondLarge: 1544 },
   { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
-  { adresse: '/demo', largeur: 1280, plafond: 1864, plafondLarge: 1865 },
-  { adresse: '/demo/paiements', largeur: 1280, plafond: 1483, plafondLarge: 1483 },
+  { adresse: '/demo', largeur: 1280, plafond: 1855, plafondLarge: 1856 },
+  { adresse: '/demo/paiements', largeur: 1280, plafond: 1530, plafondLarge: 1483 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
   /*
     +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE
@@ -621,8 +668,8 @@ const PLAFONDS = [
     pas d'un retrait de contenu : aucune fiche n'a perdu une ligne.
   */
   { adresse: '/demo/parc', largeur: 1280, plafond: 1785, plafondLarge: 1785 },
-  { adresse: '/demo/releves', largeur: 1280, plafond: 1402, plafondLarge: 1402 },
-  { adresse: '/demo/cautions', largeur: 1280, plafond: 900, plafondLarge: 900 },
+  { adresse: '/demo/releves', largeur: 1280, plafond: 1450, plafondLarge: 1402 },
+  { adresse: '/demo/cautions', largeur: 1280, plafond: 946, plafondLarge: 900 },
   /*
     −86 px AU BUREAU ET +16 AU TÉLÉPHONE, LE 2026-09-26 : LES DEUX FAITS QUI
     PORTAIENT UN TIRET SONT DEVENUS DES PASTILLES CONDITIONNELLES.

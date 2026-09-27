@@ -106,7 +106,27 @@ describe('fourchette de durées', () => {
     const bloc = /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n {2}\}/.exec(NU)
     expect(bloc).not.toBeNull()
     expect(bloc?.[1]).toContain('animation-duration: 0.001ms !important')
-    expect(bloc?.[1]).toContain('transition-duration: 0.001ms !important')
+    /*
+      LA TRANSITION N'EST PLUS ANNULÉE PAR SA DURÉE, MAIS PAR SA LISTE (2026-09-27).
+
+      Il était exigé ici `transition-duration: 0.001ms !important`, ce qui coupait
+      TOUTE transition — les fondus de couleur du survol et des états compris. Or
+      le réglage demande moins de MOUVEMENT, pas moins de renseignement : une
+      couleur qui change progressivement aide à comprendre et ne donne le vertige
+      à personne.
+
+      Ce que la garde vérifie désormais est plus fort que ce qu'elle vérifiait :
+      non seulement que le mouvement est neutralisé, mais que `transform` et
+      `clip-path` sont bien ABSENTS de la liste autorisée — un `transition-property`
+      qui les relaisserait entrer passerait l'ancienne formulation sans un mot.
+    */
+    const liste = /transition-property:([^;]+);/.exec(bloc?.[1] ?? '')
+    expect(liste, 'le bloc ne restreint plus les propriétés transitionnables').not.toBeNull()
+    expect(liste?.[0]).toContain('!important')
+    expect(liste?.[1]).toContain('opacity')
+    expect(liste?.[1]).not.toContain('transform')
+    expect(liste?.[1]).not.toContain('clip-path')
+    expect(liste?.[1]).not.toContain('all')
     /*
       LES DÉLAIS AUSSI, et c'est ce que le bloc oubliait.
 

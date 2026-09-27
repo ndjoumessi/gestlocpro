@@ -71,7 +71,7 @@ const EFFACEMENT_MS = 4500
   fabrique le CSS de tout motif qu'il y reconnaît ; une classe citée en clair
   entrerait dans la feuille livrée au seul titre d'avoir servi d'assertion.
 */
-const RISE_OUT = ['animate', 'rise', 'out'].join('-')
+const RISE_OUT = ['surface', 'monte', 'sortie'].join('-')
 
 /** Miroir de `ECART` dans `Toast.tsx`. */
 const ECART = 8
@@ -256,14 +256,14 @@ describe('sortie du toast', () => {
       six autres cas au vert. Le tempo n'était tenu par rien.
     */
     const deuxieme = notifier()
-    expect(coquille(premier).style.transitionDuration, 'une arrivée dure comme `animate-rise`').toBe(
+    expect(coquille(premier).style.transitionDuration, 'une arrivée dure comme `surface-monte`').toBe(
       '300ms',
     )
 
     fireEvent.click(croix(deuxieme))
     expect(
       coquille(premier).style.transitionDuration,
-      'un départ dure comme `animate-rise-out`',
+      'un départ dure comme `surface-monte-sortie`',
     ).toBe('150ms')
   })
 

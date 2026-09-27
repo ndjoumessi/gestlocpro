@@ -168,8 +168,13 @@ async function ouvrirLaCorrectionDUnLogementOccupe(page) {
  * de relevé — elle n'écrit rien au serveur — et c'est ce qui fait apparaître le
  * geste ici, donc ce qui rend cette note atteignable.
  */
+/* « MODIFIER » DEPUIS LE 2026-09-27, et c'est le nom accessible qui a bougé, pas
+   le geste : il valait « Corriger les relevés — A1 » alors que le bouton AFFICHE
+   « Modifier ». Un `aria-label` écrase le contenu, donc le mot lisible
+   disparaissait du nom (WCAG 2.5.3, onze cas). Le logement reste dans le nom pour
+   la raison écrite juste au-dessus. */
 async function ouvrirLaCorrectionDUnReleve(page) {
-  await page.getByRole('button', { name: /^Corriger les relevés — A1$/ }).first().click()
+  await page.getByRole('button', { name: /^Modifier les relevés — A1$/ }).first().click()
   await page.waitForTimeout(350)
 }
 

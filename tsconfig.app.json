@@ -34,6 +34,8 @@
      Les y renvoyer évite d'ouvrir les types Node à tout le code d'application,
      où `process` et `Buffer` n'ont rien à faire. */
   "exclude": [
+    "src/components/primitives/remiseInsecable.test.tsx",
+    "src/design-system/defilementProgramme.test.ts",
     "src/design-system/theme.test.ts",
     "src/design-system/chasseFixe.test.ts",
     "src/design-system/altitudes.test.ts",

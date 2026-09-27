@@ -104,6 +104,55 @@ export function Dashboard() {
     retirer la note : un zéro sans légende se lit aussi bien « tout est réglé »,
     et c'est l'autre moitié du malentendu.
   */
+  /**
+   * L'IMPAYÉ PAR IMMEUBLE, ET LE CLASSEMENT QUI EN FAIT UNE RÉPONSE.
+   *
+   * ═══ CE QUI MANQUAIT ═══
+   *
+   * L'écran agrégeait l'argent sur le parc ENTIER et ne ventilait par immeuble
+   * que l'OCCUPATION. « Où j'agis en premier » n'avait donc pas de réponse ici :
+   * la file du jour liste des objets — A1, A3 —, la répartition liste des taux,
+   * et le rapprochement se faisait de tête.
+   *
+   * ═══ LA MÊME SOMME QUE L'EN-TÊTE, ET C'EST LA CONDITION ═══
+   *
+   * `computeKpis` est rappelée sur le sous-ensemble de chaque immeuble plutôt
+   * que resommée à la main. Ce n'est pas de l'économie de lignes : la fonction
+   * est une somme pure sur les logements OCCUPÉS, donc les trois impayés
+   * s'additionnent à celui de l'indicateur, au franc près et par construction.
+   * Une seconde somme écrite ici pourrait dériver de la première sans qu'aucune
+   * garde ne le voie — le dépôt a déjà payé ce défaut sur des compteurs
+   * d'occupation figés dans une constante.
+   *
+   * ═══ LE TRI NE S'APPLIQUE QUE SI LES MONTANTS SE VOIENT ═══
+   *
+   * Classer par une grandeur INVISIBLE rendrait l'ordre arbitraire pour qui ne
+   * la lit pas : le gestionnaire délégué verrait ses immeubles rangés sans
+   * raison apparente, et dans un ordre différent de celui de l'écran Parc. Il
+   * garde donc l'ordre de déclaration.
+   *
+   * ═══ CE QUE LA DÉMONSTRATION NE MONTRERA PAS ═══
+   *
+   * Mesuré sur son parc : 155 000, 150 000, 142 000 — treize mille francs
+   * séparent les trois immeubles. L'ordre est juste et presque plat ; ce que ce
+   * classement achète ne se verra que sur un parc plus contrasté ou plus grand.
+   */
+  /* LA SOMME NE SE PAIE QUE SI ELLE S'AFFICHE. Écrite inconditionnellement, elle
+     rappelait `computeKpis` une fois PAR IMMEUBLE — chacune parcourant les
+     logements et les relevés — pour un gestionnaire délégué qui ne verra ni le
+     montant ni le classement. Le marché visé est l'Android d'entrée de gamme :
+     un calcul dont personne ne lit le résultat s'y paie au même prix qu'ailleurs. */
+  const argentParImmeuble = role === 'owner'
+  const immeublesClasses = argentParImmeuble
+    ? BUILDINGS.map((building) => ({
+        building,
+        impaye: computeKpis(
+          units.filter((u) => u.buildingId === building.id),
+          readings,
+        ).outstanding,
+      })).sort((a, b) => b.impaye - a.impaye)
+    : BUILDINGS.map((building) => ({ building, impaye: 0 }))
+
   const rienAttendu = expected === 0
   const collectedShare = rienAttendu ? 0 : Math.round((collected / expected) * 100)
   /* La variation du mois sur le mois précédent, quand il y en a un — voir
@@ -808,9 +857,12 @@ export function Dashboard() {
       <div className="mt-4">
 
         <Card>
-          <CardHeader title={t('app.dashboard.breakdownTitle')} level={2} />
+          <CardHeader
+            title={t(argentParImmeuble ? 'app.dashboard.breakdownTitleMoney' : 'app.dashboard.breakdownTitle')}
+            level={2}
+          />
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {BUILDINGS.map((building) => {
+            {immeublesClasses.map(({ building, impaye }) => {
               // Compté sur l'état vivant, comme l'écran Parc. Cette carte
               // divisait encore `building.occupied / building.units`, deux
               // compteurs figés dans la constante : rattacher un locataire
@@ -870,11 +922,60 @@ export function Dashboard() {
                         même place qu'au Parc — un second mot pour le même fait
                         rouvrirait deux vocabulaires.
                       */}
-                      <span className="text-label text-muted">
-                        {building.district}
-                        {inBuilding.length === 0
-                          ? ` · ${t('app.portfolio.buildingEmpty')}`
-                          : ''}
+                      {/*
+                        LE QUARTIER SE TRONQUE, ET IL LE FAUT DEPUIS QUE LA TUILE
+                        PORTE UN MONTANT.
+
+                        Cette ligne n'avait aucune troncature. Le nom, lui, en a
+                        une — donc il rétrécissait et le quartier, non, fixait la
+                        largeur PLANCHER du bloc. Tant que la tuile ne portait
+                        qu'un ratio, le mou suffisait et le défaut ne se voyait
+                        pas. Le montant a mangé ce mou : mesuré, +53 px de
+                        débordement LOCAL du bloc, sur six occurrences dont
+                        /demo@320 et /demo@1024 — c'est-à-dire aussi sur un écran
+                        large, donc ce n'était pas une affaire de petite fenêtre.
+
+                        UN QUARTIER EST UNE DONNÉE SAISIE : sa longueur n'est
+                        bornée par rien, et le dépôt autorise la coupe d'une
+                        donnée — d'où `data-donnee`, qui le dit à
+                        `MESURER_TRONCATURES`. La MENTION « aucun logement » est
+                        du vocabulaire de produit et ne se coupe pas : elle reste
+                        hors du nœud tronqué, et c'est elle qui garde sa place
+                        quand le quartier cède la sienne.
+                      */}
+                      <span className="flex min-w-0 items-baseline gap-1 text-label text-muted">
+                        <span data-donnee className="min-w-0 truncate">
+                          {building.district}
+                        </span>
+                        {inBuilding.length === 0 && (
+                          <span className="shrink-0">· {t('app.portfolio.buildingEmpty')}</span>
+                        )}
+                        {/*
+                          LE MONTANT EST SUR LA SECONDE LIGNE, ET C'EST UN
+                          CORRECTIF DE LISIBILITÉ MESURÉ À L'ŒIL.
+
+                          Posé sur la PREMIÈRE, à côté de la pastille, il prenait
+                          la largeur dont le nom avait besoin : à 600 px de
+                          contenu sur trois colonnes, les trois tuiles rendaient
+                          « Immeu… », « Réside… », « Villa D… ». La troncature
+                          était licite — un nom est une donnée — et le résultat
+                          inutilisable : une tuile sur laquelle on doit AGIR ne
+                          peut pas taire de quel immeuble elle parle.
+
+                          Sur la seconde ligne il ne coûte rien en hauteur — la
+                          ligne existait déjà pour le quartier — et le nom
+                          retrouve toute la largeur de la tuile moins la
+                          pastille. L'ordre de sacrifice est le bon : c'est le
+                          QUARTIER qui cède sa place (`truncate`), pas le montant
+                          (`shrink-0`), parce que le quartier situe et que le
+                          montant est ce qu'on vient lire.
+                        */}
+                        {argentParImmeuble && (
+                          <span className="numeric shrink-0 text-ink">
+                            · {money(impaye, { compact: true })}
+                            <span className="sr-only"> {t('app.dashboard.breakdownOutstanding')}</span>
+                          </span>
+                        )}
                       </span>
                     </span>
                     {/*
@@ -911,6 +1012,25 @@ export function Dashboard() {
                         surface de la page, donc le lavis bascule AVEC elle et
                         `neutral` est de nouveau le ton juste. Le même pour les
                         trois immeubles : un ratio n'est pas un verdict. */}
+                    {/*
+                      LE MONTANT EST SANS TON, ET C'EST LE PRÉCÉDENT D'À CÔTÉ
+                      QUI L'IMPOSE. La pastille d'occupation a perdu ses `ok` et
+                      `warn` parce qu'un ratio rendu tous les jours est une
+                      alerte permanente — « celle qu'on cesse de lire au bout
+                      d'une semaine, et qui n'est plus là le jour où elle a
+                      raison ». Un impayé mensuel est dans le même cas : un
+                      immeuble en retard chaque mois serait rouge à perpétuité.
+                      C'est donc l'ORDRE des tuiles qui porte l'urgence, et le
+                      chiffre reste à l'encre.
+
+                      LE MOT EST POUR QUI N'A PAS LE TITRE SOUS LES YEUX. Le
+                      titre de la carte dit « Impayé par immeuble » ; un lecteur
+                      d'écran qui parcourt la liste entrée par entrée ne l'a pas
+                      dans l'oreille, et « 150 000 FCFA » y serait un nombre sans
+                      nature. Il est `sr-only` plutôt que visible parce que le
+                      répéter trois fois à l'écran redirait ce que le titre vient
+                      d'annoncer, et coûterait la largeur du nom à 320 px.
+                    */}
                     <StatusPill tone="neutral" size="sm">
                       {occupees}/{inBuilding.length}
                     </StatusPill>

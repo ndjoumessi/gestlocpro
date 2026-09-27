@@ -99,6 +99,13 @@ const ligneDe = (s: string, index: number) => s.slice(0, index).split('\n').leng
  */
 const DESTRUCTIONS_ATOMIQUES = [
   'building.delete',
+  /* LA PIÈCE FOURNIE RETIRÉE. Même critère que la photo d'une réserve, et pour
+     la même raison : la ligne ne survit pas au retrait — ni statut, ni
+     corbeille —, et les octets partent avec elle. Sans trace atomique, plus
+     rien ne pourrait dire qu'une pièce avait été fournie puis reprise, ce qui
+     est exactement la question posée quand un locataire soutient l'avoir
+     reçue. */
+  'document.file_delete',
   'inspection.photo_delete',
   'payment.delete',
   /* LE RELEVÉ RETIRÉ. L'index disparaît avec sa ligne — la table ne porte ni

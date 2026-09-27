@@ -200,6 +200,11 @@ export const fr = {
     /* LA PLAGE D'UN SÉLECTEUR DE MOIS — voir `MonthPicker` : les mois fermés
        disaient QUE c'était fermé, jamais jusqu'où. */
     monthRange: 'Choix possible de {debut} à {fin}.',
+    /* UNE SEULE BORNE QUAND LES DEUX SE CONFONDENT. `monthRange` rendait
+       « de Septembre 2026 à Septembre 2026 » — deux bornes identiques récitées
+       comme un intervalle —, et c'est la fenêtre la PLUS FRÉQUENTE du produit :
+       la démonstration resserre min et max sur le mois du dernier relevé. */
+    monthOnly: 'Seul {debut} est possible.',
     monthFrom: 'Choix possible à partir de {debut}.',
     monthUntil: 'Choix possible jusqu’à {fin}.',
     onlyDigits: 'Ce champ n’accepte que des chiffres.',
@@ -1028,6 +1033,14 @@ export const fr = {
       scheduleEmptyBody:
         'Tous les loyers appelés ont été encaissés. Cette liste se remplit d’elle-même dès qu’une échéance passe la date d’exigibilité.',
       breakdownTitle: 'Répartition du parc',
+      /* DEUX TITRES POUR UNE CARTE, parce que deux rôles n'y lisent pas la même
+         chose. Le propriétaire y voit l'impayé par immeuble, classé : le titre
+         doit dire ce que la colonne de chiffres EST, faute de quoi un montant nu
+         se lit au choix comme un loyer ou comme un reste. Le gestionnaire
+         délégué n'en voit pas l'argent — il garde donc le titre d'occupation,
+         qui décrit ce qu'il a sous les yeux. */
+      breakdownTitleMoney: 'Impayé par immeuble',
+      breakdownOutstanding: 'impayé',
       legendRent: 'Loyer',
       legendWater: 'Eau',
       legendPower: 'Électricité',
@@ -1170,7 +1183,28 @@ export const fr = {
          — il porte le numéro parce que douze entrées se ressemblent ; celle-ci
          se lit SOUS le libellé, dans un menu déjà ouvert sur sa fiche, où le
          numéro serait redit pour rien. */
-      deleteUnitReason: 'Ce logement porte des paiements ou un bail : le retirer effacerait son histoire.',
+      /* L'ALTERNATIVE AU GLISSEMENT, exigée par WCAG 2.5.7 : un geste de
+         glissement doit être obtenable à un seul pointeur. Le menu de la fiche
+         les porte, ce qui sert le clavier par la même porte. */
+      /* LE LIBELLÉ DE L'AXE, et les deux sens ne servent plus que de noms
+         accessibles : la rangée dit « Déplacer » une fois, deux flèches portent
+         les directions. */
+      moveUnit: 'Déplacer',
+      moveUnitLeft: 'Déplacer à gauche',
+      moveUnitRight: 'Déplacer à droite',
+      /* ELLE DIT LA POSITION, PAS LE GESTE. « Déplacé » ne renseigne sur rien :
+         c'est le rang atteint qui est la seule chose qu'on ne peut pas voir quand
+         on ne voit pas le rail. Le total y est parce qu'un rang sans son total ne
+         dit pas qu'on est arrivé au bout. */
+      unitMoved: '{unit} — position {rang} sur {total}',
+      /* RACCOURCIE À UNE LIGNE, et non supprimée. Elle tenait treize mots sur
+         TROIS lignes dans le menu : l'entrée désactivée y était le bloc le plus
+         lourd, donc l'élément qu'on ne peut pas cliquer dominait ceux qu'on
+         peut. La décision qui l'a créée tient toujours — « “Retirer” en gris,
+         sans un mot, se clique deux fois avant qu'on renonce » —, et
+         l'explication complète vit dans la fenêtre de confirmation. Un menu est
+         un endroit où l'on choisit, pas où l'on lit. */
+      deleteUnitReason: 'Des paiements ou un bail y sont rattachés.',
       deleteUnitTitle: 'Retirer {unit} ?',
       deleteUnitBody:
         'Ce logement n’a jamais porté de bail, de relevé ni de travaux. Le retrait est définitif.',
@@ -1452,7 +1486,15 @@ export const fr = {
       corrected: '{count} relevés corrigés',
       corrected_one: '{count} relevé corrigé',
       removed: 'Relevé retiré',
-      correctLine: 'Corriger les relevés — {unit}',
+      /* « MODIFIER » ET NON « CORRIGER », PARCE QUE C'EST CE QUE LE BOUTON DIT.
+         Le bouton affiche `common.edit` — « Modifier » —, et ce nom-ci le
+         REFORMULAIT en « Corriger ». Un `aria-label` écrase le contenu : le mot
+         lisible disparaissait du nom, et qui commande à la voix dit ce qu'il lit
+         (WCAG 2.5.3). Onze cas mesurés le 2026-09-27, dans les deux langues.
+         Le logement RESTE — c'est la décision d'origine, « douze boutons à la
+         suite ne disent pas lequel on active » — il s'ajoute simplement au
+         libellé au lieu de le remplacer. */
+      correctLine: 'Modifier les relevés — {unit}',
       removeWater: 'Retirer le relevé d’eau',
       removePower: 'Retirer le relevé d’électricité',
       confirmRemove: 'Confirmer le retrait',
@@ -2087,6 +2129,12 @@ export const fr = {
         document: {
           fulfilled: 'Pièce remise',
           declined: 'Demande de pièce refusée',
+          /* « RETIRÉE » ET NON « SUPPRIMÉE », parce que c'est ce que la route
+             fait : elle efface les octets du stockage PUIS la ligne, dans la même
+             transaction. Le registre, lui, garde la trace — dire « supprimée »
+             ferait croire que rien n'en reste, alors que la demande de pièce
+             survit et redevient à fournir. */
+          file_delete: 'Pièce retirée',
         },
         inspection: {
           record: 'État des lieux établi',
