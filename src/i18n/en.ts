@@ -203,7 +203,13 @@ export const en: Dictionary = {
     tenants: 'Tenants',
     report: 'Report',
     alerts: 'Re\u00ADports',
-    alertsShort: 'Reports',
+    /* LE MÊME TRAIT D'UNION CONDITIONNEL QUE SON JUMEAU LONG, deux lignes plus
+       haut : `alerts` porte « Re\u00ADports » depuis son lot, `alertsShort` est
+       arrivé après et ne l'a jamais reçu. À 320 px, la barre basse le coupait en
+       « Report » / « s » — un fragment d'un caractère sous le reste du mot se lit
+       comme une coquille, pas comme une césure. `mesure-ui` l'a nommé sur 1 824
+       libellés mesurés. */
+    alertsShort: 'Re\u00ADports',
     onboarding: 'Onboarding and rights',
     system: 'System states',
     tenantPortal: 'Tenant portal (web)',
