@@ -703,6 +703,10 @@ export const en: Dictionary = {
       chartNote:
         'Amounts collected per month, split between rent, water and electricity. The current month is still open.',
       openMonth: 'Current month, still open.',
+      recoveryEmptyTitle: 'Nothing to recover this month',
+      recoveryEmptyBody:
+        'No lease is active: as soon as a unit is let, the rent due and the share collected appear here.',
+      rebilledNoReading: 'No meter reading taken for this period.',
       recoveryTitle: 'Recovery this month',
       recoveryTableCaption: 'Amounts behind the chart, split by payment status.',
       recoveryCollected: 'Paid',

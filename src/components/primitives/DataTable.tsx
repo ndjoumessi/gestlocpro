@@ -1045,6 +1045,66 @@ function Fiche<T>({ row, columns }: { row: T; columns: Column<T>[] }) {
  * classe, et la règle de base groupe `h1, h2, h3` sous la même famille et la
  * même graisse — la balise, à elle seule, ne porte aucune apparence.
  */
+/**
+ * LE VIDE D'UNE SECTION PARMI D'AUTRES — une rangée, pas un écran.
+ *
+ * ═══ POURQUOI DEUX FORMES, ET POURQUOI CELLE-CI N'EST PAS UN RÉGLAGE DE L'AUTRE ═══
+ *
+ * `EmptyState`, juste en dessous, porte `py-14` et un cercle de 48 px : 273 px de
+ * haut sur un poste de bureau, 316 px à 360 px de large — mesuré. C'est JUSTE
+ * quand le vide EST tout l'écran : sur travaux, cautions ou signalements, il n'y
+ * a rien d'autre à montrer, et la boîte occupe la place de ce qui manque.
+ *
+ * Ce l'est beaucoup moins quand la section vide est une parmi quatre. La file du
+ * jour l'a mesuré la première : à 360 px, son état vide repoussait les quatre
+ * indicateurs du tableau de bord ENTIÈREMENT sous la ligne de flottaison — 786 px
+ * pour une vue de 640. Un gestionnaire qui ouvrait son écran le matin voyait un
+ * titre et une boîte en pointillés.
+ *
+ * ON N'A DONC PAS RÉTRÉCI LA PRIMITIVE : elle a raison ailleurs, et la rogner pour
+ * ce cas-ci abîmerait les écrans où le vide est tout. On en écrit une seconde,
+ * qui garde le VOCABULAIRE — même cercle, même glyphe, même titre, même corps —
+ * et change la mise en page : en ligne, donc une rangée au lieu de 273 px.
+ *
+ * ELLE EST ICI, ET NON RECOPIÉE CHEZ SES APPELANTS. Elle est née dans
+ * `FileDuJour` ; la carte du recouvrement en avait besoin au lot suivant, pour un
+ * anneau qui se peignait vide. Deux copies de dix lignes auraient divergé au
+ * premier ajustement — et c'est la seule leçon que ce dépôt répète plus souvent
+ * que les autres.
+ *
+ * PAS DE NIVEAU DE TITRE : le titre d'une ligne vide n'est pas un titre. Il est
+ * rendu en `<p>` gras, parce que cette forme vit SOUS un `CardHeader` qui porte
+ * déjà le titre de la section — en ajouter un second créerait une marche pour
+ * dire « rien », et qui parcourt la page par ses titres compte les marches.
+ */
+export function LigneVide({
+  titre,
+  corps,
+  icone = 'checkCircle',
+}: {
+  titre: string
+  corps?: string
+  /**
+   * `checkCircle` PAR DÉFAUT, et c'est une position, pas une décoration : les
+   * deux emplois de cette forme sont des vides qui sont de BONNES nouvelles —
+   * rien à traiter aujourd'hui, rien à recouvrer ce mois-ci. Un écran où le vide
+   * est un manque passe le glyphe qui le dit.
+   */
+  icone?: Parameters<typeof Icon>[0]['name']
+}) {
+  return (
+    <div data-ligne-vide="" className="flex items-start gap-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-muted">
+        <Icon name={icone} className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="title-m">{titre}</p>
+        {corps && <p className="mt-1 text-body text-pretty text-muted">{corps}</p>}
+      </div>
+    </div>
+  )
+}
+
 export function EmptyState({
   title,
   body,

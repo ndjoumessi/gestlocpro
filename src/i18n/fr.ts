@@ -989,6 +989,13 @@ export const fr = {
       // Portée dans l'infobulle de la dernière colonne : sans elle, le creux
       // du mois courant se lit comme une chute d'encaissement.
       openMonth: 'Mois en cours, encore ouvert.',
+      /* L'ANNEAU ET LES BARRES DU RECOUVREMENT, QUAND IL N'Y A RIEN — voir
+         `Dashboard` : le cercle se peignait vide et les barres rapportaient une
+         part à zéro relevé. Deux vides, deux causes, deux phrases. */
+      recoveryEmptyTitle: 'Rien à recouvrer ce mois-ci',
+      recoveryEmptyBody:
+        'Aucun bail n’est actif : dès qu’un logement est loué, le loyer attendu et sa part encaissée s’affichent ici.',
+      rebilledNoReading: 'Aucun relevé pris sur la période.',
       recoveryTitle: 'Recouvrement du mois',
       recoveryTableCaption: 'Montants derrière le graphique, ventilés par statut de règlement.',
       recoveryCollected: 'Payé',

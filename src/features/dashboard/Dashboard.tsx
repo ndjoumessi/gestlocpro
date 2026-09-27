@@ -11,7 +11,7 @@ import { Button } from '@/components/primitives/Button'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { DeltaBadge } from '@/components/primitives/Badge'
 import { DonutChart, ProgressBar, StackedBarChart, StatCard } from '@/components/primitives/Charts'
-import { EmptyState } from '@/components/primitives/DataTable'
+import { EmptyState, LigneVide } from '@/components/primitives/DataTable'
 import { Skeleton, SkeletonRegion, SkeletonStatRow } from '@/components/primitives/Skeleton'
 import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { useCurrency } from '@/currency/CurrencyProvider'
@@ -658,58 +658,103 @@ export function Dashboard() {
         <div className="flex min-w-0 flex-col gap-4">
           <Card>
             <CardHeader title={t('app.dashboard.recoveryTitle')} level={2} />
-            <DonutChart
-              caption={t('app.dashboard.recoveryTableCaption')}
-              centerValue={nombres.percent(collectedShare)}
-              centerLabel={t('app.dashboard.recoveryCollected')}
-              /* L'ÉTAT, ET NON LA COULEUR. La teinte et la forme d'une part
-                 découlent toutes deux de `etat`, par une seule table dans
-                 `Charts`. Cet écran ne peut donc plus les désaccorder — c'est le
-                 même geste que la grille des paiements et sa légende, qui
-                 appellent le même composant plutôt que de s'accorder à vue.
-                 « en retard » se dit `overdue` ici comme partout ailleurs dans le
-                 produit : un second mot pour le même état rouvrait la porte à
-                 deux vocabulaires. */
-              slices={[
-                { etat: 'paid', label: t('app.dashboard.recoveryCollected'), value: collected },
-                { etat: 'partial', label: t('app.dashboard.recoveryPartial'), value: kpis.partial },
-                { etat: 'overdue', label: t('app.dashboard.recoveryLate'), value: kpis.late },
-              ]}
-              /**
-               * Ce que l'anneau ne disait pas : à quoi ses parts s'ajoutent.
-               *
-               * Les trois somment exactement à « Loyers attendus », premier
-               * indicateur de la page, et les deux dernières à « Impayés
-               * cumulés », le troisième. Ce sont donc les mêmes nombres, à deux
-               * panneaux d'écart, sans que rien ne l'indique — l'utilisateur
-               * devait poser l'addition pour savoir s'ils parlaient de la même
-               * chose. L'invariant est pourtant écrit dans `kpis.ts` : l'impayé
-               * se ventile en partiel et en retard, et les deux parts somment au
-               * total.
-               *
-               * Les intitulés sont repris À L'IDENTIQUE des indicateurs : c'est
-               * le nom qui referme la boucle, le montant seul se serait encore lu
-               * comme une coïncidence.
-               */
-              reconciliation={[
-                {
-                  key: 'outstanding',
-                  label: t('app.dashboard.outstanding'),
-                  value: outstanding,
-                },
-                {
-                  key: 'expected',
-                  label: t('app.dashboard.expected'),
-                  value: expected,
-                  fort: true,
-                },
-              ]}
-            />
+            {/*
+              ═══ UN ANNEAU SANS PART N'EST PAS UN ANNEAU ═══
+
+              `DonutChart` divise chaque part par le total. Total nul — un parc
+              dont aucun bail n'est actif —, toutes les fractions valent zéro et
+              le cercle se peint VIDE : 128 px sans une seule bande, « 0 % ·
+              encaissé » en son centre. C'est exactement ce que le graphe voisin
+              refuse dans ces termes, dix lignes plus haut : « un cadre d'axes sans
+              barre n'est pas un graphique : c'est un graphique qui a l'air cassé ».
+              La même règle valait ici et n'y était pas appliquée.
+
+              `LigneVide` ET NON `EmptyState` : cette carte est une section parmi
+              plusieurs, et la primitive pleine y coûterait 273 px pour dire qu'il
+              n'y a rien — l'arbitrage est écrit là où les deux formes vivent, et
+              c'est la file du jour qui l'a mesuré la première.
+            */}
+            {rienAttendu ? (
+              <LigneVide
+                titre={t('app.dashboard.recoveryEmptyTitle')}
+                corps={t('app.dashboard.recoveryEmptyBody')}
+              />
+            ) : (
+              <DonutChart
+                caption={t('app.dashboard.recoveryTableCaption')}
+                centerValue={nombres.percent(collectedShare)}
+                centerLabel={t('app.dashboard.recoveryCollected')}
+                /* L'ÉTAT, ET NON LA COULEUR. La teinte et la forme d'une part
+                   découlent toutes deux de `etat`, par une seule table dans
+                   `Charts`. Cet écran ne peut donc plus les désaccorder — c'est le
+                   même geste que la grille des paiements et sa légende, qui
+                   appellent le même composant plutôt que de s'accorder à vue.
+                   « en retard » se dit `overdue` ici comme partout ailleurs dans le
+                   produit : un second mot pour le même état rouvrait la porte à
+                   deux vocabulaires. */
+                slices={[
+                  { etat: 'paid', label: t('app.dashboard.recoveryCollected'), value: collected },
+                  { etat: 'partial', label: t('app.dashboard.recoveryPartial'), value: kpis.partial },
+                  { etat: 'overdue', label: t('app.dashboard.recoveryLate'), value: kpis.late },
+                ]}
+                /**
+                 * Ce que l'anneau ne disait pas : à quoi ses parts s'ajoutent.
+                 *
+                 * Les trois somment exactement à « Loyers attendus », premier
+                 * indicateur de la page, et les deux dernières à « Impayés
+                 * cumulés », le troisième. Ce sont donc les mêmes nombres, à deux
+                 * panneaux d'écart, sans que rien ne l'indique — l'utilisateur
+                 * devait poser l'addition pour savoir s'ils parlaient de la même
+                 * chose. L'invariant est pourtant écrit dans `kpis.ts` : l'impayé
+                 * se ventile en partiel et en retard, et les deux parts somment au
+                 * total.
+                 *
+                 * Les intitulés sont repris À L'IDENTIQUE des indicateurs : c'est
+                 * le nom qui referme la boucle, le montant seul se serait encore lu
+                 * comme une coïncidence.
+                 */
+                reconciliation={[
+                  {
+                    key: 'outstanding',
+                    label: t('app.dashboard.outstanding'),
+                    value: outstanding,
+                  },
+                  {
+                    key: 'expected',
+                    label: t('app.dashboard.expected'),
+                    value: expected,
+                    fort: true,
+                  },
+                ]}
+              />
+            )}
 
             <div className="mt-6 flex flex-col gap-3 border-t border-divider pt-5">
               <p className="eyebrow text-muted">{t('app.dashboard.rebilled')}</p>
-              <ProgressBar label={t('app.dashboard.legendWater')} value={kpis.waterRebilled} />
-              <ProgressBar label={t('app.dashboard.legendPower')} value={kpis.powerRebilled} />
+              {/*
+                ═══ UNE PART DE ZÉRO RELEVÉ, ET LA GARDE EST UNE AUTRE ═══
+
+                `waterRebilled` est la part des relevés dont l'eau est saisie SUR
+                LES RELEVÉS. Sans aucun relevé, `computeKpis` rend 0 pour ne pas
+                diviser par zéro — la même garde que plus haut, le même effet : la
+                carte écrivait « Eau 0 % », qui se lit « rien n'a été refacturé »
+                là où la vérité est « aucun relevé n'a encore été pris ». Deux
+                faits différents, et deux travaux différents à faire.
+
+                LA CONDITION N'EST PAS `rienAttendu`, et il fallait la distinguer :
+                un parc peut avoir tous ses baux actifs et aucun relevé — c'est
+                l'état de tout début de mois, le plus courant des deux. Une seule
+                garde pour les deux aurait effacé ces barres sur un parc qui
+                recouvre très bien.
+              */}
+              {readings.length === 0 ? (
+                <p className="text-body text-muted">{t('app.dashboard.rebilledNoReading')}</p>
+              ) : (
+                <>
+                  <ProgressBar label={t('app.dashboard.legendWater')} value={kpis.waterRebilled} />
+                  <ProgressBar label={t('app.dashboard.legendPower')} value={kpis.powerRebilled} />
+                </>
+              )}
             </div>
           </Card>
 

@@ -1,4 +1,5 @@
 import { Card } from '@/components/primitives/Card'
+import { LigneVide } from '@/components/primitives/DataTable'
 import { Button } from '@/components/primitives/Button'
 import { Icon, type IconName } from '@/components/primitives/Icon'
 import { cn } from '@/lib/cn'
@@ -150,18 +151,20 @@ export function FileDuJour({ entrees }: { entrees: EntreeDeFile[] }) {
 
           Le cercle et l'icône restent — c'est le même vocabulaire —, la mise en
           page passe en ligne. 273 px deviennent une rangée.
+
+          ═══ LA FORME A DÉMÉNAGÉ, ET ELLE N'A PAS CHANGÉ ═══
+
+          Elle vivait ici même, en dix lignes. La carte du recouvrement en a eu
+          besoin au lot suivant — son anneau se peignait VIDE sur un parc sans
+          bail actif — et deux copies de dix lignes auraient divergé au premier
+          ajustement. `LigneVide` vit donc à côté d'`EmptyState`, où l'arbitrage
+          entre les deux formes se lit d'un coup d'œil, et l'argument mesuré
+          ci-dessus est parti avec elle.
         */
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-muted">
-            <Icon name="checkCircle" className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="title-m">{t('app.dashboard.queueEmptyTitle')}</p>
-            <p className="mt-1 text-body text-pretty text-muted">
-              {t('app.dashboard.queueEmptyBody')}
-            </p>
-          </div>
-        </div>
+        <LigneVide
+          titre={t('app.dashboard.queueEmptyTitle')}
+          corps={t('app.dashboard.queueEmptyBody')}
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {entrees.map((entree) => {
