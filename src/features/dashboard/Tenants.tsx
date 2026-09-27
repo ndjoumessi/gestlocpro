@@ -460,6 +460,10 @@ export function Tenants() {
                 </div>
                 {unit.tenant && unit.tenantId ? (
                   <MenuDeDebordement
+                    /* DISCRET : le même déclencheur se répète par fiche, et dix
+                       cercles alignés se comptent avant qu'on lise un nom. Même
+                       arbitrage qu'au parc. */
+                    discret
                     libelle={t('app.tenants.actionsFor', { name: unit.tenant })}
                     className="-my-[11px]"
                   >
@@ -481,6 +485,11 @@ export function Tenants() {
                           ? t('app.tenants.removeFor', { name: unit.tenant })
                           : t('app.tenants.removeBlocked')
                       }
+                      /* LA RAISON SE LIT : « Retirer » en gris sans un mot se
+                         clique deux fois avant qu'on renonce. Elle existait
+                         déjà — pour la synthèse vocale seulement. */
+                      raison={role === 'owner' ? undefined : t('app.tenants.removeBlocked')}
+                      ton="danger"
                     >
                       {t('app.tenants.remove')}
                     </MenuElement>

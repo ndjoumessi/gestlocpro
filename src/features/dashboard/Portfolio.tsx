@@ -1745,7 +1745,10 @@ export function Portfolio() {
                  geste absent du menu ne s'explique pas, et c'est la règle que ce
                  lot a posée sur les deux autres suppressions du Parc. */
               <div className="flex items-center justify-end">
-                <MenuDeDebordement libelle={t('app.portfolio.unitActions', { unit: unit.label })}>
+                <MenuDeDebordement
+                  discret
+                  libelle={t('app.portfolio.unitActions', { unit: unit.label })}
+                >
                   <MenuElement
                     icone="sliders"
                     onClick={() => setLogementACorriger(unit)}
@@ -1755,6 +1758,14 @@ export function Portfolio() {
                   </MenuElement>
                   <MenuElement
                     icone="close"
+                    ton="danger"
+                    /* LA MÊME RAISON QUE SUR LA FICHE DE BUREAU : les deux
+                       variantes montrent le même geste au même utilisateur, et
+                       une seule des deux qui s'explique serait pire que
+                       aucune. */
+                    raison={
+                      unit.deletable === true ? undefined : t('app.portfolio.deleteUnitReason')
+                    }
                     onClick={
                       unit.deletable === true ? () => setLogementASupprimer(unit) : undefined
                     }
