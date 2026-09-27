@@ -1281,7 +1281,43 @@ function Sidebar({
           panneau ne se séparait du contenu que par sa COULEUR. Devenu blanc sur
           un papier presque blanc, il n'aurait plus eu de limite du tout.
         */
-        'shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-surface text-ink',
+        /*
+          ═══ LE PANNEAU NE DÉFILE PLUS D'UN BLOC — TROIS ZONES ═══
+
+          `overflow-y-auto` était posé ICI, sur l'`<aside>` tout entier. Le logo,
+          la navigation et le pied vivaient donc dans le MÊME conteneur défilant,
+          et dès que leur somme dépassait la fenêtre, tout partait ensemble.
+          Mesuré au navigateur sur `/demo`, fenêtre de 1440 px de large :
+
+            hauteur 1080, racine 16   contenu à ras          pied visible
+            hauteur  900, racine 16   déborde de 176 px      pied 37 px SOUS le bord
+            hauteur  800, racine 16   déborde de 276 px      pied 137 px sous le bord
+            hauteur  900, racine 22   déborde de 580 px      pied 389 px sous le bord
+            hauteur  640, racine 22   déborde de 840 px      pied 649 px sous le bord
+
+          800 px de haut, c'est un portable ordinaire une fois le cadre du
+          navigateur retiré. Ce qui tombait sous le bord n'était pas du décor : les
+          deux entrées de PIED — le portail du locataire, les états du système —,
+          les dernières entrées de section avec elles, et, quand la barre est
+          repliée, le bouton qui la déplie. La barre basse qui porte les mêmes
+          destinations est `lg:hidden` : au-delà de 1024 px, plus rien ne les
+          offrait.
+
+          ET RIEN NE LE DISAIT, exactement comme pour les tableaux : ce dépôt l'a
+          déjà écrit — « `overflow-x-auto` ne peint aucune barre tant qu'on ne
+          défile pas ». Un panneau qui a l'air complet ne se fait pas fouiller.
+
+          LA STRUCTURE EST DONC EN TROIS ZONES : un en-tête et un pied FIXES, une
+          navigation qui défile entre eux. Le logo reste, le pied reste, et ce qui
+          bouge passe DERRIÈRE deux bords fixes — c'est ce qui rend le défilement
+          visible sans peindre une barre.
+
+          `min-h-0` SUR LA ZONE DU MILIEU EST LA PIÈCE INDISPENSABLE, plus bas :
+          un enfant `flex` refuse par défaut de descendre sous la hauteur de son
+          contenu, donc sans elle la zone pousse le pied dehors et on a exactement
+          le défaut d'avant, déplacé d'un cran.
+        */
+        'shrink-0 flex-col border-r border-border bg-surface text-ink',
         'sticky top-0 h-dvh',
         'pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
         'pr-3 pl-[max(0.75rem,env(safe-area-inset-left))]',
@@ -1290,7 +1326,34 @@ function Sidebar({
       )}
       style={style}
     >
-      <div className="flex items-center gap-2 px-1.5">
+      {/*
+        ═══ ZONE FIXE nº 1 : LA MARQUE ET LA BASCULE ═══
+
+        `shrink-0` : elle ne cède jamais sa hauteur à la navigation. C'est la
+        moitié haute du cadre derrière lequel le reste défile, et son `border-b`
+        est ce qui rend ce défilement LISIBLE — on voit les sections passer sous
+        un bord qui ne bouge pas. Le filet est donc structurel, pas décoratif.
+
+        LA BASCULE NE CHANGE PLUS DE PLACE. Elle était ici quand la barre est
+        dépliée, et dans le PIED quand elle est repliée : le seul bouton dont on a
+        besoin pour revenir en arrière se trouvait ailleurs que là où on l'a
+        laissé, et — avant ce lot — sous le bord de la fenêtre une fois sur deux.
+        Repliée, la zone empile la marque et la bascule au lieu de les aligner :
+        72 px ne tiennent pas deux objets côte à côte.
+      */}
+      <div
+        /* `data-zone` PLUTÔT QU'UNE CLASSE : les trois zones sont un CONTRAT —
+           deux fixes, une mobile — et un contrat doit être interrogeable sans
+           lire une feuille de style. Même raison que `data-carte` ou
+           `data-jauge` ailleurs : un marqueur dit ce que la chose EST, une
+           classe dit comment elle est peinte, et seule la première survit à un
+           renommage d'utilitaire. */
+        data-zone="entete"
+        className={cn(
+          'shrink-0 border-b border-border pb-4',
+          railed ? 'flex flex-col items-center gap-2' : 'flex items-center gap-2 px-1.5',
+        )}
+      >
         {wide ? (
           <Logo caption={parc ?? undefined} to={base} />
         ) : (
@@ -1303,9 +1366,28 @@ function Sidebar({
           label={dialogLabel ? t('nav.closeNav') : t('nav.toggleNav')}
           variant="secondary"
           onClick={onToggleRail}
-          className={cn('ml-auto', railed && 'hidden')}
+          className={cn(!railed && 'ml-auto')}
         />
       </div>
+
+      {/*
+        ═══ ZONE MOBILE : TOUT CE QUI PEUT ÊTRE LONG ═══
+
+        Le sélecteur de profil et les quatre sections de navigation. C'est la
+        seule zone qui défile, et `min-h-0` est ce qui le lui permet : sans elle,
+        un enfant `flex` garde la hauteur de son contenu, pousse le pied hors du
+        panneau, et le défaut mesuré plus haut revient à l'identique.
+
+        PAS DE `tabIndex` sur ce conteneur. Une boîte défilante non focalisable ne
+        se parcourt pas à la molette seule — mais celle-ci ne contient que des
+        LIENS, et le navigateur amène dans la vue celui qui reçoit le focus. Un
+        point de tabulation de plus n'apporterait rien et ferait une halte muette
+        avant chaque section.
+      */}
+      <div
+        data-zone="navigation"
+        className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-4"
+      >
 
       {/*
         Le sélecteur est un POINT DE VUE, pas une identité — il ne change que ce
@@ -1411,7 +1493,25 @@ function Sidebar({
           if (!items.length) return null
 
           return (
-            <div key={section.headingKey} className="flex flex-col gap-0.5">
+            <div
+              key={section.headingKey}
+              /*
+                REPLIÉ, LE GROUPE SE LIT À UN FILET, faute de pouvoir se lire à son
+                nom. Les intitulés de section ne tiennent pas dans 72 px, et sans
+                eux les douze entrées formaient UNE colonne d'icônes
+                indifférenciée : la structure que la barre dépliée montre — piloter,
+                encaisser, entretenir, administrer — disparaissait entièrement au
+                lieu de se réduire.
+
+                `first:` ne peint rien au-dessus du premier groupe : un séparateur
+                en tête ne sépare que du vide, et l'en-tête porte déjà son propre
+                bord.
+              */
+              className={cn(
+                'flex flex-col gap-0.5',
+                !wide && 'border-t border-border pt-2 first:border-t-0 first:pt-0',
+              )}
+            >
               {wide && (
                 <p className="eyebrow px-2.5 pb-1 text-muted">
                   {t(section.headingKey as 'nav.sectionSteering')}
@@ -1424,28 +1524,37 @@ function Sidebar({
           )
         })}
       </nav>
+      </div>
 
-      {/* Le filet de séparation ne se dessine que s'il sépare quelque chose :
-          hors démonstration ce pied peut ne contenir que le bouton de repli, et
-          n'en contenir rien du tout quand la barre est dépliée. */}
+      {/*
+        ═══ ZONE FIXE nº 2 : LE PIED ═══
+
+        `shrink-0` et hors de la zone défilante : c'est ce qui répare le défaut
+        mesuré. Le portail du locataire et les états du système se trouvaient
+        jusqu'ici au bout d'un défilement que rien n'annonçait, et passaient sous
+        le bord de la fenêtre dès 900 px de haut.
+
+        `mt-auto` A DISPARU, et il fallait qu'il disparaisse : il poussait ce bloc
+        vers le bas dans un conteneur qui défilait, ce qui ne veut rien dire — la
+        marge s'ajoutait à la hauteur du contenu au lieu de coller le pied au
+        cadre. Maintenant que la zone du milieu prend la place restante par
+        `flex-1`, le pied est au bas du panneau parce qu'il en est le dernier
+        enfant, sans qu'aucune marge ne l'y pousse.
+
+        LE FILET NE SE DESSINE QUE S'IL SÉPARE QUELQUE CHOSE : hors démonstration
+        ce pied peut être vide, et un trait au-dessus de rien est un trait de
+        trop. La bascule n'y est plus — elle ne quitte plus l'en-tête.
+      */}
       <div
+        data-zone="pied"
         className={cn(
-          'mt-auto flex flex-col gap-0.5',
-          (pied.length > 0 || railed) && 'border-t border-border pt-3',
+          'shrink-0 flex flex-col gap-0.5',
+          pied.length > 0 && 'border-t border-border pt-3',
         )}
       >
         {pied.map((item) => (
           <SidebarLink key={item.to} item={item} wide={wide} />
         ))}
-        {railed && (
-          <IconButton
-            icon="menu"
-            label={t('nav.toggleNav')}
-            variant="secondary"
-            onClick={onToggleRail}
-            className="mt-1 self-center"
-          />
-        )}
       </div>
     </aside>
   )
