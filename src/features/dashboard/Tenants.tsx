@@ -861,7 +861,34 @@ export function Tenants() {
             role: 'identite',
             header: t('app.portfolio.tenant'),
             render: (unit) => (
-              <div className="flex items-center gap-3">
+              /*
+                `min-w-0`, ET C'EST LA PORTE QUI L'A TROUVÉ — pas ce lot-ci.
+
+                `mesure-ui` refusait cette rangée de 5 px à 320 px, dans les deux
+                langues, et le relevé pris au commit précédent rend les MÊMES deux
+                occurrences : le défaut préexiste aux lots du pied de colonne et de
+                la barre latérale.
+
+                Trois enfants : la pastille d'initiales (32 px, `shrink-0`), le nom,
+                et l'état d'accès. Le nom pouvait céder — il porte `min-w-0
+                truncate`, et sa coupe est ASSUMÉE, c'est ce que `data-donnee`
+                déclare. Les deux autres non : l'état n'a jamais eu de consigne de
+                rétrécissement, donc il imposait sa largeur de contenu, et la rangée
+                elle-même refusait de descendre sous celle de ses enfants.
+
+                Le `min-w-0` rétablit la chaîne jusqu'au nom, qui est le seul dont la
+                longueur n'est bornée par rien — un nom est saisi. `shrink-0` sur
+                l'état dit l'inverse et le dit exprès : « Sans compte » est un
+                verdict de deux mots, le couper en « Sans com… » ne le rend pas plus
+                court à lire, il le rend faux.
+
+                C'est la troisième fois que ce motif se paie dans ce dépôt : `Fiche`
+                porte déjà `min-w-0 flex-1` autour du rendu d'identité pour la même
+                raison, écrite là-bas — « un élément flexible refuse par défaut de
+                descendre sous la largeur intrinsèque de son contenu ». La chaîne
+                était rétablie d'un cran, et se rompait au suivant.
+              */
+              <div className="flex min-w-0 items-center gap-3">
                 <span
                   aria-hidden="true"
                   className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-label font-semibold text-muted"
@@ -887,7 +914,7 @@ export function Tenants() {
                     compte ». `StatusPill` porte déjà un mot à côté de sa
                     teinte, ce que `couleur-non-seule` exige. */}
                 {unit.tenantHasAccount === false && (
-                  <StatusPill tone="warn" size="sm">
+                  <StatusPill tone="warn" size="sm" className="shrink-0">
                     {t('app.tenants.noAccount')}
                   </StatusPill>
                 )}
