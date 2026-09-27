@@ -95,7 +95,23 @@ export function GroupeDeFiltres<T extends string>({
             onClick={() => onChange(option.valeur)}
             className={cn(
               'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border px-3.5',
-              'text-label font-semibold transition-colors duration-150',
+              'text-label font-semibold',
+            /*
+              L'ENFONCEMENT AU CLIC — LE MÊME QUE PARTOUT AILLEURS.
+
+              Les six variantes de `Button` le portent, `IconButton` avec elles,
+              et les entrées de navigation comme les étiquettes de profil l'ont
+              reçu au lot du 2026-09-27. Ces segments, qu'on active du même
+              geste, ne rendaient rien sous le doigt : un même clic répondait de
+              deux façons selon l'endroit du produit où on le fait.
+
+              `transform` EST NOMMÉ dans la transition : `transition-colors` ne
+              cadence pas cette propriété — le dépôt l'a déjà payé sur
+              `IconButton`, « l'enfoncement claquait ici et se déroulait là ».
+              `prefers-reduced-motion` est traité globalement par `tokens.css`.
+            */
+              'transition-[background-color,border-color,color,transform] duration-150 ease-out',
+              'active:translate-y-px',
               actif
                 ? 'border-ink bg-ink text-on-dark'
                 : 'border-border bg-surface text-muted hover:border-border-strong hover:text-ink',

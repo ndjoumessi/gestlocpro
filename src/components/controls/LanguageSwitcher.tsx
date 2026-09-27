@@ -41,7 +41,23 @@ export function LanguageSwitcher({ tone = 'light', className }: LanguageSwitcher
             className={cn(
               // 44px de haut comme de large : cible tactile minimale tenue.
               'inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm px-2.5',
-              'text-label font-semibold transition-colors duration-150 ease-out',
+              'text-label font-semibold',
+            /*
+              L'ENFONCEMENT AU CLIC — LE MÊME QUE PARTOUT AILLEURS.
+
+              Les six variantes de `Button` le portent, `IconButton` avec elles,
+              et les entrées de navigation comme les étiquettes de profil l'ont
+              reçu au lot du 2026-09-27. Ces segments, qu'on active du même
+              geste, ne rendaient rien sous le doigt : un même clic répondait de
+              deux façons selon l'endroit du produit où on le fait.
+
+              `transform` EST NOMMÉ dans la transition : `transition-colors` ne
+              cadence pas cette propriété — le dépôt l'a déjà payé sur
+              `IconButton`, « l'enfoncement claquait ici et se déroulait là ».
+              `prefers-reduced-motion` est traité globalement par `tokens.css`.
+            */
+              'transition-[background-color,color,transform] duration-150 ease-out',
+              'active:translate-y-px',
               active
                 ? tone === 'dark'
                   ? 'bg-accent text-on-accent'

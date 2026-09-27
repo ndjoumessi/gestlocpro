@@ -96,6 +96,44 @@ describe('les réglages', () => {
   })
 
   /**
+   * LE MÊME GESTE REND LA MÊME CHOSE.
+   *
+   * Les six variantes de `Button` portent `active:translate-y-px`, `IconButton`
+   * avec elles, et les entrées de navigation comme les étiquettes de profil l'ont
+   * reçu au lot du 2026-09-27. Les segments de langue et de thème — qu'on active
+   * exactement du même geste, dans le même panneau que ces entrées — ne rendaient
+   * rien sous le doigt. Un clic répondait donc de deux façons selon l'endroit du
+   * produit, ce que la thèse de ce fichier refuse : « les mêmes réglages,
+   * présentés de la même façon, partout ».
+   *
+   * LA CLASSE EST INTERROGÉE, ET C'EST ASSUMÉ. Un état `:active` n'existe que
+   * pendant que le bouton de la souris est enfoncé ; ni ce harnais ni aucune
+   * porte de ce dépôt ne tient un doigt appuyé. On vérifie donc ce que le
+   * navigateur APPLIQUERA, faute de pouvoir observer ce qu'il a appliqué.
+   */
+  it('répondent du même geste au clic, sur les trois surfaces', async () => {
+    installerFauxServeur()
+    await renderApp('/demo')
+    await attendreLeChargement()
+
+    const bloc = await ouvrirLesReglages()
+    const segments = Array.from(bloc.querySelectorAll('[role="group"] button'))
+    expect(segments.length, 'aucun segment dans le panneau').toBeGreaterThan(2)
+
+    for (const segment of segments) {
+      const nom = (segment.getAttribute('title') ?? segment.textContent ?? '').trim()
+      expect(segment.className, `« ${nom} » ne s’enfonce pas au clic`).toMatch(
+        /active:translate-y-px/,
+      )
+      /* `transition-colors` NE CADENCE PAS `transform` : le dépôt l'a payé sur
+         `IconButton`, « l'enfoncement claquait ici et se déroulait là ». */
+      expect(segment.className, `« ${nom} » fera claquer son enfoncement`).toMatch(
+        /transition-\[[^\]]*transform[^\]]*\]/,
+      )
+    }
+  })
+
+  /**
    * L'INTITULÉ EST DIT UNE FOIS.
    *
    * Le sélecteur de devise portait « Devise » dans son bouton. Sous une section
