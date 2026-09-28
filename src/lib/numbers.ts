@@ -31,6 +31,20 @@ export function formatInteger(value: number, tag: string): string {
 }
 
 /**
+ * Un nombre à UN chiffre après la virgule : « 2,4 » / « 2.4 ».
+ *
+ * Le séparateur décimal est le premier caractère que chaque langue écrit
+ * différemment, et le premier qu'on interpole à la main sans y penser : « 2.4 »
+ * se lit « vingt-quatre » à un lecteur francophone pressé.
+ *
+ * `minimumFractionDigits: 0` : un multiple rond s'écrit « ×2 » et non « ×2,0 »,
+ * qui suggérerait une précision qu'on n'a pas — le facteur est déjà un arrondi.
+ */
+export function formatDecimal(value: number, tag: string): string {
+  return new Intl.NumberFormat(tag, { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(value)
+}
+
+/**
  * Liste énumérée dans la langue : « A5 et C2 » / « A5 and C2 ».
  *
  * On concaténait avec `', '`, ce qui rend « A5, C2 » partout — lisible, mais
@@ -92,6 +106,8 @@ export function useNumbers() {
   return useMemo(
     () => ({
       integer: (value: number) => formatInteger(value, dateLocale),
+      /** « 2,4 » / « 2.4 » — le multiple d'un écart de consommation. */
+      decimal: (value: number) => formatDecimal(value, dateLocale),
       /** « 83 % » en français, « 83% » en anglais — et jamais coupé en deux lignes. */
       percent: (points: number) => formatPercent(points, dateLocale),
       list: (items: string[]) => formatList(items, dateLocale),

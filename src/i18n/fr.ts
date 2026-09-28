@@ -1627,6 +1627,16 @@ export const fr = {
       missingCount: '{count} relevés manquants pour la période',
       missingCount_one: '{count} relevé manquant pour la période',
       missingHint: 'La facturation du mois restera incomplète tant qu’ils ne sont pas saisis.',
+      /* DEUX TOURNÉES DIFFÉRENTES, DEUX NOTES. L'une envoie RELEVER un compteur
+         qu'on n'a pas lu ; celle-ci envoie VÉRIFIER une installation qu'on a lue.
+         « Notable » et non « anormal » : un index mal recopié et un visiteur
+         installé un mois doublent aussi, et accuser coûte plus cher que dire. */
+      gapCount: '{count} consommations ont au moins doublé',
+      gapCount_one: '1 consommation a au moins doublé',
+      gapHint: 'À vérifier avant de refacturer : une fuite, un appareil resté en marche, ou un index mal recopié.',
+      /* LE MULTIPLE SANS SA RÉFÉRENCE EST UN NOMBRE FLOTTANT. L'œil voit la
+         colonne entière et retrouve le mois d'avant ; le lecteur d'écran, non. */
+      gapAria: 'le mois précédent en comptait {reference}',
       complete: 'Tous les relevés sont saisis pour la période.',
       totalRebilled: 'Total refacturé',
       capturedCount: '{done} sur {total} saisis',

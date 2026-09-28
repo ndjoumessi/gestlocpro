@@ -249,6 +249,17 @@ const REGISTRE = {
   'app.data.demo': { adresse: '/demo/mes-donnees', geste: preparerLExport },
 
   /* ── Les aveux, et leur motif ── */
+  'app.meters.gapCount': {
+    nonMesurable:
+      'Elle ne paraît QU’AVEC UN ÉCART, et la démonstration n’en porte aucun : son ' +
+      'profil saisonnier plafonne à 1,20 quand la règle demande le double. Lui en ' +
+      'fabriquer un demanderait de truquer à la fois `READING_HISTORY_DEMO` et le semis ' +
+      'du serveur — deux générateurs qui doivent rester d’accord —, ce qui est un lot à ' +
+      'soi seul. CE QUI LA RENDRAIT MESURABLE EST NOMMÉ : une fuite semée sur un ' +
+      'logement du parc de démonstration, dans les deux générateurs à la fois. Tenue ' +
+      'en jsdom par `ecartAuPropreMois.test.tsx`, qui monte deux logements dont un seul ' +
+      'a doublé.',
+  },
   'app.data.closeFailed': {
     nonMesurable:
       'Elle dit une PANNE de la route de fermeture, et le bloc qui la porte n’existe ' +

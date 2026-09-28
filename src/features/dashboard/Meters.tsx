@@ -27,6 +27,7 @@ import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
 import { type MeterReading } from '@/data/portfolio'
+import { ecartNotable, referenceDuMoisPrecedent } from './ecartDeConsommation'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
 import { TariffsModal } from './TariffsModal'
@@ -48,7 +49,7 @@ export function Meters() {
   const exportCsv = useCsvExport()
   const csvMoney = useCsvMoney()
   const { role } = useRole()
-  const { unitById, readings: TOUS, isMine, loading } = usePortfolio()
+  const { unitById, readings: TOUS, isMine, loading, consumptionForUnit } = usePortfolio()
   const { adhesionActive, estDemo } = useSession()
   const [tarifsOuverts, setTarifsOuverts] = useState(false)
   /* LE GESTE QUI MANQUAIT SOUS TOUT L'ÉCRAN : aucune route n'écrivait de relevé,
@@ -375,6 +376,37 @@ export function Meters() {
   const maximumElectricite = maximum('power')
 
   /**
+   * ═══ L'ÉCART AU PROPRE PASSÉ DU LOGEMENT ═══
+   *
+   * Le filet compare les logements ENTRE EUX, et c'est pourquoi il ne porte
+   * aucun sens : « une forte consommation n'est pas une anomalie, c'est une
+   * consommation forte ». Cette borne tient, et celle-ci en est l'autre moitié —
+   * un logement qui consomme soudain le double de CE QU'IL CONSOMMAIT n'est pas
+   * une famille nombreuse, c'est un changement. C'est là qu'une fuite se voit,
+   * et une fuite non vue coûte plus que tout ce que cet écran refacture.
+   *
+   * LA RÉFÉRENCE VIENT DE L'HISTORIQUE, LE COURANT DE LA LIGNE AFFICHÉE. Deux
+   * sources pour le même mois se contrediraient le jour où elles divergent ;
+   * `consumptionForUnit` ne fournit donc que le mois PRÉCÉDENT, celui
+   * qu'aucune autre source ne donne. C'est la règle que la pastille du tableau
+   * de bord vient d'apprendre à ses dépens.
+   */
+  const periodeAffichee = relevesVisibles.find((r) => r.periodStart !== null)?.periodStart ?? null
+  const ecartDuReleve = (r: MeterReading, fluide: 'water' | 'power') => {
+    if (periodeAffichee === null) return null
+    return ecartNotable(
+      consommation(r, fluide),
+      referenceDuMoisPrecedent(consumptionForUnit(r.unitId), periodeAffichee, fluide),
+    )
+  }
+  /* LES LOGEMENTS À REGARDER, sans doublon : un logement dont l'eau ET
+     l'électricité ont doublé ne se nomme qu'une fois — la note compte des
+     tournées, pas des colonnes. */
+  const aVerifier = relevesVisibles.filter(
+    (r) => ecartDuReleve(r, 'water') !== null || ecartDuReleve(r, 'power') !== null,
+  )
+
+  /**
    * La cellule et sa barre. `relative` sur une boîte qui prend toute la
    * largeur de la cellule — sans quoi la barre se mesurerait sur le nombre
    * lui-même, et « 9 » et « 320 » auraient la même pleine largeur.
@@ -383,6 +415,37 @@ export function Meters() {
    * sont alignés à droite, et une barre qui croîtrait vers la droite laisserait
    * son extrémité à une distance variable du nombre qu'elle qualifie.
    */
+  /**
+   * LA MARQUE D'ÉCART, DANS LA CELLULE QU'ELLE QUALIFIE.
+   *
+   * La note du haut nomme les logements ; elle ne dit pas LEQUEL des deux
+   * fluides a doublé, et c'est la première chose qu'on demande — une fuite
+   * d'eau et un chauffe-eau resté allumé n'envoient pas la même personne.
+   *
+   * UN MULTIPLE ÉCRIT, PAS UNE TEINTE. `couleur-non-seule` refuse partout
+   * qu'un sens repose sur la couleur ; ici le sens est « ×2,4 », que le ton
+   * accompagne sans le porter. Et le multiple est SUIVI DE SA RÉFÉRENCE au
+   * lecteur d'écran : « ×2,4 » seul est un pourcentage flottant, la faute que
+   * la pastille du tableau de bord a coûtée.
+   *
+   * UN VRAI ESPACE DEVANT, pour la raison écrite trois lignes plus bas à
+   * propos de la plage d'index : en fiche, une suite insécable sort de la
+   * boîte à 320 px.
+   */
+  const marqueDEcart = (r: MeterReading, fluide: 'water' | 'power') => {
+    const ecart = ecartDuReleve(r, fluide)
+    if (!ecart) return null
+    return (
+      <>
+        {' '}
+        <span className="text-label whitespace-nowrap text-warn">
+          ×{n.decimal(ecart.facteur)}
+          <span className="sr-only"> {t('app.meters.gapAria', { reference: n.integer(ecart.reference) })}</span>
+        </span>
+      </>
+    )
+  }
+
   const avecBarre = (part: number, serie: string, contenu: ReactNode) => (
     <span className="relative flex w-full justify-end">
       {/*
@@ -589,6 +652,25 @@ export function Meters() {
       </Notice>
 
       {/*
+        UNE SECONDE NOTE, ET NON UNE PHRASE DE PLUS DANS LA PREMIÈRE.
+
+        Les deux disent des tournées différentes : l'une envoie RELEVER un
+        compteur qu'on n'a pas lu, l'autre envoie VÉRIFIER une installation
+        qu'on a lue. Fondues en une, le ton devrait choisir entre les deux, et
+        le compte de l'une se lirait sur les logements de l'autre.
+
+        ELLE NE PARAÎT QUE S'IL Y A QUELQUE CHOSE À DIRE. « 0 écart notable »
+        promettrait une vérification vide, exactement comme « Relevé manquant
+        0 » promettait une tournée vide — c'est la règle que cet écran a déjà
+        tranchée pour ses pastilles de filtre.
+      */}
+      {aVerifier.length > 0 && (
+        <Notice tone="warn" titre={t('app.meters.gapCount', { count: aVerifier.length })} className="mb-4">
+          {t('app.meters.gapHint')} — {n.list(aVerifier.map((r) => unitLabel(r.unitId)))}
+        </Notice>
+      )}
+
+      {/*
         LE SÉLECTEUR DE PÉRIODE, AU-DESSUS DE LA NOTE.
 
         La note dit « 2 relevés manquants POUR LA PÉRIODE » : elle ne peut pas
@@ -715,6 +797,7 @@ export function Meters() {
                   <span className="text-label whitespace-nowrap text-muted">
                     {n.integer(r.waterPrevious)}→{n.integer(r.waterCurrent)}
                   </span>
+                  {marqueDEcart(r, 'water')}
                   </>,
                 )
               ),
@@ -742,6 +825,7 @@ export function Meters() {
                   <span className="text-label whitespace-nowrap text-muted">
                     {n.integer(r.powerPrevious)}→{n.integer(r.powerCurrent)}
                   </span>
+                  {marqueDEcart(r, 'power')}
                   </>,
                 )
               ),
