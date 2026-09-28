@@ -104,9 +104,13 @@ export function Faq() {
                   'bg-accent text-on-accent',
                   /* Le rond suit la rangée : il fonce au survol et s'enfonce à
                      l'appui, comme la pastille des fonctionnalités et comme
-                     celle de la barre d'onglets. `accent-hover` porte 6,70:1
-                     sous du blanc contre 5,17 au repos — le survol AMÉLIORE le
-                     contraste, il ne le dégrade pas. `group-active:scale-95`
+                     celle de la barre d'onglets. LE SURVOL AMÉLIORE LE
+                     CONTRASTE, IL NE LE DÉGRADE PAS — c'est la règle, et les
+                     nombres qui l'illustraient ici étaient ceux de l'accent BLEU
+                     d'avant (6,70 contre 5,17). Le violet les a périmés sans que
+                     cette prose bouge ; ils vivent désormais à l'unique endroit
+                     qui les mesure, en commentaire de `tokens.css`, par thème —
+                     les redire ici les ferait vieillir une seconde fois. `group-active:scale-95`
                      est le seul retour tactile de la rangée : au doigt, le
                      survol n'existe pas, et l'appui doit se voir. */
                   'group-hover:bg-accent-hover group-active:scale-95',

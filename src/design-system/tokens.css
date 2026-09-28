@@ -977,8 +977,36 @@
        seuil de 3:1 exigé d'un élément d'interface : le bouton se détache de son
        fond sans changer de couleur. Une marque qui garde sa teinte au basculement
        est une marque, pas deux. */
-    --color-accent: #635bff; /* 5.17 sous du blanc · 3.13 sur --surface sombre */
-    --color-accent-hover: #7a73ff; /* 6.70 sous du blanc */
+    /*
+      ═══ LES DEUX NOMBRES DE CE BLOC ÉTAIENT CEUX DE L'ANCIEN ACCENT BLEU ═══
+
+      Ils disaient « 5.17 sous du blanc » et « 6.70 sous du blanc ». Ce sont les
+      ratios EXACTS de `#2563eb` et `#1d4ed8` — le bleu d'avant. Quand l'accent
+      est devenu violet, les valeurs ont changé et les commentaires du bloc sombre
+      sont restés : le bloc clair, lui, avait bien été récrit (4.70 y est juste).
+      Deux relevés périmés qui se lisaient comme des garanties.
+
+      ET LE SURVOL ÉTAIT UN VRAI ÉCHEC AA. `#7a73ff` est PLUS CLAIR que l'accent au
+      repos — le réflexe des thèmes sombres, où l'on éclaircit pour signaler —,
+      mais ce bouton ne porte que du BLANC : l'éclaircir fait BAISSER le contraste
+      du libellé. Mesuré par `modales` sur le CI, en police large :
+
+        « Envoyer la réponse » · blanc sur #7a73ff · 3.67 pour un seuil de 4.5
+
+      C'est le seul écran où la porte l'a vu, et la raison est structurelle :
+      `mesure-ui` audite les états AU REPOS. Un défaut qui ne vit que dans le
+      survol lui échappe par construction.
+
+      EN SOMBRE, LE SURVOL S'ASSOMBRIT DONC — l'inverse du réflexe, et pour la
+      raison qui décide ici : c'est le sens qui rend du contraste au libellé.
+      `#5c54ed` rend 5.32 sous du blanc, et garde 3.18 contre la carte sombre,
+      au-dessus du 3:1 qu'un élément d'interface doit tenir. Le jeton du thème
+      CLAIR (`#4b45e0`, 6.51) aurait été plus contrasté encore, mais il tombe à
+      2.79 contre le fond sombre : le bouton perdrait son bord en gagnant sa
+      lisibilité. La teinte est conservée (H 243) dans les deux cas.
+    */
+    --color-accent: #635bff; /* 4.70 sous du blanc · 3.60 sur --surface sombre */
+    --color-accent-hover: #5c54ed; /* 5.32 sous du blanc · 3.18 sur --surface sombre */
     --color-on-accent: #ffffff;
     /* Le voile s'ASSOMBRIT en sombre plutôt que de rester identique : posé sur
        une page déjà sombre, un noir à 55 % ne détache plus assez la modale du
@@ -1092,7 +1120,7 @@
   --color-muted-soft: #8496ae;
 
   --color-accent: #635bff;
-  --color-accent-hover: #7a73ff;
+  --color-accent-hover: #5c54ed;
   --color-on-accent: #ffffff;
   --color-scrim: rgba(0, 0, 0, 0.68);
   --color-accent-ink: #a9a4ff;
