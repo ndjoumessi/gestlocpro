@@ -492,6 +492,32 @@ const HORS_PORTEE = {
  *                 /demo/decisions@360  1591 → 1521  (−70)
  *                 /demo/acces@360      2226 → 2205  (−21)
  *
+ * ═══ LE 2026-09-28 — CINQ LOTS D'AUDIT, TROIS PLAFONDS ═══
+ *
+ *   /demo@360             3428 → 3478  (+50)
+ *   /demo/paiements@1280  1530 → 1552  (+22)
+ *   /demo/acces@360       2205 → 2183  (−22)
+ *
+ * LES DEUX HAUSSES SONT LE MÊME MOT, et il a été pesé. La carte « encaissé ce
+ * mois » disait « vs. 1 250 000 le mois dernier » ; elle dit maintenant « au
+ * MÊME JOUR le mois dernier », parce que l'ancienne comparait un mois entamé à
+ * un mois complet et annonçait donc une baisse tous les mois. Quatre mots de
+ * plus, deux lignes de repli dans une carte étroite. C'est cher pour du texte,
+ * et c'est moins cher qu'une fausse alarme mensuelle : le nombre du haut ne
+ * veut rien dire tant qu'on ignore à quoi il se compare.
+ *
+ * LA BAISSE EST UNE PHRASE RACCOURCIE. Le résumé de périmètre du registre
+ * nommait l'immeuble des deux côtés de « sauf » — « Gère : Résidence
+ * Bonamoussadi … — sauf Résidence Bonamoussadi · S2 » —, ce qui se lisait comme
+ * son retrait. L'exception est désormais collée à ce qu'elle modifie :
+ * « Résidence Bonamoussadi (sauf S2) », 120 caractères devenus 78.
+ *
+ * `plafondLarge` N'EST PAS TOUCHÉ ICI, et ce n'est pas un oubli : cette
+ * machine ne possède pas cette colonne. Trois fois déjà, un relevé local en
+ * police large a proposé de changer des écrans que le lot ne touchait pas —
+ * jusqu'à +450 px sur des pages légales. Elle se relève par le travail
+ * `polices` de l'intégration continue, et elle seule fait foi.
+ *
  * `plafond-coquille` étant VERTE, ce sont des pixels de CONTENU et non de
  * coquille — la porte le dit elle-même à chaque plainte. La cause commune est la
  * bascule du neutre vers le froid, qui recompose les interlignes, plus les gestes
@@ -549,7 +575,7 @@ const PLAFONDS = [
      la ligne et poussait la tuile d'un cran. Elle se tronque depuis que la tuile
      porte aussi un montant — voir le docbloc de `Dashboard.tsx` —, et le retour
      à la ligne a disparu avec. `plafondLarge` suit du même écart. */
-  { adresse: '/demo', largeur: 360, plafond: 3428, plafondLarge: 3428 },
+  { adresse: '/demo', largeur: 360, plafond: 3478, plafondLarge: 3428 },
   /* +30 px LE 2026-09-26, ET C'EST LA CARTE QUE L'ÉCRAN EXISTE POUR MONTRER.
      « En retard · 412 000 FCFA » ne portait rien sous son montant ; la note dit
      désormais combien de baux le composent et depuis combien de jours — les
@@ -583,7 +609,7 @@ const PLAFONDS = [
   /* −22 px : le résumé de périmètre cesse de recopier le nom de l'immeuble
      devant chaque logement retranché. Mesuré ici à 2187 en police large ; la
      colonne normale, qui appartient à l'autre machine, reçoit le même écart. */
-  { adresse: '/demo/acces', largeur: 360, plafond: 2205, plafondLarge: 2187 },
+  { adresse: '/demo/acces', largeur: 360, plafond: 2183, plafondLarge: 2187 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
@@ -598,7 +624,7 @@ const PLAFONDS = [
   { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
   { adresse: '/demo', largeur: 1280, plafond: 1855, plafondLarge: 1856 },
-  { adresse: '/demo/paiements', largeur: 1280, plafond: 1530, plafondLarge: 1530 },
+  { adresse: '/demo/paiements', largeur: 1280, plafond: 1552, plafondLarge: 1530 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
   /*
     +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE

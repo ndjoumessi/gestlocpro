@@ -114,19 +114,39 @@ export function jourDuMois(recul: number, day: number) {
   return { ...moisAvant(recul), day }
 }
 
+/**
+ * CE QUE CHAQUE MOIS AVAIT ENCAISSÉ AU MÊME JOUR DU MOIS.
+ *
+ * La carte « encaissé ce mois » compare le mois COURANT — toujours entamé — au
+ * mois précédent. Le comparer à son TOTAL annonçait une baisse tous les mois,
+ * maximale le 3 ; la base juste est ce que ce mois-là avait encaissé au jour où
+ * nous sommes, et le serveur la calcule depuis la date de chaque versement.
+ *
+ * LE JEU CLIENT N'A PAS DE VERSEMENTS DATÉS À L'ÉCHELLE DU PARC — il porte des
+ * agrégats mensuels écrits à la main, quand les dates de règlement ne vivent
+ * que sur le grand-livre d'une seule unité. On pose donc l'égalité, et voici
+ * l'aveu qui va avec : ce parc règle ses loyers ENTRE LE 2 ET LE 6 du mois,
+ * comme ses propres quittances l'écrivent. L'égalité est donc exacte à partir
+ * du 6, et flatte la démonstration les cinq premiers jours — où elle rejouerait
+ * le défaut que ce champ existe pour corriger.
+ *
+ * CE N'EST PAS UN REPLI SILENCIEUX : `variationDesEncaissements` refuse
+ * justement de retomber sur `rent` quand `rentToDate` manque. Ici la valeur est
+ * POSÉE, avec sa raison, et un parc réel n'emprunte jamais ce chemin.
+ */
 export const COLLECTIONS: MonthlyCollection[] = [
-  { ...moisAvant(11), rent: 1010000, water: 62000, power: 48000 },
-  { ...moisAvant(10), rent: 1085000, water: 58000, power: 51000 },
-  { ...moisAvant(9), rent: 1040000, water: 61000, power: 46000 },
-  { ...moisAvant(8), rent: 1120000, water: 66000, power: 58000 },
-  { ...moisAvant(7), rent: 1150000, water: 71000, power: 62000 },
-  { ...moisAvant(6), rent: 1095000, water: 64000, power: 54000 },
-  { ...moisAvant(5), rent: 1180000, water: 69000, power: 57000 },
-  { ...moisAvant(4), rent: 1240000, water: 74000, power: 61000 },
-  { ...moisAvant(3), rent: 1205000, water: 70000, power: 59000 },
-  { ...moisAvant(2), rent: 1290000, water: 78000, power: 66000 },
-  { ...moisAvant(1), rent: 1250000, water: 72000, power: 63000 },
-  { ...moisAvant(0), rent: 1040000, water: 68000, power: 55000 },
+  { ...moisAvant(11), rent: 1010000, rentToDate: 1010000, water: 62000, power: 48000 },
+  { ...moisAvant(10), rent: 1085000, rentToDate: 1085000, water: 58000, power: 51000 },
+  { ...moisAvant(9), rent: 1040000, rentToDate: 1040000, water: 61000, power: 46000 },
+  { ...moisAvant(8), rent: 1120000, rentToDate: 1120000, water: 66000, power: 58000 },
+  { ...moisAvant(7), rent: 1150000, rentToDate: 1150000, water: 71000, power: 62000 },
+  { ...moisAvant(6), rent: 1095000, rentToDate: 1095000, water: 64000, power: 54000 },
+  { ...moisAvant(5), rent: 1180000, rentToDate: 1180000, water: 69000, power: 57000 },
+  { ...moisAvant(4), rent: 1240000, rentToDate: 1240000, water: 74000, power: 61000 },
+  { ...moisAvant(3), rent: 1205000, rentToDate: 1205000, water: 70000, power: 59000 },
+  { ...moisAvant(2), rent: 1290000, rentToDate: 1290000, water: 78000, power: 66000 },
+  { ...moisAvant(1), rent: 1250000, rentToDate: 1250000, water: 72000, power: 63000 },
+  { ...moisAvant(0), rent: 1040000, rentToDate: 1040000, water: 68000, power: 55000 },
 ]
 
 /**
