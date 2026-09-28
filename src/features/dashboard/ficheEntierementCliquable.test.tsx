@@ -69,6 +69,33 @@ describe('la fiche de logement ouvre son dossier sur toute sa surface', () => {
     ).toMatch(/\brelative\b/)
   })
 
+  it('ne porte AUCUNE transformation, même à la pression', async () => {
+    /*
+      ═══ UNE TRANSFORMATION CASSE LE MENU, ET AUCUN RENDU NE LE MONTRE ═══
+
+      Un élément transformé devient le BLOC CONTENANT de ses descendants
+      `position: fixed`. Le menu de cette fiche `echappe` — son panneau se pose
+      en `fixed` avec des coordonnées prises dans le repère du VIEWPORT, pour
+      sortir de la boîte à défilement du rail. Une transformation sur la fiche,
+      même d'un pixel et même le temps d'un appui, déplace ce repère et envoie
+      le panneau ailleurs.
+
+      MESURÉ : `active:translate-y-px` — la convention de pression des six
+      variantes de `Button` — a fait rougir quatre états de `modales`, « le
+      bouton a été cliqué et aucune boîte de dialogue n'est apparue », à 1280 px
+      seulement, la largeur où le parc rend des fiches plutôt qu'un tableau.
+      jsdom ne pouvait pas le voir : il ne compose rien.
+
+      CE CAS EST DONC UN RAPPEL, pas une mesure de l'effet. Il coûte une ligne et
+      ferme une porte qu'on rouvrirait par réflexe, en copiant `Button`.
+    */
+    await ouvrirLeParc()
+    expect(
+      fiche('A1').className,
+      'la fiche porte une transformation : le panneau de son menu, qui se pose en `fixed`, prendra la fiche pour repère au lieu du viewport',
+    ).not.toMatch(/(^|:)(translate|scale|rotate|skew)-/)
+  })
+
   it('laisse le menu de la fiche au-dessus du lien', async () => {
     await ouvrirLeParc()
     const menu = within(fiche('A1')).getByRole('button', { name: 'Actions du logement A1' })

@@ -837,11 +837,31 @@ export function Portfolio() {
                          positionné — le rail — et une seule fiche couvrirait
                          toutes les autres. */
                       'relative',
-                      /* LA PRESSION S'ENFONCE D'UN PIXEL, comme les six variantes
-                         de `Button`. Pas une ÉCHELLE : ces fiches partagent leurs
-                         rangées par `subgrid`, et une carte mise à l'échelle sort
-                         de l'alignement de ses voisines le temps de l'appui. */
-                      'active:translate-y-px',
+                      /*
+                        ═══ LA PRESSION SE PEINT, ELLE NE SE TRANSFORME PAS ═══
+
+                        Première rédaction : `active:translate-y-px`, la
+                        convention des six variantes de `Button`. La porte
+                        `modales` l'a refusée, et la raison ne se voit dans aucun
+                        rendu : UNE TRANSFORMATION, MÊME D'UN PIXEL ET MÊME
+                        TRANSITOIRE, FAIT D'UN ÉLÉMENT LE BLOC CONTENANT DE SES
+                        DESCENDANTS `position: fixed`.
+
+                        Or le menu de cette fiche `echappe` — son panneau se pose
+                        en `fixed` avec des coordonnées prises dans le repère du
+                        VIEWPORT, précisément pour sortir de la boîte à
+                        défilement du rail. Pendant l'appui, la fiche devenait son
+                        repère et le panneau partait ailleurs : « le bouton a été
+                        cliqué et aucune boîte de dialogue n'est apparue », quatre
+                        fois, à 1280 px seulement — la largeur où le parc rend des
+                        fiches plutôt qu'un tableau.
+
+                        Un fond suffit à dire l'appui et ne crée aucun bloc
+                        contenant. `Button`, lui, garde son pixel : il n'héberge
+                        pas de menu.
+                      */
+                      'active:bg-surface-sunken',
+
                       /*
                         LA FICHE EST UNE DESTINATION, ET NE LE DISAIT PAS.
 
@@ -859,7 +879,7 @@ export function Portfolio() {
                         `snap-start` : l'accroche du rail tombe sur le bord de
                         la fiche, jamais au milieu d'un chiffre.
                       */
-                      'snap-start transition-[border-color,box-shadow,transform] duration-150',
+                      'snap-start transition-[border-color,box-shadow,background-color] duration-150',
                       'hover:border-border-strong hover:shadow-e1',
                       'focus-within:border-accent focus-within:shadow-e1',
                     )}

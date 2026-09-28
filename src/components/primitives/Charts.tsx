@@ -1807,7 +1807,7 @@ export function ProgressBar({
   const colors = { accent: 'bg-accent-ink', ok: 'bg-ok', danger: 'bg-danger' }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       {!hideLabel && <span className="w-20 shrink-0 text-body text-muted">{label}</span>}
       <div
         role="progressbar"
@@ -1837,13 +1837,22 @@ export function ProgressBar({
           {nombres.percent(value)}
         </span>
       )}
-      {/* DERRIÈRE LE POURCENTAGE, PAS SOUS LUI : une seconde ligne sous chaque
-          barre doublerait la hauteur du bloc pour quatre caractères, et la
-          rangée d'à côté réserverait ce vide. `shrink-0` sur le pourcentage
-          garde sa colonne ; la note prend ce qui reste et se coupe la
-          dernière. */}
+      {/*
+        DERRIÈRE LE POURCENTAGE TANT QUE ÇA TIENT, SOUS LUI SINON.
+
+        Première rédaction : `truncate`. `mesure-ui` l'a refusée, et sa règle est
+        juste — « 8 sur 10 relevés » est du VOCABULAIRE DE PRODUIT, pas une
+        donnée saisie, et le rogner ferait disparaître le dénominateur exactement
+        là où la barre est la plus étroite, donc la plus difficile à lire.
+        Mesuré : −119 px en français à 320 px, racine 22 px.
+
+        `flex-wrap` sur la rangée et `whitespace-nowrap` ici : la note reste sur
+        la ligne quand la place existe, et descend d'un cran quand elle manque.
+        C'est ce que le remède demande — rendre la place —, et la hauteur n'est
+        payée que sur les écrans qui ne peuvent pas faire autrement.
+      */}
       {note && (
-        <span className="numeric min-w-0 truncate text-label text-muted">{note}</span>
+        <span className="numeric shrink-0 whitespace-nowrap text-label text-muted">{note}</span>
       )}
     </div>
   )
