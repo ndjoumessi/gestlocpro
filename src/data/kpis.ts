@@ -133,15 +133,28 @@ export interface VariationMensuelle {
 
 export function variationDesEncaissements(
   courant: number,
-  collections: { rent: number }[],
+  collections: { rent: number; rentToDate?: number }[],
 ): VariationMensuelle | null {
   if (collections.length < 2) return null
   // L'avant-dernière entrée : la dernière est le mois COURANT, que la carte
   // porte déjà et que l'appelant passe.
-  const precedent = collections[collections.length - 2]!.rent
-  if (precedent === 0) return null
+  const precedent = collections[collections.length - 2]!
+  /**
+   * ON COMPARE DEUX MOIS AU MÊME JOUR, ou on ne compare pas.
+   *
+   * `courant` est un mois ENTAMÉ — le graphique d'à côté le hachure et l'écrit.
+   * Le rapporter au TOTAL du mois précédent annonçait une baisse tous les mois,
+   * maximale le 3, sur un parc qui va bien. Mesuré sur la démonstration au
+   * 28 septembre : « −24 % », en rouge, tous loyers déjà rentrés.
+   *
+   * L'ABSENCE DE `rentToDate` NE SE REMPLACE PAS PAR `rent`. Un serveur plus
+   * ancien ne la rend pas ; s'y rabattre rétablirait le défaut exactement là où
+   * personne ne regarde. Ne rien dire est la seule réponse honnête.
+   */
+  const base = precedent.rentToDate
+  if (base === undefined || base === 0) return null
   return {
-    pourcentage: Math.round(((courant - precedent) / precedent) * 1000) / 10,
-    base: precedent,
+    pourcentage: Math.round(((courant - base) / base) * 1000) / 10,
+    base,
   }
 }

@@ -933,7 +933,7 @@ export const fr = {
        * qui vit trois cents pixels plus bas. La ligne dit à quoi la carte se
        * compare, et c'est ce qui la rend lisible.
        */
-      vsPrevious: 'vs. {amount} le mois dernier',
+      vsPrevious: 'vs. {amount} au même jour le mois dernier',
       /**
        * « Impayés cumulés » disait deux choses fausses.
        *

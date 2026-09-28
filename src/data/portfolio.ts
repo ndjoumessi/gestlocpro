@@ -177,6 +177,18 @@ export interface MonthlyCollection {
   /** 0 = janvier. */
   month: number
   rent: number
+  /**
+   * Le loyer encaissé AU MÊME JOUR DU MOIS qu'aujourd'hui.
+   *
+   * C'est la seule base contre laquelle le mois courant — qui est toujours
+   * entamé — peut se comparer sans mentir. Égal à `rent` pour le mois courant,
+   * puisqu'aucun versement n'y est postérieur à aujourd'hui.
+   *
+   * FACULTATIF parce qu'un serveur plus ancien ne le rend pas : l'absence se
+   * lit alors comme « pas de comparaison », jamais comme un repli sur `rent`
+   * qui rétablirait le défaut en silence.
+   */
+  rentToDate?: number
   water: number
   power: number
 }

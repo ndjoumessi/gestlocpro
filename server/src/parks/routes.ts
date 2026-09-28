@@ -1248,13 +1248,36 @@ parksRouter.get(
      * plat : c'est l'écart entre l'appelé et le reçu qui a un sens, et c'est
      * lui que la dernière barre montre.
      */
-    const parPeriode = new Map<string, { year: number; month: number; rent: number; water: number; power: number }>()
+    /**
+     * LE JOUR DU MOIS OÙ NOUS SOMMES, et pourquoi chaque mois en porte DEUX
+     * totaux.
+     *
+     * Le dernier mois de la série est le mois COURANT : le graphique le hachure
+     * et le dit « encore ouvert ». Comparer son encaissé au TOTAL du mois
+     * précédent rapporte un mois entamé à un mois complet — une baisse annoncée
+     * tous les mois, maximale le 3, alors que rien ne va mal.
+     *
+     * `rentToDate` est la base qui rend la comparaison vérifiable : ce que le
+     * mois avait encaissé AU MÊME JOUR DU MOIS. On ne proratise pas le total,
+     * parce que le loyer n'arrive pas régulièrement mais dans les premiers
+     * jours — un prorata fabriquerait un nombre au lieu d'en mesurer un.
+     *
+     * Un mois plus court que le jour d'aujourd'hui — février vu depuis le 30 —
+     * rend naturellement son total entier : tous ses jours sont écoulés, et
+     * c'est la réponse juste.
+     */
+    const jourDuMois = aujourdhui.getDate()
+    const parPeriode = new Map<
+      string,
+      { year: number; month: number; rent: number; rentToDate: number; water: number; power: number }
+    >()
     for (const e of echeances) {
       const cle = `${e.periodStart.getFullYear()}-${e.periodStart.getMonth()}`
       const ligne = parPeriode.get(cle) ?? {
         year: e.periodStart.getFullYear(),
         month: e.periodStart.getMonth(),
         rent: 0,
+        rentToDate: 0,
         water: 0,
         power: 0,
       }
@@ -1266,6 +1289,15 @@ parksRouter.get(
       ligne.rent += surLoyer
       ligne.water += Math.min(reste, e.waterMinor)
       ligne.power += Math.max(0, Math.min(reste - e.waterMinor, e.powerMinor))
+      /* L'IMPUTATION SE REFAIT SUR LE SOUS-ENSEMBLE, elle ne se proratise pas :
+         un versement partiel arrivé le 2 solde d'abord le loyer, exactement
+         comme au-dessus. Prendre une fraction de `surLoyer` supposerait que les
+         charges se paient en même temps que le loyer, ce qui est faux dès qu'il
+         y a deux versements. */
+      const verseALaDate = e.payments
+        .filter((p) => p.paidOn.getDate() <= jourDuMois)
+        .reduce((s, p) => s + p.amountMinor, 0)
+      ligne.rentToDate += Math.min(verseALaDate, e.rentMinor)
       parPeriode.set(cle, ligne)
     }
 

@@ -675,7 +675,7 @@ export const en: Dictionary = {
       chartEmptyBody: 'The twelve-month curve fills in from your first recorded payment.',
       expected: 'Rent due',
       collected: 'Collected this month',
-      vsPrevious: 'vs. {amount} last month',
+      vsPrevious: 'vs. {amount} on the same day last month',
       outstanding: 'Still to collect',
       nothingExpected: 'No rent due this month.',
       outstandingShare: '{percent}% of the rent due',

@@ -82,7 +82,7 @@ interface PortefeuilleApi {
     /** Voir `WorkOrder.emailCopies` : des comptes, jamais des adresses. */
     emailCopies?: { sent: number; delivered: number; lastAttemptAt: string | null }
   }[]
-  collections: { year: number; month: number; rent: number; water: number; power: number }[]
+  collections: { year: number; month: number; rent: number; rentToDate?: number; water: number; power: number }[]
   /**
    * L'historique des échéances, plat, une entrée par période et par bail.
    *
