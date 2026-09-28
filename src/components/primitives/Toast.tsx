@@ -531,9 +531,20 @@ function ToastItem({
       à trois composantes est celle qui promet la couche composée sur les moteurs
       anciens, et ce marché tourne sur de l'Android bas de gamme.
 
-      LA DURÉE EST EN LIGNE, et `prefers-reduced-motion` la bat quand même : la
-      règle globale de `tokens.css` pose `transition-duration: 0.001ms !important`,
-      et une déclaration importante l'emporte sur une déclaration en ligne normale.
+      LA DURÉE EST EN LIGNE, et `prefers-reduced-motion` la bat quand même — mais
+      PLUS PAR LE MÉCANISME QUE CETTE PROSE NOMMAIT.
+
+      Elle disait : « la règle globale de `tokens.css` pose
+      `transition-duration: 0.001ms !important` ». Ce n'est plus vrai depuis le
+      2026-09-27. Ce réglage supprimait TOUTE transition, fondus de couleur
+      compris, alors qu'il demande moins de MOUVEMENT et non moins de
+      renseignement. `tokens.css` restreint désormais la LISTE DES PROPRIÉTÉS —
+      `transition-property: opacity, color, background-color, … !important` — et
+      `transform` n'y est pas.
+
+      LA CONCLUSION TIENT, LE CHEMIN A CHANGÉ : le replacement n'est plus
+      interpolé, il saute à sa valeur finale, ce qui est exactement ce qu'on
+      veut. La durée en ligne n'est plus battue, elle devient sans objet.
     */
     <div
       ref={(noeud) => mesurer(id, noeud)}
