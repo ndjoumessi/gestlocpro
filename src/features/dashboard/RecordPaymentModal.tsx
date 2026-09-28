@@ -17,7 +17,23 @@ const moisCourant = () => new Date().toISOString().slice(0, 7)
 const jourCourant = () => new Date().toISOString().slice(0, 10)
 
 /** Saisie d'un encaissement. Le règlement partiel est admis par conception. */
-export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function RecordPaymentModal({
+  open,
+  onClose,
+  uniteInitiale,
+}: {
+  open: boolean
+  onClose: () => void
+  /**
+   * LE LOGEMENT DÉJÀ CHOISI, quand la boîte s'ouvre depuis SA ligne.
+   *
+   * Sans lui, le geste de ligne n'économise que le clic de l'en-tête, pas la
+   * recherche du nom dans une liste de douze — c'est-à-dire l'essentiel du
+   * détour. `RecordReadingModal` porte déjà la même idée sous le nom
+   * `aCorriger`.
+   */
+  uniteInitiale?: string
+}) {
   const t = useT()
   const { money, parseAmount } = useCurrency()
   const { notify } = useToast()
@@ -25,6 +41,8 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
 
   const payable = units.filter((unit) => unit.status !== 'vacant')
 
+  /* L'état initial ne sert qu'au premier rendu, fermé : l'effet d'ouverture
+     ci-dessous décide de ce qui est réellement sélectionné. */
   const [unitId, setUnitId] = useState(payable[0]?.id ?? '')
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('mobile')
@@ -87,10 +105,22 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
    * pour un versement sans rapport avec celui qui avait échoué — et l'unité
    * choisie la fois précédente restait sélectionnée en silence : au premier
    * clic sur « Enregistrer », l'argent serait parti sur le bail d'hier.
+   *
+   * ET C'EST DONC ICI QUE LE LOGEMENT DÉSIGNÉ SE POSE, pas dans l'état initial.
+   * Ma première rédaction le mettait à l'initialisation : cet effet le
+   * remplaçait aussitôt par le premier de la liste, et la boîte s'ouvrait sur
+   * A1 alors qu'on avait cliqué sur A3. Le garde a raison contre elle — il ne
+   * doit JAMAIS rester une sélection qu'on n'a pas voulue —, donc c'est lui qui
+   * apprend à distinguer « la précédente » de « celle qu'on vient de désigner ».
    */
   useEffect(() => {
     if (!open) return
-    setUnitId(payable[0]?.id ?? '')
+    /* LE LOGEMENT DÉSIGNÉ S'IL EST PAYABLE, le premier de la liste sinon : on
+       n'ouvre pas la boîte sur un logement vacant que son propre filtre
+       refuse. */
+    const vise =
+      uniteInitiale && payable.some((u) => u.id === uniteInitiale) ? uniteInitiale : payable[0]?.id
+    setUnitId(vise ?? '')
     setAmount('')
     setMethod('mobile')
     setPeriode(moisCourant())
@@ -101,7 +131,7 @@ export function RecordPaymentModal({ open, onClose }: { open: boolean; onClose: 
     // `payable` n'entre pas dans les dépendances : on ne réinitialise qu'à
     // l'OUVERTURE, jamais parce que le parc a changé sous une modale ouverte.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, uniteInitiale])
 
   const unit = units.find((u) => u.id === unitId)
 

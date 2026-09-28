@@ -991,6 +991,8 @@ export const en: Dictionary = {
          raccourcie est celle de l'usage juridique anglais ; le nom complet
          reste dans le titre de la boîte, où la place existe. */
       noticeFor: 'Serve notice — {unit}',
+      collect: 'Collect',
+      collectFor: 'Collect — {unit}',
       notice: 'Serve notice',
       noticeTitle: 'Serve formal notice to {tenant}?',
       noticeBody:

@@ -1467,6 +1467,11 @@ export const fr = {
       remindDemo:
         'La démonstration n’envoie aucune relance : il faut un parc réel pour écrire aux locataires.',
       noticeFor: 'Mettre en demeure — {unit}',
+      /* LE GESTE ORDINAIRE DE CET ÉCRAN, offert sur la ligne qui le demande.
+         « Encaisser » et non « Enregistrer un paiement » : le verbe court tient
+         à côté de deux autres commandes dans une cellule de geste. */
+      collect: 'Encaisser',
+      collectFor: 'Encaisser — {unit}',
       notice: 'Mettre en demeure',
       noticeTitle: 'Mettre en demeure {tenant} ?',
       noticeBody:

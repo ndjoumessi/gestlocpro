@@ -91,6 +91,15 @@ export function Payments() {
 
   const isTenant = role === 'tenant'
   const [payOpen, setPayOpen] = useState(false)
+  /**
+   * LE LOGEMENT DONT ON VIENT D'OUVRIR L'ENCAISSEMENT, ou `null` depuis l'en-tête.
+   *
+   * L'écran existe pour descendre la colonne des retards et les solder un par
+   * un ; le geste vivait dans un bouton d'en-tête où il fallait rechoisir le
+   * logement dans une liste de douze. Trois retardataires, trois allers-retours,
+   * et à chaque fois la même recherche du nom qu'on venait de lire.
+   */
+  const [uniteAEncaisser, setUniteAEncaisser] = useState<string | null>(null)
   const [relanceOuverte, setRelanceOuverte] = useState(false)
   const [enDemeure, setEnDemeure] = useState<Unit | null>(null)
   const [motif, setMotif] = useState('')
@@ -806,6 +815,36 @@ export function Payments() {
                       désigné comme dans la relance en masse, quelques lignes
                       plus bas : son identifiant serveur s'il existe, celui de
                       l'unité sinon. */}
+                  {/*
+                    ENCAISSER, ET SEULEMENT SUR CE QUI EST DÛ.
+
+                    Un locataire à jour n'a rien à recevoir, et lui offrir le
+                    geste ferait de cette colonne une rangée de commandes
+                    identiques où l'œil ne trouve plus les trois qui comptent.
+                    C'est la règle que « Mettre en demeure » applique déjà juste
+                    en dessous.
+
+                    LE SOLDE CUMULÉ ET NON LE RETARD : un règlement partiel
+                    arrivé avant l'échéance ne compte aucun jour de retard et
+                    laisse pourtant quelque chose à percevoir. C'est le nombre
+                    que la colonne d'à côté affiche.
+                  */}
+                  {soldeCumule(unit) > 0 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="card"
+                      /* LE LOGEMENT DANS LE NOM ACCESSIBLE, comme ses deux
+                         voisins : dix lignes, dix commandes identiques. */
+                      aria-label={t('app.payments.collectFor', { unit: unit.label })}
+                      onClick={() => {
+                        setUniteAEncaisser(unit.id)
+                        setPayOpen(true)
+                      }}
+                    >
+                      {t('app.payments.collect')}
+                    </Button>
+                  ) : null}
                   {role === 'owner' && (unit.overdueDays ?? 0) > 0 ? (
                     <Button
                       variant="ghost"
@@ -879,7 +918,19 @@ export function Payments() {
         />
       )}
 
-      <RecordPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
+      <RecordPaymentModal
+        /* PAS DE `key` POUR LA REMONTER : la modale porte déjà une remise à zéro
+           à l'OUVERTURE, écrite pour une raison de sécurité — il ne doit jamais
+           rester une sélection qu'on n'a pas voulue. C'est elle qui pose le
+           logement désigné. Deux mécanismes pour le même état finiraient par se
+           contredire. */
+        open={payOpen}
+        onClose={() => {
+          setPayOpen(false)
+          setUniteAEncaisser(null)
+        }}
+        {...(uniteAEncaisser ? { uniteInitiale: uniteAEncaisser } : {})}
+      />
 
       {/*
         La confirmation dit COMBIEN, avant d'agir.
