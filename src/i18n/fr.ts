@@ -1088,6 +1088,23 @@ export const fr = {
       between: 'du {start} au {end}',
       billing: 'Périodes facturées',
       billingHint: 'Ce que le logement a appelé, et ce qu’il reste à recouvrer.',
+      /* LE TOTAL et non le reste : « 9 périodes » se vérifie contre l'indicateur
+         du haut, « 3 de plus » ne se vérifie contre rien. */
+      billingAll: 'Voir les {count} périodes',
+      /* INATTEIGNABLE PAR CONSTRUCTION — la commande ne paraît qu'au-delà de six
+         périodes. Elle existe parce que la parité des dictionnaires l'exige de
+         toute clé qui interpole `{count}`, et la règle a raison de ne pas faire
+         d'exception : c'est en en accordant une qu'on laisse passer la clé qui,
+         elle, sera vue au singulier. */
+      billingAll_one: 'Voir la période',
+      /* LE MOIS DANS LE NOM : six boutons identiques ne disent pas lequel on
+         active — la règle que les douze « Modifier » des relevés ont écrite. */
+      receiptFor: 'Quittance de {period}',
+      /* L'UNITÉ COLLÉE AU NOMBRE FORMATÉ. Écrites à la main, ces deux-là
+         rendaient « 1234 m³ » et « 1200 m² » — le défaut que `lib/numbers`
+         existe pour fermer, invisible sous quatre chiffres. */
+      waterVolume: '{volume} m³',
+      surface: '{surface} m²',
       billingEmptyBody: 'Aucune échéance n’a encore été émise pour ce logement.',
       works: 'Travaux du logement',
       worksHint: 'Toutes les interventions, quelle que soit l’occupation.',

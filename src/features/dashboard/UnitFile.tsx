@@ -28,6 +28,7 @@ import { ReceiptModal } from './ReceiptModal'
 import { OpenWorkModal } from './OpenWorkModal'
 import { InspectionModal } from './InspectionModal'
 import { workTitle } from '@/data/workTitle'
+import { useNumbers } from '@/lib/numbers'
 
 /**
  * LA GRILLE DES DEUX COLONNES, nommée pour que l'attente ne s'en écarte pas.
@@ -42,6 +43,9 @@ import { workTitle } from '@/data/workTitle'
  * Voir `squelettesFideles.test.ts`, qui tient désormais la règle.
  */
 const GRILLE_DEUX_COLONNES = 'grid gap-4 lg:grid-cols-2'
+
+/** Ce que la carte des périodes montre avant qu'on lui en demande plus. */
+const PERIODES_MONTREES = 6
 
 /**
  * Le dossier d'un logement.
@@ -65,12 +69,34 @@ export function UnitFile() {
   /* La modale de réponse, la même que celle des travaux. AVANT tout retour
      anticipé : un hook posé après le retour « logement introuvable » a fait
      lever React au premier rendu — les hooks se déclarent sans condition. */
+  const n = useNumbers()
   const [aRepondre, setARepondre] = useState<WorkOrder | null>(null)
   const base = useBase()
   const location = useLocation()
   const { role } = useRole()
   const isTenant = role === 'tenant'
   const [quittanceOuverte, setQuittanceOuverte] = useState(false)
+  /**
+   * LA PÉRIODE DONT ON DEMANDE LA QUITTANCE, ou `null` pour le mois courant.
+   *
+   * L'écran n'en émettait qu'UNE, celle du mois courant, depuis son en-tête. La
+   * question qu'on pose à un dossier est « la quittance de juin », pas « celle
+   * de ce mois-ci » — et la liste des périodes est exactement l'endroit où on
+   * la pose.
+   */
+  const [periodeDeQuittance, setPeriodeDeQuittance] = useState<{ year: number; month: number } | null>(null)
+  /**
+   * LA COUPE DE LA LISTE DES PÉRIODES, ET POURQUOI ELLE SE DÉPLIE.
+   *
+   * `slice(0, 6)` coupait en SILENCE : un logement occupé depuis deux ans en
+   * montrait six et taisait dix-huit. Le dossier est l'écran qu'on ouvre
+   * pendant un litige — y cacher les trois quarts d'un historique sans un mot
+   * est pire qu'une absence, parce qu'on croit avoir tout lu.
+   *
+   * La coupe RESTE : six périodes est ce qui tient à côté de la carte voisine
+   * sans imposer sa hauteur. C'est son silence qui partait.
+   */
+  const [toutesLesPeriodes, setToutesLesPeriodes] = useState(false)
   const [chantierOuvert, setChantierOuvert] = useState(false)
   const [etatOuvert, setEtatOuvert] = useState(false)
   const { money } = useCurrency()
@@ -189,7 +215,11 @@ export function UnitFile() {
     <>
       <PageHeader
         title={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
-        description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${unit.surface} m² · ${money(unit.rent, { compact: true })}`}
+        /* LA SURFACE PASSE PAR LE FORMATEUR comme tout autre nombre : un local
+           commercial de 1 200 m² s'écrivait « 1200 m² », collé, dans les deux
+           langues. C'est exactement le défaut que `lib/numbers` existe pour
+           fermer, et il ne se voit qu'à partir de quatre chiffres. */
+        description={`${t(`app.unitTypes.${unit.type}` as 'app.unitTypes.T1')} · ${t('app.unitFile.surface', { surface: n.integer(unit.surface) })} · ${money(unit.rent, { compact: true })}`}
         actions={
           <>
             <Button variant="secondary" icon="chevronLeft" to={retour}>
@@ -274,16 +304,28 @@ export function UnitFile() {
         />
       </div>
 
-      {quittanceOuverte && periodes[0] && (
+      {(quittanceOuverte || periodeDeQuittance) && periodes[0] && (
         <ReceiptModal
           open
-          onClose={() => setQuittanceOuverte(false)}
+          onClose={() => {
+            setQuittanceOuverte(false)
+            setPeriodeDeQuittance(null)
+          }}
           unitId={unitId}
           /* Le mois COURANT, comme la grille des paiements l'écrit à
              l'identique : une quittance s'émet sur la période en cours, et non
              sur la dernière que la carte affiche — celle-ci pourrait être plus
              ancienne sur un bail qui vient de reprendre. */
-          periodStart={`${new Date().toISOString().slice(0, 7)}-01`}
+          /* LA PÉRIODE DEMANDÉE quand elle vient d'une ligne, le mois courant
+             quand elle vient de l'en-tête. Le second garde sa raison écrite :
+             une quittance s'émet sur la période en cours, et non sur la
+             dernière que la carte affiche — celle-ci pourrait être plus
+             ancienne sur un bail qui vient de reprendre. */
+          periodStart={
+            periodeDeQuittance
+              ? `${periodeDeQuittance.year}-${String(periodeDeQuittance.month + 1).padStart(2, '0')}-01`
+              : `${new Date().toISOString().slice(0, 7)}-01`
+          }
         />
       )}
       {chantierOuvert && (
@@ -350,7 +392,7 @@ export function UnitFile() {
               aria-label={t('app.unitFile.billing')}
               className="flex flex-col divide-y divide-divider"
             >
-              {periodes.slice(0, 6).map((periode) => {
+              {(toutesLesPeriodes ? periodes : periodes.slice(0, PERIODES_MONTREES)).map((periode) => {
                 const du = receiptDue(periode)
                 const regle = imputation(periode)
                 const reste = du - (regle.rent + regle.water + regle.power)
@@ -389,21 +431,45 @@ export function UnitFile() {
                         </span>
                       )}
                     </span>
-                    <span className="numeric text-body">
-                      {money(du, { compact: true })}
-                      {/* Le reste dû, et lui seul, appelle un geste : une
-                          période soldée n'a pas à porter un « reste 0 ». */}
-                      {reste > 0 && (
-                        <span className="text-warn">
-                          {' · '}
-                          {t('app.tenant.remaining', { amount: money(reste, { compact: true }) })}
-                        </span>
-                      )}
+                    <span className="flex items-baseline gap-2">
+                      <span className="numeric text-body">
+                        {money(du, { compact: true })}
+                        {/* Le reste dû, et lui seul, appelle un geste : une
+                            période soldée n'a pas à porter un « reste 0 ». */}
+                        {reste > 0 && (
+                          <span className="text-warn">
+                            {' · '}
+                            {t('app.tenant.remaining', { amount: money(reste, { compact: true }) })}
+                          </span>
+                        )}
+                      </span>
+                      {/* LA QUITTANCE DE CETTE PÉRIODE-LÀ. Six boutons identiques
+                          ne disent pas lequel on active : le nom accessible porte
+                          le mois, comme les douze « Modifier » des relevés. */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="download"
+                        aria-label={t('app.unitFile.receiptFor', { period: d.monthYear(periode) })}
+                        onClick={() => setPeriodeDeQuittance(periode)}
+                      >
+                        {t('app.tenant.receipt')}
+                      </Button>
                     </span>
                   </li>
                 )
               })}
             </ul>
+          )}
+          {/* CE QU'ELLE NE MONTRE PAS, ET LE GESTE POUR LE VOIR. Le compte est
+              celui du TOTAL et non du reste : « 9 périodes » se vérifie contre
+              l'indicateur du haut, « 3 de plus » ne se vérifie contre rien. */}
+          {!toutesLesPeriodes && periodes.length > PERIODES_MONTREES && (
+            <div className="pt-3">
+              <Button variant="ghost" size="sm" onClick={() => setToutesLesPeriodes(true)}>
+                {t('app.unitFile.billingAll', { count: periodes.length })}
+              </Button>
+            </div>
           )}
         </Card>
 
@@ -418,6 +484,15 @@ export function UnitFile() {
               icon="wrench"
               title={t('app.unitFile.worksEmpty')}
               body={t('app.unitFile.worksEmptyBody')}
+              /* UNE CASE VIDE PORTE SON GESTE. `EmptyState` prend une action
+                 depuis toujours ; celle-ci renvoyait chercher « Ouvrir un
+                 chantier » dans le menu de l'en-tête, trois cents pixels plus
+                 haut et replié derrière trois points. */
+              action={
+                <Button variant="secondary" size="sm" icon="wrench" onClick={() => setChantierOuvert(true)}>
+                  {t('app.works.openCta')}
+                </Button>
+              }
             />
           ) : (
             <ul
@@ -574,7 +649,9 @@ export function UnitFile() {
                  qu'un. */
               valeur={
                 releve && releve.waterCurrent !== null && releve.waterPrevious !== null
-                  ? `${releve.waterCurrent - releve.waterPrevious} m³`
+                  ? t('app.unitFile.waterVolume', {
+                      volume: n.integer(releve.waterCurrent - releve.waterPrevious),
+                    })
                   : null
               }
               absence={t('app.unitFile.noReading')}

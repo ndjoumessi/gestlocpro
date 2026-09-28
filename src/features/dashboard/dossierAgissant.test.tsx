@@ -88,8 +88,15 @@ describe('le dossier d’un logement', () => {
       `ReceiptModal` prend un `unitId` depuis toujours — il n'y avait rien à
       construire, seulement à appeler.
     */
+    /*
+      CELLE DE L'EN-TÊTE, NOMMÉMENT. Depuis que chaque période facturée porte la
+      sienne — « Quittance de juin 2026 » —, un motif large en trouve sept et le
+      cas rougit sur son ambiguïté plutôt que sur le produit. Le geste gardé ici
+      reste le même : la quittance du MOIS COURANT, atteinte depuis l'en-tête du
+      dossier.
+    */
     const { cliquerAction } = await import('@/test/render')
-    await cliquerAction(/quittance/i)
+    await cliquerAction(/^quittance$/i)
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })
