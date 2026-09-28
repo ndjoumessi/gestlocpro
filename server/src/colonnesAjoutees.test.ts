@@ -156,6 +156,16 @@ const AFFIRMATIONS: Record<string, string> = {
     '« écrit avant cette colonne ». Assumé et écrit dans la migration : le ' +
     'compteur du CHANTIER reste en place et garde son compte global, qui reste ' +
     'juste pour ces lignes-là.',
+  'AuditEvent.actorName':
+    'NULL sur toutes les lignes déjà en base, et son sens est celui qu’il ' +
+    'gardera ensuite : « la relation dit encore qui a agi, ou plus personne ne ' +
+    'le dira jamais ». Les deux cas EXISTENT en base et ne se distinguent pas — ' +
+    '`actorId` porte l’un, `null` porte l’autre, et c’est justement cette ' +
+    'lecture-là qui rend la colonne lisible sans remplissage. LE PASSÉ NE SE ' +
+    'RATTRAPE PAS : une décision prise par un compte DÉJÀ effacé avant ce lot ' +
+    'restera « Compte supprimé » pour toujours, parce que son nom n’existe plus ' +
+    'nulle part. Aucun remplissage n’est donc possible, et en inventer un ' +
+    'écrirait un nom que personne n’a mesuré.',
 }
 
 /** Les colonnes qu'une migration ajoute à une table existante. */
@@ -203,13 +213,13 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont VINGT ET UNE, et le compte est écrit à la main', () => {
+  it('sont VINGT-DEUX, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(21)
+    ).toBe(22)
   })
 })

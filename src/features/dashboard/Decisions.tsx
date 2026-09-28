@@ -280,6 +280,17 @@ interface DecisionApi {
   payload: unknown
   at: string
   actor: string | null
+  /**
+   * Le compte de l'auteur a été EFFACÉ, et son nom est conservé.
+   *
+   * Distinct du nom : sans ce fait, l'écran ne peut pas distinguer « Diane
+   * Fotso » d'un compte vivant de « Diane Fotso » d'un compte parti — et il
+   * doit le dire, sans quoi on écrirait à quelqu'un qui n'a plus de boîte.
+   *
+   * Facultatif : un serveur antérieur à ce lot ne le rend pas, et l'écran se
+   * tait alors plutôt que d'affirmer une présence qu'il ne sait pas.
+   */
+  actorGone?: boolean
 }
 
 interface RegistreApi {
@@ -572,8 +583,22 @@ export function Decisions() {
          masquer effacerait l'histoire pour protéger un nom qui
          n'existe plus. */
       render: (decision) =>
-        decision.actor ?? (
+        decision.actor === null ? (
+          /* AUCUN NOM DU TOUT : les décisions prises avant que ce registre ne
+             conserve le nom, par des comptes déjà effacés. Il n'existe plus
+             nulle part et aucune migration ne peut le retrouver. */
           <span className="text-muted">{t('app.decisions.unknownActor')}</span>
+        ) : decision.actorGone ? (
+          /* LE NOM, PUIS SON ÉTAT. Dans cet ordre : c'est le nom qu'on cherche,
+             et « parti » est ce qu'on apprend en le lisant. L'inverse —
+             « Compte supprimé · Diane Fotso » — mettrait l'accessoire devant
+             la réponse à « qui a fait ça ? ». */
+          <span className="flex flex-col gap-0.5">
+            <span>{decision.actor}</span>
+            <span className="text-caption text-muted">{t('app.decisions.actorGone')}</span>
+          </span>
+        ) : (
+          decision.actor
         ),
     },
   ]

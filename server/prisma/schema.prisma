@@ -1113,6 +1113,17 @@ model AuditEvent {
   park    Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
   actorId String? @db.Uuid
   actor   UserAccount? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  /// Le nom de l'auteur, FIGÉ AU MOMENT OÙ SON COMPTE S'EFFACE — et nul tant
+  /// qu'il vit. `actorId` est en `SetNull` pour que le registre survive au
+  /// départ d'un compte, mais le NOM partait avec l'identifiant : l'écran
+  /// rendait « Accès repris · par qui : Compte supprimé », c'est-à-dire qu'il
+  /// effaçait la responsabilité au moment précis où elle compte.
+  ///
+  /// POURQUOI PAS À CHAQUE ÉCRITURE. Une copie posée à l'écriture vieillit :
+  /// quelqu'un qui change de nom renomme son compte, pas son passé, et le
+  /// registre afficherait deux noms pour la même personne selon la date de la
+  /// ligne. Tant que la relation répond, elle fait foi.
+  actorName String?
   action  String
   entity  String
   entityId String @db.Uuid

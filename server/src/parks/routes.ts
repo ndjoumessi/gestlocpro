@@ -4242,6 +4242,7 @@ parksRouter.get(
         payload: true,
         createdAt: true,
         actor: { select: { fullName: true } },
+        actorName: true,
       },
     })
 
@@ -4255,7 +4256,15 @@ parksRouter.get(
         entityId: e.entityId,
         payload: e.payload,
         at: e.createdAt.toISOString(),
-        actor: e.actor?.fullName ?? null,
+        /* LA RELATION FAIT FOI TANT QU'ELLE RÉPOND : un compte renommé doit
+           l'être partout dans son registre. `actorName` n'est écrit qu'à
+           l'effacement, et ne prend donc la main qu'une fois le compte parti. */
+        actor: e.actor?.fullName ?? e.actorName ?? null,
+        /* LE FAIT DU DÉPART, distinct du nom. Sans lui, l'écran ne peut pas
+           distinguer « Diane Fotso » d'un compte vivant de « Diane Fotso » d'un
+           compte effacé — et il doit le dire, sans quoi on écrirait à quelqu'un
+           qui n'a plus de boîte. */
+        actorGone: e.actor === null && e.actorName !== null,
       })),
       suivant,
     })

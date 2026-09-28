@@ -50,7 +50,9 @@ export async function effacerLesComptesFermes(
   const echeance = new Date(maintenant.getTime() - DELAI_D_EFFACEMENT_JOURS * 86_400_000)
   const fermes = await prisma.userAccount.findMany({
     where: { closureRequestedAt: { not: null, lte: echeance } },
-    select: { id: true },
+    /* LE NOM AUSSI, et pas seulement l'identifiant : c'est ce qu'on va figer
+       dans le registre avant de le perdre. */
+    select: { id: true, fullName: true },
   })
 
   const bilan: BilanDEffacement = { comptes: 0, parcs: 0, photos: 0 }
@@ -81,6 +83,25 @@ export async function effacerLesComptesFermes(
       await prisma.park.delete({ where: { id: parkId } })
       bilan.parcs++
     }
+
+    /**
+     * LE NOM SE FIGE ICI, ET NULLE PART AILLEURS.
+     *
+     * `AuditEvent.actorId` est en `SetNull` : le registre survit au départ d'un
+     * compte, mais le NOM partait avec l'identifiant et l'écran rendait « par
+     * qui : Compte supprimé ». Un registre de décisions existe pour répondre à
+     * « qui a fait ça ? » ; il répondait « personne » dès qu'on partait, ce qui
+     * est justement ce que fait quelqu'un qui a quelque chose à se reprocher.
+     *
+     * APRÈS l'effacement des parcs, pas avant : ceux-là sont partis avec leurs
+     * registres, et les figer aurait écrit dans des lignes qui n'existent plus.
+     * Ce qui reste est le registre des parcs SURVIVANTS — ceux qui ont un autre
+     * propriétaire —, c'est-à-dire exactement ceux où la question se pose.
+     */
+    await prisma.auditEvent.updateMany({
+      where: { actorId: compte.id },
+      data: { actorName: compte.fullName },
+    })
 
     await prisma.userAccount.delete({ where: { id: compte.id } })
     bilan.comptes++

@@ -1392,6 +1392,7 @@ export const en: Dictionary = {
       colWhat: 'Decision',
       colWho: 'By',
       unknownActor: 'Deleted account',
+      actorGone: 'Account since deleted',
       singleActor: 'Every decision shown was written by {name}.',
       singleActorUnknown: 'Every decision shown was written by a deleted account.',
       more: 'Show older decisions',

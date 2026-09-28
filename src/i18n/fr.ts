@@ -2063,7 +2063,12 @@ export const fr = {
       colWhen: 'Quand',
       colWhat: 'Décision',
       colWho: 'Par qui',
+      /* AUCUN NOM DU TOUT — les décisions d'avant la conservation du nom.
+         « Compte supprimé » y est la seule chose vraie qu'on puisse dire. */
       unknownActor: 'Compte supprimé',
+      /* LE NOM EST LÀ, ET SON COMPTE N'EST PLUS. Dit sous le nom, jamais à sa
+         place : on écrirait sinon à quelqu'un qui n'a plus de boîte. */
+      actorGone: 'Compte supprimé depuis',
       singleActor: 'Toutes les décisions affichées ont été écrites par {name}.',
       singleActorUnknown: 'Toutes les décisions affichées ont été écrites par un compte supprimé.',
       more: 'Voir les décisions plus anciennes',
