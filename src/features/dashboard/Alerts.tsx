@@ -18,6 +18,7 @@ import { Badge } from '@/components/primitives/Badge'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { type Alert } from '@/data/portfolio'
+import { duPlusRecent } from './ordreDesAvis'
 
 /**
  * L'écran qui répond à chaque nature de notification.
@@ -224,13 +225,27 @@ export function Alerts() {
    */
   const MA_VOIX = isTenant ? 'tenantReply' : 'workReply'
 
-  const toutes = (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS)
-    .filter((a) => a.message !== MA_VOIX)
-    .map(
-    (alert) => ({
-      ...alert,
-      read: alert.read || readAlertIds.includes(alert.id),
-    }),
+  /**
+   * L'ORDRE EST ÉTABLI ICI, PARCE QUE C'EST ICI QU'IL EST PROMIS.
+   *
+   * Le sous-titre annonce « du plus récent au plus ancien ». La liste, elle,
+   * arrivait dans l'ordre de DÉCLARATION de `ALERTS` — un tableau écrit à la
+   * main. Mesuré sur la démonstration au 28 septembre : la fuite signalée
+   * quarante minutes plus tôt paraissait en cinquième position, sous trois avis
+   * de la veille.
+   *
+   * ET LE REPLI DES RELANCES EN DÉPEND. La boucle qui suit retient « la
+   * première rencontrée » comme porteuse de la série, en supposant la liste
+   * déjà rangée — une supposition que rien ne garantissait et que ce tri rend
+   * vraie.
+   */
+  const toutes = duPlusRecent(
+    (isTenant ? ALERTS.filter((a) => a.unitId && isMine(a.unitId)) : ALERTS)
+      .filter((a) => a.message !== MA_VOIX)
+      .map((alert) => ({
+        ...alert,
+        read: alert.read || readAlertIds.includes(alert.id),
+      })),
   )
 
   /**
