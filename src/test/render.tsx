@@ -120,9 +120,27 @@ function sessionDe(preferences: PreferencesTest, route = ''): EtatSession | unde
  * requête DANS le chemin, et `useSearchParams` ne voit plus rien : huit tests
  * du parcours de réinitialisation tombaient sur un « lien expiré ».
  */
-function decouper(route: string): { pathname: string; search: string } {
-  const [pathname = '/', search = ''] = route.split('?')
-  return { pathname, search: search ? `?${search}` : '' }
+/**
+ * Une adresse d'essai découpée comme un vrai routeur la découpe.
+ *
+ * LE FRAGMENT ÉTAIT COLLÉ AU CHEMIN. `route.split('?')` seul rendait
+ * `pathname: '/demo/parc#immeuble-bon'` — un chemin qu'aucune route ne
+ * reconnaît, donc « Écran introuvable » sur un écran qui existe. Le défaut
+ * n'avait jamais paru parce qu'aucun cas ne passait de fragment ; le premier à
+ * en passer a cru tenir un défaut du produit.
+ *
+ * L'ORDRE COMPTE : le fragment vient APRÈS la requête dans une URL, donc on le
+ * détache en premier — sinon un `#` avant le `?` emporterait la requête avec
+ * lui, et un `?` après le `#` la ferait apparaître là où elle n'est pas.
+ */
+function decouper(route: string): { pathname: string; search: string; hash: string } {
+  const [avantFragment = '/', fragment = ''] = route.split('#')
+  const [pathname = '/', search = ''] = avantFragment.split('?')
+  return {
+    pathname,
+    search: search ? `?${search}` : '',
+    hash: fragment ? `#${fragment}` : '',
+  }
 }
 
 /**

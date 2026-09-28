@@ -1748,12 +1748,22 @@ export function DonutChart({
 export function ProgressBar({
   value,
   label,
+  note,
   tone = 'accent',
   hideLabel,
   hideValue,
 }: {
   value: number
   label: string
+  /**
+   * CE QUE LE POURCENTAGE DIVISE, écrit derrière lui.
+   *
+   * Une part sans son dénominateur se lit de deux façons — « 80 % du montant »
+   * et « 80 % des logements » — et les deux appellent des gestes différents.
+   * La note reste FACULTATIVE : une barre dont l'assiette est évidente, comme
+   * le recouvrement d'un mois sous son propre montant, n'a rien à ajouter.
+   */
+  note?: string
   tone?: 'accent' | 'ok' | 'danger'
   /**
    * Masque le libellé VISIBLE sans le retirer de l'arbre d'accessibilité.
@@ -1826,6 +1836,14 @@ export function ProgressBar({
         <span className="numeric w-12 shrink-0 text-right text-body text-muted">
           {nombres.percent(value)}
         </span>
+      )}
+      {/* DERRIÈRE LE POURCENTAGE, PAS SOUS LUI : une seconde ligne sous chaque
+          barre doublerait la hauteur du bloc pour quatre caractères, et la
+          rangée d'à côté réserverait ce vide. `shrink-0` sur le pourcentage
+          garde sa colonne ; la note prend ce qui reste et se coupe la
+          dernière. */}
+      {note && (
+        <span className="numeric min-w-0 truncate text-label text-muted">{note}</span>
       )}
     </div>
   )

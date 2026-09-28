@@ -1025,6 +1025,10 @@ export const fr = {
       recoveryPartial: 'Partiel',
       recoveryLate: 'En retard',
       rebilled: 'Charges refacturées',
+      /* LE DÉNOMINATEUR D'UNE PART. « 80 % » se lit aussi bien comme 80 % d'un
+         montant ; la phrase dit ce qu'il divise, dans la forme que la carte
+         « Total refacturé » emploie déjà sur le même écran. */
+      rebilledOf: '{done} sur {total} relevés',
       decisionsTitle: 'Ce qui demande une décision',
       decisionDeposit: 'Caution à arbitrer · {tenant}',
       decisionsEmpty: 'Rien à arbitrer pour le moment.',

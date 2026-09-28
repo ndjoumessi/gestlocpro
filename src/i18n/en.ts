@@ -723,6 +723,7 @@ export const en: Dictionary = {
       recoveryEmptyBody:
         'No lease is active: as soon as a unit is let, the rent due and the share collected appear here.',
       rebilledNoReading: 'No meter reading taken for this period.',
+      rebilledOf: '{done} of {total} read',
       recoveryTitle: 'Recovery this month',
       recoveryTableCaption: 'Amounts behind the chart, split by payment status.',
       recoveryCollected: 'Paid',

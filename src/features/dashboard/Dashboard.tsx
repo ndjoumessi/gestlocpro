@@ -154,6 +154,19 @@ export function Dashboard() {
     : BUILDINGS.map((building) => ({ building, impaye: 0 }))
 
   const rienAttendu = expected === 0
+  /**
+   * CE QUE LES DEUX BARRES DE REFACTURATION DIVISENT.
+   *
+   * `waterRebilled` est un POURCENTAGE, et son assiette — les unités attendues
+   * au relevé — n'était écrite nulle part. On la recompose ici depuis la MÊME
+   * source que le pourcentage, `readings`, plutôt que depuis `units` : les deux
+   * ne coïncident pas sur un parc dont tous les logements ne sont pas relevés,
+   * et deux dénominateurs pour un même rapport se contrediraient.
+   */
+  const relevesAttendus = readings.length
+  const relevesSaisis = (fluide: 'water' | 'power') =>
+    readings.filter((r) => (fluide === 'water' ? r.waterCurrent : r.powerCurrent) !== null).length
+
   const collectedShare = rienAttendu ? 0 : Math.round((collected / expected) * 100)
   /* La variation du mois sur le mois précédent, quand il y en a un — voir
      `variationDesEncaissements`, qui rend `null` plutôt qu'un zéro trompeur. */
@@ -800,8 +813,28 @@ export function Dashboard() {
                 <p className="text-body text-muted">{t('app.dashboard.rebilledNoReading')}</p>
               ) : (
                 <>
-                  <ProgressBar label={t('app.dashboard.legendWater')} value={kpis.waterRebilled} />
-                  <ProgressBar label={t('app.dashboard.legendPower')} value={kpis.powerRebilled} />
+                  {/* LE DÉNOMINATEUR, PARCE QUE LE POURCENTAGE SEUL NE DIT PAS
+                      DE QUOI. `waterRebilled` est la part des UNITÉS dont le
+                      relevé est saisi ; « 80 % » se lit aussi bien comme 80 %
+                      d'un montant, et les deux appellent des gestes différents —
+                      relancer une tournée, ou vérifier un tarif. La forme est
+                      celle que la carte « Total refacturé » emploie déjà. */}
+                  <ProgressBar
+                    label={t('app.dashboard.legendWater')}
+                    value={kpis.waterRebilled}
+                    note={t('app.dashboard.rebilledOf', {
+                      done: String(relevesSaisis('water')),
+                      total: String(relevesAttendus),
+                    })}
+                  />
+                  <ProgressBar
+                    label={t('app.dashboard.legendPower')}
+                    value={kpis.powerRebilled}
+                    note={t('app.dashboard.rebilledOf', {
+                      done: String(relevesSaisis('power')),
+                      total: String(relevesAttendus),
+                    })}
+                  />
                 </>
               )}
             </div>
@@ -883,7 +916,21 @@ export function Dashboard() {
                    ligne plus bas parce que le `<li>` est devenu la cellule. */
                 <li key={building.id} className="min-w-0">
                   <Link
-                    to={lien(base, 'parc')}
+                    /*
+                      À SON IMMEUBLE, ET NON AU PARC ENTIER.
+
+                      Les trois tuiles menaient à la même adresse : désigner
+                      « Villa Deïdo » ouvrait tout le parc, à charge pour le
+                      lecteur de retrouver la ligne qu'il venait de pointer. Le
+                      repère existait déjà — l'écran du parc donne à chaque
+                      immeuble un `id="immeuble-<identifiant>"` posé sur son
+                      titre, pour que sa section s'en nomme —, rien n'y menait.
+
+                      UN FRAGMENT ET NON UN PARAMÈTRE : c'est un ANCRAGE dans une
+                      page qu'on ouvre entière, pas un filtre. Un `?immeuble=`
+                      promettrait une vue restreinte que l'écran ne rend pas.
+                    */
+                    to={`${lien(base, 'parc')}#immeuble-${building.id}`}
                     /* `min-h-11` : les deux lignes de texte frôlaient déjà le
                        plancher sans que rien ne le garantisse — un immeuble au nom
                        court et sans quartier serait passé dessous. */

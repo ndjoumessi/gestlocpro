@@ -255,6 +255,26 @@ export function Portfolio() {
    * plus lente pourrait écraser la plus récente. Sans ce drapeau, l'écran
    * afficherait le mois qu'on vient de quitter.
    */
+  /**
+   * ═══ LE REPÈRE D'IMMEUBLE PREND LE FOCUS, IL NE SE CONTENTE PAS DE DÉFILER ═══
+   *
+   * Le tableau de bord envoie ici avec `#immeuble-<identifiant>`. Ce dépôt a
+   * déjà établi que `<Link to="#id">` NE FAIT DÉFILER NULLE PART :
+   * `history.pushState` ne déclenche jamais l'ancrage natif du navigateur. Son
+   * remède pour une ancre de MÊME page est un `<a href>` ordinaire ; il ne vaut
+   * pas ici, où le saut traverse deux écrans et rechargerait l'application.
+   *
+   * DONNER LE FOCUS RÉSOUT LES DEUX D'UN COUP : le navigateur amène l'élément à
+   * l'écran, et qui n'y voit pas apprend OÙ il vient d'arriver. Un défilement
+   * muet ne dit rien à personne.
+   *
+   * `tabIndex={-1}` SUR LE TITRE est la condition : un `<h3>` n'est pas
+   * focalisable, et `focus()` y serait sans effet. `-1` le rend atteignable au
+   * script sans l'ajouter à l'ordre de tabulation.
+   *
+   * APRÈS LE CHARGEMENT, et c'est pourquoi `lignes` est dans les dépendances :
+   * au premier rendu les immeubles n'existent pas encore, et le repère non plus.
+   */
   const [unitesDuMois, setUnitesDuMois] = useState<Unit[] | null>(null)
   const [lectureDuMois, setLectureDuMois] = useState(false)
   const parkId = adhesionActive?.parkId ?? null
@@ -280,6 +300,19 @@ export function Portfolio() {
       annule = true
     }
   }, [parkId, moisChoisi, moisCourant])
+
+  const repere = location.hash
+  useEffect(() => {
+    if (!repere.startsWith('#immeuble-')) return
+    const titre = document.getElementById(repere.slice(1))
+    /* `focus` EST FACULTATIF SOUS jsdom pour les mêmes raisons que
+       `scrollIntoView` ailleurs dans ce dépôt — sauf qu'il existe, lui, et que
+       c'est ce qui rend ce geste MESURABLE sans navigateur. */
+    titre?.focus?.()
+    /* `loading` ET LE COMPTE D'IMMEUBLES : au premier rendu la liste est vide
+       et le repère n'existe pas encore. Sans eux, l'effet cherche un titre qui
+       n'est pas né et ne se rejoue jamais. */
+  }, [repere, loading, BUILDINGS.length])
 
   const unitesAffichees = unitesDuMois ?? units
   const { notify } = useToast()
@@ -601,7 +634,16 @@ export function Portfolio() {
                           à 375 px, `line-clamp-2` a coupé 282 px sur 70 offerts.
                           La carte clampait parce qu'une grille doit aligner
                           quatre tuiles ; un en-tête de groupe n'aligne rien. */}
-                      <h3 id={`immeuble-${id}`} className="font-medium text-ink hyphens-auto break-words">
+                      {/* `tabIndex={-1}` : un `<h3>` n'est pas focalisable, et le
+                          saut depuis le tableau de bord — « Impayé par immeuble »
+                          — y serait sans effet. `-1` le rend atteignable au
+                          script SANS l'ajouter à l'ordre de tabulation : personne
+                          ne le traverse en tabulant. */}
+                      <h3
+                        id={`immeuble-${id}`}
+                        tabIndex={-1}
+                        className="font-medium text-ink hyphens-auto break-words focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+                      >
                         {b?.name}
                       </h3>
                       <p className="text-body text-muted">
