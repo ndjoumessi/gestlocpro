@@ -532,6 +532,17 @@ const HORS_PORTEE = {
  *
  * Les 55 px des relevés sont les deux totaux de consommation au pied, en fiche.
  *
+ * LA COLONNE LARGE DE CETTE SÉRIE VIENT DU TRAVAIL `polices`, exécution
+ * 36429885059 — trois points, LES TROIS ÉCRANS DES LOTS, et aux MÊMES valeurs
+ * que la colonne normale. Ce n'est pas une coïncidence : ces hausses viennent de
+ * rangées de commandes qui se replient, pas de métriques de fonte. Une police
+ * plus grande ne change pas le nombre de boutons qui tiennent sur une ligne dès
+ * lors qu'ils n'y tenaient déjà plus.
+ *
+ * `plafond-vitrine`, le SECOND relevé du même travail, est vert sur ses quatre
+ * points (fr@360 11384, en@360 10953, fr@1280 8177, en@1280 8131) : aucun lot de
+ * cette série ne touche la vitrine.
+ *
  * LA COLONNE LARGE VIENT DU TRAVAIL `polices`, exécution 36401092091 :
  *
  *   /demo@360             3428 → 3479  (+51)
@@ -614,7 +625,7 @@ const PLAFONDS = [
      distinguent la relance de la mise en demeure. Sur un téléphone, c'est la
      SEULE carte rendue : ses deux voisines partent sous `lg`. Trente pixels
      pour la réponse qu'on descendait chercher. */
-  { adresse: '/demo/paiements', largeur: 360, plafond: 3672, plafondLarge: 3466 },
+  { adresse: '/demo/paiements', largeur: 360, plafond: 3672, plafondLarge: 3672 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
@@ -628,7 +639,7 @@ const PLAFONDS = [
   { adresse: '/demo/documents', largeur: 360, plafond: 2292, plafondLarge: 2292 },
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
   { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4350 },
-  { adresse: '/demo/releves', largeur: 360, plafond: 3902, plafondLarge: 3847 },
+  { adresse: '/demo/releves', largeur: 360, plafond: 3902, plafondLarge: 3902 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2270, plafondLarge: 2270 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
@@ -655,7 +666,7 @@ const PLAFONDS = [
   { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
   { adresse: '/demo', largeur: 1280, plafond: 1855, plafondLarge: 1856 },
-  { adresse: '/demo/paiements', largeur: 1280, plafond: 1792, plafondLarge: 1552 },
+  { adresse: '/demo/paiements', largeur: 1280, plafond: 1792, plafondLarge: 1792 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
   /*
     +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE
