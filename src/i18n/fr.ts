@@ -1516,6 +1516,16 @@ export const fr = {
          suite ne disent pas lequel on active » — il s'ajoute simplement au
          libellé au lieu de le remplacer. */
       correctLine: 'Modifier les relevés — {unit}',
+      /* DEUX GESTES, DEUX MOTS. « Modifier » sur une ligne vide promettrait la
+         correction de rien ; c'est le même écart que « Saisir » et « Corriger »
+         portent déjà en tête d'écran. */
+      record: 'Saisir',
+      recordLine: 'Saisir les relevés — {unit}',
+      /* LES DEUX TOTAUX DE CONSOMMATION. Ce qu'un bailleur oppose à la facture
+         de son compteur général est la SOMME des logements ; l'écart entre les
+         deux est la perte. Le pied ne totalisait que l'argent. */
+      totalVolume: '{volume} m³',
+      totalPower: '{volume} kWh',
       removeWater: 'Retirer le relevé d’eau',
       removePower: 'Retirer le relevé d’électricité',
       confirmRemove: 'Confirmer le retrait',

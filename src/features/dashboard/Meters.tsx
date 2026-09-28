@@ -758,6 +758,23 @@ export function Meters() {
             key: 'water',
             header: `${t('app.meters.utility.water')} (m³)`,
             numeric: true,
+            /* LA SOMME DES LOGEMENTS, celle qu'on oppose à la facture du
+               compteur général : leur écart EST la perte. Le pied ne totalisait
+               que l'argent. Les lignes sans relevé n'y entrent pas — et comme
+               pour le montant, un pied à zéro se lirait « rien consommé » là où
+               la vérité est « rien relevé ». */
+            total: (releves) => {
+              const consommees = releves
+                .map((r) => consommation(r, 'water'))
+                .filter((c): c is number => c !== null)
+              return consommees.length === 0 ? (
+                <span className="text-muted">—</span>
+              ) : (
+                t('app.readings.totalVolume', {
+                  volume: n.integer(consommees.reduce((somme, c) => somme + c, 0)),
+                })
+              )
+            },
             // Le garde porte sur `r.waterCurrent` et non sur la consommation
             // dérivée : les deux sont nuls ensemble, mais seul celui-ci permet
             // à TypeScript de conclure, sans assertion de non-nullité.
@@ -806,6 +823,18 @@ export function Meters() {
             key: 'power',
             header: `${t('app.meters.utility.power')} (kWh)`,
             numeric: true,
+            total: (releves) => {
+              const consommees = releves
+                .map((r) => consommation(r, 'power'))
+                .filter((c): c is number => c !== null)
+              return consommees.length === 0 ? (
+                <span className="text-muted">—</span>
+              ) : (
+                t('app.readings.totalPower', {
+                  volume: n.integer(consommees.reduce((somme, c) => somme + c, 0)),
+                })
+              )
+            },
             render: (r) =>
               r.powerCurrent === null ? (
                 <span className="text-muted">—</span>
@@ -905,25 +934,42 @@ export function Meters() {
                la place et où l'index à retirer est sous les yeux. */
             role: 'geste',
             header: '',
-            render: (r) =>
-              /* RIEN À CORRIGER SANS RELEVÉ. Une ligne sans aucun index posé
-                 n'offre pas de geste : le bouton mènerait à une modale qui ne
-                 saurait rien corriger. */
-              peutRelever && (r.waterReadingId ?? r.powerReadingId) ? (
+            render: (r) => {
+              if (!peutRelever) return null
+              /*
+                DEUX GESTES, ET LE MOT DIT LEQUEL.
+
+                Le garde d'origine était juste pour ce qu'il visait : « rien à
+                corriger sans relevé, le bouton mènerait à une modale qui ne
+                saurait rien corriger ». Mais CORRIGER n'est pas le seul geste :
+                il y a SAISIR, et c'est celui que la ligne manquante demande —
+                c'est la seule ligne de l'écran qui appelle un travail, elle
+                bloque la facturation du mois, et le bandeau du haut le dit.
+
+                Elle n'en offrait aucun : on remontait en tête d'écran, on
+                rouvrait « Saisir un relevé », et on y rechoisissait le logement
+                qu'on venait de lire.
+              */
+              const aUnIndex = Boolean(r.waterReadingId ?? r.powerReadingId)
+              return (
                 <div className="flex items-center justify-end">
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon="sliders"
-                    /* LE LOGEMENT DANS LE NOM ACCESSIBLE : douze boutons
-                       « Corriger » à la suite ne disent pas lequel on active. */
-                    aria-label={t('app.readings.correctLine', { unit: unitLabel(r.unitId) })}
+                    icon={aUnIndex ? 'sliders' : 'plus'}
+                    /* LE LOGEMENT DANS LE NOM ACCESSIBLE : douze boutons à la
+                       suite ne disent pas lequel on active. */
+                    aria-label={t(
+                      aUnIndex ? 'app.readings.correctLine' : 'app.readings.recordLine',
+                      { unit: unitLabel(r.unitId) },
+                    )}
                     onClick={() => setLigneACorriger(r)}
                   >
-                    {t('common.edit')}
+                    {t(aUnIndex ? 'common.edit' : 'app.readings.record')}
                   </Button>
                 </div>
-              ) : null,
+              )
+            },
           },
         ]}
       />
