@@ -1518,6 +1518,7 @@ export const en: Dictionary = {
       scopeMore: 'and {count} others',
       scopeMore_one: 'and 1 other',
       scopeExcept: '— except {names}',
+      scopeBuildingExcept: '{name} (except {units})',
       scopeSome: 'Manages: {names}',
       requestsTitle: 'Access requests',
       requestsBody: 'These accounts are asking to manage this portfolio. Granting opens access without assigning anything: you choose the buildings next.',

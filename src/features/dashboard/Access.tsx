@@ -604,33 +604,57 @@ export function Access() {
     if (rien) {
       return m.scope === 'declared' ? t('app.access.scopeNothing') : t('app.access.scopeAll')
     }
-    const confies = t('app.access.scopeSome', {
-      names: replier(
-        [
-          ...immeublesDuParc
-            .filter((i) => (m.buildingIds ?? []).includes(i.id))
-            .map((i) => i.name),
-          ...logementsParImmeuble(m.unitIds),
-        ],
-        t,
-      ),
-    })
     /*
       ET CE QU'ON A RETRANCHÉ — la seule phrase FAUSSE que cet écran ait
       portée. « Gère : Résidence Bonamoussadi » se lit « tout l'immeuble », et
       le périmètre effectif en retranchait un logement. Les autres manques du
       produit sont des absences ; celui-ci était une AFFIRMATION incorrecte.
 
-      RIEN QUAND RIEN N'EST RETRANCHÉ : « sauf — » ferait chercher une
-      exception qui n'existe pas.
+      ═══ L'EXCEPTION VOYAGE AVEC CE QU'ELLE MODIFIE ═══
+
+      Première rédaction : les retranchés en QUEUE de phrase, derrière un
+      « — sauf ». Chaque moitié était exacte, et le nom de l'immeuble paraissait
+      des deux côtés — « Gère : Résidence Bonamoussadi, Immeuble Akwa Nord
+      — sauf Résidence Bonamoussadi · A2, A3, A4 ». Un lecteur pressé y lit
+      l'immeuble retiré, sur l'écran qu'on ouvre précisément pour vérifier ce
+      qu'on a confié.
+
+      Attachée, l'exception ne peut plus se lire à l'envers. Et la
+      disambiguïsation que le préfixe achetait — « S2 » ne désigne rien sur un
+      parc où trois résidences en ont un — est rendue par la POSITION, sans
+      répéter le nom.
+
+      RIEN QUAND RIEN N'EST RETRANCHÉ : « (sauf) » ferait chercher une exception
+      qui n'existe pas.
     */
-    if ((m.excludedUnitIds ?? []).length === 0) return confies
+    const retranches = new Set(m.excludedUnitIds ?? [])
+    const immeublesConfies = immeublesDuParc
+      .filter((i) => (m.buildingIds ?? []).includes(i.id))
+      .map((i) => {
+        const retires = (i.units ?? []).filter((u) => retranches.has(u.id)).map((u) => u.label)
+        return retires.length === 0
+          ? i.name
+          : t('app.access.scopeBuildingExcept', { name: i.name, units: replier(retires, t) })
+      })
+
+    /* LES RETRANCHÉS ORPHELINS — ceux d'un immeuble qu'on n'a PAS confié en
+       entier. Ils ne peuvent s'attacher à rien, et la queue de phrase reste la
+       seule place où les dire. Aucun écran ne les produit aujourd'hui : le
+       retranchement se coche sous un immeuble confié. Les taire le jour où un
+       serveur en rendrait serait rétablir la phrase fausse d'origine. */
+    const idsDesImmeublesConfies = new Set(m.buildingIds ?? [])
+    const orphelins = immeublesDuParc
+      .filter((i) => !idsDesImmeublesConfies.has(i.id))
+      .flatMap((i) => (i.units ?? []).filter((u) => retranches.has(u.id)).map((u) => u.id))
+
+    const confies = t('app.access.scopeSome', {
+      names: replier([...immeublesConfies, ...logementsParImmeuble(m.unitIds)], t),
+    })
+    if (orphelins.length === 0) return confies
     return (
       confies +
       ' ' +
-      t('app.access.scopeExcept', {
-        names: replier(logementsParImmeuble(m.excludedUnitIds), t),
-      })
+      t('app.access.scopeExcept', { names: replier(logementsParImmeuble(orphelins), t) })
     )
   }
 

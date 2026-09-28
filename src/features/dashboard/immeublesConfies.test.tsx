@@ -444,16 +444,29 @@ describe('le résumé du registre, quand des logements sont retranchés', () => 
     expect(
       rangee.textContent,
       'un propriétaire qui relit son registre croyait avoir confié l’immeuble entier',
-    ).toContain('sauf Résidence Bonamoussadi · S2')
+    ).toContain('Résidence Bonamoussadi (sauf S2)')
   })
 
-  it('nomme le logement par son immeuble, comme la liste des confiés', async () => {
-    /* « S2 » ne dit rien sur un parc de cinq résidences : trois d'entre elles
-       ont un S2. La règle vaut des deux côtés de la phrase. */
+  it('n’use pas de la queue de phrase quand l’immeuble est confié', async () => {
+    /*
+      LA DISAMBIGUÏSATION EST RENDUE PAR LA POSITION, ET CE CAS GARDE QU'ON N'Y
+      REVIENNE PAS.
+
+      « S2 » ne dit rien sur un parc de cinq résidences : trois d'entre elles en
+      ont un. La première rédaction achetait cette précision en RECOPIANT le nom
+      derrière « — sauf », ce qui le faisait paraître des deux côtés de la
+      phrase et se lisait comme un retrait de l'immeuble entier. La queue de
+      phrase ne subsiste que pour les retranchés ORPHELINS, ceux dont l'immeuble
+      n'est pas confié — aucun écran n'en produit.
+    */
     await ouvrirLesAcces({
       membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [S2] },
     })
-    expect(rangeeDe('Diane Fotso').textContent).not.toMatch(/sauf S2/)
+    const texte = rangeeDe('Diane Fotso').textContent ?? ''
+    expect(texte, 'l’exception est revenue en queue de phrase').not.toContain('— sauf')
+    expect(texte, 'le numéro a perdu l’immeuble qui le désigne').toContain(
+      'Résidence Bonamoussadi (sauf S2)',
+    )
   })
 
   it('ne dit RIEN de plus quand rien n’est retranché', async () => {
@@ -523,13 +536,47 @@ describe('un résumé qui ne tient pas sur une ligne', () => {
     })
     const texte = rangeeDe('Diane Fotso').textContent ?? ''
 
-    expect(texte).toContain('sauf Résidence Bonamoussadi · S1, S2, S3')
-    /* DANS LA CLAUSE D'EXCLUSION SEULE : « Gère : Résidence Bonamoussadi » en
-       porte une occurrence légitime de l'autre côté de la phrase — c'est
-       l'immeuble CONFIÉ, et non un logement retranché. */
-    const exclusions = texte.slice(texte.indexOf('sauf'))
-    const repetitions = (exclusions.match(/Résidence Bonamoussadi/g) ?? []).length
+    expect(texte).toContain('Résidence Bonamoussadi (sauf S1, S2, S3)')
+    /* DANS LA PHRASE ENTIÈRE, et non plus dans la seule clause d'exclusion :
+       depuis que l'exception est attachée, l'immeuble n'a plus aucune raison
+       d'être nommé deux fois — ni devant ses numéros, ni de l'autre côté d'un
+       « sauf » qui n'existe plus. */
+    const repetitions = (texte.match(/Résidence Bonamoussadi/g) ?? []).length
     expect(repetitions, 'le nom de l’immeuble est encore recopié').toBe(1)
+  })
+
+  /**
+   * ═══ « GÈRE X … SAUF X » SE LIT COMME UNE ANNULATION ═══
+   *
+   * La phrase nommait l'immeuble des DEUX côtés de « sauf » :
+   *
+   *   « Gère : Résidence Bonamoussadi, Immeuble Akwa Nord
+   *     — sauf Résidence Bonamoussadi · A2, A3, A4 et 1 autre »
+   *
+   * Chaque moitié est exacte, et le lot qui les a écrites l'avait relevé : le
+   * nom « porte une occurrence légitime de l'autre côté de la phrase ». Reste
+   * qu'un lecteur pressé lit l'immeuble retiré, sur l'écran qu'on ouvre
+   * précisément pour vérifier ce qu'on a confié.
+   *
+   * L'EXCEPTION VOYAGE AVEC CE QU'ELLE MODIFIE. « Résidence Bonamoussadi
+   * (sauf S2) » ne peut pas se lire à l'envers, et la disambiguïsation que le
+   * préfixe achetait — « S2 » ne désigne rien sur un parc de cinq résidences —
+   * est rendue par la POSITION au lieu d'une répétition.
+   */
+  it('attache l’exception à son immeuble au lieu de le renommer', async () => {
+    await ouvrirLesAcces({
+      membreBorne: { buildingIds: [BON], unitIds: [], excludedUnitIds: [S2] },
+    })
+    const texte = rangeeDe('Diane Fotso').textContent ?? ''
+
+    expect(
+      texte,
+      'l’exception ne suit pas l’immeuble qu’elle modifie : elle est rejetée en fin de phrase, où elle se lit comme un retrait de l’immeuble entier',
+    ).toContain('Résidence Bonamoussadi (sauf S2)')
+    expect(
+      (texte.match(/Résidence Bonamoussadi/g) ?? []).length,
+      'le nom de l’immeuble paraît encore deux fois dans la même phrase, de part et d’autre de « sauf »',
+    ).toBe(1)
   })
 
   it('replie aussi les exclusions, qui souffrent du même mal', async () => {

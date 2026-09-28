@@ -2252,7 +2252,13 @@ export const fr = {
          « et 1 autres ». */
       scopeMore: 'et {count} autres',
       scopeMore_one: 'et 1 autre',
+      /* LA QUEUE DE PHRASE, pour les seuls retranchés qui ne peuvent
+         s'attacher à aucun immeuble confié — voir `scopeBuildingExcept`. */
       scopeExcept: '— sauf {names}',
+      /* L'EXCEPTION COLLÉE À SON IMMEUBLE. Rejetée en fin de phrase, elle
+         renommait l'immeuble de l'autre côté de « sauf » et se lisait comme son
+         retrait. Les parenthèses la subordonnent au lieu de la juxtaposer. */
+      scopeBuildingExcept: '{name} (sauf {units})',
       scopeSome: 'Gère : {names}',
       scopeAction: 'Confier des immeubles',
       /* LES DEMANDES, À PART DES MEMBRES : rangée parmi eux, une demande se

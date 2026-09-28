@@ -62,7 +62,20 @@ describe('le registre des accès en fiches', () => {
        texte, qui mentirait. */
     const diane = fiche('diane@example.com')
     const phrase = within(diane).getByText(/sauf/)
-    expect(phrase.textContent!.length, 'le périmètre de Diane est une phrase').toBeGreaterThan(100)
+    /*
+      LE SEUIL EST UNE GARDE DE NON-VACUITÉ, PAS LE SUJET.
+
+      Le sujet est la ligne du dessous : la phrase n'est pas rognée. Ce compte
+      existe pour qu'un jeu de démonstration réduit à « Gère tout le parc » ne
+      rende pas le cas vert sans rien mesurer — on ne rogne pas ce qui tient.
+
+      IL EST DESCENDU DE 100 À 60, et c'est mon propre lot qui l'a fait : en
+      attachant l'exception à son immeuble — « Résidence Bonamoussadi (sauf
+      S2) » au lieu de « … — sauf Résidence Bonamoussadi · S2 » —, la phrase de
+      Diane est passée de 120 à 78 caractères. Elle reste deux fois trop longue
+      pour une fiche de 320 px, ce que ce cas garde.
+    */
+    expect(phrase.textContent!.length, 'le périmètre de Diane est une phrase').toBeGreaterThan(60)
     expect(getComputedStyle(phrase).textOverflow).not.toBe('ellipsis')
   })
 
