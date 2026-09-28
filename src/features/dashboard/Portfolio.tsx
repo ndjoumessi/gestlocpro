@@ -790,6 +790,16 @@ export function Portfolio() {
                     className={cn(
                       SECTIONS_DE_FICHE_LOGEMENT,
                       'rounded-lg border border-divider bg-surface p-4',
+                      /* `relative` BORNE LE LIEN ÉTIRÉ À CETTE FICHE. Sans lui,
+                         son pseudo-élément remonterait au premier ancêtre
+                         positionné — le rail — et une seule fiche couvrirait
+                         toutes les autres. */
+                      'relative',
+                      /* LA PRESSION S'ENFONCE D'UN PIXEL, comme les six variantes
+                         de `Button`. Pas une ÉCHELLE : ces fiches partagent leurs
+                         rangées par `subgrid`, et une carte mise à l'échelle sort
+                         de l'alignement de ses voisines le temps de l'appui. */
+                      'active:translate-y-px',
                       /*
                         LA FICHE EST UNE DESTINATION, ET NE LE DISAIT PAS.
 
@@ -807,7 +817,7 @@ export function Portfolio() {
                         `snap-start` : l'accroche du rail tombe sur le bord de
                         la fiche, jamais au milieu d'un chiffre.
                       */
-                      'snap-start transition-[border-color,box-shadow] duration-150',
+                      'snap-start transition-[border-color,box-shadow,transform] duration-150',
                       'hover:border-border-strong hover:shadow-e1',
                       'focus-within:border-accent focus-within:shadow-e1',
                     )}
@@ -821,7 +831,29 @@ export function Portfolio() {
                         to={lien(base, `parc/${unit.id}`)}
                         state={{ from: `${location.pathname}${location.search}` }}
                         aria-label={t('app.unitFile.open', { unit: unit.label })}
-                        className="numeric title-m inline-flex min-h-11 min-w-12 items-center text-ink underline-offset-4 hover:underline"
+                        /* UN LIEN EST GLISSABLE PAR DÉFAUT, et la fiche l'est
+                           aussi — pour se réordonner. Les deux gestes partent du
+                           même appui : sans ce refus, tirer une fiche décolle le
+                           fantôme de lien du navigateur au lieu de déplacer la
+                           carte. */
+                        draggable={false}
+                        className={cn(
+                          'numeric title-m inline-flex min-h-11 min-w-12 items-center text-ink underline-offset-4 hover:underline',
+                          /*
+                            LA FICHE ENTIÈRE OUVRE LE DOSSIER, ET SA BOÎTE NE
+                            BOUGE PAS.
+
+                            La carte s'éclaire au survol — bordure, ombre — donc
+                            elle ANNONCE une destination ; seul son numéro y
+                            menait. Un pseudo-élément étend la ZONE DE FRAPPE
+                            sans toucher au rectangle de son hôte : la sonde des
+                            cibles continue de mesurer 48 × 44 sur le numéro, et
+                            le lien reste focalisable, ouvrable dans un nouvel
+                            onglet, annoncé par sa destination. Rien de ce que ce
+                            dépôt refuse dans une « rangée piégée » n'entre ici.
+                          */
+                          'after:absolute after:inset-0 after:rounded-lg',
+                        )}
                       >
                         {unit.label}
                       </Link>
@@ -1044,7 +1076,12 @@ export function Portfolio() {
                       )
                     })()}
                       {unit.status === 'vacant' && (
-                        <div className="pt-3">
+                        /* AU-DESSUS DU LIEN ÉTIRÉ. Un pseudo-élément positionné
+                           se peint par-dessus tout ce qui ne l'est pas : sans
+                           `relative` ici, ce bouton s'affiche, s'éclaire au
+                           survol, et ne répond plus. C'est la régression
+                           classique du lien étiré, et elle ne se voit pas. */
+                        <div className="relative pt-3">
                           <Button
                             variant="secondary"
                             size="sm"
