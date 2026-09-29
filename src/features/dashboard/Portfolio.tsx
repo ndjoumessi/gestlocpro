@@ -937,6 +937,12 @@ export function Portfolio() {
                              menu d'une fiche se réduisait à une bande de trois
                              pixels au bord du rail — mesuré. */
                           echappe
+                          /* LE PANNEAU COUVRE 71 % DE LA FICHE — mesuré. Il
+                             porte donc son sujet, faute de quoi le numéro du
+                             logement, son locataire et son loyer disparaissent
+                             au moment même où le menu propose de le retirer.
+                             Voir `sujet` dans `MenuDeDebordement`. */
+                          sujet={unit.label}
                           libelle={t('app.portfolio.unitActions', { unit: unit.label })}
                         >
                           <MenuElement

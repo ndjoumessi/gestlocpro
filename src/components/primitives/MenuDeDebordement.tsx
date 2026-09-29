@@ -91,12 +91,33 @@ export function MenuDeDebordement({
    */
   discret = false,
   echappe = false,
+  sujet,
 }: {
   /** Nom accessible du déclencheur — trois points ne se prononcent pas. */
   libelle: string
   children?: ReactNode
   className?: string
   discret?: boolean
+  /**
+   * CE SUR QUOI LE MENU AGIT, ÉCRIT EN TÊTE DU PANNEAU.
+   *
+   * À demander quand le panneau RECOUVRE ce qu'il désigne. Mesuré le
+   * 2026-09-29 sur `/demo/parc` : le menu d'une fiche de logement en couvre
+   * 71 %, et ce qui disparaît dessous est le locataire, la typologie et le
+   * loyer — tout ce qui dit QUEL logement on retire, au moment précis où le
+   * panneau propose de le retirer.
+   *
+   * LE SUJET EXISTAIT DÉJÀ, ET POUR PERSONNE. Chaque entrée porte son
+   * `nomAccessible` complet — « Retirer le logement B1 » —, donc une synthèse
+   * vocale a toujours su. C'est le même défaut que ce fichier a déjà nommé pour
+   * la raison d'un refus : « LA RAISON SE LIT, au lieu de n'exister que pour la
+   * synthèse vocale ». La règle vaut aussi pour le sujet.
+   *
+   * PAS SUR LES MENUS QUI NE COUVRENT RIEN. Celui d'un en-tête d'immeuble
+   * recouvre 3 % de sa rangée, mesuré : un titre de plus y serait du bruit, et
+   * `menu-qui-couvre.mjs` ne l'exige qu'au-delà de la moitié.
+   */
+  sujet?: string
   /**
    * Le panneau se pose en `position: fixed`, hors de toute boîte qui le
    * rognerait.
@@ -300,8 +321,22 @@ export function MenuDeDebordement({
 
       {monte && (
         <div
-          role="menu"
-          aria-label={libelle}
+          /*
+            ═══ `role="menu"` EST DESCENDU D'UN CRAN, ET ARIA L'EXIGE ═══
+
+            Il vivait ici, sur la SURFACE — la boîte qui porte le placement,
+            l'animation et la peinture. Tant que cette boîte ne contenait que
+            des entrées, les deux rôles se confondaient sans dommage.
+
+            Le titre de sujet a séparé les deux. ARIA ne donne au rôle `menu`
+            que trois enfants : une entrée, un séparateur, un groupe. Un titre
+            décoratif n'est aucun des trois, et `menusLicites` l'a refusé — à
+            juste titre, sur les huit écrans à menu du produit.
+
+            La surface n'a donc plus de rôle, et le menu est la LISTE qu'elle
+            contient. Le titre est son frère, pas son enfant : c'est aussi ce
+            qu'ARIA recommande d'un élément qui nomme un menu.
+          */
           /* `--z-popover` : le menu s'ouvre au-dessus d'un en-tête qui est
              lui-même collant. Le barreau est celui des panneaux ancrés du
              dépôt, et `altitudes.test.ts` refuse tout niveau écrit à la main. */
@@ -354,6 +389,12 @@ export function MenuDeDebordement({
           // s'en va retiendrait le focus et avalerait le clic suivant.
           aria-hidden={sortant || undefined}
           {...(sortant ? INERTE : {})}
+          /* La SURFACE du menu, nommée pour la mesure : depuis que `role="menu"`
+             est descendu sur la liste, plus aucun attribut ne désignait la boîte
+             PEINTE — celle dont `menu-qui-couvre.mjs` calcule le recouvrement.
+             Un attribut de données et non une classe : `scripts/` est balayé par
+             le générateur d'utilitaires Tailwind. */
+          data-surface-de-menu=""
           className={cn(
             sortant ? 'surface-pop-sortie pointer-events-none' : 'surface-pop',
             /*
@@ -376,7 +417,30 @@ export function MenuDeDebordement({
             echappe && ancre ? '' : versLeHaut ? 'bottom-full mb-2' : 'top-full mt-2',
           )}
         >
-          <FermerLeMenu.Provider value={() => setOuvert(false)}>{children}</FermerLeMenu.Provider>
+          {/*
+            LE SUJET, EN TÊTE ET HORS DE L'ARBRE D'ACCESSIBILITÉ.
+
+            `aria-hidden` : la LISTE juste en dessous porte `aria-label={libelle}`
+            — « Actions pour le logement B1 » —, et chaque entrée répète le sujet
+            dans son `nomAccessible`. Le lire une troisième fois ferait entendre
+            « B1 » trois fois avant le premier geste. Ce titre n'existe QUE pour
+            l'œil, parce que l'œil est le seul à qui il manquait.
+
+            Il n'est pas un `<h_>` : rien ne le suit dans un plan de document,
+            et un titre de niveau flottant dans un panneau fausserait la
+            hiérarchie que `hierarchieDesTitres` garde.
+          */}
+          {sujet && (
+            <p
+              aria-hidden="true"
+              className="numeric truncate px-3 pt-1 pb-1.5 text-label font-semibold text-muted"
+            >
+              {sujet}
+            </p>
+          )}
+          <div role="menu" aria-label={libelle} className="flex flex-col gap-0.5">
+            <FermerLeMenu.Provider value={() => setOuvert(false)}>{children}</FermerLeMenu.Provider>
+          </div>
         </div>
       )}
     </div>

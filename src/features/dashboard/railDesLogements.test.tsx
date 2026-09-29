@@ -84,11 +84,19 @@ describe('le rail des logements', () => {
     await user.click(declencheur)
 
     const menu = await screen.findByRole('menu')
+    /* LA SURFACE PORTE L'ANCRAGE, PAS LE RÔLE — et ce n'est pas un
+       assouplissement. `role="menu"` est descendu sur la LISTE des entrées le
+       jour où le panneau a gagné un titre de sujet : ARIA ne donne au rôle
+       `menu` que des entrées, des séparateurs et des groupes. Le placement est
+       resté où il a toujours été, sur la boîte peinte. On interroge donc la
+       boîte, et le rôle sert toujours à trouver le menu. */
+    const surface = menu.closest<HTMLElement>('[data-surface-de-menu]')
+    expect(surface, 'le menu n’a plus de surface à mesurer').not.toBeNull()
 
     /* `position: fixed` — le seul ancrage qui échappe au rognage d'un ancêtre à
        défilement sans quitter l'arbre, donc sans rien demander au piège de
        focus ni à la fermeture au clic extérieur. */
-    expect(menu.style.position, 'le menu retomberait dans la boîte qui le rogne').toBe('fixed')
+    expect(surface!.style.position, 'le menu retomberait dans la boîte qui le rogne').toBe('fixed')
     expect(
       within(menu).getAllByRole('menuitem').length,
       'le menu a perdu ses entrées',
