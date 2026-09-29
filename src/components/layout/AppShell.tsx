@@ -12,6 +12,7 @@ import {
 import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 import { GOUTTIERE_LATERALE } from './gouttiere'
+import { COLONNE_DE_LECTURE } from './colonneDeLecture'
 import { LienEvitement } from './LienEvitement'
 import { CadreContext } from './PageHeader'
 import { Logo } from '@/components/primitives/Logo'
@@ -583,6 +584,11 @@ export function AppShell() {
             tabIndex={-1}
             className={cn(
               'flex-1',
+              // La colonne de lecture, bornée — voir la note de la coquille de
+              // gestion, qui porte le raisonnement et les mesures. Le portail
+              // du locataire a moins de faits par écran, mais la même règle :
+              // deux coquilles du même produit ne se lisent pas à deux chasses.
+              COLONNE_DE_LECTURE,
               // Aucune barre basse à réserver — d'où un simple rembourrage de
               // fin de défilement, zone de gestes comprise.
               'pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]',
@@ -705,6 +711,9 @@ export function AppShell() {
                  — à cette fréquence, la règle d'audit dit « retirer ou réduire
                  fortement », pas « faire rejouer ». */
               'flex-1',
+              // La colonne de lecture, bornée. Voir `COLONNE_DE_LECTURE` pour
+              // ce qui se mesurait avant elle.
+              COLONNE_DE_LECTURE,
               // Le bas réserve EN PLUS la hauteur de la barre basse, qui est
               // `fixed` et ne pousse donc rien : sans cette réserve elle
               // recouvrirait la dernière ligne de chaque page — exactement le

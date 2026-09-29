@@ -1787,9 +1787,20 @@ export function Portfolio() {
                contenu de la ligne : à 1440–1920 px, c'est elle qui s'étirait —
                de 109 à 396 px de vide relevés — et la pastille restait seule à
                gauche d'un champ blanc. Le mou se reporte sur `tenant`, seule
-               colonne sans borne, où un nom a l'usage de la place. Locale, pas
-               globale : contraindre `main` déplaçait le défaut sur les autres
-               écrans (tenté et retiré le 2026-09-06). */
+               colonne sans borne, où un nom a l'usage de la place.
+
+               CETTE NOTE DISAIT, DEPUIS LE 2026-09-06 : « Locale, pas globale :
+               contraindre `main` déplaçait le défaut sur les autres écrans
+               (tenté et retiré). » Elle ne portait AUCUN nombre, et rien dans
+               l'historique ne montre que la tentative ait été commitée. Remesuré
+               le 2026-09-29 avec un plafond de 1 280 px sur les dix écrans de la
+               démonstration : aucun débordement. `main` EST borné depuis —
+               `COLONNE_DE_LECTURE`, qui porte les mesures des deux côtés.
+
+               CETTE LARGEUR-CI RESTE, et la borne ne la rend pas inutile : à
+               1 280 px de colonne, cette cellule s'étirerait encore, puisque son
+               contenu est toujours le plus long de la ligne. La borne réduit le
+               mou, elle ne décide pas de sa RÉPARTITION entre colonnes. */
             width: '12rem',
             header: t('app.tenants.rentStatus'),
             render: (unit) =>
