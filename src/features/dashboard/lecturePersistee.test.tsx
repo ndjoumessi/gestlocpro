@@ -116,7 +116,34 @@ describe('l’état « lu » d’une notification', () => {
       lectures. Elle est pourtant bornée à deux cents identifiants, et un parc
       bavard aurait vu le bouton échouer en validation.
     */
-    expect(appel?.corps).toEqual({ ids: ['n-neuve', 'n-autre'] })
+    /*
+      LES IDENTIFIANTS SE COMPARENT TRIÉS, ET L'ORDRE N'ÉTAIT PAS UNE PROPRIÉTÉ.
+
+      Ce cas exigeait `['n-neuve', 'n-autre']`, dans cet ordre. Il a rougi le
+      2026-09-29 à 21 h 00 UTC, sans qu'une ligne de source ait bougé — sur
+      l'exécuteur public d'abord, puis ici à la minute près.
+
+      LA CAUSE EST L'HORLOGE. L'écran range les avis par `ancienneteEnMinutes`,
+      calculée sur un horodatage RELATIF que `relatif()` arrondit :
+      `Math.round(heures / 24)`. Les deux fixtures sont espacées d'une heure —
+      2026-08-19 à 9 h et à 10 h. Tant que les deux s'arrondissent au même
+      nombre de jours, leurs clés sont égales, le tri est stable et l'ordre
+      d'entrée survit. Le 2026-09-29 à 21 h 00 UTC, la plus ancienne a franchi
+      41,5 jours : elle est passée à 42 quand l'autre valait encore 41, et les
+      deux avis ont échangé leur place.
+
+      L'ORDRE DE LA CHARGE UTILE N'EST PAS UNE PROMESSE. Le serveur marque un
+      ENSEMBLE d'identifiants et recompte les nouvelles lectures ; deux ordres
+      rendent le même `marked`. Ce que ce cas garde — et qui est écrit
+      au-dessus — est que la liste ENTIÈRE ne passe pas : les lus restent
+      dehors. C'est un ensemble, on le compare comme tel.
+
+      CE N'EST PAS UN ASSOUPLISSEMENT : la même assertion refuse toujours
+      `n-lue`, et un identifiant manquant ou en trop la fait rougir. Seul
+      l'ordre, que rien ne promettait, cesse d'être exigé.
+    */
+    const ids = (appel?.corps as { ids: string[] } | undefined)?.ids
+    expect([...(ids ?? [])].sort()).toEqual(['n-autre', 'n-neuve'])
   })
 
   /**
