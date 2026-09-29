@@ -752,9 +752,25 @@ export function Works() {
                 `basis` figerait la largeur et ferait passer les boutons à la
                 ligne dès que le libellé s'allonge.
 
-                34 rem EST LA PLUS LARGE GRAPPE MESURÉE sur cet écran, arrondie
-                au demi-rem supérieur. En dessous, la plus large se replie et la
-                liste grandit de 64 px — mesuré à 30 et 26 rem.
+                37,5 rem = 600 px, ET C'EST UNE SOMME ARRONDIE, PLUS UNE MESURE.
+                La grappe doit contenir la colonne réservée au fait (16,5 rem,
+                voir plus bas), l'écart, et le bloc de gestes le plus large que
+                cet écran produise : « Chiffrer » 98 px, « Marquer terminé »
+                150 px, le menu 44 px et leurs deux écarts. 264 + 12 + 316 = 592.
+
+                ON ARRONDIT AU-DESSUS, ET C'EST MESURÉ : le contenu réel de ces
+                rangées-là fait 592,21 px, un cinquième de pixel de plus que la
+                somme des entiers. Un plancher à 592 laissait donc DEUX rangées
+                le dépasser, leur bord gauche tombait à 1 075,29 contre 1 075,50,
+                et les boutons repartaient de deux abscisses à un pixel près.
+                Un alignement qui se joue au sous-pixel n'est pas un alignement.
+
+                UNE GRAPPE PLUS ÉTROITE QUE SON CONTENU NE SERT À RIEN : à
+                34 rem — la plus large grappe mesurée avant que le fait ait sa
+                colonne — les deux rangées à deux boutons débordaient du
+                plancher, leur bord gauche remontait à 1 075 px au lieu de
+                1 124, et les boutons repartaient de DEUX abscisses. Le plancher
+                doit couvrir le pire cas, pas le cas courant.
 
                 `2xl:` ET PAS `sm:`, ET C'EST MESURÉ. À 1280 px la rangée fait
                 945 px : imposer 34 rem à la grappe laisse 283 px au titre, les
@@ -763,7 +779,7 @@ export function Works() {
                 rangée fait 1 201 px, le titre en garde 539, et la hauteur ne
                 bouge pas — mesuré, 830 px avant comme après.
               */}
-              <div className="flex flex-wrap items-center gap-3 sm:ml-auto 2xl:min-w-[34rem]">
+              <div className="flex flex-wrap items-center gap-3 sm:ml-auto 2xl:min-w-[37.5rem]">
                 {/*
                   LE MONTANT DIT CE QU'IL EST : proposé, ou engagé.
 
@@ -791,11 +807,44 @@ export function Works() {
                   voit le statut, ce qui répond à sa seule question : est-ce que
                   ça avance ?
                 */}
-                {!isTenant && <Montant work={work} />}
+                {/*
+                  LE FAIT RÉSERVE SA COLONNE, POUR QUE LES GESTES EN TIENNENT UNE.
 
-                <StatusPill tone={STATUS_TONE[work.status]} size="sm">
-                  {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
-                </StatusPill>
+                  Le plancher posé sur la grappe lui a donné UN bord gauche ; il
+                  n'en donnait aucun aux boutons. Mesuré à 1920 px : les six
+                  grappes partent bien de 1 124 px, et le premier bouton de
+                  QUATRE abscisses — 1 287, 1 289, 1 326, 1 343 —, parce que le
+                  couple montant + pastille fait de 152 à 208 px.
+
+                  J'avais d'abord écrit que c'était irréductible : aligner les
+                  boutons demanderait de fixer la largeur des PASTILLES, donc
+                  d'en laisser à moitié vides. C'était vrai de ce remède-là, et
+                  faux de la conclusion. Réserver une largeur au COUPLE laisse
+                  chaque pastille à sa taille — elle n'est pas étirée, elle est
+                  posée dans une colonne qui l'attend.
+
+                  `contents` EN DESSOUS DE 2xl, et il le faut : la grappe se
+                  replie à ces largeurs, et une boîte de plus y ferait descendre
+                  le montant et la pastille ENSEMBLE, là où ils se rangeaient
+                  librement. `display: contents` fait disparaître la boîte de la
+                  mise en page : sous 2xl, l'arbre rendu est exactement celui
+                  d'avant ce lot.
+
+                  16,5 rem = 264 px, ET CE N'EST PAS LE COUPLE LE PLUS LARGE DE
+                  LA DÉMONSTRATION, qui fait 208. C'est le plus large que le
+                  produit puisse RENDRE : un montant de huit chiffres en francs
+                  CFA mesure 128 px — « 12 345 678 FCFA » —, la pastille la plus
+                  longue des deux langues en fait 119 — « Devis proposé » —, et
+                  l'écart les sépare de 12. Un plancher calé sur la démonstration
+                  aurait tenu jusqu'au premier gros chantier d'un parc réel.
+                */}
+                <div className="contents 2xl:flex 2xl:min-w-[16.5rem] 2xl:items-center 2xl:gap-3">
+                  {!isTenant && <Montant work={work} />}
+
+                  <StatusPill tone={STATUS_TONE[work.status]} size="sm">
+                    {t(`app.works.status.${work.status}` as 'app.works.status.reported')}
+                  </StatusPill>
+                </div>
 
                 {/*
                   CHIFFRER : l'action centrale du gestionnaire, et elle n'avait

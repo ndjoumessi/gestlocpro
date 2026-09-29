@@ -42,12 +42,13 @@
  * COMPTE, pas une position : aucune police ne le déplace, donc cette règle n'a
  * pas de seconde colonne et vaut sur les deux machines.
  *
- * ELLE NE S'APPLIQUE QU'À `/demo/signalements`, et le motif est mesuré :
- * `/demo/travaux` en garde QUATRE, et ce n'est pas un défaut. Sa grappe porte
- * une pastille d'état entre le montant et le bouton, dont la largeur EST son
- * libellé — « Devis proposé » contre « Validé ». Fixer la largeur des pastilles
- * pour aligner les boutons laisserait des pastilles à moitié vides : on
- * échangerait une irrégularité contre une fausseté.
+ * `/demo/travaux` Y EST ENTRÉ, APRÈS AVOIR ÉTÉ DÉCLARÉ HORS D'ATTEINTE. Cette
+ * prose disait : « sa grappe porte une pastille d'état dont la largeur EST son
+ * libellé ; fixer la largeur des pastilles laisserait des pastilles à moitié
+ * vides ». C'était vrai de CE remède-là et faux de la conclusion : réserver une
+ * largeur au COUPLE montant + pastille laisse chacun à sa taille et donne aux
+ * boutons leur colonne. Mesuré après : une seule abscisse pour les six
+ * premiers gestes, et la distance au sujet DESCEND de 345 à 289 px.
  *
  * IL NE MESURE PAS les rangées sans geste : une ligne qui ne propose rien n'a
  * pas de distance à tenir. Elles sont ignorées, et le COMPTE des rangées
@@ -112,9 +113,9 @@ const RELEVER = argv.includes('--relever')
 const PLAFONDS = {
   '/demo/travaux': {
     1280: { plafond: 329, plafondLarge: 331, avant: 329 },
-    1536: { plafond: 345, plafondLarge: 339, avant: 585 },
-    1920: { plafond: 345, plafondLarge: 339, avant: 585 },
-    2560: { plafond: 345, plafondLarge: 339, avant: 585 },
+    1536: { plafond: 289, plafondLarge: 283, avant: 585 },
+    1920: { plafond: 289, plafondLarge: 283, avant: 585 },
+    2560: { plafond: 289, plafondLarge: 283, avant: 585 },
   },
   /*
     LES NOTIFICATIONS PORTENT LA MÊME RANGÉE QUE LES TRAVAUX, et le même défaut.
@@ -149,8 +150,10 @@ const PLAFONDS = {
  * depuis des semaines, et j'ai écrit cette porte sans en tenir compte.
  *
  * RELEVÉ PAR L'EXÉCUTEUR LUI-MÊME le 2026-09-29 (exécution 36592639963) :
- * travaux 331/339, signalements 571/488, accès 276 — contre 329/345, 568/489 et
- * 282 ici. Les écarts sont petits, jusqu'à 6 px, et ils vont DANS LES DEUX SENS :
+ * travaux 331/283, signalements 571/488, accès 276 — contre 329/289, 568/489 et
+ * 282 ici. Les distances de travaux ont été RE-RELEVÉES après que le couple
+ * montant + pastille a reçu sa colonne (exécution 36624889239) : 339 → 283
+ * là-bas, 345 → 289 ici. Les écarts sont petits, jusqu'à 6 px, et ils vont DANS LES DEUX SENS :
  * aucune marge unique ne les couvre, seule une seconde colonne le fait.
  *
  * `plafondLarge` APPARTIENT À L'EXÉCUTEUR PUBLIC et ne s'inscrit jamais d'ici :
@@ -189,7 +192,7 @@ const LARGEURS = [1280, 1536, 1920, 2560]
  * elle peut. Écrit écran par écran : voir l'en-tête pour ce que `/demo/travaux`
  * fait ici, et pourquoi il n'y est pas.
  */
-const COLONNE_UNIQUE_DES_GESTES = { '/demo/signalements': 1536 }
+const COLONNE_UNIQUE_DES_GESTES = { '/demo/signalements': 1536, '/demo/travaux': 1536 }
 
 /*
   LE COMPTE DES RANGÉES MESURÉES, ÉCRIT À LA MAIN.
@@ -338,10 +341,18 @@ try {
           const debut = debutDeLEncre(bloc)
           if (debut === null || debut < fin) continue
           rangees++
-          for (const geste of bloc.querySelectorAll('a[href], button')) {
-            const r = geste.getBoundingClientRect()
-            if (r.width > 0) abscisses.add(Math.round(r.left))
-          }
+          /*
+            LE PREMIER GESTE, PAS TOUS. Une rangée peut en porter deux plus un
+            menu — « Chiffrer », « Marquer terminé », « Autres actions » —, et
+            leurs abscisses diffèrent par construction puisqu'ils se suivent.
+            Compter tout rendait « 5 colonnes » sur un écran parfaitement rangé.
+            Ce qui se lit d'une liste, c'est où les gestes COMMENCENT.
+          */
+          const premier = [...bloc.querySelectorAll('a[href], button')]
+            .map((geste) => geste.getBoundingClientRect())
+            .filter((r) => r.width > 0)
+            .sort((a, b) => a.left - b.left)[0]
+          if (premier) abscisses.add(Math.round(premier.left))
           const distance = debut - fin
           if (pire === null || distance > pire) {
             pire = distance
