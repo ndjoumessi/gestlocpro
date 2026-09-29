@@ -31,6 +31,24 @@
  * ferait croire à un gain là où rien n'a bougé — cette sonde a rendu 924 px de
  * « départ commun » pendant que les chiffres visibles n'avaient pas changé.
  *
+ * ═══ ET UNE SECONDE RÈGLE : UNE SEULE COLONNE DE DÉPART ═══
+ *
+ * Rapprocher la grappe ne suffit pas si son contenu part d'une abscisse
+ * différente à chaque rangée. Sur `/demo/signalements`, le plancher posé sur la
+ * grappe donnait bien UN bord gauche à l'âge — et SIX au lien qui le suit,
+ * parce que les âges font de 21 à 93 px. L'irrégularité avait été déplacée.
+ *
+ * On compte donc les abscisses DISTINCTES des gestes d'un écran. C'est un
+ * COMPTE, pas une position : aucune police ne le déplace, donc cette règle n'a
+ * pas de seconde colonne et vaut sur les deux machines.
+ *
+ * ELLE NE S'APPLIQUE QU'À `/demo/signalements`, et le motif est mesuré :
+ * `/demo/travaux` en garde QUATRE, et ce n'est pas un défaut. Sa grappe porte
+ * une pastille d'état entre le montant et le bouton, dont la largeur EST son
+ * libellé — « Devis proposé » contre « Validé ». Fixer la largeur des pastilles
+ * pour aligner les boutons laisserait des pastilles à moitié vides : on
+ * échangerait une irrégularité contre une fausseté.
+ *
  * IL NE MESURE PAS les rangées sans geste : une ligne qui ne propose rien n'a
  * pas de distance à tenir. Elles sont ignorées, et le COMPTE des rangées
  * mesurées est écrit ci-dessous — sans quoi une rangée qui perdrait son geste
@@ -165,6 +183,13 @@ function plafondDe(p) {
 
 const LARGEURS = [1280, 1536, 1920, 2560]
 
+/**
+ * Les écrans dont les gestes doivent partir d'UNE seule abscisse, et à partir
+ * de quelle largeur — en deçà, la grappe n'a pas de plancher et se range comme
+ * elle peut. Écrit écran par écran : voir l'en-tête pour ce que `/demo/travaux`
+ * fait ici, et pourquoi il n'y est pas.
+ */
+const COLONNE_UNIQUE_DES_GESTES = { '/demo/signalements': 1536 }
 
 /*
   LE COMPTE DES RANGÉES MESURÉES, ÉCRIT À LA MAIN.
@@ -298,6 +323,8 @@ try {
         let pire = null
         let qui = null
         let rangees = 0
+        /* Les abscisses des GESTES — un lien, un bouton — de chaque bloc de fin. */
+        const abscisses = new Set()
         for (const ligne of main.querySelectorAll('[role="listitem"], tbody tr')) {
           const sujet = ligne.querySelector('h2, h3, h4, th')
           if (!sujet) continue
@@ -311,13 +338,17 @@ try {
           const debut = debutDeLEncre(bloc)
           if (debut === null || debut < fin) continue
           rangees++
+          for (const geste of bloc.querySelectorAll('a[href], button')) {
+            const r = geste.getBoundingClientRect()
+            if (r.width > 0) abscisses.add(Math.round(r.left))
+          }
           const distance = debut - fin
           if (pire === null || distance > pire) {
             pire = distance
             qui = sujet.textContent.trim().slice(0, 34)
           }
         }
-        return { pire, qui, rangees }
+        return { pire, qui, rangees, colonnes: abscisses.size }
       })
 
       const nom = `${adresse}@${largeur}`
@@ -339,6 +370,14 @@ try {
       const plafond = RELEVER ? 0 : plafondDe(p)
       releve.push({ nom, adresse, largeur, ...mesure, ...p, plafond })
       if (RELEVER) continue
+      const depuis = COLONNE_UNIQUE_DES_GESTES[adresse]
+      if (typeof depuis === 'number' && largeur >= depuis && mesure.colonnes !== 1) {
+        plaintes.push(
+          `${nom} : les gestes partent de ${mesure.colonnes} abscisses, pour UNE attendue.\n` +
+            '   Un plancher qui range la grappe sans ranger ce qu’elle contient déplace\n' +
+            '   l’irrégularité au lieu de la retirer. C’est un COMPTE : aucune police ne le change.',
+        )
+      }
       if (colonneANous && mesure.pire > plafond) {
         plaintes.push(
           `${nom} : ${mesure.pire} px entre « ${mesure.qui} » et son bloc de fin, pour un plafond de ${plafond}.\n` +

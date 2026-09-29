@@ -705,7 +705,30 @@ export function Alerts() {
                 Le défaut y est d'ailleurs deux fois moindre, 404 px de vide.
               */}
               <div className="ml-auto flex shrink-0 items-center gap-3 2xl:min-w-[32rem]">
-                <span className="text-label text-muted">{d.relative(alert.at)}</span>
+                {/*
+                  L'ÂGE TIENT UNE COLONNE, POUR QUE LE GESTE EN TIENNE UNE.
+
+                  Le plancher posé sur la grappe donne UN bord gauche à l'âge ;
+                  il n'en donnait aucun au lien qui le suit. Mesuré en
+                  production à 1600 px : les onze âges partent bien de 996 px,
+                  mais ils font de 21 à 93 px de large, donc « Ouvrir » partait
+                  de SIX abscisses. On avait déplacé l'irrégularité, pas retirée.
+
+                  `min-w` ET NON `w` : un âge plus long que le plancher élargit
+                  sa boîte et ne décale que SA rangée. Une largeur fixe le ferait
+                  déborder sous le lien.
+
+                  7 rem = 112 px. La forme la plus longue que le formateur
+                  produise dans les deux langues mesure 93 px ici — « il y a
+                  40 minutes » et « il y a 3 semaines », à égalité. L'exécuteur
+                  public rend PLUS ÉTROIT, pas plus large : sur la chaîne témoin,
+                  `system-ui` vaut 132,6 px ici contre 114,6 px pour DejaVu.
+                  Mesuré après : une seule abscisse pour les onze liens, et la
+                  liste tient 1 016 px avant comme après.
+                */}
+                <span className="text-label text-muted 2xl:inline-block 2xl:min-w-[7rem]">
+                  {d.relative(alert.at)}
+                </span>
                 {/*
                   L'issue vers l'écran où la décision se prend.
 
