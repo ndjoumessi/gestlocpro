@@ -62,7 +62,8 @@
  * d'utilitaire n'est écrit ici, et ce script n'en a aucun besoin.
  */
 import { chromium } from 'playwright'
-import { exit } from 'node:process'
+import { argv, exit } from 'node:process'
+import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
@@ -70,6 +71,8 @@ import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 const PORT = 4185
 const BASE = `http://127.0.0.1:${PORT}`
 
+/** `--relever` N'IMPOSE RIEN : il imprime ce que CETTE machine mesure. */
+const RELEVER = argv.includes('--relever')
 
 /**
  * LES PLAFONDS, ÉCRAN PAR ÉCRAN ET LARGEUR PAR LARGEUR.
@@ -89,10 +92,10 @@ const BASE = `http://127.0.0.1:${PORT}`
  */
 const PLAFONDS = {
   '/demo/travaux': {
-    1280: { plafond: 329, avant: 329 },
-    1536: { plafond: 345, avant: 585 },
-    1920: { plafond: 345, avant: 585 },
-    2560: { plafond: 345, avant: 585 },
+    1280: { plafond: 329, plafondLarge: 331, avant: 329 },
+    1536: { plafond: 345, plafondLarge: 339, avant: 585 },
+    1920: { plafond: 345, plafondLarge: 339, avant: 585 },
+    2560: { plafond: 345, plafondLarge: 339, avant: 585 },
   },
   /*
     LES NOTIFICATIONS PORTENT LA MÊME RANGÉE QUE LES TRAVAUX, et le même défaut.
@@ -102,19 +105,58 @@ const PLAFONDS = {
     « À traiter » du tableau de bord rend les mêmes rangées.
   */
   '/demo/signalements': {
-    1280: { plafond: 568, avant: 568 },
-    1536: { plafond: 489, avant: 824 },
-    1920: { plafond: 489, avant: 824 },
-    2560: { plafond: 489, avant: 824 },
+    1280: { plafond: 568, plafondLarge: 571, avant: 568 },
+    1536: { plafond: 489, plafondLarge: 488, avant: 824 },
+    1920: { plafond: 489, plafondLarge: 488, avant: 824 },
+    2560: { plafond: 489, plafondLarge: 488, avant: 824 },
   },
   '/demo/acces': {
-    1280: { plafond: 282, avant: 613 },
-    1536: { plafond: 282, avant: 793 },
-    1920: { plafond: 282, avant: 793 },
-    2560: { plafond: 282, avant: 793 },
+    1280: { plafond: 282, plafondLarge: 276, avant: 613 },
+    1536: { plafond: 282, plafondLarge: 276, avant: 793 },
+    1920: { plafond: 282, plafondLarge: 276, avant: 793 },
+    2560: { plafond: 282, plafondLarge: 276, avant: 793 },
   },
 }
 
+/**
+ * UN PLAFOND APPARTIENT À UNE MACHINE, et celui-ci l'a appris par un rouge.
+ *
+ * Poussée le 2026-09-29, cette porte a REFUSÉ sur l'exécuteur public ce qu'elle
+ * acceptait ici : 295 px sur `/demo/acces` contre 282 mesurés sur la machine de
+ * développement, et 296 px sur `/demo/travaux` contre 345. Elle mesure des
+ * positions d'ENCRE, donc des largeurs de texte, et `system-ui` vaut SF Pro ici
+ * et DejaVu Sans là-bas. Aucun nombre ne vaut sur les deux — c'est exactement ce
+ * que `plafond-hauteurs` et `plafond-vitrine` disent de leurs deux colonnes
+ * depuis des semaines, et j'ai écrit cette porte sans en tenir compte.
+ *
+ * RELEVÉ PAR L'EXÉCUTEUR LUI-MÊME le 2026-09-29 (exécution 36592639963) :
+ * travaux 331/339, signalements 571/488, accès 276 — contre 329/345, 568/489 et
+ * 282 ici. Les écarts sont petits, jusqu'à 6 px, et ils vont DANS LES DEUX SENS :
+ * aucune marge unique ne les couvre, seule une seconde colonne le fait.
+ *
+ * `plafondLarge` APPARTIENT À L'EXÉCUTEUR PUBLIC et ne s'inscrit jamais d'ici :
+ * le travail `polices` le relève (`--relever`), et c'est cette sortie-là qu'on
+ * recopie. Reproduire ces nombres à la main sous `MESURER_EN_POLICE_LARGE=1`
+ * rapprocherait les deux machines sans les confondre — le dépôt l'a mesuré, six
+ * plaintes ici contre quatre là-bas sur la même commande.
+ *
+ * CE QUE CE SÉLECTEUR NE SAIT PAS : sans commutateur, toute machine est réputée
+ * être celle de développement. `temoin-de-la-machine.mjs` existe pour trancher
+ * mieux, et cette porte ne l'emploie pas encore — un conteneur Linux sans
+ * `MESURER_EN_POLICE_LARGE` y rendrait donc un verdict sur une colonne qui n'est
+ * pas la sienne. C'est écrit ici plutôt que découvert.
+ */
+function plafondDe(p) {
+  if (!POLICE_LARGE) return p.plafond
+  if (typeof p.plafondLarge !== 'number') {
+    throw new Error(
+      "geste-pres-du-sujet : une entrée de PLAFONDS n'a pas de `plafondLarge`.\n" +
+        '  Cette colonne appartient à l’exécuteur public et ne s’invente pas ici.\n' +
+        '  Relevez-la par le travail `polices` : `node scripts/geste-pres-du-sujet.mjs --relever`.',
+    )
+  }
+  return p.plafondLarge
+}
 
 const LARGEURS = [1280, 1536, 1920, 2560]
 
@@ -147,6 +189,7 @@ try {
       locale: 'fr-FR',
       colorScheme: 'light',
     })
+    await imposerLaPoliceLarge(contexte)
     await neutraliserLApiLocale(contexte)
     const page = await contexte.newPage()
     for (const adresse of Object.keys(PLAFONDS)) {
@@ -275,10 +318,12 @@ try {
       }
       inspectes++
       const p = PLAFONDS[adresse][largeur]
-      releve.push({ nom, ...mesure, ...p })
-      if (mesure.pire > p.plafond) {
+      const plafond = RELEVER ? 0 : plafondDe(p)
+      releve.push({ nom, adresse, largeur, ...mesure, ...p, plafond })
+      if (RELEVER) continue
+      if (mesure.pire > plafond) {
         plaintes.push(
-          `${nom} : ${mesure.pire} px entre « ${mesure.qui} » et son bloc de fin, pour un plafond de ${p.plafond}.\n` +
+          `${nom} : ${mesure.pire} px entre « ${mesure.qui} » et son bloc de fin, pour un plafond de ${plafond}.\n` +
             `   Avant ce lot : ${p.avant} px.\n` +
             '   C’est la distance qu’un œil traverse pour apparier un fait et le geste qui le suit.',
         )
@@ -291,6 +336,19 @@ try {
   serveur.kill()
 }
 
+if (RELEVER) {
+  console.log(
+    `\nRELEVÉ ${POLICE_LARGE ? 'EN POLICE LARGE' : 'en police du système'} — ${inspectes} point(s).\n` +
+      '  Ce mode NE REFUSE RIEN : il imprime ce que cette machine mesure, pour que la\n' +
+      "  colonne qu'elle possède soit inscrite depuis SA mesure et non depuis une autre.\n",
+  )
+  for (const r of releve) {
+    console.log(
+      `  ${r.adresse} ${r.largeur} → ${POLICE_LARGE ? 'plafondLarge' : 'plafond'}: ${r.pire},`,
+    )
+  }
+  exit(0)
+}
 
 if (inspectes === 0) {
   plaintes.push(

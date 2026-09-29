@@ -205,6 +205,17 @@ jobs:
       - run: node scripts/plafond-hauteurs.mjs --relever
         env:
           MESURER_EN_POLICE_LARGE: '1'
+      # LE QUATRIÈME RELEVÉ : LES DISTANCES QUE CETTE MACHINE SEULE PEUT MESURER.
+      #
+      # `geste-pres-du-sujet` mesure des positions d'ENCRE, donc des largeurs de
+      # texte. Poussée sans seconde colonne le 2026-09-29, elle a refusé ici ce
+      # qu'elle acceptait sur la machine de développement : 295 px sur
+      # `/demo/acces` contre 282, et 296 px sur `/demo/travaux` contre 345. La
+      # dissymétrie va dans les DEUX SENS — ce n'est donc pas une marge qu'on
+      # pourrait ajouter, c'est une colonne qu'il faut mesurer ici.
+      - run: node scripts/geste-pres-du-sujet.mjs --relever
+        env:
+          MESURER_EN_POLICE_LARGE: '1'
       # LE TROISIÈME : LA VITRINE EN POLICE LARGE, depuis une BRANCHE.
       #
       # `plafond-vitrine` tourne déjà en police large dans `complet` — mais
