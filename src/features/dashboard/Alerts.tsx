@@ -682,7 +682,29 @@ export function Alerts() {
 
               {/* `ml-auto` : renvoyée à la ligne, elle reste rangée à droite
                   plutôt que de se coller sous l'icône. */}
-              <div className="ml-auto flex shrink-0 items-center gap-3">
+              {/*
+                LA GRAPPE PART D'UNE COLONNE COMMUNE, À PARTIR DE 1536 px.
+
+                Même défaut que les travaux, et c'est la même rangée : un texte
+                en `flex-1` qui prend tout le mou, une grappe collée au bord
+                droit dont la largeur suit son contenu. Mesuré à 1920 px sur les
+                onze notifications : SIX bords gauches différents, et 660 px de
+                vide réel dans la pire rangée. C'est aussi ce que rend la carte
+                « À traiter » du tableau de bord, qui monte ces mêmes rangées.
+
+                32 rem, ET CE N'EST PAS LA PLUS LARGE GRAPPE. Ici elles vont de
+                120 à 192 px : un plancher à leur maximum ne rapprocherait rien
+                — 72 px au mieux. Le nombre retenu est le plus grand plancher
+                qui ne coûte AUCUNE hauteur à la largeur où il s'applique :
+                mesuré, la liste tient 1 016 px avant comme après à 1536 et
+                au-delà, et le vide tombe de 660 à 314 px pour un seul bord
+                gauche. Au-dessus, la rangée se replie.
+
+                `2xl:` POUR LA MÊME RAISON QUE LES TRAVAUX. À 1280 px le même
+                plancher coûte 264 px de hauteur — les textes passent à la ligne.
+                Le défaut y est d'ailleurs deux fois moindre, 404 px de vide.
+              */}
+              <div className="ml-auto flex shrink-0 items-center gap-3 2xl:min-w-[32rem]">
                 <span className="text-label text-muted">{d.relative(alert.at)}</span>
                 {/*
                   L'issue vers l'écran où la décision se prend.

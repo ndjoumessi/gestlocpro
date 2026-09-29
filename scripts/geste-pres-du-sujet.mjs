@@ -8,8 +8,9 @@
  * s'étirait entre les deux. Mesuré à 1920 px, APRÈS que la colonne de lecture
  * ait été bornée à 1 280 px (`COLONNE_DE_LECTURE`, lot précédent) :
  *
- *   /demo/travaux   « Remplacement du groupe de sécurité » → son bloc    585 px
- *   /demo/acces     le code en attente → « Reprendre »                   793 px
+ *   /demo/travaux        « Remplacement du groupe… » → son bloc       585 px
+ *   /demo/signalements   « Devis à arbitrer » → son bloc                 824 px
+ *   /demo/acces          le code en attente → « Reprendre »              793 px
  *
  * La borne de la colonne avait déjà retiré 380 px ; ce qui reste ne vient pas
  * de la fenêtre, il vient de la rangée. Deux mécanismes le produisent :
@@ -35,13 +36,25 @@
  * mesurées est écrit ci-dessous — sans quoi une rangée qui perdrait son geste
  * ferait verdir la porte en disparaissant de la mesure.
  *
- * ═══ SON PÉRIMÈTRE EST ÉCRIT, ET IL EST ÉTROIT ═══
+ * ═══ SON PÉRIMÈTRE EST ÉCRIT, ET IL A ÉTÉ CORRIGÉ ═══
  *
- * Deux écrans. Le relevé du 2026-09-29 en a trouvé CINQ AUTRES qui portent le
- * même défaut, plus grave, et que ce lot ne corrige pas — leurs nombres sont
- * dans le message de commit. Une règle qui n'existe que là où on l'a violée se
- * reviolera ailleurs ; c'est écrit ici pour que l'extension soit un lot, et non
- * une découverte.
+ * Trois écrans. Un premier relevé en accusait cinq autres ; remesurés avec une
+ * sonde qui voit ce qui est PEINT, quatre d'entre eux n'avaient rien :
+ *
+ *   /demo/paiements   1 056 px annoncés → 612 px de « vide » qui sont six
+ *                     colonnes de jauges peintes, sans un caractère
+ *   /demo/releves       791 px annoncés → 150 px de vide réel
+ *   /demo/cautions      853 px annoncés → 125 px
+ *   /demo/mon-espace    524 px annoncés → 148 px
+ *
+ * Seul `/demo/signalements` était vrai — 660 px de vide réel —, et il est
+ * désormais gardé ici. Ces quatre-là n'étaient pas des défauts du produit :
+ * c'était ma sonde qui appelait « vide » tout ce qui se lit sans se lire.
+ *
+ * CE QUI RESTE DEHORS : les écrans qui n'ont pas de rangée à geste, et les
+ * modales. Une règle qui n'existe que là où on l'a violée se reviolera
+ * ailleurs ; c'est écrit ici pour que l'extension soit un lot, et non une
+ * découverte.
  *
  *   node scripts/geste-pres-du-sujet.mjs
  *
@@ -56,6 +69,7 @@ import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 
 const PORT = 4185
 const BASE = `http://127.0.0.1:${PORT}`
+
 
 /**
  * LES PLAFONDS, ÉCRAN PAR ÉCRAN ET LARGEUR PAR LARGEUR.
@@ -80,6 +94,19 @@ const PLAFONDS = {
     1920: { plafond: 345, avant: 585 },
     2560: { plafond: 345, avant: 585 },
   },
+  /*
+    LES NOTIFICATIONS PORTENT LA MÊME RANGÉE QUE LES TRAVAUX, et le même défaut.
+    Relevé le 2026-09-29 : 660 px de vide réel au milieu d'une rangée, la grappe
+    de gestes collée au bord droit et partant de SIX x différents sur onze
+    rangées. C'est l'écran que Nelson a photographié deux fois — la carte
+    « À traiter » du tableau de bord rend les mêmes rangées.
+  */
+  '/demo/signalements': {
+    1280: { plafond: 568, avant: 568 },
+    1536: { plafond: 489, avant: 824 },
+    1920: { plafond: 489, avant: 824 },
+    2560: { plafond: 489, avant: 824 },
+  },
   '/demo/acces': {
     1280: { plafond: 282, avant: 613 },
     1536: { plafond: 282, avant: 793 },
@@ -87,6 +114,7 @@ const PLAFONDS = {
     2560: { plafond: 282, avant: 793 },
   },
 }
+
 
 const LARGEURS = [1280, 1536, 1920, 2560]
 
@@ -98,10 +126,11 @@ const LARGEURS = [1280, 1536, 1920, 2560]
   resterait verte en ayant cessé de regarder. Le même piège a été trouvé trois
   lots de suite par mutation dans ce dépôt.
 
-  6 = les six interventions de la démonstration.
-  1 = le seul code en attente.
+  6  = les six interventions de la démonstration.
+  11 = les onze notifications.
+  1  = le seul code en attente.
 */
-const RANGEES_ATTENDUES = { '/demo/travaux': 6, '/demo/acces': 1 }
+const RANGEES_ATTENDUES = { '/demo/travaux': 6, '/demo/signalements': 11, '/demo/acces': 1 }
 const ATTENDUS = Object.keys(PLAFONDS).length * LARGEURS.length
 
 const serveur = await servirLaPrevisualisation('geste-pres-du-sujet', PORT)
@@ -171,9 +200,36 @@ try {
             plage.selectNodeContents(n)
             for (const r of plage.getClientRects()) if (r.width > 0) min = Math.min(min, r.left)
           }
+          /*
+            ═══ ET CE QUI EST PEINT SANS UN MOT ═══
+
+            La rédaction d'avant comptait le texte et les `svg`/`img`. Elle a
+            déclaré 612 px de vide au milieu d'une rangée de `/demo/paiements`
+            qui n'en a aucun : les six colonnes de périodes y portent des JAUGES
+            — des boîtes de 10 px peintes en vert, sans un caractère. La sonde
+            ne voyait pas de texte et concluait au vide.
+
+            Le même relevé avait accusé trois autres écrans pour la même raison.
+            Une sonde qui ne voit que les lettres appelle « vide » tout ce qui se
+            lit sans se lire : jauges, pastilles, barres de progression.
+
+            On compte donc aussi les boîtes qui PEIGNENT — un fond ou un bord —
+            et qui mesurent plus d'un pixel. Le seuil écarte les filets d'un
+            pixel et les boîtes nulles, qui ne se voient pas.
+          */
           for (const dessin of el.querySelectorAll('svg, img')) {
             const r = dessin.getBoundingClientRect()
             if (r.width > 0) min = Math.min(min, r.left)
+          }
+          for (const boite of el.querySelectorAll('*')) {
+            const r = boite.getBoundingClientRect()
+            if (r.width <= 1 || r.height <= 1) continue
+            const style = getComputedStyle(boite)
+            const peint =
+              style.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+              parseFloat(style.borderTopWidth) > 0 ||
+              parseFloat(style.borderLeftWidth) > 0
+            if (peint) min = Math.min(min, r.left)
           }
           return min === Infinity ? null : Math.round(min)
         }
@@ -235,6 +291,7 @@ try {
   serveur.kill()
 }
 
+
 if (inspectes === 0) {
   plaintes.push(
     "AUCUN point inspecté. Absence d'inspection, et non absence de défaut : la garde refuse.",
@@ -260,5 +317,5 @@ if (plaintes.length > 0) {
 
 console.log(
   `\n✓ geste-pres-du-sujet : ${inspectes}/${ATTENDUS} points sous leur plafond de distance.\n` +
-    '  Deux écrans seulement — cinq autres portent le même défaut, non gardés. Voir son en-tête.',
+    '  Trois écrans — le relevé des autres est dans son en-tête.',
 )
