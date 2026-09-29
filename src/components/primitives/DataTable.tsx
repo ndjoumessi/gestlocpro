@@ -709,9 +709,35 @@ export function DataTable<T>({
         data-defilant=""
         className={cn(
           'relative overflow-x-auto rounded-lg border border-divider bg-surface shadow-e1',
+          /*
+            LA TABLE PREND LA LARGEUR DE SON CONTENU, PLUS LA PLACE QU'ON LUI DONNE.
+
+            `w-full` sur la table répartissait le mou entre ses colonnes. Sur une
+            table de colonnes courtes, cela n'élargit rien de lisible : cela
+            ÉCARTE. Mesuré à 1920 px, colonne de lecture déjà bornée — la table
+            des codes en attente occupait 1 212 px pour 485 px de contenu, et
+            779 px séparaient un code du bouton qui le reprend.
+
+            `w-fit` sur le cadre ET `w-auto` sur la table, et les deux sont
+            nécessaires. Sans `w-fit`, le cadre peint — bord, ombre, fond —
+            resterait pleine largeur autour d'une table rétrécie : on aurait
+            déplacé le vide DANS une carte au lieu de le retirer.
+
+            `max-w-full` est ce qui préserve le défilement des tables LARGES.
+            Celle des paiements réclame 1 046 px dans un conteneur de 958 : le
+            cadre est borné à 958, la table garde ses 1 046, et `overflow-x-auto`
+            fait ce pour quoi il est là. Mesuré aux deux cas : la table des
+            codes passe de 1 212 à 485 px, celle des paiements ne bouge pas et
+            défile toujours.
+
+            RIEN NE CHANGE SOUS `lg` : en deçà, ce composant ne rend pas de
+            table du tout, mais des fiches. Mesuré à 360 px, aucune `<table>`
+            dans le document.
+          */
+          'w-fit max-w-full',
         )}
       >
-      <table className="w-full border-collapse text-body">
+      <table className="w-auto border-collapse text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-b border-divider bg-surface-sunken">

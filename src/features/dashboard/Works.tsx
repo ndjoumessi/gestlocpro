@@ -734,7 +734,36 @@ export function Works() {
                   porte déjà `min-w-0 flex-1` : c'est lui qui cède la place, et
                   le titre de l'intervention se replie, ce qu'un titre sait
                   faire. */}
-              <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+              {/*
+                LA GRAPPE DE GESTES PART D'UNE COLONNE COMMUNE, À PARTIR DE 1536 px.
+
+                Elle est collée au bord droit et sa LARGEUR dépend de ce que la
+                rangée propose : un montant seul fait 209 px, un montant plus
+                deux boutons en font 536. Son bord gauche changeait donc à chaque
+                ligne — quatre départs différents sur six rangées, mesurés à
+                1920 px : 932, 1069, 1098, 1259. L'œil n'avait aucune colonne où
+                se poser, et la rangée la plus pauvre en gestes était la plus
+                écartée de son titre : 621 px pour « Remplacement du groupe de
+                sécurité », dont la grappe ne porte qu'un montant et une pastille.
+
+                `min-w` ET NON `basis` : c'est un PLANCHER. Une grappe plus large
+                que 34 rem — une autre langue, la police large — pousse sa
+                colonne vers la gauche au lieu de se replier sur deux lignes.
+                `basis` figerait la largeur et ferait passer les boutons à la
+                ligne dès que le libellé s'allonge.
+
+                34 rem EST LA PLUS LARGE GRAPPE MESURÉE sur cet écran, arrondie
+                au demi-rem supérieur. En dessous, la plus large se replie et la
+                liste grandit de 64 px — mesuré à 30 et 26 rem.
+
+                `2xl:` ET PAS `sm:`, ET C'EST MESURÉ. À 1280 px la rangée fait
+                945 px : imposer 34 rem à la grappe laisse 283 px au titre, les
+                six titres passent à trois lignes et la liste grandit de 217 px.
+                À partir de 1536 la colonne de lecture est à son plafond, la
+                rangée fait 1 201 px, le titre en garde 539, et la hauteur ne
+                bouge pas — mesuré, 830 px avant comme après.
+              */}
+              <div className="flex flex-wrap items-center gap-3 sm:ml-auto 2xl:min-w-[34rem]">
                 {/*
                   LE MONTANT DIT CE QU'IL EST : proposé, ou engagé.
 
