@@ -30,6 +30,19 @@
  * l'essentiel, et exiger le nom partout alourdirait les menus d'en-tête, qui
  * ne couvrent rien — 3 % mesurés sur celui d'un immeuble.
  *
+ * ═══ ET C'EST POURQUOI CETTE PORTE N'A PAS DEUX COLONNES ═══
+ *
+ * Sa voisine `geste-pres-du-sujet` en porte deux : elle mesure des positions
+ * d'ENCRE, donc des largeurs de texte, et aucun de ses nombres ne vaut sur les
+ * deux machines. Celle-ci compare une AIRE à une règle, avec 21 points de marge.
+ *
+ * VÉRIFIÉ PLUTÔT QUE SUPPOSÉ, et c'était un point laissé ouvert : sur
+ * l'exécuteur public, où `system-ui` vaut DejaVu Sans et sous
+ * `MESURER_EN_POLICE_LARGE=1`, cette porte mesure 71 % SUR LES HUIT POINTS —
+ * le même nombre qu'ici, au point de pourcentage près (exécution 36599355436).
+ * La fiche fait 288 px par construction et le panneau est borné à 18 rem : la
+ * police change les libellés, pas ces deux nombres.
+ *
  * IL NE MESURE PAS ce que le panneau cache d'autre que sa propre fiche : un
  * menu recouvre toujours quelque chose, et c'est le propre d'un menu.
  *

@@ -64,6 +64,7 @@
 import { chromium } from 'playwright'
 import { argv, exit } from 'node:process'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
+import { TEMOIN, laColonneNormalePeutEtreANous, releverLeTemoin } from './temoin-de-la-machine.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
@@ -140,11 +141,15 @@ const PLAFONDS = {
  * rapprocherait les deux machines sans les confondre — le dépôt l'a mesuré, six
  * plaintes ici contre quatre là-bas sur la même commande.
  *
- * CE QUE CE SÉLECTEUR NE SAIT PAS : sans commutateur, toute machine est réputée
- * être celle de développement. `temoin-de-la-machine.mjs` existe pour trancher
- * mieux, et cette porte ne l'emploie pas encore — un conteneur Linux sans
- * `MESURER_EN_POLICE_LARGE` y rendrait donc un verdict sur une colonne qui n'est
- * pas la sienne. C'est écrit ici plutôt que découvert.
+ * ET LA MACHINE EST INTERROGÉE, PLUS SUPPOSÉE. La première rédaction tenait
+ * toute machine sans commutateur pour celle de développement : un conteneur
+ * Linux, où `system-ui` EST déjà DejaVu, y aurait rendu un verdict sur une
+ * colonne qui n'est pas la sienne — le défaut exact que `temoin-de-la-machine`
+ * a documenté le 2026-09-27, avec 366 px de faux dépassement. Le témoin mesure
+ * la même chaîne dans `system-ui` et dans `DejaVu Sans` NOMMÉE : égales, cette
+ * machine n'est pas celle de la colonne normale, et la porte NE JUGE PLUS — elle
+ * relève et le dit. Ne rien juger et se taire seraient la même ligne dans un
+ * rapport ; la première est écrite en toutes lettres.
  */
 function plafondDe(p) {
   if (!POLICE_LARGE) return p.plafond
@@ -159,6 +164,7 @@ function plafondDe(p) {
 }
 
 const LARGEURS = [1280, 1536, 1920, 2560]
+
 
 /*
   LE COMPTE DES RANGÉES MESURÉES, ÉCRIT À LA MAIN.
@@ -179,6 +185,10 @@ const serveur = await servirLaPrevisualisation('geste-pres-du-sujet', PORT)
 const plaintes = []
 const releve = []
 let inspectes = 0
+/** Le témoin de la machine — relevé UNE fois : il décrit la machine, pas un point. */
+let temoinDeLaMachine = null
+/** La colonne comparée nous appartient-elle ? Sous commutateur, oui par construction. */
+let colonneANous = true
 
 try {
   const navigateur = await chromium.launch()
@@ -205,6 +215,14 @@ try {
           { timeout: 10000 },
         )
         .catch(() => {})
+
+      /* UNE FOIS SUFFIT, et sur la première page ouverte plutôt que dans une
+         page à elle : le témoin décrit la MACHINE, et un lancement de plus se
+         paierait pour le même nombre. */
+      if (temoinDeLaMachine === null) {
+        temoinDeLaMachine = await releverLeTemoin(page)
+        if (!POLICE_LARGE) colonneANous = laColonneNormalePeutEtreANous(temoinDeLaMachine)
+      }
 
       const mesure = await page.evaluate(() => {
         const main = document.getElementById('main')
@@ -321,7 +339,7 @@ try {
       const plafond = RELEVER ? 0 : plafondDe(p)
       releve.push({ nom, adresse, largeur, ...mesure, ...p, plafond })
       if (RELEVER) continue
-      if (mesure.pire > plafond) {
+      if (colonneANous && mesure.pire > plafond) {
         plaintes.push(
           `${nom} : ${mesure.pire} px entre « ${mesure.qui} » et son bloc de fin, pour un plafond de ${plafond}.\n` +
             `   Avant ce lot : ${p.avant} px.\n` +
@@ -373,7 +391,22 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
+const empans = temoinDeLaMachine
+  ? ` (« ${TEMOIN} » : system-ui ${temoinDeLaMachine.systeme} px, repli ${temoinDeLaMachine.repli} px)`
+  : ''
+
+if (!colonneANous) {
+  console.log(
+    `\n○ geste-pres-du-sujet : ${inspectes}/${ATTENDUS} points RELEVÉS, aucun jugé.${empans}\n` +
+      "  `system-ui` vaut ici la police de repli : cette machine n'est celle d'AUCUNE des deux\n" +
+      '  colonnes. Un verdict y porterait sur des mesures qui ne la concernent pas.\n' +
+      '  Pour juger la colonne large : MESURER_EN_POLICE_LARGE=1.',
+  )
+  exit(0)
+}
+
 console.log(
-  `\n✓ geste-pres-du-sujet : ${inspectes}/${ATTENDUS} points sous leur plafond de distance.\n` +
+  `\n✓ geste-pres-du-sujet : ${inspectes}/${ATTENDUS} points sous leur plafond ` +
+    `${POLICE_LARGE ? 'LARGE' : 'normal'} de distance.${empans}\n` +
     '  Trois écrans — le relevé des autres est dans son en-tête.',
 )
