@@ -375,8 +375,17 @@ const MODALES = [
     À 1280 le relevé diverge par langue — 242 en français, 268 en anglais — et
     le plafond retient l'anglais, comme partout dans ce fichier : caler sur le
     français laisserait passer 26 px non vus sur la moitié du produit.
+
+    LA COLONNE LARGE VIENT DE L'EXÉCUTEUR, ET ELLE EST PLUS BASSE QUE L'AUTRE.
+    549 et 523 à 360 px en CI, 242 aux deux langues à 1280 ; la machine de
+    développement rend 549 et 570, puis 268 et 268. Les deux colonnes ne se
+    comparent pas : `complet` ne tourne QU'EN POLICE LARGE — c'est écrit dans le
+    travail lui-même —, donc la CI ne mesure jamais `defil`, et cette machine ne
+    fait jamais autorité sur `defilLarge`. Qu'un plafond large tombe SOUS son
+    voisin étroit n'est donc pas une incohérence : ce sont deux relevés de deux
+    machines, chacun gardé là où il est mesuré.
   */
-  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 523, 1280: 268 }, defilLarge: { 360: 481, 1280: 179 }, avant: { 360: 1196, 1280: 747 } },
+  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 523, 1280: 268 }, defilLarge: { 360: 549, 1280: 242 }, avant: { 360: 1196, 1280: 747 } },
   /*
     LES CHARGES DU BAIL — et le premier lot de cette série à REFUSER une section
     de plus dans la boîte du dessus.
