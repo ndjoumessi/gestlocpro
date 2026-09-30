@@ -372,3 +372,75 @@ jobs:
           path: captures/
           retention-days: 7
           if-no-files-found: ignore
+
+  # ═══ CE QUE CE ROUGE COÛTE, DIT LÀ OÙ LE ROUGE APPARAÎT ═══
+  #
+  # Le service web Railway porte « Wait for CI » (`checkSuites`). Un workflow
+  # en échec sur `main` lui fait marquer le déploiement `SKIPPED` : la
+  # production reste sur le commit précédent, et CE MOT-LÀ NE S'ANNONCE NULLE
+  # PART. Il se lit « rien à faire », jamais « refusé ».
+  #
+  # MESURÉ LE 2026-09-30. `complet` a rougi à 08 h 47 sur deux plaintes de
+  # `plafond-hauteurs` — 21 px et 130 px de MOU, c'est-à-dire des plafonds
+  # au-dessus de leur mesure, qui ne refusaient plus rien. Quatre lots
+  # fonctionnels sont restés hors production plus de QUATRE HEURES pendant
+  # qu'on les croyait déployés, et le déploiement est reparti tout seul dès que
+  # la CI est repassée au vert.
+  #
+  # LA CONNAISSANCE EXISTAIT, DANS LE MAUVAIS FICHIER. L'en-tête de
+  # `fumee.yml` l'écrit depuis le 2026-09-17 — mais comme une contrainte sur le
+  # placement de la fumée, et personne n'ouvre `fumee.yml` quand une porte
+  # rougit.
+  #
+  # ═══ POURQUOI UN TRAVAIL À PART, ET SUR LES TROIS ═══
+  #
+  # Railway regarde la conclusion du WORKFLOW RUN, pas celle d'un travail :
+  # n'importe lequel des trois gèle donc la production. Un message par travail
+  # aurait été à écrire trois fois et à oublier au quatrième.
+  #
+  # IL N'AJOUTE AUCUN VERDICT. La condition ne s'arme que lorsqu'un travail
+  # attendu a DÉJÀ échoué ; ce travail ne peut donc pas faire rougir une poussée
+  # qui serait passée. Il ne fait que nommer une conséquence.
+  #
+  # ═══ `always() && contains(...)` ET NON `failure()` — ET C'EST LE CŒUR ═══
+  #
+  # Première rédaction : `if: failure()` avec `needs: [rapide, serveur,
+  # complet]`. ELLE SE SERAIT TUE DANS LE CAS LE PLUS COURANT. `complet` attend
+  # `rapide` et `serveur` : si `rapide` échoue, `complet` est SAUTÉ — et un
+  # travail dont un `needs` est sauté est sauté à son tour, `failure()` ou pas.
+  # L'avertissement n'aurait donc paru QUE lorsque `complet` seul rougissait,
+  # c'est-à-dire pas le jour où `rapide` tombe.
+  #
+  # `always()` le fait tourner quoi qu'il arrive aux trois, et
+  # `contains(needs.*.result, 'failure')` ne l'arme que si l'un d'eux a
+  # réellement ÉCHOUÉ — un travail simplement sauté ne déclenche rien. C'est la
+  # seule forme qui couvre les trois entrées et n'invente pas de rouge.
+  gel:
+    name: ce rouge gèle la production
+    if: ${{ always() && contains(needs.*.result, 'failure') && github.ref == 'refs/heads/main' }}
+    needs: [rapide, serveur, complet]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Le dire dans le résumé du passage
+        run: |
+          {
+            echo "## ⛔ Ce rouge gèle la production"
+            echo
+            echo "Le service web Railway attend les vérifications (« Wait for CI »)."
+            echo "Ce passage étant en échec sur \`main\`, le déploiement sera marqué"
+            echo "**\`SKIPPED\`** : la production reste sur le commit PRÉCÉDENT."
+            echo
+            echo "\`SKIPPED\` se lit « rien à faire », jamais « refusé ». Rien d'autre"
+            echo "ne l'annonce — ni journal, ni alerte."
+            echo
+            echo "**Le déploiement repartira seul** dès qu'un passage vert arrivera sur"
+            echo "\`main\`. Rien à relancer chez l'hébergeur."
+            echo
+            echo "Pour vérifier ce qui est RÉELLEMENT servi : \`npm run build && npm run fumee\`."
+            echo "Elle compare le nom du paquet servi par \`/api/version\` à celui que cet"
+            echo "arbre construit — Vite le hache d'après le contenu, donc deux noms"
+            echo "différents sont deux codes différents. Un code HTTP, lui, ne discrimine"
+            echo "rien : une route inventée rend le même \`401\` qu'une route réelle."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Ce rouge gèle la production::Railway marquera le déploiement SKIPPED ; la production reste sur le commit précédent. Il repartira seul au premier passage vert sur main."

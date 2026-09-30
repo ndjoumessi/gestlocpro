@@ -53,6 +53,7 @@
  * que partiel, et qui aurait cassé la page à chaque déploiement.
  */
 import { exit, argv } from 'node:process'
+import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 
@@ -132,6 +133,73 @@ async function ecran(chemin, attendu, ceQueCaVeutDire) {
 
 console.log(`\nfumée : ${HOTE}\n`)
 
+/**
+ * CE QUI EST SERVI EST-IL CE QUE CETTE COPIE CONSTRUIT ?
+ *
+ * ══════════ LA QUESTION QUE PERSONNE NE POSAIT ══════════
+ *
+ * Le 2026-09-30, quatre lots fonctionnels sont restés HORS PRODUCTION pendant
+ * plus de quatre heures pendant que je les croyais déployés. Le service web
+ * Railway porte « Wait for CI » — `checkSuites` —, une porte a rougi sur `main`,
+ * et Railway a marqué le déploiement `SKIPPED`. Ce mot-là se lit « rien à
+ * faire », jamais « refusé », et rien d'autre ne l'a dit : ni la CI, ni un
+ * journal, ni une alerte. Le déploiement est reparti seul quand la CI est
+ * repassée au vert.
+ *
+ * LA CONNAISSANCE EXISTAIT DÉJÀ, DANS LE MAUVAIS FICHIER. L'en-tête de
+ * `fumee.yml` écrit depuis le 2026-09-17 que « Railway déploie SEULEMENT SI LES
+ * PORTES SONT VERTES ». Elle y est écrite comme une contrainte sur le placement
+ * de CE passage, pas comme une conséquence sur la production — et personne
+ * n'ouvre `fumee.yml` quand une porte rougit.
+ *
+ * ══════════ POURQUOI CETTE MESURE-CI DISCRIMINE ══════════
+ *
+ * Vite hache le nom du paquet d'après son CONTENU : deux constructions
+ * identiques portent le même nom, deux constructions différentes non. Comparer
+ * le nom servi par `/api/version` à celui que cette copie vient de construire
+ * répond donc exactement à la question, sans rien à tenir à jour.
+ *
+ * ET C'EST LA SEULE FORME QUI Y RÉPONDE. Le jour du défaut, j'ai « prouvé » que
+ * le code neuf était en ligne en constatant qu'une route neuve rendait `401` et
+ * non `404`. Un TÉMOIN sur une adresse inventée a rendu le MÊME `401` : la
+ * garde d'authentification est montée sur `/api/parks/*` AVANT le routage. La
+ * sonde ne prouvait rien, et c'est le témoin qui l'a dit en dix secondes. Même
+ * famille que les « 200 » et le `<title>` statique racontés plus haut.
+ *
+ * ══════════ CE QU'ELLE NE PEUT PAS DIRE ══════════
+ *
+ * Sans `dist/` construit, elle se TAIT plutôt que de supposer — et le compte de
+ * contrôles ne bouge pas, puisqu'il n'y a rien à comparer. C'est le cas quand on
+ * lance cet outil sans avoir construit ; le passage programmé, lui, construit.
+ *
+ * Un écart ne veut pas forcément dire « défaut » : il dit « la production ne
+ * sert pas cet arbre-ci ». Un déploiement en vol le produit légitimement
+ * pendant quelques minutes, et une branche locale en avance le produit tout le
+ * temps. C'est un RAPPORT, comme tout ce fichier — `continue-on-error` est posé
+ * sur le travail entier, et son en-tête dit pourquoi.
+ */
+function comparerLePaquet(servi) {
+  let attendu = null
+  try {
+    const html = readFileSync(new URL('../dist/index.html', import.meta.url), 'utf8')
+    attendu = /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(html)?.[1] ?? null
+  } catch {
+    /* Pas de `dist/` : rien à comparer, et on ne suppose rien. */
+  }
+  if (!attendu || !servi || attendu === servi) return
+  plaintes.push(
+    `LA PRODUCTION NE SERT PAS CET ARBRE.\n` +
+      `   servi par ${HOTE} : ${servi}\n` +
+      `   construit ici     : ${attendu}\n` +
+      `   Vite hache le nom d'après le CONTENU : deux noms différents sont deux ` +
+      `codes différents.\n` +
+      `   Cause la plus fréquente, mesurée le 2026-09-30 : une porte rouge sur ` +
+      `\`main\` fait marquer\n` +
+      `   le déploiement \`SKIPPED\` par Railway (réglage « Wait for CI »), et ce mot ` +
+      `ne s'annonce nulle part.`,
+  )
+}
+
 const accueil = await ecran(
   '/',
   /tenu comme un patrimoine|held like an estate/,
@@ -180,6 +248,8 @@ try {
   const corps = await r.text()
   if (!r.ok() || !/"paquet"/.test(corps)) {
     plaintes.push(`/api/version : ${r.status()} — l'API ne répond pas derrière l'adresse.`)
+  } else {
+    comparerLePaquet(JSON.parse(corps).paquet)
   }
 } catch (erreur) {
   plaintes.push(`/api/version : injoignable — ${String(erreur).split('\n')[0]}`)

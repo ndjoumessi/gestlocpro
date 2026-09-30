@@ -68,4 +68,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # LA CONSTRUCTION, ET ELLE N'EST PAS DÉCORATIVE. Depuis le 2026-09-30, la
+      # fumée compare le nom du paquet SERVI par `/api/version` à celui que cet
+      # arbre construit — Vite le hache d'après le contenu, donc deux noms
+      # différents sont deux codes différents. Sans `dist/`, elle n'a rien à
+      # comparer et se TAIT : le contrôle existerait sans jamais rien dire.
+      #
+      # C'est ce contrôle qui répond à « la production sert-elle ce qu'on croit
+      # y avoir mis ? », la question restée sans réponse quatre heures durant le
+      # 2026-09-30 pendant qu'une porte rouge gelait le déploiement en silence.
+      - run: npm run build
       - run: npm run fumee
