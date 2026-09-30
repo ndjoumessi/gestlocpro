@@ -263,6 +263,17 @@ const REGISTRE = {
      celui où la note doit être là. Aucun geste à jouer, elle est rendue dès que
      l'écran l'est. */
   'app.expenses.worksApart': { adresse: '/demo/depenses' },
+  /* LA NOTE QUI DIT CE QUE L'ÉCRAN NE SAIT PAS CHIFFRER. Sans geste, et pour la
+     même raison que sa voisine : elle est INCONDITIONNELLE. Le produit sait ce
+     qu'un logement A rapporté, jamais ce qu'il AURAIT rapporté ; un parc sans
+     logement vide est précisément celui où l'on croirait l'écran complet.
+
+     C'EST AUSSI LA SEULE GARDE QU'ELLE AIT. Son inconditionnalité n'est pas
+     mesurable depuis la démonstration — qui a toujours des logements vides, donc
+     rend vraie toute condition qu'on lui accrocherait —, et `vacanceDuParc`
+     l'écrit noir sur blanc. Ce registre-ci ne garde que sa PRÉSENCE et sa
+     géométrie ; le caractère inconditionnel vit dans le code, sous les yeux. */
+  'app.vacancy.scopeNote': { adresse: '/demo/vacance' },
   /* LA NOTE DE SÛRETÉ du rapprochement des noms. Mesurable depuis que la
      démonstration porte un locataire entré sans fiche — voir `ACCES_DEMO`. */
   'app.access.linkMismatch': { adresse: '/demo/acces', geste: ouvrirLaLiaison },
