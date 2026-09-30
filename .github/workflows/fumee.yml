@@ -38,7 +38,30 @@
 # peuvent se croiser, et la conséquence est un déploiement retardé de dix
 # minutes, jamais un déploiement manqué.
 #
+# ═══ CE QU'ELLE OUVRE DEPUIS LE 2026-09-30 ═══
+#
+# Les vingt écrans de gestion sont montés sous `/demo` AUSSI, sur un parc de
+# démonstration, SANS authentification. Le passage quotidien les ouvre donc tous,
+# et les trente-cinq modales du registre avec — par le geste réel, menus de
+# débordement et bascules de profil compris.
+#
+# C'est ce qui rend ce passage utile SANS IDENTIFIANTS, ce qu'il n'était pas :
+# la passe connectée ne tourne que si quelqu'un pose un mot de passe dans
+# l'environnement, donc jamais ici.
+#
+# LA QUESTION QU'IL RÉPOND : « l'hôte sert-il encore ces écrans ? ». Le
+# discriminant n'est pas un code HTTP — le produit est une page unique, tout
+# chemin rend 200 — mais l'ABSENCE de l'écran « introuvable ». Deux témoins
+# négatifs tiennent la sonde : une adresse inventée qui DOIT rendre ce refus, un
+# geste inventé qui NE doit PAS être trouvé. Les quatre détecteurs ont été
+# éprouvés par mutation le 2026-09-30, chacun rouge avec son propre message.
+#
 # ═══ CE QU'ELLE NE FAIT TOUJOURS PAS ═══
+#
+# CE QUE `/demo` NE MONTRE PAS : un lot dont la surface est conditionnée à un
+# vrai parc. `ReceiptModal` en est le cas — sa pièce jointe est gardée par
+# `parkId`, absent en démonstration : la quittance s'ouvre, le geste n'y est pas.
+# Ce passage ne couvre donc pas tout ce qui est déployé, et ne le prétend pas.
 #
 # SANS IDENTIFIANTS : la passe connectée reste à lancer à la main. Poser un mot
 # de passe de production dans les secrets d'un dépôt pour qu'un robot le tape
@@ -55,7 +78,12 @@ jobs:
   fumee:
     name: fumée — l'hôte vivant (rapport, pas verdict)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 15 ET NON 10 DEPUIS LE 2026-09-30 : le balayage de la démonstration ajoute
+    # 55 surfaces. MESURÉ à 81 s en tout sur une machine de développement ; le
+    # relèvement du plafond est une PRUDENCE NON MESURÉE — la latence d'un
+    # exécuteur GitHub vers le bord de Vercel n'a pas été relevée, et un plafond
+    # qui coupe un passage nocturne se lit comme une panne d'hôte.
+    timeout-minutes: 15
     # `continue-on-error` EST LE POINT, pas une commodité. Une porte qui rougit
     # sur un DNS qui hoquette apprend à être ignorée, et c'est la seule façon de
     # perdre un outil pour de bon. Ce travail RAPPORTE ce que voit un visiteur.

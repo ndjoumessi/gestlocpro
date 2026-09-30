@@ -47,6 +47,16 @@
  *
  * Cet outil ouvre donc un vrai navigateur, comme les seize portes.
  *
+ * ═══ ET DEPUIS LE 2026-09-30, CE QU'UN VISITEUR PEUT OUVRIR ═══
+ *
+ * Les sept contrôles publics s'arrêtaient à la porte d'entrée, et la passe
+ * connectée ne tourne que si quelqu'un pose un mot de passe dans
+ * l'environnement — donc jamais dans le passage quotidien. Or les vingt écrans
+ * de gestion sont montés sous `/demo` AUSSI, sans authentification : ils sont
+ * ouverts, avec les trente-cinq modales du registre et leurs gestes réels.
+ * Voir `fumee/gestes-en-demonstration.mjs`, qui dit pourquoi un code HTTP ne
+ * prouve rien ici et ce que ses deux témoins établissent.
+ *
  * Et le PAQUET référencé par la page est chargé pour de bon : c'est le seul
  * contrôle qui attrape la dérive des empreintes entre deux hôtes qui
  * construisent séparément — le défaut qui a fait choisir le relais total plutôt
@@ -56,6 +66,7 @@ import { exit, argv } from 'node:process'
 import { readFileSync } from 'node:fs'
 import { chromium } from 'playwright'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+import { balayerLaDemonstration } from './fumee/gestes-en-demonstration.mjs'
 
 /**
  * L'hôte interrogé.
@@ -451,6 +462,29 @@ if (COMPTE && MDP) {
 }
 
 await contexte.close()
+/*
+  ═══ CE QU'UN VISITEUR OUVRE SANS COMPTE, ET POURQUOI C'EST ICI ═══
+
+  Tout ce qui précède s'arrête à la porte d'entrée, et la passe connectée ne
+  tourne que si quelqu'un a posé un mot de passe dans l'environnement — donc
+  jamais dans le passage quotidien. Le produit monte pourtant ses vingt écrans
+  de gestion sous `/demo` AUSSI, sans authentification : le passage de 5 h peut
+  les ouvrir, et les modales avec.
+
+  CE BALAYAGE A SA PLACE DANS LA FUMÉE, ET NULLE PART AILLEURS. Il interroge
+  l'HÔTE VIVANT ; l'en-tête de `fumee.yml` dit pourquoi rien de tel ne peut
+  être déclenché par la poussée — Railway attend la conclusion du passage pour
+  déployer, et un travail qui attend le déploiement fermerait la boucle. Ce
+  qu'il mesurerait alors serait le déploiement PRÉCÉDENT, en silence.
+
+  IL NE REMPLACE PAS `modales` NI `mesure-ui`, qui ouvrent les mêmes surfaces en
+  local, aux deux largeurs et dans les deux langues, et y mesurent une
+  géométrie. Il répond à une autre question, que rien ne posait : « l'hôte
+  sert-il encore ces écrans ? ». La réponse d'hier ne vaut pas pour aujourd'hui.
+*/
+const demonstration = await balayerLaDemonstration({ navigateur, HOTE, plaintes })
+controles += demonstration.controles
+
 await navigateur.close()
 
 /*
@@ -519,7 +553,9 @@ await navigateur.close()
  * vert sur un hôte mort.
  */
 const CONTROLES_PUBLICS = 7
-const attendus = COMPTE && MDP ? CONTROLES_PUBLICS + 1 + ecransConnectes : CONTROLES_PUBLICS
+const attendus =
+  (COMPTE && MDP ? CONTROLES_PUBLICS + 1 + ecransConnectes : CONTROLES_PUBLICS) +
+  demonstration.controles
 if (controles !== attendus) {
   plaintes.push(
     `${controles} contrôle(s) exécuté(s) pour ${attendus} attendus. ` +
@@ -545,6 +581,9 @@ console.log(
     `  la vitrine, un lien profond et l'écran de connexion PEINTS, aucun fichier\n` +
     `  réclamé et non servi, les deux réponses de l'API, une seule politique.\n` +
     `  Du contenu rendu, jamais un code ni un titre statique.\n` +
+    `  Puis ${demonstration.ecrans} écran(s) de démonstration et ${demonstration.modales} modale(s)\n` +
+    `  OUVERTS sur l'hôte, sans compte — aucun ne rend l'écran « introuvable », et les\n` +
+    `  ${demonstration.temoins} témoins ont refusé ce qu'ils devaient refuser.\n` +
     (COMPTE && MDP
       ? `  Et ${ecransConnectes} écran(s) DERRIÈRE l'authentification : ceux que la\n` +
         `  navigation offre à ce compte, PLUS ce que leurs liens ouvrent — dossiers\n` +
