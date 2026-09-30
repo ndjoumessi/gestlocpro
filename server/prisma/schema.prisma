@@ -1053,6 +1053,12 @@ model WorkThreadEmail {
   createdAt DateTime  @default(now())
 
   @@index([workId])
+  /// Déclaré parce qu'il EXISTE en base depuis `20260902120000_copie_par_message`
+  /// et qu'il SERT : le relevé des destinataires déjà servis interroge
+  /// `notificationId: { in: … }` (`parks/routes.ts:3704`). Le schéma l'avait
+  /// perdu sans migration ; la première migration écrite ensuite proposait donc
+  /// de le SUPPRIMER, en le glissant dans un lot qui parlait d'autre chose.
+  @@index([notificationId])
 }
 
 model RentReminderEmail {
