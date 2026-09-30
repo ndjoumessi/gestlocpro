@@ -242,6 +242,42 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'rateBasisPoints', nature: 'texte' },
     { champ: 'fixedMinor', nature: 'argent' },
   ],
+  /* LE CONGÉ — QUI l'a donné vient en premier, parce que c'est ce qui change
+     tout : un départ à l'initiative du locataire et une reprise par le bailleur
+     n'ouvrent pas les mêmes droits et ne se racontent pas pareil devant qui
+     arbitre. Les deux dates suivent, dans l'ordre où elles arrivent. */
+  'lease.notice': [
+    { champ: 'givenBy', nature: 'texte' },
+    { champ: 'givenOn', nature: 'date' },
+    { champ: 'moveOutOn', nature: 'date' },
+  ],
+  /* LE CONGÉ RETIRÉ porte les deux dates DISPARUES, et c'est tout ce qui en
+     reste : les quatre colonnes du bail sont revenues à NULL, et plus rien
+     ailleurs ne dira qu'un départ avait été annoncé pour cette date-là. */
+  'lease.notice_withdraw': [
+    { champ: 'givenOn', nature: 'date' },
+    { champ: 'moveOutOn', nature: 'date' },
+  ],
+  /* LE LOYER RÉVISÉ. L'avant vit dans la charge utile, que cette recette ne
+     déplie pas — le choix déjà fait pour les tarifs et pour la fiche locataire.
+     La date d'effet est la colonne qui rend la ligne relisible : « 77 000 » sans
+     elle ne dit pas à partir de quand. */
+  'lease.revise_rent': [
+    { champ: 'newRentMinor', nature: 'argent' },
+    { champ: 'effectiveOn', nature: 'date' },
+  ],
+  /* LE GARANT — son NOM entre au registre, contrairement au libellé libre d'une
+     dépense qu'on en avait écarté. La différence est l'usage : un libellé de
+     dépense se relit dans son écran, alors qu'un garant se cherche au registre
+     précisément quand sa ligne n'existe plus. */
+  'guarantor.add': [
+    { champ: 'fullName', nature: 'texte' },
+    { champ: 'relation', nature: 'texte' },
+  ],
+  'guarantor.remove': [
+    { champ: 'fullName', nature: 'texte' },
+    { champ: 'relation', nature: 'texte' },
+  ],
   'expense.record': [
     { champ: 'category', nature: 'texte' },
     { champ: 'amountMinor', nature: 'argent' },

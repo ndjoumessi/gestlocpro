@@ -50,6 +50,23 @@ const RACINE = join(import.meta.dirname, '../..')
  * rougir la règle du dessous, avec son nom.
  */
 const AFFIRMATIONS: Record<string, string> = {
+  'Lease.noticeGivenOn':
+    'NULL affirme qu’AUCUN CONGÉ n’a été donné sur aucun bail déjà en base. ' +
+    'VRAI, et vérifié plutôt que supposé : aucune colonne, aucune route et aucun ' +
+    'écran ne savait enregistrer un congé avant cette migration — l’information ' +
+    'n’existe donc nulle part, ni sous une autre forme, ni dans une note, ni au ' +
+    'registre d’audit. Le NULL ne peut pas vouloir dire « écrit avant la ' +
+    'colonne », et son sens n’est donc pas double. Un bail `ended` sans congé ' +
+    'existe et reste juste : il a été terminé avant que le produit sache dire ' +
+    'comment, et inventer une date rétroactive serait écrire un fait.',
+  'Lease.noticeGivenBy': 'Même affirmation et même vérification que `noticeGivenOn`.',
+  'Lease.noticeReason': 'Même affirmation et même vérification que `noticeGivenOn`.',
+  'Lease.moveOutOn':
+    'Même affirmation que `noticeGivenOn` — aucun départ annoncé. AUCUN DÉFAUT ' +
+    'NON PLUS, et c’est le point : poser une date d’effet aurait programmé la ' +
+    'fin de tous les baux du produit. Un congé n’est pas une fin, le bail reste ' +
+    '`active` jusqu’à cette date, et un défaut ici aurait fait cesser l’appel de ' +
+    'loyer sur des logements occupés.',
   'WorkOrder.parkId':
     'AUCUN DÉFAUT, ET AUCUN NULL : la migration REMPLIT la colonne depuis ' +
     '`unit.building.parkId` avant de la rendre obligatoire. Elle n’affirme donc ' +
@@ -220,6 +237,6 @@ describe('les colonnes ajoutées', () => {
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(22)
+    ).toBe(26)
   })
 })

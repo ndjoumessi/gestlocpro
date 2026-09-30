@@ -9561,6 +9561,12 @@ parksRouter.patch(
         entity: 'Expense',
         entityId: apres.id,
         payload: {
+          /* LA FAMILLE, BIEN QU'ELLE NE SOIT PAS CORRIGIBLE, et c'est `decisions-nommees`
+             qui l'a exigé : la recette du registre déclare les mêmes trois colonnes que la
+             saisie, pour qu'une correction se lise en comparant à la ligne d'à côté. Sans
+             elle, la ligne de correction perdait la colonne qui dit DE QUOI on parle, et la
+             comparaison que la recette promet était impossible. */
+          category: apres.category,
           label: apres.label,
           amountMinor: apres.amountMinor,
           incurredOn: apres.incurredOn.toISOString().slice(0, 10),
@@ -10053,3 +10059,484 @@ function honorairesDus(
   if (bareme.basis === 'fixedPerUnit') return (bareme.fixedMinor ?? 0) * contexte.logementsGeres
   return (bareme.fixedMinor ?? 0) * contexte.moisCouverts
 }
+
+// ─── Congé, révision de loyer, garant ────────────────────────────────────────
+
+/** Le BAIL visé, borné au parc et au périmètre. `null` = 404, jamais 403. */
+async function bailDuParc(leaseId: string, parkId: string, portee: Prisma.UnitWhereInput) {
+  return prisma.lease.findFirst({
+    where: { id: leaseId, unit: { building: { parkId }, ...portee } },
+    select: {
+      id: true,
+      rentMinor: true,
+      status: true,
+      noticeGivenOn: true,
+      moveOutOn: true,
+    },
+  })
+}
+
+const schemaConge = z
+  .object({
+    givenOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    givenBy: z.enum(['tenant', 'landlord']),
+    moveOutOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    reason: z.string().trim().max(2000).nullish(),
+  })
+  /**
+   * LE DÉPART NE PRÉCÈDE PAS LE CONGÉ.
+   *
+   * Un congé donné le 15 avec effet le 1er serait un départ déjà consommé qu'on
+   * déclare après coup. Ce n'est pas impossible dans la vie — un locataire
+   * parti sans prévenir — mais ça ne s'enregistre pas comme un congé : le bail
+   * se termine, ce qui est un autre geste. Accepter les deux ici rendrait
+   * indécidable ce qu'un `moveOutOn` passé veut dire.
+   */
+  .refine((c) => c.moveOutOn >= c.givenOn, {
+    message: 'La date de départ ne peut pas précéder le congé',
+    path: ['moveOutOn'],
+  })
+
+/**
+ * ENREGISTRER UN CONGÉ.
+ *
+ * ═══ LE BAIL RESTE `active`, ET C'EST TOUT L'OBJET ═══
+ *
+ * Le statut ne bascule PAS. Le locataire habite encore jusqu'à `moveOutOn` : son
+ * loyer est encore appelé, ses charges encore refacturées, sa caution encore
+ * retenue. Basculer `ended` à la réception du congé ferait cesser l'appel de
+ * loyer sur un logement occupé — l'erreur exactement inverse de celle que ce lot
+ * corrige, et la plus chère des deux.
+ *
+ * Ouvert au propriétaire ET au gestionnaire : recevoir un congé est
+ * l'administratif courant, le cœur de ce qu'on délègue. Il n'engage aucune
+ * dépense.
+ */
+parksRouter.patch(
+  '/:parkId/leases/:leaseId/notice',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const portee = porteeDesUnites(req.adhesion!)
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaConge.parse(req.body)
+
+    const bail = await bailDuParc(leaseId, parkId, portee)
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    /* UN BAIL TERMINÉ NE REÇOIT PAS DE CONGÉ : il n'y a plus rien à quitter, et
+       l'accepter écrirait une date d'effet postérieure à la fin. 409 et non 400 —
+       le corps est bien formé, c'est l'état du bail qui s'y oppose. */
+    if (bail.status === 'ended') {
+      res.status(409).json({ error: 'lease_ended' })
+      return
+    }
+
+    const maj = await prisma.lease.update({
+      where: { id: leaseId },
+      data: {
+        noticeGivenOn: new Date(`${corps.givenOn}T00:00:00.000Z`),
+        noticeGivenBy: corps.givenBy,
+        noticeReason: corps.reason ?? null,
+        moveOutOn: new Date(`${corps.moveOutOn}T00:00:00.000Z`),
+      },
+      select: { id: true, noticeGivenOn: true, noticeGivenBy: true, moveOutOn: true, noticeReason: true },
+    })
+
+    /* UN CONGÉ DÉPLACE UNE VACANCE À VENIR, donc de l'argent. Il se trace, et la
+       trace porte QUI l'a donné — c'est la première question qu'on pose six mois
+       plus tard, quand le locataire dit ne jamais être parti de son plein gré. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'lease.notice',
+        entity: 'Lease',
+        entityId: leaseId,
+        payload: {
+          givenOn: corps.givenOn,
+          givenBy: corps.givenBy,
+          moveOutOn: corps.moveOutOn,
+        },
+      },
+    })
+
+    res.json({
+      lease: {
+        id: maj.id,
+        noticeGivenOn: maj.noticeGivenOn!.toISOString().slice(0, 10),
+        noticeGivenBy: maj.noticeGivenBy,
+        noticeReason: maj.noticeReason,
+        moveOutOn: maj.moveOutOn!.toISOString().slice(0, 10),
+      },
+    })
+  },
+)
+
+/**
+ * RETIRER UN CONGÉ — le locataire se rétracte, ou la saisie était fausse.
+ *
+ * Les quatre colonnes repartent à `NULL` ensemble : un congé dont on garderait la
+ * date sans la date d'effet ne serait ni un congé ni son absence.
+ */
+parksRouter.delete(
+  '/:parkId/leases/:leaseId/notice',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail || !bail.noticeGivenOn) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.lease.update({
+        where: { id: leaseId },
+        data: { noticeGivenOn: null, noticeGivenBy: null, noticeReason: null, moveOutOn: null },
+      })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.notice_withdraw',
+          entity: 'Lease',
+          entityId: leaseId,
+          payload: {
+            givenOn: bail.noticeGivenOn!.toISOString().slice(0, 10),
+            moveOutOn: bail.moveOutOn ? bail.moveOutOn.toISOString().slice(0, 10) : null,
+          },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)
+
+const schemaRevision = z.object({
+  effectiveOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+  newRentMinor: z.number().int().positive(),
+  reason: z.string().trim().max(2000).nullish(),
+})
+
+/**
+ * RÉVISER LE LOYER.
+ *
+ * ═══ DEUX ÉCRITURES DANS LA MÊME TRANSACTION, ET L'ORDRE N'IMPORTE PAS — LEUR
+ *     ATOMICITÉ, SI ═══
+ *
+ * La révision INSÈRE sa ligne et MET À JOUR `Lease.rentMinor`. Séparées, une
+ * panne entre les deux laisserait soit un loyer changé sans trace — le défaut
+ * qu'on corrige —, soit un historique qui annonce une hausse que le bail ignore.
+ *
+ * `previousRentMinor` est lu DANS la transaction, jamais avant : deux révisions
+ * simultanées liraient sinon le même « avant », et la seconde écrirait un saut
+ * qui n'a pas eu lieu.
+ *
+ * ═══ LES ÉCHÉANCES DÉJÀ APPELÉES NE SONT PAS RÉÉCRITES ═══
+ *
+ * `RentCharge` fige son propre `rentMinor` à l'appel. Une révision au 1er avril
+ * ne touche donc pas la quittance de mars, et c'est juste : ce loyer-là a été
+ * appelé, peut-être payé, et une quittance remise ne se réécrit pas. C'est
+ * l'inverse de la correction d'un tarif de refacturation, qui RELIT la table à
+ * chaque lecture et répare donc le passé affiché — la différence est écrite là
+ * pour qu'on ne transpose pas l'un à l'autre.
+ *
+ * AU PROPRIÉTAIRE SEUL : changer un loyer engage le revenu du parc et la charge
+ * du locataire. C'est le partage de la validation d'un devis.
+ */
+parksRouter.post(
+  '/:parkId/leases/:leaseId/revisions',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const portee = porteeDesUnites(req.adhesion!)
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaRevision.parse(req.body)
+
+    const bail = await bailDuParc(leaseId, parkId, portee)
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    try {
+      const revision = await prisma.$transaction(async (tx) => {
+        /* L'AVANT LU DANS LA TRANSACTION. Deux révisions simultanées liraient
+           sinon le même loyer de départ, et la seconde écrirait un saut qui n'a
+           jamais eu lieu. */
+        const courant = await tx.lease.findUniqueOrThrow({
+          where: { id: leaseId },
+          select: { rentMinor: true },
+        })
+        /* RIEN À RÉVISER si le loyer ne change pas — une ligne d'historique
+           « de 70 000 à 70 000 » polluerait la seule table qui explique une
+           hausse. 409 : le corps est bon, l'état s'y oppose. */
+        if (courant.rentMinor === corps.newRentMinor) return null
+
+        const ligne = await tx.rentRevision.create({
+          data: {
+            leaseId,
+            effectiveOn: new Date(`${corps.effectiveOn}T00:00:00.000Z`),
+            previousRentMinor: courant.rentMinor,
+            newRentMinor: corps.newRentMinor,
+            reason: corps.reason ?? null,
+            decidedById: req.compteId!,
+          },
+          select: {
+            id: true,
+            effectiveOn: true,
+            previousRentMinor: true,
+            newRentMinor: true,
+            reason: true,
+          },
+        })
+        await tx.lease.update({
+          where: { id: leaseId },
+          data: { rentMinor: corps.newRentMinor },
+        })
+        return ligne
+      })
+
+      if (!revision) {
+        res.status(409).json({ error: 'same_rent' })
+        return
+      }
+
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.revise_rent',
+          entity: 'Lease',
+          entityId: leaseId,
+          payload: {
+            newRentMinor: revision.newRentMinor,
+            effectiveOn: corps.effectiveOn,
+            avant: { rentMinor: revision.previousRentMinor },
+          },
+        },
+      })
+
+      res.status(201).json({
+        revision: {
+          id: revision.id,
+          effectiveOn: revision.effectiveOn.toISOString().slice(0, 10),
+          previousRentMinor: revision.previousRentMinor,
+          newRentMinor: revision.newRentMinor,
+          reason: revision.reason,
+        },
+      })
+    } catch (err) {
+      /* UNE SEULE RÉVISION PAR BAIL ET PAR DATE D'EFFET, tenue par la base : deux
+         hausses au même jour rendraient indéterminable le loyer de ce jour-là. */
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        res.status(409).json({ error: 'revision_exists' })
+        return
+      }
+      throw err
+    }
+  },
+)
+
+const schemaGarant = z.object({
+  fullName: z.string().trim().min(1).max(200),
+  phoneE164: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{6,14}$/, 'Numéro attendu au format international')
+    .nullish(),
+  email: z.string().email().nullish(),
+  relation: z.string().trim().max(120).nullish(),
+})
+
+/**
+ * AJOUTER UN GARANT.
+ *
+ * ═══ AU MOINS UNE FAÇON DE LE JOINDRE ═══
+ *
+ * Un garant sans téléphone ni courriel est un nom sur un papier : il ne sert à
+ * rien le jour où l'on en a besoin, qui est le seul jour où on le lit. Le nom
+ * seul est pourtant ce qu'un formulaire laisse passer le plus facilement.
+ *
+ * Ouvert aux deux rôles de gestion : constituer un dossier est l'administratif
+ * courant, et c'est le gestionnaire qui reçoit les pièces à la signature.
+ */
+parksRouter.post(
+  '/:parkId/leases/:leaseId/guarantors',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaGarant.parse(req.body)
+    if (!corps.phoneE164 && !corps.email) {
+      res.status(400).json({
+        error: 'validation_failed',
+        fields: [{ path: 'phoneE164', message: 'Un téléphone ou un courriel est nécessaire' }],
+      })
+      return
+    }
+
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const garant = await prisma.guarantor.create({
+      data: {
+        leaseId,
+        fullName: corps.fullName,
+        phoneE164: corps.phoneE164 ?? null,
+        email: corps.email ?? null,
+        relation: corps.relation ?? null,
+      },
+      select: { id: true, fullName: true, phoneE164: true, email: true, relation: true },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'guarantor.add',
+        entity: 'Guarantor',
+        entityId: garant.id,
+        payload: { fullName: garant.fullName, relation: garant.relation },
+      },
+    })
+
+    res.status(201).json({ guarantor: garant })
+  },
+)
+
+/** RETIRER UN GARANT. Dans la transaction, comme tout retrait vécu. */
+parksRouter.delete(
+  '/:parkId/guarantors/:guarantorId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const guarantorId = z.string().uuid().parse(req.params.guarantorId)
+    const garant = await prisma.guarantor.findFirst({
+      where: {
+        id: guarantorId,
+        lease: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      },
+      select: { id: true, fullName: true, relation: true },
+    })
+    if (!garant) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.guarantor.delete({ where: { id: guarantorId } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'guarantor.remove',
+          entity: 'Guarantor',
+          entityId: garant.id,
+          payload: { fullName: garant.fullName, relation: garant.relation },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)
+
+/**
+ * LE PANNEAU ADMINISTRATIF D'UN BAIL : son congé, ses révisions, ses garants.
+ *
+ * ═══ UNE ROUTE ET NON TROIS ═══
+ *
+ * Les trois collections sont lues ensemble, toujours, par la même boîte et au
+ * même instant. Trois routes auraient fait trois allers-retours sur un réseau
+ * que le marché visé paie à la donnée, pour trois fragments dont aucun ne se lit
+ * seul : un congé sans le loyer courant ne dit pas ce qu'on perd, et une
+ * révision sans son historique ne dit pas si c'est la première.
+ *
+ * ═══ POURQUOI ELLE N'ENTRE PAS DANS LE PORTEFEUILLE ═══
+ *
+ * `GET /portfolio` rend déjà tout ce qu'un écran affiche. Y ajouter les
+ * révisions et les garants de CHAQUE bail alourdirait la lecture la plus chaude
+ * du produit pour une donnée qu'un seul panneau consulte, et qu'on n'ouvre que
+ * sur un logement à la fois.
+ *
+ * Ouvert aux deux rôles de gestion, et fermé au locataire : les garants de son
+ * bail sont ses proches, mais les révisions disent ce que le bailleur a décidé,
+ * et le panneau porte les deux dans la même réponse. Le jour où un locataire
+ * devra voir ses garants, ce sera une autre route, avec son propre périmètre.
+ */
+parksRouter.get(
+  '/:parkId/leases/:leaseId/sureties',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const bail = await prisma.lease.findFirst({
+      where: { id: leaseId, unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      select: {
+        id: true,
+        rentMinor: true,
+        status: true,
+        noticeGivenOn: true,
+        noticeGivenBy: true,
+        noticeReason: true,
+        moveOutOn: true,
+        revisions: {
+          orderBy: { effectiveOn: 'desc' },
+          select: {
+            id: true,
+            effectiveOn: true,
+            previousRentMinor: true,
+            newRentMinor: true,
+            reason: true,
+          },
+        },
+        guarantors: {
+          /* PAR DATE D'AJOUT et non par nom : deux parents ajoutés ensemble
+             doivent se lire dans l'ordre où ils ont signé, pas alphabétique. */
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, fullName: true, phoneE164: true, email: true, relation: true },
+        },
+      },
+    })
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const jour = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null)
+    res.json({
+      lease: {
+        id: bail.id,
+        rentMinor: bail.rentMinor,
+        status: bail.status,
+        noticeGivenOn: jour(bail.noticeGivenOn),
+        noticeGivenBy: bail.noticeGivenBy,
+        noticeReason: bail.noticeReason,
+        moveOutOn: jour(bail.moveOutOn),
+      },
+      revisions: bail.revisions.map((r) => ({
+        id: r.id,
+        effectiveOn: jour(r.effectiveOn)!,
+        previousRentMinor: r.previousRentMinor,
+        newRentMinor: r.newRentMinor,
+        reason: r.reason,
+      })),
+      guarantors: bail.guarantors,
+    })
+  },
+)

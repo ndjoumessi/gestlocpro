@@ -347,6 +347,27 @@ const MODALES = [
      démonstration. Le bouton suit le RÔLE actif, donc il est ouvrable ici. */
   { nom: 'Fees', fichier: 'features/dashboard/FeesModal.tsx', adresse: '/demo/acces', bouton: /^Honoraires et relevé — Diane Fotso$|^Fees and statement — Diane Fotso$/, defil: { 360: 104, 1280: 0 }, defilLarge: { 360: 147, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
+    LE BAIL ET SES SÛRETÉS — depuis le dossier d'un logement, derrière le menu de
+    débordement de l'en-tête. `A1` a un bail courant ; un logement vacant ne rend
+    pas l'entrée de menu.
+
+    1196 → 434 px À 360, ET C'EST CETTE PORTE QUI L'A OBTENU. Première rédaction :
+    les trois sections — congé, loyer, garants — déployées ensemble. Le pied
+    tenait, la boîte ne débordait pas, aucune autre garde ne voyait rien ; il
+    fallait simplement faire défiler tout le congé pour atteindre les garants, sur
+    1196 px quand aucune autre boîte du produit ne dépasse 347.
+
+    Inscrire 1196 comme plafond aurait désarmé la porte : elle existe pour refuser
+    exactement ce corps-là. Trois boîtes séparées auraient coûté trois fois ces
+    registres. Le dépliage — une seule section ouverte, le congé d'abord — est la
+    troisième réponse, et la seule qui garde le panneau d'un bail dans une boîte.
+
+    Le loyer COURANT reste visible même replié : c'est la donnée, pas le geste, et
+    on ne décide pas d'une hausse sans elle sous les yeux. C'est ce qui explique
+    les 153 px qui restent à 1280.
+  */
+  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 434, 1280: 179 }, defilLarge: { 360: 481, 1280: 179 }, avant: { 360: 1196, 1280: 747 } },
+  /*
     LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
     l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par
     `RemoveTenant`, `Access.tsx` par `RevokeAccess` — ce qui suffisait à la garde
@@ -774,7 +795,7 @@ const LANGUES = ['fr', 'en']
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 124
+const ATTENDUS = 128
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

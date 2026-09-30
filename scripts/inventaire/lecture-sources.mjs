@@ -703,7 +703,11 @@ export const PLANCHERS_DE_LECTURE = {
      monter ce compteur-ci autant qu'un écran neuf.
      Le réel est à 357 ; l'ancien plancher tenait à six dixièmes de point près
      (357 × 0,8 = 285,6 contre 285). `planchersDeLecture` a demandé 321. */
-  'composants indexés': 321,
+  /* 321 → 361 le 2026-09-30 : 402 composants lus. Le lot du bail en DÉFINIT
+     trois à lui seul — la modale, son en-tête de section dépliable, et le
+     panneau lui-même —, et `lecture-sources` compte les définitions, pas les
+     montages. */
+  'composants indexés': 361,
   /* 245 → 281 et 113 → 127, le 2026-09-07 : l'écran des locataires est passé du
      tableau aux fiches, et une fiche porte plus de sites qu'une rangée — un
      menu, deux boutons, un lien d'appel par personne —, plus la recherche et
@@ -716,7 +720,11 @@ export const PLANCHERS_DE_LECTURE = {
      que ce relevé compte dans les SOURCES même s'ils ne sont montés qu'à
      l'ouverture. */
   'sites interactifs': 323,
-  'champs de formulaire': 127,
+  /* 127 → 152 le 2026-09-30 : 169 champs lus. Le panneau du bail en porte onze
+     à lui seul — quatre pour le congé, trois pour la révision, quatre pour le
+     garant — et c'est le formulaire le plus long ajouté depuis les fiches de
+     locataire. */
+  'champs de formulaire': 152,
   /* 390 → 444 le 2026-09-30 : 494 titres lus. Ceux des deux écrans neufs, ceux
      de leurs modales, et les cinq lignes du relevé de gestion qui portent
      chacune son libellé. */

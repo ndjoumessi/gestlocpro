@@ -192,6 +192,25 @@ const MODALES: Modale[] = [
      bouton suit le RÔLE actif et non `adhesionActive` : c'est la leçon des deux
      modales qui étaient inatteignables faute de compte réel. */
   { nom: 'Honoraires de gestion', fichier: 'features/dashboard/FeesModal.tsx', adresse: '/demo/acces', bouton: /^Honoraires et relevé — Diane Fotso$/, forme: 'saisie' },
+  /*
+    LE BAIL ET SES SÛRETÉS — la PREMIÈRE de ce registre à s'ouvrir depuis un
+    DOSSIER DE LOGEMENT, et donc la première dont l'adresse porte un identifiant.
+    `A1` est choisi parce qu'il a un bail courant : un logement vacant ne rend pas
+    l'entrée de menu, et c'est voulu — un menu qui propose un geste impossible est
+    pire qu'un menu qui ne le propose pas.
+
+    AUCUN `prealable` : la première rédaction en écrivait un pour ouvrir le menu
+    de débordement, et c'était du travail en double. Le harnais s'en charge déjà
+    lui-même quinze lignes plus bas, sur l'en-tête de page puis sur la zone
+    principale — la leçon est de lire ce que le harnais fait avant de le refaire.
+  */
+  {
+    nom: 'Bail et sûretés',
+    fichier: 'features/dashboard/LeaseModal.tsx',
+    adresse: '/demo/parc/A1',
+    bouton: /^Bail et sûretés$/,
+    forme: 'saisie',
+  },
 
   { nom: 'Enregistrer un paiement', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
@@ -640,7 +659,7 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les vingt-neuf modales déclarées', () => {
+  it('a bien joué les trente modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
        faute de cible dans la démonstration. Leur `prealable` la crée.
        26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
@@ -648,9 +667,11 @@ describe('le clavier des modales', () => {
        27 → 28 (2026-09-30) : la saisie d'une dépense, née avec l'écran de ce
        qui sort du parc.
        28 → 29 (2026-09-30) : les honoraires d'un gestionnaire, sur la ligne de
-       son mandat — le même jour, le lot suivant. */
-    expect(MODALES.length).toBe(29)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(29)
+       son mandat — le même jour, le lot suivant.
+       29 → 30 (2026-09-30) : le bail et ses sûretés, depuis le dossier d'un
+       logement — première de ce registre derrière un menu de débordement. */
+    expect(MODALES.length).toBe(30)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(30)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

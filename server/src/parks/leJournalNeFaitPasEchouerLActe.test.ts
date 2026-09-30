@@ -119,6 +119,17 @@ const DESTRUCTIONS_ATOMIQUES = [
      vient chercher au registre quand un compte-rendu change de montant sans
      raison apparente, et la trace est la seule chose qui puisse répondre. */
   'fee.delete',
+  /* LE CONGÉ RETIRÉ. Les quatre colonnes repartent à NULL ensemble, et plus rien
+     ne dit qu'un départ avait été annoncé : ni la date, ni qui l'avait donné, ni
+     le motif. Un logement qui redevient « occupé sans fin prévue » après avoir
+     été annoncé libre est exactement ce qu'on vient vérifier au registre quand un
+     candidat s'est vu promettre une date. */
+  'lease.notice_withdraw',
+  /* LE GARANT RETIRÉ. Sa ligne ne survit pas — ni statut, ni corbeille — et il
+     est la seule sûreté nommée d'un bail. Le retirer sans trace rendrait
+     indécidable, au moment d'un impayé, s'il n'y a jamais eu de garant ou si
+     quelqu'un l'a effacé. */
+  'guarantor.remove',
   'inspection.photo_delete',
   'payment.delete',
   /* LE RELEVÉ RETIRÉ. L'index disparaît avec sa ligne — la table ne porte ni

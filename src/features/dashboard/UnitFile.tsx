@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
+import { LeaseModal } from './LeaseModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Button } from '@/components/primitives/Button'
@@ -99,6 +100,12 @@ export function UnitFile() {
   const [toutesLesPeriodes, setToutesLesPeriodes] = useState(false)
   const [chantierOuvert, setChantierOuvert] = useState(false)
   const [etatOuvert, setEtatOuvert] = useState(false)
+  /* AVEC LES AUTRES, ET AVANT TOUT RETOUR ANTICIPÉ. Première rédaction : posé
+     à côté de `bailCourant`, cinquante lignes plus bas — c'est-à-dire APRÈS le
+     retour qui rend l'écran de chargement. React compte alors moins de hooks au
+     premier rendu qu'au second et refuse : le dossier rendait « Cet écran s'est
+     interrompu », et aucun type ne pouvait le dire. */
+  const [bailOuvert, setBailOuvert] = useState(false)
   const { money } = useCurrency()
   const {
     unitById,
@@ -158,6 +165,11 @@ export function UnitFile() {
 
   const immeuble = buildingById(unit.buildingId)
   const occupations = leasesForUnit(unitId)
+  /* LE BAIL COURANT — `active` ou `pending`, et jamais `ended` : on ne donne pas
+     de congé sur un bail terminé, on ne révise pas un loyer qui ne court plus, et
+     un garant d'un bail clos n'engage plus rien. Sans ce filtre, le panneau
+     s'ouvrirait sur l'historique et ses gestes échoueraient par un 409. */
+  const bailCourant = occupations.find((o) => o.status !== 'ended') ?? null
   const periodes = receiptsForUnit(unitId)
   const travaux = worksForUnit(unitId)
 
@@ -252,6 +264,17 @@ export function UnitFile() {
               <MenuElement icone="wrench" onClick={() => setChantierOuvert(true)}>
                 {t('app.works.openCta')}
               </MenuElement>
+              {/* LE BAIL ET SES SÛRETÉS. Dans le débordement et non en action
+                  primaire : on vient chercher une quittance dans un dossier, pas
+                  un congé — mais quand on cherche un congé, c'est ici qu'on le
+                  cherche, sur le bail qu'il concerne. Rendu seulement s'il y a un
+                  bail courant : un menu qui propose un geste impossible est pire
+                  qu'un menu qui ne le propose pas. */}
+              {bailCourant && (
+                <MenuElement icone="file" onClick={() => setBailOuvert(true)}>
+                  {t('app.lease.open')}
+                </MenuElement>
+              )}
               <MenuElement icone="clipboard" onClick={() => setEtatOuvert(true)}>
                 {t('app.inspections.record')}
               </MenuElement>
@@ -333,6 +356,13 @@ export function UnitFile() {
           open
           onClose={() => setChantierOuvert(false)}
           unitIds={[unit]}
+        />
+      )}
+      {bailOuvert && bailCourant && (
+        <LeaseModal
+          leaseId={bailCourant.id}
+          unite={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
+          onClose={() => setBailOuvert(false)}
         />
       )}
       {etatOuvert && (

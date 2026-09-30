@@ -692,6 +692,99 @@ export const api = {
     requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
 
   /**
+   * LE PANNEAU ADMINISTRATIF D'UN BAIL : congé, révisions, garants.
+   *
+   * UNE lecture et non trois : les trois collections s'ouvrent ensemble, par la
+   * même boîte et au même instant, et aucune ne se lit seule — un congé sans le
+   * loyer courant ne dit pas ce qu'on perd, une révision sans son historique ne
+   * dit pas si c'est la première.
+   */
+  leaseSureties: <T>(parkId: string, leaseId: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/sureties`),
+
+  /**
+   * ENREGISTRE UN CONGÉ sur un bail.
+   *
+   * LE BAIL NE BASCULE PAS `ended` : le locataire habite jusqu'à `moveOutOn`,
+   * son loyer est encore appelé, ses charges encore refacturées. Un congé n'est
+   * pas une fin, c'est une fin ANNONCÉE — et c'est ce qui permet de voir venir
+   * une vacance au lieu de la découvrir.
+   *
+   * `409 lease_ended` si le bail est déjà terminé : il n'y a plus rien à quitter.
+   */
+  giveNotice: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: {
+      givenOn: string
+      givenBy: 'tenant' | 'landlord'
+      moveOutOn: string
+      reason?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/notice`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Retire un congé — le locataire se rétracte, ou la saisie était fausse. */
+  withdrawNotice: <T>(parkId: string, leaseId: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/notice`, { method: 'DELETE' }),
+
+  /**
+   * RÉVISE LE LOYER d'un bail, en laissant une trace.
+   *
+   * `Lease.rentMinor` est un scalaire : une hausse l'écrasait, et rien ne disait
+   * qu'elle avait eu lieu. La révision insère sa ligne ET met à jour le bail dans
+   * la MÊME transaction — séparées, une panne entre les deux laisserait soit un
+   * loyer changé sans trace, soit un historique que le bail ignore.
+   *
+   * LES ÉCHÉANCES DÉJÀ APPELÉES NE SONT PAS RÉÉCRITES : `RentCharge` fige son
+   * propre loyer à l'appel, et une quittance remise ne se réécrit pas. C'est
+   * l'inverse de la correction d'un tarif, qui répare le passé affiché.
+   *
+   * `409 same_rent` si le loyer ne change pas, `409 revision_exists` si une
+   * révision porte déjà cette date d'effet. Au propriétaire seul.
+   */
+  reviseRent: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: { effectiveOn: string; newRentMinor: number; reason?: string | null },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/revisions`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * AJOUTE UN GARANT à un bail.
+   *
+   * `Deposit` est de l'ARGENT ; un garant est une PERSONNE, et il n'existait
+   * nulle part. Sur les marchés visés c'est la sûreté la plus courante, souvent
+   * la seule. Au moins un moyen de le joindre est exigé : un garant sans
+   * téléphone ni courriel est un nom sur un papier, inutile le seul jour où on le
+   * lit.
+   */
+  addGuarantor: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: {
+      fullName: string
+      phoneE164?: string | null
+      email?: string | null
+      relation?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/guarantors`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Retire un garant. Aucun corps, aucune réponse : le 204 dit tout. */
+  removeGuarantor: <T>(parkId: string, guarantorId: string) =>
+    requete<T>(`/parks/${parkId}/guarantors/${guarantorId}`, { method: 'DELETE' }),
+
+  /**
    * LE BARÈME D'HONORAIRES d'un gestionnaire, posé ou remplacé.
    *
    * `PUT` et non `POST` : il y a au plus un barème par adhésion, et reposer le

@@ -167,6 +167,7 @@ model UserAccount {
   documentRequests DocumentRequest[] @relation("DocumentRequester")
   resolvedDocumentRequests DocumentRequest[] @relation("DocumentResolver")
   recordedExpenses Expense[]   @relation("ExpenseRecorder")
+  decidedRevisions RentRevision[] @relation("RevisionDecider")
 
   @@index([disabledAt])
   @@index([closureRequestedAt])
@@ -602,6 +603,31 @@ model Lease {
   /// 9, 3 — et ne grandissait jamais. Il se calcule à partir d'ici.
   dueDayOfMonth Int @default(5)
   status    LeaseStatus @default(pending)
+
+  /// LE CONGÉ, en quatre colonnes — et un congé n'est pas une fin.
+  ///
+  /// Le statut passait de `active` à `ended` d'un coup, sans que rien ne porte
+  /// le congé. Un départ annoncé pour dans deux mois était donc invisible : le
+  /// logement comptait comme occupé jusqu'au jour où quelqu'un basculait le
+  /// statut à la main. C'est le seul défaut de ce lot qui se paie en argent —
+  /// un logement remis en location le jour du départ perd un mois de loyer.
+  ///
+  /// `moveOutOn` EST LA DATE D'EFFET, et le bail reste `active` jusque-là : le
+  /// locataire habite encore, son loyer est encore appelé, ses charges encore
+  /// refacturées. Basculer `ended` à la réception du congé ferait cesser
+  /// l'appel de loyer sur un logement occupé — l'erreur inverse de celle qu'on
+  /// corrige.
+  ///
+  /// Les quatre sont nullables et sans défaut : `NULL` se lit « aucun congé »
+  /// pour une ligne ancienne comme pour une neuve. Aucune route ne savait en
+  /// enregistrer un avant cette colonne, donc le sens n'est pas double.
+  noticeGivenOn DateTime?    @db.Date
+  noticeGivenBy NoticeGiver?
+  noticeReason  String?
+  /// La date à laquelle le locataire s'en va. Indexée : « quels baux s'arrêtent
+  /// dans les deux mois » est la seule lecture de ces quatre colonnes.
+  moveOutOn     DateTime?    @db.Date
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -610,6 +636,8 @@ model Lease {
   inspections Inspection[]
   documentRequests DocumentRequest[]
   reminderEmails RentReminderEmail[]
+  revisions   RentRevision[]
+  guarantors  Guarantor[]
 
   @@index([unitId, status])
   @@index([tenantId])
@@ -698,6 +726,80 @@ model Deposit {
   returnedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Une révision de loyer, datée et tracée.
+///
+/// `Lease.rentMinor` est un scalaire : une augmentation l'écrasait, et rien ne
+/// disait qu'elle avait eu lieu. Les périodes passées étaient sauvées — chaque
+/// `RentCharge` fige son propre `rentMinor` à l'appel, ce qui rendait le défaut
+/// discret — mais un locataire qui contestait une hausse n'avait devant lui
+/// qu'un loyer courant, sans son avant, sans sa date, sans son auteur.
+///
+/// `previousRentMinor` EST RECOPIÉ ICI, et la duplication est assumée : on
+/// pourrait le lire sur la révision précédente. Le recopier rend chaque ligne
+/// lisible SEULE — « de 70 000 à 77 000 au 1er avril » — là où une chaîne
+/// obligerait à tout relire dans l'ordre pour comprendre la deuxième. Même
+/// arbitrage que la charge utile du registre d'audit, qui porte son `avant`.
+model RentRevision {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  /// Le jour où le nouveau loyer s'applique. Les échéances appelées AVANT gardent
+  /// l'ancien : c'est `RentCharge` qui fige, et une révision ne le réécrit pas.
+  effectiveOn       DateTime @db.Date
+  previousRentMinor Int
+  newRentMinor      Int
+
+  /// Pourquoi. Facultatif, parce qu'un bailleur n'a pas toujours à se justifier —
+  /// mais présent, parce que c'est la première chose qu'on cherche un an plus
+  /// tard, et la seule qu'aucune autre table ne saurait reconstituer.
+  reason String?
+
+  decidedById String?      @db.Uuid
+  decidedBy   UserAccount? @relation("RevisionDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+
+  /// UNE SEULE RÉVISION PAR BAIL ET PAR DATE D'EFFET : deux hausses le même jour
+  /// rendraient indéterminable le loyer de ce jour-là.
+  @@unique([leaseId, effectiveOn])
+  @@index([leaseId])
+}
+
+/// Celui qui paiera si le locataire ne paie pas.
+///
+/// `Deposit` existe depuis l'origine, et c'est de l'ARGENT — retenu, restitué,
+/// arbitré. Le garant est une PERSONNE, et il n'existait nulle part. Sur les
+/// marchés que ce produit vise c'est pourtant la sûreté la plus courante, souvent
+/// la seule : un parent, un employeur, un confrère. Un impayé n'avait donc aucun
+/// recours nommé dans le produit, et le bailleur cherchait le numéro dans ses
+/// papiers au moment où il en avait besoin.
+///
+/// PLUSIEURS GARANTS PAR BAIL : deux parents se portent garants ensemble, et
+/// imposer l'unicité forcerait à écrire deux noms dans un champ — exactement le
+/// raccourci que l'en-tête de ce schéma reproche au modèle client.
+model Guarantor {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  fullName  String
+  phoneE164 String?
+  email     String?
+
+  /// Le lien avec le locataire, en texte libre : « père », « employeur ».
+  ///
+  /// Libre et non énuméré, après hésitation. Une énumération aurait donné des
+  /// libellés traduits et une valeur par cas ; elle aurait aussi forcé à ranger
+  /// « l'oncle qui a signé » dans une case fausse, et ce champ n'est lu par aucun
+  /// calcul — il est lu par un humain qui décroche un téléphone.
+  relation String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leaseId])
 }
 
 // ─── Terrain ─────────────────────────────────────────────────────────────────
@@ -1385,6 +1487,15 @@ enum LeaseStatus {
   pending
   active
   ended
+}
+
+/// QUI a donné le congé. Deux valeurs, et la distinction se paie : un départ à
+/// l'initiative du locataire et une reprise par le bailleur n'ouvrent pas les
+/// mêmes droits, ne se préavisent pas de la même façon, et ne se racontent pas
+/// pareil six mois plus tard devant qui arbitre.
+enum NoticeGiver {
+  tenant
+  landlord
 }
 
 enum PaymentMethod {

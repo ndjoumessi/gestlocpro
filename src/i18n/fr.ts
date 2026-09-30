@@ -1697,6 +1697,75 @@ export const fr = {
       removedFee: 'Barème retiré',
       failed: 'Le barème n’a pas pu être enregistré.',
     },
+    /* LE BAIL ET SES SÛRETÉS — une modale ouverte depuis le dossier d'un
+       logement. UNE SEULE pour les trois gestes (congé, révision, garant) : ils
+       portent tous sur le même bail, et trois boîtes auraient coûté trois fois
+       les registres de géométrie pour trois formulaires de quatre champs. */
+    lease: {
+      open: 'Bail et sûretés',
+      openLine: 'Bail et sûretés — {unit}',
+      title: 'Bail et sûretés',
+      description:
+        'Le congé s’il est donné, l’historique des révisions de loyer, et les personnes qui se portent garantes.',
+      /* ── LE CONGÉ ── */
+      noticeTitle: 'Congé',
+      /* « AUCUN CONGÉ DONNÉ » et non une case vide : l'absence de congé est un
+         état du bail, pas une donnée qu'on aurait omise. */
+      noticeNone: 'Aucun congé donné',
+      noticeNoneHint: 'Le bail court sans fin annoncée.',
+      /* Voir `works.status`. Ces deux-là viennent de `NoticeGiver`. */
+      giver: {
+        tenant: 'Par le locataire',
+        landlord: 'Par le bailleur',
+      },
+      givenOn: 'Congé reçu le',
+      givenBy: 'Donné par',
+      moveOutOn: 'Départ le',
+      moveOutHint: 'Le bail reste actif jusqu’à cette date : le loyer est encore appelé.',
+      noticeReason: 'Motif',
+      giveNotice: 'Enregistrer un congé',
+      noticeSaved: 'Congé enregistré',
+      withdrawNotice: 'Retirer le congé',
+      confirmWithdrawNotice: 'Retirer ce congé ?',
+      noticeWithdrawn: 'Congé retiré',
+      moveOutBeforeNotice: 'La date de départ ne peut pas précéder le congé.',
+      leaseAlreadyEnded: 'Ce bail est déjà terminé : il n’y a plus de congé à donner.',
+      /* ── LA RÉVISION DE LOYER ── */
+      revisionTitle: 'Loyer',
+      currentRent: 'Loyer courant',
+      newRent: 'Nouveau loyer ({devise})',
+      newRentRequired: 'Un nouveau loyer est nécessaire.',
+      effectiveOn: 'À compter du',
+      /* CE QUE LA RÉVISION NE FAIT PAS, dit avant qu'on la fasse : les
+         quittances déjà émises gardent leur loyer, et c'est juste. */
+      effectiveHint: 'Les échéances déjà appelées gardent leur loyer : une quittance remise ne se réécrit pas.',
+      revisionReason: 'Motif de la révision',
+      revise: 'Réviser le loyer',
+      revisionSaved: 'Loyer révisé',
+      sameRent: 'Ce loyer est déjà celui du bail.',
+      revisionExists: 'Une révision porte déjà cette date d’effet.',
+      revisionsEmpty: 'Aucune révision',
+      revisionLine: 'De {avant} à {apres}, au {date}',
+      /* ── LES GARANTS ── */
+      guarantorsTitle: 'Garants',
+      guarantorsEmpty: 'Aucun garant',
+      /* LA CAUTION EN ARGENT N'EST PAS UNE PERSONNE : on le dit, parce que le
+         produit porte les deux et que les confondre coûte un recours. */
+      guarantorsHint: 'La caution retenue est de l’argent ; un garant est une personne qui s’engage à payer.',
+      guarantorName: 'Nom du garant',
+      guarantorNameRequired: 'Un nom est nécessaire.',
+      guarantorPhone: 'Téléphone',
+      guarantorEmail: 'Courriel',
+      guarantorRelation: 'Lien avec le locataire',
+      guarantorRelationHint: 'En clair : « père », « employeur ».',
+      guarantorContactRequired: 'Un téléphone ou un courriel est nécessaire : un garant qu’on ne peut pas joindre ne sert à rien.',
+      addGuarantor: 'Ajouter un garant',
+      guarantorAdded: 'Garant ajouté',
+      removeGuarantorLine: 'Retirer le garant — {name}',
+      confirmRemoveGuarantor: 'Retirer ce garant ?',
+      guarantorRemoved: 'Garant retiré',
+      failed: 'L’enregistrement a échoué.',
+    },
     expenses: {
       title: 'Dépenses',
       subtitle:
@@ -2340,6 +2409,13 @@ export const fr = {
         },
         lease: {
           formal_notice: 'Mise en demeure signifiée',
+          /* TROIS ACTES DE PLUS, et aucun ne se déduit d'un autre : « bail
+             modifié » aurait laissé indécidable si un congé est arrivé, s'il a
+             été retiré, ou si le loyer a changé — trois faits aux conséquences
+             opposées sur la vacance et sur l'encaissement. */
+          notice: 'Congé enregistré',
+          notice_withdraw: 'Congé retiré',
+          revise_rent: 'Loyer révisé',
         },
         park: {
           update: 'Parc corrigé',
@@ -2378,6 +2454,10 @@ export const fr = {
         fee: {
           set: 'Barème d’honoraires posé',
           delete: 'Barème d’honoraires retiré',
+        },
+        guarantor: {
+          add: 'Garant ajouté',
+          remove: 'Garant retiré',
         },
         expense: {
           record: 'Dépense saisie',
