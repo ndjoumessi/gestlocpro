@@ -283,7 +283,11 @@ const MODALES = [
     lot-ci n'est pas celui qui doit la faire — mais le prochain réglage qu'on y
     ajoute devrait payer ce découpage plutôt qu'un plafond de plus.
   */
-  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 721, 1280: 408 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
+  /* LA COLONNE LARGE VIENT DE L'EXÉCUTEUR : 699 et 591 à 360, 408 et 366 à
+     1280. Elle avait gardé les 581 et 294 d'avant le canal de la relance, et la
+     porte publique l'a refusé sur-le-champ — quatre états rouges. `complet` ne
+     tourne QU'EN POLICE LARGE, donc cette machine ne fait jamais autorité ici. */
+  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 721, 1280: 408 }, defilLarge: { 360: 699, 1280: 408 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -331,7 +335,9 @@ const MODALES = [
        neuf coûte la même hauteur dans les deux états, il n'interagit pas avec
        la note. */
     defil: { 360: 875, 1280: 519 },
-    defilLarge: { 360: 736, 1280: 405 },
+    /* MÊME RELEVÉ DE L'EXÉCUTEUR : 832 à 360 en français, 724 en anglais ; 519
+       et 477 à 1280. */
+    defilLarge: { 360: 832, 1280: 519 },
     avant: { 360: 35, 1280: 0 },
   },
   /*
@@ -365,7 +371,12 @@ const MODALES = [
        « modèle de message approuvé par Meta » là où l'anglaise tient en moins.
        Le plafond retient la plus longue, comme partout dans ce fichier. */
     defil: { 360: 875, 1280: 519 },
-    defilLarge: { 360: 875, 1280: 519 },
+    /* 854 ET NON 875 EN POLICE LARGE : l'exécuteur rend 854 et 746 à 360, 519 et
+       477 à 1280. Les 875 recopiés de la colonne étroite laissaient 21 px de
+       MOU, et un plafond au-dessus de sa mesure cesse de refuser quoi que ce
+       soit — `modales` ne le dit pas, mais la règle est la même que pour les
+       hauteurs, qui la disent. */
+    defilLarge: { 360: 854, 1280: 519 },
     avant: { 360: 721, 1280: 408 },
   },
   { nom: 'AddBuilding', fichier: 'features/dashboard/AddBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },

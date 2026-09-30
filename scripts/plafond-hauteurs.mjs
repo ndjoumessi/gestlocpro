@@ -676,7 +676,11 @@ const PLAFONDS = [
   /* L'ÉCRAN DE LA VACANCE, né avec le lot des annonces. Trois indicateurs, une
      note de portée inconditionnelle et un tableau d'annonces — la même forme
      que l'écran des dépenses, qui rend 1650 à la même largeur. */
-  { adresse: '/demo/vacance', largeur: 360, plafond: 1343, plafondLarge: 1343 },
+  /* 1321 EN POLICE LARGE, RELEVÉ PAR `polices` : l'écran est PLUS COURT là-bas
+     qu'ici (1343), comme `/demo/acces`. La dissymétrie de largeur de texte
+     entre les deux machines va dans les deux sens, et recopier la colonne
+     étroite aurait laissé 22 px de mou sur la porte publique. */
+  { adresse: '/demo/vacance', largeur: 360, plafond: 1343, plafondLarge: 1321 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
