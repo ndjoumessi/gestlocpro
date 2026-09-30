@@ -70,6 +70,7 @@ const MODELES_VECUS = [
   'MeterReading',
   'Park',
   'Payment',
+  'PaymentProof',
   'RentCharge',
   'RentRevision',
   'Tenant',
@@ -142,6 +143,17 @@ const SANS_TRACE_ATOMIQUE: { route: string; motif: string }[] = [
       'une pièce réservée mais jamais montée » le tient. Aucun locataire n’a donc pu la ' +
       'voir ni la chercher. Le RETRAIT D’UNE PIÈCE FOURNIE, lui, est tracé : il vit dans ' +
       'la route DELETE, sous `document.file_delete`, et dans la même transaction.',
+  },
+  {
+    route: '/:parkId/payment-proofs/:proofId/confirmation',
+    motif:
+      'TROISIÈME FOIS LE MÊME CHEMIN, et le même argument que les deux au-dessus : la ' +
+      'ligne ne part que sur le REJET du dépôt, et une preuve non confirmée n’est servie ' +
+      'à personne — la route de lecture refuse `confirmedAt` nul, et un cas de ' +
+      '`preuveDePaiement.test.ts` le tient en propre. Ni le bailleur ni le locataire ' +
+      'n’ont pu la voir, personne ne peut la chercher, et la consigner remplirait le ' +
+      'registre de non-événements. Le RETRAIT D’UNE PREUVE, lui, est tracé : il vit dans ' +
+      'la route DELETE, sous `payment.proof_delete`, et dans la même transaction.',
   },
 ]
 

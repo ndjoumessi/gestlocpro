@@ -1229,6 +1229,49 @@ export const api = {
     }),
 
   /**
+   * RÉSERVE UNE PLACE POUR LA PREUVE D'UN PAIEMENT.
+   *
+   * Sur les marchés visés, la pièce réellement échangée n'est pas la référence
+   * de l'opérateur : c'est la CAPTURE D'ÉCRAN du transfert mobile. Le produit
+   * demandait de recopier à la main un numéro lu sur une image qui continuait de
+   * circuler ailleurs — et c'est cette image, pas le numéro, qu'un locataire
+   * produit quand il conteste.
+   *
+   * Même contrat en deux temps que la photo de réserve et que la pièce fournie :
+   * la ligne naît, les octets partent à l'adresse signée, puis on confirme.
+   */
+  reservePaymentProof: <T>(
+    parkId: string,
+    paymentId: string,
+    corps: {
+      contentType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp'
+      sizeBytes: number
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/payments/${paymentId}/proofs`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Dit que les octets de la preuve sont montés. Sans lui, rien ne la sert. */
+  confirmPaymentProof: <T>(parkId: string, proofId: string) =>
+    requete<T>(`/parks/${parkId}/payment-proofs/${proofId}/confirmation`, { method: 'POST' }),
+
+  /**
+   * L'adresse de lecture d'une preuve — signée, et courte.
+   *
+   * OUVERTE AU LOCATAIRE sur SA preuve, et c'est le point : elle est ce qu'il
+   * produit le jour où un encaissement est contesté. La lui cacher reviendrait à
+   * ranger la pièce dans un tiroir qu'il ne peut pas ouvrir.
+   */
+  paymentProof: <T>(parkId: string, proofId: string) =>
+    requete<T>(`/parks/${parkId}/payment-proofs/${proofId}`),
+
+  /** Retire une preuve, ses octets d'abord. Le 204 dit tout. */
+  deletePaymentProof: <T>(parkId: string, proofId: string) =>
+    requete<T>(`/parks/${parkId}/payment-proofs/${proofId}`, { method: 'DELETE' }),
+
+  /**
    * Dit que les octets sont montés. C'est ICI que le serveur les regarde.
    *
    * Sans cet appel, la ligne reste non confirmée et rien ne la sert — une photo

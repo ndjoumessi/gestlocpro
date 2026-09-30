@@ -1030,9 +1030,23 @@ parksRouter.get(
           payments: {
             orderBy: { paidOn: 'asc' },
             select: {
+              /* L'IDENTIFIANT, qui manquait. La rangée d'un encaissement ne
+                 pouvait ADRESSER aucun paiement : ni y joindre une preuve, ni la
+                 retirer. Servi maintenant parce que la preuve le réclame, et
+                 c'est le genre d'absence qu'on ne voit qu'en ayant besoin. */
+              id: true,
               amountMinor: true,
               method: true,
               paidOn: true,
+              /* LA PREUVE, si elle existe et SEULEMENT si elle est confirmée :
+                 une réservation sans octets rendrait un lien vers le vide, et la
+                 rangée annoncerait une pièce que personne n'a montée. */
+              proofs: {
+                where: { confirmedAt: { not: null } },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true },
+                take: 1,
+              },
               /* Écrits depuis l'origine, rendus à personne : la référence était
                  saisie par le bailleur et disparaissait, la note n'avait même
                  pas de champ. */
@@ -1364,6 +1378,11 @@ parksRouter.get(
         powerMinor: e.powerMinor,
         paidMinor: e.payments.reduce((somme, p) => somme + p.amountMinor, 0),
         payments: e.payments.map((p) => ({
+          id: p.id,
+          /* `null` QUAND IL N'Y EN A PAS, et jamais un tableau vide : la rangée
+             pose une question binaire — « y a-t-il une pièce ? » — et un tableau
+             l'obligerait à connaître sa longueur pour répondre. */
+          proofId: p.proofs[0]?.id ?? null,
           amountMinor: p.amountMinor,
           method: p.method,
           paidOn: p.paidOn,
@@ -10538,5 +10557,218 @@ parksRouter.get(
       })),
       guarantors: bail.guarantors,
     })
+  },
+)
+
+// ─── Preuve de paiement ──────────────────────────────────────────────────────
+
+const champsPreuve = {
+  id: true,
+  paymentId: true,
+  contentType: true,
+  sizeBytes: true,
+  confirmedAt: true,
+  createdAt: true,
+} as const
+
+/**
+ * LA PREUVE VISÉE, bornée au parc, au périmètre — et au LECTEUR.
+ *
+ * `pourLeLocataire` n'est pas un raffinement : c'est ce qui rend cette table
+ * utile. Le gestionnaire ATTACHE la capture du transfert ; le locataire, lui,
+ * vient la chercher le jour où il conteste un encaissement. Lui refuser la
+ * lecture de sa propre preuve reviendrait à ranger une pièce dans un tiroir
+ * qu'il ne peut pas ouvrir.
+ *
+ * Le cloisonnement descend par `payment → charge → lease → tenant.userId`, en
+ * CLAUSE DE REQUÊTE : filtrer après lecture ramènerait d'abord les preuves des
+ * voisins.
+ */
+function preuveDuParc(
+  proofId: string,
+  parkId: string,
+  perimetreUnite: Prisma.UnitWhereInput,
+  pourLeLocataire: string | null,
+) {
+  return prisma.paymentProof.findFirst({
+    where: {
+      id: proofId,
+      payment: {
+        charge: {
+          lease: {
+            unit: { building: { parkId }, ...perimetreUnite },
+            ...(pourLeLocataire ? { tenant: { userId: pourLeLocataire } } : {}),
+          },
+        },
+      },
+    },
+    select: { ...champsPreuve, storageKey: true },
+  })
+}
+
+/**
+ * Réserve une place pour la preuve d'un paiement.
+ *
+ * ═══ POURQUOI CETTE TABLE EXISTE ═══
+ *
+ * `Payment` portait une `reference` et une `note`, toutes deux en texte. Sur les
+ * marchés visés, la pièce réellement échangée n'est pas une référence : c'est la
+ * CAPTURE D'ÉCRAN du transfert mobile, que le locataire envoie et que le
+ * gestionnaire regarde. Le produit demandait donc de recopier à la main un
+ * numéro lu sur une image qui continuait de circuler ailleurs — et c'est cette
+ * image, pas le numéro, qu'un locataire produit quand il conteste.
+ *
+ * La ligne naît AVANT les octets, comme chez la photo et chez la pièce fournie :
+ * le dépôt ne passe pas par l'API, et une clé sans ligne serait introuvable donc
+ * impossible à balayer. `confirmedAt` nul dit que rien n'est encore prouvé.
+ */
+parksRouter.post(
+  '/:parkId/payments/:paymentId/proofs',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const paymentId = z.string().uuid().parse(req.params.paymentId)
+    /* LE TYPE ATTENDU EST UNE IMAGE, comme la photo de réserve et non comme la
+       pièce fournie : une capture de transfert est un PNG ou un JPEG. Le PDF
+       reste accepté pour le reçu scanné d'une agence. */
+    const corps = schemaReservationPiece.parse(req.body)
+
+    const paiement = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        charge: {
+          lease: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+        },
+      },
+      select: { id: true },
+    })
+    if (!paiement) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const reservation = await leStockage().reserver(corps.contentType, corps.sizeBytes)
+    const preuve = await prisma.paymentProof.create({
+      data: {
+        paymentId: paiement.id,
+        storageKey: reservation.cle,
+        contentType: corps.contentType,
+        sizeBytes: corps.sizeBytes,
+      },
+      select: champsPreuve,
+    })
+
+    res.status(201).json({
+      proof: preuve,
+      envoi: {
+        url: reservation.url,
+        methode: reservation.methode,
+        entetes: reservation.entetes,
+        expireLe: reservation.expireLe,
+      },
+    })
+  },
+)
+
+/** Confirme qu'une preuve est montée, et POSE SA DATE. */
+parksRouter.post(
+  '/:parkId/payment-proofs/:proofId/confirmation',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const proofId = z.string().uuid().parse(req.params.proofId)
+    const preuve = await preuveDuParc(proofId, parkId, porteeDesUnites(req.adhesion!), null)
+    if (!preuve) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const confirmation = await leStockage().confirmer(preuve.storageKey, preuve.contentType)
+    if (!confirmation.accepte) {
+      /* LA LIGNE PART AVEC LES OCTETS REFUSÉS : une preuve qui se dit versée et
+         ne s'ouvre pas est pire qu'une absence de preuve, qui au moins se voit. */
+      await leStockage().supprimer(preuve.storageKey)
+      await prisma.paymentProof.delete({ where: { id: preuve.id } })
+      res.status(422).json({ error: confirmation.motif })
+      return
+    }
+
+    const maj = await prisma.paymentProof.update({
+      where: { id: preuve.id },
+      data: {
+        contentType: confirmation.typeMime,
+        sizeBytes: confirmation.octets,
+        confirmedAt: new Date(),
+      },
+      select: champsPreuve,
+    })
+    res.json({ proof: maj })
+  },
+)
+
+/**
+ * Rend une adresse de lecture, signée et périssable.
+ *
+ * OUVERTE AU LOCATAIRE, et c'est le point : la preuve de SON paiement est ce
+ * qu'il produit quand un encaissement est contesté. Son cloisonnement passe par
+ * son bail, en clause de requête.
+ */
+parksRouter.get(
+  '/:parkId/payment-proofs/:proofId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager', 'tenant'),
+  async (req: Request, res: Response) => {
+    const { parkId, role } = req.adhesion!
+    const proofId = z.string().uuid().parse(req.params.proofId)
+    const preuve = await preuveDuParc(
+      proofId,
+      parkId,
+      porteeDesUnites(req.adhesion!),
+      role === 'tenant' ? req.compteId! : null,
+    )
+    /* NON CONFIRMÉE : introuvable. Une réservation sans octets rendrait une
+       adresse vers le vide. */
+    if (!preuve || !preuve.confirmedAt) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const adresse = await leStockage().lire(preuve.storageKey)
+    res.json({ proof: { ...preuve, storageKey: undefined }, lecture: adresse })
+  },
+)
+
+/** Retire une preuve, ses octets d'abord. */
+parksRouter.delete(
+  '/:parkId/payment-proofs/:proofId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const proofId = z.string().uuid().parse(req.params.proofId)
+    const preuve = await preuveDuParc(proofId, parkId, porteeDesUnites(req.adhesion!), null)
+    if (!preuve) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await leStockage().supprimer(preuve.storageKey)
+    await prisma.$transaction(async (tx) => {
+      await tx.paymentProof.delete({ where: { id: preuve.id } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'payment.proof_delete',
+          entity: 'PaymentProof',
+          entityId: preuve.id,
+          payload: { contentType: preuve.contentType, sizeBytes: preuve.sizeBytes },
+        },
+      })
+    })
+
+    res.status(204).end()
   },
 )

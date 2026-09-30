@@ -7,11 +7,13 @@ import { usePortfolio } from '@/data/PortfolioProvider'
 import { receiptDue } from '@/data/portfolio'
 import { useDates } from '@/lib/useDates'
 import { partiesDeDateISO } from '@/lib/dates'
-import { api, ApiError } from '@/api/client'
+import { api, ApiError, deposerLesOctets } from '@/api/client'
 import { useSession } from '@/api/SessionProvider'
 import { useRole } from '@/components/layout/AppShell'
 import { useToast } from '@/components/primitives/Toast'
 import { Logo } from '@/components/primitives/Logo'
+import { Icon } from '@/components/primitives/Icon'
+import { transcoderPhoto } from '@/lib/transcoderPhoto'
 import { PAYMENT_METHOD_LABELS, type PaymentMethodKey } from '@/data/portfolio'
 import {
   composerLaQuittance,
@@ -30,6 +32,148 @@ import { partiesDeDate } from '@/lib/dates'
  * réémis en octobre rende exactement celui de juillet : le loyer du logement a
  * pu changer entre-temps, l'échéance non.
  */
+/**
+ * LA PREUVE D'UN VERSEMENT, sur sa ligne.
+ *
+ * ═══ POURQUOI ICI, ET PAS SUR L'ÉCRAN DES PAIEMENTS ═══
+ *
+ * L'écran des paiements raisonne par ÉCHÉANCE — un mois, un locataire, un
+ * solde. La preuve appartient à un VERSEMENT, et un mois peut en compter
+ * plusieurs. La quittance est le seul endroit du produit où les versements se
+ * voient un par un, et c'est aussi le document que le locataire garde.
+ *
+ * ═══ LE DÉPÔT EN DEUX TEMPS, TRANSCODÉ D'ABORD ═══
+ *
+ * Même contrat que la photo de réserve : on transcode côté client — une capture
+ * d'écran de téléphone pèse volontiers 3 Mo —, on réserve, on dépose à l'adresse
+ * signée, puis on confirme. Sans la confirmation, la ligne existe et ne prouve
+ * rien, et rien ne la sert.
+ *
+ * ═══ CE QU'IL NE FAIT PAS ═══
+ *
+ * Il n'affiche pas l'image : il ouvre son adresse signée dans un onglet. Une
+ * vignette dans une quittance aurait demandé de demander l'adresse à
+ * l'affichage, donc pour chaque versement de chaque mois ouvert — et cette
+ * adresse périme en quelques minutes, bien avant qu'on fasse défiler.
+ */
+function PreuveDuVersement({
+  parkId,
+  paymentId,
+  proofId,
+  onChange,
+}: {
+  parkId: string
+  paymentId: string
+  proofId: string | null
+  onChange: () => void
+}) {
+  const t = useT()
+  const { notify } = useToast()
+  const [enCours, setEnCours] = useState(false)
+
+  async function joindre(fichier: File) {
+    setEnCours(true)
+    try {
+      const transcodage = await transcoderPhoto(fichier)
+      if (!transcodage.transcode) {
+        notify(t('app.receipts.proofUnreadable'), { tone: 'danger' })
+        return
+      }
+      const { proof, envoi } = await api.reservePaymentProof<{
+        proof: { id: string }
+        envoi: { url: string; methode: string; entetes: Record<string, string> }
+      }>(parkId, paymentId, {
+        contentType: 'image/jpeg',
+        /* La taille du blob TRANSCODÉ : elle est scellée dans l'autorisation, et
+           le dépôt refuse tout ce qui n'en fait pas exactement autant. */
+        sizeBytes: transcodage.octets.size,
+      })
+      await deposerLesOctets(envoi, transcodage.octets)
+      await api.confirmPaymentProof(parkId, proof.id)
+      notify(t('app.receipts.proofAttached'))
+      onChange()
+    } catch {
+      notify(t('app.receipts.proofFailed'), { tone: 'danger' })
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  if (proofId) {
+    return (
+      <>
+        <IconButton
+          icon="eye"
+          label={t('app.receipts.viewProof')}
+          variant="ghost"
+          disabled={enCours}
+          onClick={() => {
+            void (async () => {
+              setEnCours(true)
+              try {
+                const { lecture } = await api.paymentProof<{ lecture: { url: string } }>(
+                  parkId,
+                  proofId,
+                )
+                /* `noopener` : l'onglet ouvert pointe vers un seau, et lui
+                   laisser `window.opener` lui donnerait prise sur le nôtre. */
+                window.open(lecture.url, '_blank', 'noopener')
+              } catch {
+                notify(t('app.receipts.proofFailed'), { tone: 'danger' })
+              } finally {
+                setEnCours(false)
+              }
+            })()
+          }}
+        />
+        <IconButton
+          icon="close"
+          label={t('app.receipts.removeProof')}
+          variant="ghost"
+          disabled={enCours}
+          onClick={() => {
+            void (async () => {
+              setEnCours(true)
+              try {
+                await api.deletePaymentProof(parkId, proofId)
+                notify(t('app.receipts.proofRemoved'))
+                onChange()
+              } catch {
+                notify(t('app.receipts.proofFailed'), { tone: 'danger' })
+              } finally {
+                setEnCours(false)
+              }
+            })()
+          }}
+        />
+      </>
+    )
+  }
+
+  return (
+    <label className="inline-flex min-h-11 cursor-pointer items-center">
+      <span className="sr-only">{t('app.receipts.attachProof')}</span>
+      {/* UN CHAMP DE FICHIER NATIF, et pas un bouton qui en déclenche un caché :
+          le natif porte déjà son nom accessible, son focus et son clavier. Il est
+          masqué à l'œil parce que son apparence n'est pas stylable, et le libellé
+          l'entoure — cliquer le texte ouvre le sélecteur. */}
+      <input
+        type="file"
+        accept="image/*"
+        disabled={enCours}
+        className="sr-only"
+        aria-label={t('app.receipts.attachProof')}
+        onChange={(e) => {
+          const fichier = e.target.files?.[0]
+          if (fichier) void joindre(fichier)
+          e.target.value = ''
+        }}
+      />
+      <Icon name="plus" aria-hidden />
+    </label>
+  )
+}
+
 interface DocumentEmis {
   kind: 'quittance' | 'recu'
   periodStart: string
@@ -52,7 +196,23 @@ interface DocumentEmis {
    * gardera pour prouver qu'il a payé.
    */
   currency: 'XAF' | 'XOF' | 'EUR' | 'CAD' | 'USD'
-  payments: { id: string; amountMinor: number; method: string; paidOn: string; reference: string | null }[]
+  payments: {
+    id: string
+    /**
+     * LA PREUVE JOINTE À CE VERSEMENT — `null` quand il n'y en a pas.
+     *
+     * Facultative parce que le document rendu par le SERVEUR ne la porte pas
+     * encore : seule la composition locale, qui lit le portefeuille, la connaît.
+     * La ligne se tait donc plutôt que d'offrir un geste qui ne mènerait nulle
+     * part — et c'est `undefined` contre `null` qui fait la différence entre
+     * « le serveur n'en parle pas » et « il n'y en a pas ».
+     */
+    proofId?: string | null
+    amountMinor: number
+    method: string
+    paidOn: string
+    reference: string | null
+  }[]
 }
 
 /**
@@ -152,7 +312,7 @@ export function ReceiptModal({
   const d = useDates()
   const { adhesionActive } = useSession()
   const parkId = adhesionActive?.parkId ?? null
-  const { units, buildingById, receiptsForUnit } = usePortfolio()
+  const { units, buildingById, receiptsForUnit, reprendreLeParc } = usePortfolio()
 
   /*
     ═══ LE DOCUMENT DE LA DÉMONSTRATION, COMPOSÉ ICI ═══
@@ -216,7 +376,11 @@ export function ReceiptModal({
          d'un versement, lui, est retiré en démonstration (voir plus bas) : il
          appelle le serveur, qui n'est pas là. */
       payments: echeance.payments.map((versement, rang) => ({
-        id: `demo-${periodStart}-${rang}`,
+        /* L'IDENTIFIANT RÉEL S'IL EXISTE, sinon celui de la démonstration. Le
+           portefeuille sert désormais l'un et l'autre ; sans le vrai, la preuve
+           n'aurait aucun paiement à qui s'attacher. */
+        id: versement.id ?? `demo-${periodStart}-${rang}`,
+        proofId: versement.proofId ?? null,
         amountMinor: versement.amountMinor,
         method: versement.method,
         paidOn: enISO(versement.paidOn),
@@ -648,6 +812,18 @@ export function ReceiptModal({
                     <span className="text-muted">{versement.trace}</span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="numeric">{versement.montant}</span>
+                    {/* LA PREUVE, avant la gomme : on la consulte bien plus
+                        souvent qu'on ne retire un versement, et l'ordre des
+                        commandes suit celui des gestes. En session seulement —
+                        la démonstration n'a rien où déposer. */}
+                    {parkId && document.payments[rang]!.proofId !== undefined && (
+                      <PreuveDuVersement
+                        parkId={parkId}
+                        paymentId={document.payments[rang]!.id}
+                        proofId={document.payments[rang]!.proofId ?? null}
+                        onChange={reprendreLeParc}
+                      />
+                    )}
                     {/*
                       La gomme, à l'endroit où l'erreur se découvre.
 

@@ -701,6 +701,8 @@ model Payment {
   recordedById String? @db.Uuid
   recordedBy   UserAccount? @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
+  /// Les preuves versées : capture du transfert, reçu scanné.
+  proofs    PaymentProof[]
 
   @@index([chargeId])
   @@index([paidOn])
@@ -800,6 +802,53 @@ model Guarantor {
   updatedAt DateTime @updatedAt
 
   @@index([leaseId])
+}
+
+/// La preuve d'un paiement : la capture du transfert, le reçu scanné.
+///
+/// ═══ CE QUE `Payment.reference` NE POUVAIT PAS PORTER ═══
+///
+/// Un paiement portait une `reference` et une `note`, toutes deux en texte. Sur
+/// les marchés que ce produit vise, la pièce réellement échangée n'est pas une
+/// référence : c'est la CAPTURE D'ÉCRAN du transfert mobile, que le locataire
+/// envoie et que le gestionnaire regarde. Elle n'avait aucune place où vivre. Le
+/// produit demandait donc de recopier à la main un numéro lu sur une image qui
+/// continuait de circuler ailleurs — et c'est cette image, pas le numéro, qu'un
+/// locataire produit quand il conteste.
+///
+/// ═══ LE JUMEAU D'`InspectionPhoto` ET DE `DocumentRequestFile` ═══
+///
+/// Troisième table de ce dépôt à porter des octets, et la troisième fois que
+/// c'est la MÊME table : même dépôt d'objets, même contrat en deux temps, mêmes
+/// colonnes, mêmes index. Une quatrième forme aurait demandé un quatrième
+/// balayage des clés orphelines. Tout ce qu'écrit la migration de la photo vaut
+/// ici mot pour mot :
+///
+///   * `confirmedAt` NULLABLE parce que les octets ne passent pas par l'API. La
+///     réservation crée la ligne, la confirmation la date. Entre les deux, la
+///     ligne existe et ne prouve rien, et rien de non confirmé n'est servi.
+///   * `storageKey` UNIQUE, faute de quoi la suppression de l'une deviendrait
+///     une fuite pour l'autre.
+///   * `contentType` et `sizeBytes` ANNONCÉS à la réservation, MESURÉS à la
+///     confirmation. Deux colonnes et non quatre ; `confirmedAt IS NULL` dit
+///     lequel des deux états on regarde.
+///
+/// PLUSIEURS PREUVES PAR PAIEMENT : un loyer réglé en deux transferts a deux
+/// captures, et imposer l'unicité pousserait à les fusionner hors du produit.
+model PaymentProof {
+  id        String  @id @default(uuid()) @db.Uuid
+  paymentId String  @db.Uuid
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  storageKey  String @unique
+  contentType String
+  sizeBytes   Int
+  confirmedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([paymentId])
+  /// Le balayage des réservations jamais montées interroge cette colonne seule.
+  @@index([confirmedAt])
 }
 
 // ─── Terrain ─────────────────────────────────────────────────────────────────

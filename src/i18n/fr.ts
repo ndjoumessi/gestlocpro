@@ -1362,6 +1362,17 @@ export const fr = {
          422 `nothing_received` : sans ce texte, l'écran affichait « l'action a
          échoué », ce qui laisse chercher une panne là où il y a une règle. */
       nothingReceived: 'Rien n’a encore été reçu pour cette période : il n’y a pas de paiement à attester. Enregistrez le versement, ou relancez le locataire depuis les paiements.',
+      /* LA PREUVE D'UN VERSEMENT — la capture du transfert mobile, ou le reçu
+         scanné. Sur les marchés visés c'est la pièce réellement échangée : la
+         référence de l'opérateur se recopie à la main depuis une image qui, elle,
+         circule ailleurs. */
+      attachProof: 'Joindre une preuve',
+      viewProof: 'Voir la preuve',
+      removeProof: 'Retirer la preuve',
+      proofAttached: 'Preuve jointe',
+      proofRemoved: 'Preuve retirée',
+      proofFailed: 'La preuve n’a pas pu être jointe.',
+      proofUnreadable: 'Ce fichier n’a pas pu être lu comme une image.',
       removePayment: 'Retirer ce versement',
       paymentRemoved: 'Versement retiré · la dette est rétablie',
       removeTitle: 'Retirer ce versement de {amount} ?',
@@ -2421,6 +2432,7 @@ export const fr = {
           update: 'Parc corrigé',
         },
         payment: {
+          proof_delete: 'Preuve de paiement retirée',
           record: 'Encaissement saisi',
           delete: 'Encaissement retiré',
         },

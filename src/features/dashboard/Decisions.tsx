@@ -278,6 +278,15 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'fullName', nature: 'texte' },
     { champ: 'relation', nature: 'texte' },
   ],
+  /* LA PREUVE RETIRÉE. Ni le type ni le poids ne sont passionnants — ce qui
+     compte est QUE la pièce a existé et qu'elle a disparu, parce qu'après le
+     retrait rien d'autre ne le dira : la ligne ne survit pas, et les octets non
+     plus. C'est la question qu'on vient poser quand un locataire soutient avoir
+     fourni sa capture de transfert. */
+  'payment.proof_delete': [
+    { champ: 'contentType', nature: 'texte' },
+    { champ: 'sizeBytes', nature: 'texte' },
+  ],
   'expense.record': [
     { champ: 'category', nature: 'texte' },
     { champ: 'amountMinor', nature: 'argent' },

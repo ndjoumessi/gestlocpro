@@ -132,6 +132,11 @@ const DESTRUCTIONS_ATOMIQUES = [
   'guarantor.remove',
   'inspection.photo_delete',
   'payment.delete',
+  /* LA PREUVE DE PAIEMENT RETIRÉE. Ni la ligne ni les octets ne survivent, et la
+     trace est la seule chose qui dira ensuite qu'une pièce avait été versée puis
+     reprise — exactement la question posée quand un locataire soutient avoir
+     fourni sa capture de transfert. Même critère que la pièce fournie. */
+  'payment.proof_delete',
   /* LE RELEVÉ RETIRÉ. L'index disparaît avec sa ligne — la table ne porte ni
      statut ni corbeille —, et cette trace est la SEULE chose qui dira ensuite
      quel index avait été lu. C'est précisément ce qu'on vient chercher quand un

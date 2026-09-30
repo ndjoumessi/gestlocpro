@@ -99,6 +99,11 @@ interface PortefeuilleApi {
     powerMinor: number
     paidMinor: number
     payments: {
+      /* Facultatifs comme les deux suivants : un serveur antérieur à ce lot ne
+         les rend pas, et la rangée doit alors se taire plutôt que d'offrir un
+         geste qui n'aboutira nulle part. */
+      id?: string
+      proofId?: string | null
       amountMinor: number
       method: ReceiptPayment['method']
       paidOn: string
@@ -524,6 +529,12 @@ export async function chargerParc(parkId: string, mois?: string): Promise<ParcCh
           dueOn: jourCalendaire(e.dueOn),
           paidMinor: e.paidMinor,
           payments: e.payments.map((p) => ({
+            /* ÉTALÉS SEULEMENT S'ILS ARRIVENT, comme la note : un serveur
+               antérieur ne les rend pas, et poser `id: undefined` ferait croire
+               au champ. `proofId` porte `null` dès que l'`id` est là — « pas de
+               preuve » est une réponse, « pas de paiement adressable » en est
+               une autre. */
+            ...(p.id !== undefined ? { id: p.id, proofId: p.proofId ?? null } : {}),
             amountMinor: p.amountMinor,
             method: p.method,
             paidOn: jourCalendaire(p.paidOn),

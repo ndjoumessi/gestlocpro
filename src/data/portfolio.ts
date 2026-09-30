@@ -1599,6 +1599,17 @@ export interface Receipt {
 
 /** Un versement reçu sur une période. */
 export interface ReceiptPayment {
+  /**
+   * L'identifiant du versement, et la PREUVE qui y est jointe.
+   *
+   * Tous deux facultatifs : la démonstration n'en a pas, et un serveur
+   * antérieur au lot de la preuve ne les rend pas. Une rangée sans `id` ne peut
+   * adresser aucun paiement — elle n'offre donc ni le dépôt d'une pièce ni son
+   * retrait, plutôt que d'offrir un geste qui échouerait.
+   */
+  id?: string
+  /** `null` quand aucune preuve CONFIRMÉE n'est jointe. */
+  proofId?: string | null
   amountMinor: number
   method: PaymentMethodKey
   paidOn: DateParts
