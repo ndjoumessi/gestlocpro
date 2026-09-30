@@ -52,6 +52,30 @@ import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
  *
  * DEUX SERVICES PEUVENT MIGRER SANS SE MARCHER DESSUS : `prisma migrate deploy`
  * prend un verrou consultatif sur la base, et le second attend.
+ *
+ * ═══ CHANGER CETTE COMMANDE DEMANDE UNE POUSSÉE, PAS UN REDÉPLOIEMENT ═══
+ *
+ * Mesuré le 2026-09-30, et c'est le passage de 15 h qui l'a dit. La commande de
+ * démarrage a été changée chez l'hébergeur à 14 h 21, puis le service redéployé
+ * à 14 h 24 — l'outil de mise à jour annonçant « use redeploy to apply
+ * immediately ». À 15 h 00, le conteneur a pourtant lancé `relances:auto` :
+ *
+ *     14 h 18   déploiement depuis la poussée — instantané avec `relances:auto`
+ *     14 h 21   `startCommand` changé, appliqué et relu dans la configuration
+ *     14 h 24   REDÉPLOIEMENT — qui recopie l'instantané de 14 h 18
+ *     15 h 00   le conteneur lance `relances:auto`
+ *
+ * UN REDÉPLOIEMENT REJOUE UN INSTANTANÉ, configuration comprise — sa propre
+ * description le dit, « reusing that deployment's existing build », et je l'ai
+ * lue après coup. Le changement de configuration, lui, ne crée AUCUN
+ * déploiement : il attend le suivant.
+ *
+ * Seul un déploiement NEUF DEPUIS LA SOURCE prend la configuration courante.
+ * C'est ce que ce commentaire-ci déclenche en étant poussé.
+ *
+ * ET C'EST LA MÊME FAMILLE DE PIÈGE QUE LE RESTE DE LA JOURNÉE : la
+ * configuration DISAIT `relances:production`, trois lectures le confirmaient,
+ * et le produit faisait autre chose. Lire le réglage n'est pas observer l'effet.
  */
 /**
  * L'HEURE QU'IL EST DANS LE FUSEAU D'UN PARC, de 0 à 23.
