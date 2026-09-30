@@ -1758,6 +1758,41 @@ export const fr = {
       revisionsEmpty: 'Aucune révision',
       revisionLine: 'De {avant} à {apres}, au {date}',
       /* ── LES GARANTS ── */
+      /* ── LE PLAN D'APUREMENT ── */
+      planTitle: 'Plan d’apurement',
+      /* « AUCUN ACCORD » ET NON UNE SECTION MUETTE : un impayé sans plan est un
+         état, et c'est celui où l'on propose d'en convenir un. */
+      planNone: 'Aucun accord en cours',
+      planNoneHint:
+        'Un accord suspend les relances tant qu’il est respecté. Sans lui, le produit ne connaît que « payé » ou « pas payé ».',
+      planAgreedOn: 'Convenu le',
+      planTotal: 'Total échelonné',
+      planPaid: 'Déjà imputé',
+      /* CE QUI EST IMPUTÉ, et non ce qui est encaissé : un locataire qui paie
+         plus que son plan a soldé son plan, le surplus va à ses loyers. */
+      planPaidHint:
+        'Déduit des encaissements du bail depuis l’accord, imputés dans l’ordre des échéances. Le surplus va aux loyers courants.',
+      planInstalment: '{date} · {montant}',
+      planInstalmentPaid: '{date} · {montant} — réglé',
+      planInstalmentPartial: '{date} · {montant} — {paye} imputés',
+      planAddInstalment: 'Ajouter une échéance',
+      planDueOn: 'Échéance le',
+      planAmount: 'Montant ({devise})',
+      planNote: 'Ce qui a été convenu',
+      planNoteHint: 'Ce que le barème ne dit pas : « après la vente de sa moto », « son employeur retient sur salaire ».',
+      planCreate: 'Convenir d’un plan',
+      planCreated: 'Plan convenu',
+      planNeedsInstalment: 'Au moins une échéance est nécessaire.',
+      planDuplicateDate: 'Deux échéances ne peuvent pas porter la même date.',
+      planExists: 'Ce bail a déjà un plan en cours.',
+      planClosed: 'Ce plan est déjà clos.',
+      /* TROIS SORTS DISTINCTS, et la distinction compte l'an prochain : l'un a
+         payé, l'autre a rompu, le troisième s'est vu retirer l'accord. */
+      planHonour: 'Marquer honoré',
+      planBreak: 'Marquer rompu',
+      planCancel: 'Retirer l’accord',
+      planClosedDone: 'Plan clos',
+      planFailed: 'Le plan n’a pas pu être enregistré.',
       guarantorsTitle: 'Garants',
       guarantorsEmpty: 'Aucun garant',
       /* LA CAUTION EN ARGENT N'EST PAS UNE PERSONNE : on le dit, parce que le
@@ -2427,6 +2462,8 @@ export const fr = {
           notice: 'Congé enregistré',
           notice_withdraw: 'Congé retiré',
           revise_rent: 'Loyer révisé',
+          settlement_plan: 'Plan d’apurement convenu',
+          settlement_close: 'Plan d’apurement clos',
         },
         park: {
           update: 'Parc corrigé',

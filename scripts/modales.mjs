@@ -365,8 +365,18 @@ const MODALES = [
     Le loyer COURANT reste visible même replié : c'est la donnée, pas le geste, et
     on ne décide pas d'une hausse sans elle sous les yeux. C'est ce qui explique
     les 153 px qui restent à 1280.
+
+    434 → 523 À 360, ET CE QUE CES 89 px ACHÈTENT EST UNE QUATRIÈME SECTION.
+    Le plan d'apurement s'installe ici plutôt que dans une boîte à lui : replié,
+    il ne coûte que son en-tête — un bouton de 44 px, son filet et ses marges.
+    C'est le prix EXACT du dépliage choisi au lot précédent, et c'est aussi ce
+    qui le valide : une section de plus se paie en en-tête, pas en corps.
+
+    À 1280 le relevé diverge par langue — 242 en français, 268 en anglais — et
+    le plafond retient l'anglais, comme partout dans ce fichier : caler sur le
+    français laisserait passer 26 px non vus sur la moitié du produit.
   */
-  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 434, 1280: 179 }, defilLarge: { 360: 481, 1280: 179 }, avant: { 360: 1196, 1280: 747 } },
+  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 523, 1280: 268 }, defilLarge: { 360: 481, 1280: 179 }, avant: { 360: 1196, 1280: 747 } },
   /*
     LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
     l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par

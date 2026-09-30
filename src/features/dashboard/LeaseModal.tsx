@@ -18,6 +18,16 @@ import { api, ApiError } from '@/api/client'
 const DONNEURS = ['tenant', 'landlord'] as const
 type Donneur = (typeof DONNEURS)[number]
 
+interface PlanApi {
+  id: string
+  agreedOn: string
+  totalMinor: number
+  status: 'active' | 'honoured' | 'broken' | 'cancelled'
+  note: string | null
+  paidMinor: number
+  instalments: { id: string; dueOn: string; amountMinor: number; paidMinor: number }[]
+}
+
 interface PanneauApi {
   lease: {
     id: string
@@ -140,8 +150,18 @@ export function LeaseModal({
    * LE CONGÉ EST OUVERT PAR DÉFAUT : c'est le geste qui a une échéance, et le
    * seul dont l'oubli se paie en loyer perdu.
    */
-  const [section, setSection] = useState<'conge' | 'loyer' | 'garants'>('conge')
+  const [section, setSection] = useState<'conge' | 'loyer' | 'garants' | 'plan'>('conge')
   const [panneau, setPanneau] = useState<PanneauApi | null>(null)
+  const [plan, setPlan] = useState<PlanApi | null>(null)
+  const [accordLe, setAccordLe] = useState('')
+  const [noteDuPlan, setNoteDuPlan] = useState('')
+  /* LES ÉCHÉANCES SE SAISISSENT UNE PAR UNE, et ne se déduisent pas d'un nombre
+     de mois : le premier versement est souvent plus gros, et les dates suivent
+     la paie du locataire plutôt que le calendrier. Les déduire obligerait à
+     négocier contre le produit. */
+  const [echeances, setEcheances] = useState<{ dueOn: string; montant: string }[]>([
+    { dueOn: '', montant: '' },
+  ])
   const [donneur, setDonneur] = useState<Donneur>('tenant')
   const [recuLe, setRecuLe] = useState('')
   const [departLe, setDepartLe] = useState('')
@@ -162,12 +182,18 @@ export function LeaseModal({
   const relire = useCallback(async () => {
     if (!parkId) return
     try {
-      setPanneau(await api.leaseSureties<PanneauApi>(parkId, leaseId))
+      const [suretes, accord] = await Promise.all([
+        api.leaseSureties<PanneauApi>(parkId, leaseId),
+        api.settlementPlan<{ plan: PlanApi | null }>(parkId, leaseId),
+      ])
+      setPanneau(suretes)
+      setPlan(accord.plan)
     } catch {
       /* UNE LECTURE QUI ÉCHOUE NE LAISSE PAS LE PANNEAU PRÉCÉDENT : un congé
          affiché après qu'il a été retiré ferait préparer une vacance qui n'a
          plus lieu. */
       setPanneau(null)
+      setPlan(null)
     }
   }, [parkId, leaseId])
 
@@ -181,6 +207,8 @@ export function LeaseModal({
     if (erreur.code === 'lease_ended') return t('app.lease.leaseAlreadyEnded')
     if (erreur.code === 'same_rent') return t('app.lease.sameRent')
     if (erreur.code === 'revision_exists') return t('app.lease.revisionExists')
+    if (erreur.code === 'plan_actif') return t('app.lease.planExists')
+    if (erreur.code === 'plan_clos') return t('app.lease.planClosed')
     return t('app.lease.failed')
   }
 
@@ -250,6 +278,33 @@ export function LeaseModal({
       t('app.lease.revisionSaved'),
     )
     setNouveauLoyer('')
+  }
+
+  async function convenirDUnPlan() {
+    const lignes = echeances
+      .map((e) => ({ dueOn: e.dueOn, amountMinor: parseAmount(e.montant) }))
+      .filter((e) => e.dueOn !== '' && e.amountMinor !== null && e.amountMinor > 0)
+    if (lignes.length === 0) {
+      notify(t('app.lease.planNeedsInstalment'), { tone: 'danger' })
+      return
+    }
+    /* LA MÊME RÈGLE QUE LA BASE, dite à l'écran plutôt que renvoyée par un 400 :
+       deux montants dus le même jour se disent en une ligne. */
+    if (new Set(lignes.map((e) => e.dueOn)).size !== lignes.length) {
+      notify(t('app.lease.planDuplicateDate'), { tone: 'danger' })
+      return
+    }
+    await agir(
+      () =>
+        api.createSettlementPlan(parkId!, leaseId, {
+          agreedOn: accordLe,
+          note: noteDuPlan.trim() || null,
+          instalments: lignes.map((e) => ({ dueOn: e.dueOn, amountMinor: e.amountMinor! })),
+        }),
+      t('app.lease.planCreated'),
+    )
+    setEcheances([{ dueOn: '', montant: '' }])
+    setNoteDuPlan('')
   }
 
   async function ajouterUnGarant() {
@@ -510,6 +565,165 @@ export function LeaseModal({
             </ul>
           )}
           </>)}
+        </section>
+
+        {/* ── LE PLAN D'APUREMENT ── */}
+        <section className="border-t border-divider pt-5">
+          <EnTeteDeSection
+            titre={t('app.lease.planTitle')}
+            ouverte={section === 'plan'}
+            onBascule={() => setSection('plan')}
+          />
+
+          {section === 'plan' &&
+            (plan ? (
+              <>
+                <dl className="mt-3 flex flex-col gap-1">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-body text-muted">{t('app.lease.planAgreedOn')}</dt>
+                    <dd>{d.fullDate(partiesDeDateISO(plan.agreedOn))}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-body text-muted">{t('app.lease.planTotal')}</dt>
+                    <dd className="mono-data">{money(plan.totalMinor)}</dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-body text-muted">{t('app.lease.planPaid')}</dt>
+                    <dd className="mono-data">{money(plan.paidMinor)}</dd>
+                  </div>
+                </dl>
+                {/* CE QUI EST IMPUTÉ, et non ce qui est encaissé : dit AVANT que
+                    le lecteur compare les deux nombres et croie à une erreur. */}
+                <p className="text-body-s text-muted mt-2">{t('app.lease.planPaidHint')}</p>
+
+                <ul className="mt-3 flex flex-col gap-1">
+                  {plan.instalments.map((e) => (
+                    <li key={e.id} className="text-body-s">
+                      {e.paidMinor >= e.amountMinor
+                        ? t('app.lease.planInstalmentPaid', {
+                            date: d.fullDate(partiesDeDateISO(e.dueOn)),
+                            montant: money(e.amountMinor),
+                          })
+                        : e.paidMinor > 0
+                          ? t('app.lease.planInstalmentPartial', {
+                              date: d.fullDate(partiesDeDateISO(e.dueOn)),
+                              montant: money(e.amountMinor),
+                              paye: money(e.paidMinor),
+                            })
+                          : t('app.lease.planInstalment', {
+                              date: d.fullDate(partiesDeDateISO(e.dueOn)),
+                              montant: money(e.amountMinor),
+                            })}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* TROIS SORTS, ET NON UN « CLORE » : honoré, rompu et retiré ne
+                    désignent pas la même personne l'an prochain. */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {(
+                    [
+                      ['honoured', 'app.lease.planHonour'],
+                      ['broken', 'app.lease.planBreak'],
+                      ['cancelled', 'app.lease.planCancel'],
+                    ] as const
+                  ).map(([sort, cle]) => (
+                    <Button
+                      key={sort}
+                      variant="secondary"
+                      loading={enCours}
+                      onClick={() =>
+                        void agir(
+                          () => api.closeSettlementPlan(parkId!, plan.id, sort),
+                          t('app.lease.planClosedDone'),
+                        )
+                      }
+                    >
+                      {t(cle)}
+                    </Button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* AUCUN ACCORD EST UN ÉTAT, et c'est celui où l'on propose d'en
+                    convenir un — pas une section muette. */}
+                <Notice tone="neutral" titre={t('app.lease.planNone')} className="mt-3">
+                  {t('app.lease.planNoneHint')}
+                </Notice>
+
+                <div className="mt-4 flex flex-col gap-4">
+                  <Field label={t('app.lease.planAgreedOn')} required>
+                    {(props) => (
+                      <DatePicker
+                        id={props.id}
+                        aria-describedby={props['aria-describedby']}
+                        name="accordLe"
+                        value={accordLe}
+                        onChange={setAccordLe}
+                      />
+                    )}
+                  </Field>
+
+                  {echeances.map((e, rang) => (
+                    <div key={rang} className="grid gap-4 sm:grid-cols-2">
+                      <Field label={t('app.lease.planDueOn')}>
+                        {(props) => (
+                          <DatePicker
+                            id={props.id}
+                            aria-describedby={props['aria-describedby']}
+                            name={`echeance-${rang}`}
+                            value={e.dueOn}
+                            onChange={(v) =>
+                              setEcheances((liste) =>
+                                liste.map((l, i) => (i === rang ? { ...l, dueOn: v } : l)),
+                              )
+                            }
+                          />
+                        )}
+                      </Field>
+                      <Field label={t('app.lease.planAmount', { devise: definition.symbol })}>
+                        {(props) => (
+                          <Input
+                            {...props}
+                            inputMode="numeric"
+                            value={e.montant}
+                            onChange={(ev) =>
+                              setEcheances((liste) =>
+                                liste.map((l, i) =>
+                                  i === rang ? { ...l, montant: ev.target.value } : l,
+                                ),
+                              )
+                            }
+                          />
+                        )}
+                      </Field>
+                    </div>
+                  ))}
+
+                  <Button
+                    variant="secondary"
+                    onClick={() => setEcheances((liste) => [...liste, { dueOn: '', montant: '' }])}
+                  >
+                    {t('app.lease.planAddInstalment')}
+                  </Button>
+
+                  <Field label={t('app.lease.planNote')} hint={t('app.lease.planNoteHint')} optional>
+                    {(props) => (
+                      <Input
+                        {...props}
+                        value={noteDuPlan}
+                        onChange={(ev) => setNoteDuPlan(ev.target.value)}
+                      />
+                    )}
+                  </Field>
+
+                  <Button loading={enCours} onClick={() => void convenirDUnPlan()}>
+                    {t('app.lease.planCreate')}
+                  </Button>
+                </div>
+              </>
+            ))}
         </section>
 
         {/* ── LES GARANTS ── */}

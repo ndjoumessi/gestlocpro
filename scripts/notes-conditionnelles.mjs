@@ -115,6 +115,16 @@ async function choisirLeProfil(page, nom) {
  * primaire d'un dossier, pas le congé. Le menu porte son nom accessible en
  * français comme en anglais, d'où l'alternative.
  */
+/** Le plan d'apurement : le panneau du bail, puis sa quatrième section. */
+async function ouvrirLePlan(page) {
+  await ouvrirLeBail(page)
+  await page
+    .getByRole('button', { name: /^Plan d’apurement$|^Settlement plan$/ })
+    .first()
+    .click()
+  await page.waitForTimeout(250)
+}
+
 async function ouvrirLeBail(page) {
   await page.getByRole('button', { name: /^Autres actions$|^More actions$/ }).first().click()
   await page.waitForTimeout(250)
@@ -276,6 +286,11 @@ const REGISTRE = {
      note nomme l'absence. C'est précisément l'état qu'on voulait ne pas laisser
      muet. */
   'app.lease.noticeNone': { adresse: '/demo/parc/A1', geste: ouvrirLeBail },
+
+  /* L'ABSENCE D'ACCORD D'APUREMENT — mesurable, et c'est l'état par défaut :
+     sans parc réel il n'y a pas de plan, et la note nomme l'état où l'on propose
+     d'en convenir un plutôt que de laisser la section muette. */
+  'app.lease.planNone': { adresse: '/demo/parc/A1', geste: ouvrirLePlan },
 
   /* ── Les aveux, et leur motif ── */
   'app.lease.noticeTitle': {

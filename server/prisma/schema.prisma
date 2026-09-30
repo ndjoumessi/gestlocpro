@@ -168,6 +168,7 @@ model UserAccount {
   resolvedDocumentRequests DocumentRequest[] @relation("DocumentResolver")
   recordedExpenses Expense[]   @relation("ExpenseRecorder")
   decidedRevisions RentRevision[] @relation("RevisionDecider")
+  createdPlans SettlementPlan[] @relation("PlanCreator")
 
   @@index([disabledAt])
   @@index([closureRequestedAt])
@@ -638,9 +639,21 @@ model Lease {
   reminderEmails RentReminderEmail[]
   revisions   RentRevision[]
   guarantors  Guarantor[]
+  plans       SettlementPlan[]
 
   @@index([unitId, status])
   @@index([tenantId])
+  /// LES DÉPARTS À VENIR — « quels baux s'arrêtent dans les deux mois » est la
+  /// seule lecture des quatre colonnes du congé.
+  ///
+  /// DÉCLARÉ PARCE QU'IL EXISTE. La migration du congé l'a créé à la main, et le
+  /// schéma l'ignorait : une sonde `migrate dev --create-only` a rendu un
+  /// `DROP INDEX` dessus. C'est MOT POUR MOT le défaut que le premier commit de
+  /// cette session venait de corriger sur `WorkThreadEmail_notificationId_idx` —
+  /// écrire un index en SQL sans le déclarer ici le condamne à disparaître dans
+  /// la première migration générée ensuite, glissé dans un lot qui parle d'autre
+  /// chose.
+  @@index([moveOutOn])
 }
 
 /// Une échéance de loyer pour une période donnée.
@@ -849,6 +862,72 @@ model PaymentProof {
   @@index([paymentId])
   /// Le balayage des réservations jamais montées interroge cette colonne seule.
   @@index([confirmedAt])
+}
+
+/// Un accord d'apurement : « 50 000 par mois pendant quatre mois ».
+///
+/// ═══ LA TROISIÈME ISSUE D'UN IMPAYÉ, QUE LE PRODUIT NE CONNAISSAIT PAS ═══
+///
+/// Les paiements partiels existaient déjà de fait — `Payment.amountMinor` est
+/// libre — et la relance comme la mise en demeure étaient là. Ce qui manquait
+/// était l'ACCORD : rien ne portait la promesse, ni le suivi de son respect. Un
+/// impayé n'avait donc que deux issues visibles dans le produit, payé ou pas,
+/// alors que la sortie réelle est presque toujours la troisième.
+///
+/// La conséquence était concrète : un locataire qui respectait scrupuleusement
+/// un échelonnement convenu à l'oral continuait de recevoir des relances
+/// automatiques pour la totalité de sa dette, et son solde s'affichait en rouge.
+/// Le produit travaillait contre l'accord que ses utilisateurs avaient passé.
+model SettlementPlan {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  agreedOn   DateTime @db.Date
+  totalMinor Int
+  currency   Currency
+  status     SettlementPlanStatus @default(active)
+
+  /// Ce qui a été convenu et que le barème ne dit pas : « après la vente de sa
+  /// moto », « son employeur retient sur salaire ». Lu par un humain.
+  note String?
+
+  createdById String?      @db.Uuid
+  createdBy   UserAccount? @relation("PlanCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  instalments SettlementInstalment[]
+
+  /// UN SEUL PLAN ACTIF PAR BAIL, tenu par un index unique PARTIEL en SQL —
+  /// Prisma ne sait pas déclarer la condition, et la migration l'écrit. Deux
+  /// plans en cours rendraient indéterminable ce qu'on attend ce mois-ci.
+  @@index([leaseId, status])
+}
+
+/// Une échéance du plan : une date, un montant.
+///
+/// ═══ AUCUNE COLONNE « PAYÉ », ET C'EST LE CŒUR DU MODÈLE ═══
+///
+/// Une colonne `paidMinor` entretenue à la main divergerait le jour où quelqu'un
+/// encaisse sans passer par le plan — ce qui est le cas normal, l'argent
+/// arrivant par `Payment` sur une échéance de loyer. Ce qui est payé se DÉDUIT
+/// donc des paiements du bail sur l'intervalle de l'échéance, et rien ne peut
+/// mentir : il n'y a qu'une source.
+///
+/// Le prix de ce choix est qu'« est-ce respecté ? » est un calcul et non une
+/// lecture. Il se paie une fois, dans `etatDuPlan`, et non à chaque encaissement.
+model SettlementInstalment {
+  id     String         @id @default(uuid()) @db.Uuid
+  planId String         @db.Uuid
+  plan   SettlementPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  dueOn       DateTime @db.Date
+  amountMinor Int
+
+  /// UNE SEULE ÉCHÉANCE PAR PLAN ET PAR DATE : deux montants dus le même jour se
+  /// disent en une ligne, et les séparer rendrait le respect indécidable.
+  @@unique([planId, dueOn])
 }
 
 // ─── Terrain ─────────────────────────────────────────────────────────────────
@@ -1536,6 +1615,23 @@ enum LeaseStatus {
   pending
   active
   ended
+}
+
+/// Où en est un accord d'apurement.
+///
+/// QUATRE VALEURS, ET `broken` EST LA PLUS IMPORTANTE : sans elle, un plan que
+/// le locataire ne respecte plus resterait `active`, et le produit continuerait
+/// de retenir les relances au nom d'un accord mort. C'est le défaut que ce
+/// modèle doit le plus éviter — il transformerait une bienveillance en perte.
+///
+/// `honoured` ET `cancelled` SE DISTINGUENT, contrairement à ce qu'un seul
+/// « clos » dirait : l'un est un locataire qui a payé, l'autre un accord que le
+/// bailleur a retiré. Ce n'est pas la même personne qu'on rappelle l'an prochain.
+enum SettlementPlanStatus {
+  active
+  honoured
+  broken
+  cancelled
 }
 
 /// QUI a donné le congé. Deux valeurs, et la distinction se paie : un départ à

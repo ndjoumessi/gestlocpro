@@ -246,6 +246,20 @@ const DETAIL: Record<string, Champ[]> = {
      tout : un départ à l'initiative du locataire et une reprise par le bailleur
      n'ouvrent pas les mêmes droits et ne se racontent pas pareil devant qui
      arbitre. Les deux dates suivent, dans l'ordre où elles arrivent. */
+  /* LE PLAN CONVENU. Le TOTAL et le NOMBRE d'échéances, parce que « 150 000 »
+     seul ne dit pas si c'est en deux fois ou en douze — et c'est la différence
+     entre un arrangement et un abandon de créance déguisé. */
+  'lease.settlement_plan': [
+    { champ: 'totalMinor', nature: 'argent' },
+    { champ: 'agreedOn', nature: 'date' },
+    { champ: 'instalments', nature: 'texte' },
+  ],
+  /* LE PLAN CLOS. Le SORT d'abord : honoré, rompu ou retiré ne désignent pas la
+     même personne l'an prochain, et c'est la seule chose qu'on vient chercher. */
+  'lease.settlement_close': [
+    { champ: 'status', nature: 'texte' },
+    { champ: 'totalMinor', nature: 'argent' },
+  ],
   'lease.notice': [
     { champ: 'givenBy', nature: 'texte' },
     { champ: 'givenOn', nature: 'date' },

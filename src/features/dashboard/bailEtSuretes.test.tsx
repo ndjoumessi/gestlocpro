@@ -55,6 +55,22 @@ describe('le bail et ses sûretés', () => {
     ).toBeInTheDocument()
   })
 
+  it('PROPOSE DE CONVENIR UN PLAN quand il n’y en a aucun', async () => {
+    const { user, boite } = await ouvrirLePanneau()
+    await user.click(within(boite).getByRole('button', { name: /^Plan d’apurement$/ }))
+
+    /* L'ABSENCE D'ACCORD EST UN ÉTAT, et c'est celui où l'on propose d'en
+       convenir un. Une section muette se lirait « je n'ai pas su ». */
+    expect(within(boite).getByText('Aucun accord en cours')).toBeInTheDocument()
+    expect(within(boite).getByRole('button', { name: /^Convenir d’un plan$/ })).toBeInTheDocument()
+
+    /* ET LES ÉCHÉANCES SE SAISISSENT UNE PAR UNE : le bouton qui en ajoute une
+       est ce qui distingue un accord négocié d'un échelonnement calculé. */
+    const avant = within(boite).getAllByLabelText(/Échéance le/).length
+    await user.click(within(boite).getByRole('button', { name: /^Ajouter une échéance$/ }))
+    expect(within(boite).getAllByLabelText(/Échéance le/).length).toBe(avant + 1)
+  })
+
   it('N’OUVRE QU’UNE SECTION À LA FOIS, et le congé d’abord', async () => {
     const { user, boite } = await ouvrirLePanneau()
 

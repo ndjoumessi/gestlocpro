@@ -692,6 +692,62 @@ export const api = {
     requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
 
   /**
+   * LE PLAN D'APUREMENT D'UN BAIL, avec ce qui a été imputé sur chaque échéance.
+   *
+   * Rend `{ plan: null }` quand il n'y en a pas — et `null` plutôt qu'un 404 :
+   * l'absence d'accord est une réponse, pas une adresse introuvable, et l'écran
+   * doit pouvoir proposer d'en convenir un.
+   *
+   * AUCUNE COLONNE « PAYÉ » N'EXISTE EN BASE : ce qui est réglé se déduit des
+   * paiements du bail depuis l'accord, imputés chronologiquement. Une colonne
+   * entretenue divergerait dès le premier encaissement fait hors du plan, qui
+   * est le cas normal.
+   */
+  settlementPlan: <T>(parkId: string, leaseId: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/settlement-plan`),
+
+  /**
+   * CONVENIR D'UN PLAN. Au propriétaire seul : échelonner, c'est renoncer à
+   * exiger immédiatement ce qui est dû.
+   *
+   * Les échéances s'écrivent UNE PAR UNE et ne se déduisent pas d'un nombre de
+   * mois : le premier versement est souvent plus gros, et les dates suivent la
+   * paie du locataire plutôt que le calendrier. `409 plan_actif` si le bail en a
+   * déjà un en cours.
+   */
+  createSettlementPlan: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: {
+      agreedOn: string
+      note?: string | null
+      instalments: { dueOn: string; amountMinor: number }[]
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/settlement-plans`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * CLORE UN PLAN — honoré, rompu, ou retiré.
+   *
+   * `broken` est la valeur qui compte : sans elle, un plan que le locataire ne
+   * respecte plus resterait actif, et le produit continuerait de retenir les
+   * relances au nom d'un accord mort. On ne revient pas à `active` : un plan
+   * clos est clos, et l'on en convient un nouveau.
+   */
+  closeSettlementPlan: <T>(
+    parkId: string,
+    planId: string,
+    status: 'honoured' | 'broken' | 'cancelled',
+  ) =>
+    requete<T>(`/parks/${parkId}/settlement-plans/${planId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  /**
    * LE PANNEAU ADMINISTRATIF D'UN BAIL : congé, révisions, garants.
    *
    * UNE lecture et non trois : les trois collections s'ouvrent ensemble, par la

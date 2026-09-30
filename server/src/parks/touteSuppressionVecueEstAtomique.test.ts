@@ -73,6 +73,8 @@ const MODELES_VECUS = [
   'PaymentProof',
   'RentCharge',
   'RentRevision',
+  'SettlementInstalment',
+  'SettlementPlan',
   'Tenant',
   'Unit',
   'UserAccount',
