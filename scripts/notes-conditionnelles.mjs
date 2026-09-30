@@ -108,6 +108,23 @@ async function choisirLeProfil(page, nom) {
   await page.waitForTimeout(400)
 }
 
+/**
+ * Le panneau du bail, derrière le menu de débordement du dossier d'un logement.
+ *
+ * DEUX CLICS, parce que l'entrée s'est repliée : la quittance est le geste
+ * primaire d'un dossier, pas le congé. Le menu porte son nom accessible en
+ * français comme en anglais, d'où l'alternative.
+ */
+async function ouvrirLeBail(page) {
+  await page.getByRole('button', { name: /^Autres actions$|^More actions$/ }).first().click()
+  await page.waitForTimeout(250)
+  await page
+    .getByRole('menuitem', { name: /^Bail et sûretés$|^Lease and sureties$/ })
+    .first()
+    .click()
+  await page.waitForTimeout(350)
+}
+
 async function ouvrirLInvitation(page) {
   await page.getByRole('button', { name: /^Inviter par code$/ }).first().click()
   await page.waitForTimeout(350)
@@ -254,7 +271,45 @@ const REGISTRE = {
      parc réel n'existe, et c'est exactement ce que le geste déclenche. */
   'app.data.demo': { adresse: '/demo/mes-donnees', geste: preparerLExport },
 
+  /* LA SECTION DU CONGÉ SANS CONGÉ — mesurable, et c'est l'état par défaut du
+     panneau : la démonstration n'a pas de parc réel, donc pas de congé, donc la
+     note nomme l'absence. C'est précisément l'état qu'on voulait ne pas laisser
+     muet. */
+  'app.lease.noticeNone': { adresse: '/demo/parc/A1', geste: ouvrirLeBail },
+
   /* ── Les aveux, et leur motif ── */
+  'app.lease.noticeTitle': {
+    nonMesurable:
+      'Elle ne paraît QU’AVEC UN CONGÉ ENREGISTRÉ, et la démonstration n’en porte ' +
+      'aucun : le panneau lit le serveur, et sans parc réel il rend l’état « aucun ' +
+      'congé donné » — dont la note, elle, EST mesurée juste au-dessus. En fabriquer ' +
+      'un demanderait de poser quatre colonnes de congé dans le jeu de démonstration ' +
+      'du client, qui ne porte aucun bail au sens du serveur. CE QUI LA RENDRAIT ' +
+      'MESURABLE EST NOMMÉ : un bail de démonstration muni d’un congé, dans le même ' +
+      'générateur que les baux. Tenue en jsdom par `bailEtSuretes.test.tsx`, qui ' +
+      'vérifie que l’état sans congé n’offre pas le retrait.',
+  },
+  'app.fees.noFee': {
+    nonMesurable:
+      'Elle ne paraît QUE SOUS UNE VRAIE SESSION : sans parc, le relevé n’est pas ' +
+      'demandé au serveur, et la boîte rend un paragraphe d’explication à la place du ' +
+      'bloc de sommes qui la porte. La démonstration ne peut pas lire un relevé — il ' +
+      'somme des paiements et des dépenses que seul le serveur connaît. CE QUI LA ' +
+      'RENDRAIT MESURABLE EST NOMMÉ : un relevé de démonstration calculé côté client, ' +
+      'ce qui reviendrait à écrire une seconde fois le calcul du serveur. Tenue en ' +
+      'jsdom par `honorairesDuMandat.test.tsx`.',
+  },
+  'app.fees.netNegative': {
+    nonMesurable:
+      'Elle ne paraît QUE SI LE NET EST NÉGATIF — dépenses et chantiers du mois ' +
+      'dépassant l’encaissé —, donc sous une vraie session ET sur un parc dont le mois ' +
+      'est déficitaire. Deux conditions dont aucune n’existe en démonstration. La ' +
+      'fabriquer demanderait un relevé calculé côté client, puis un jeu de dépenses ' +
+      'taillé pour le rendre négatif : on mesurerait un décor, pas le produit. Tenue ' +
+      'côté serveur par `honorairesDeGestion.test.ts`, dont un cas exige que le net ' +
+      'sorte négatif plutôt que ramené à zéro.',
+  },
+
   'app.meters.gapCount': {
     nonMesurable:
       'Elle ne paraît QU’AVEC UN ÉCART, et la démonstration n’en porte aucun : son ' +
