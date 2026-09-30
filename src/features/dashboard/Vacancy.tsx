@@ -177,10 +177,17 @@ export function Vacancy() {
             header: t('app.vacancy.colUnit'),
             role: 'identite',
             render: (a) => (
+              /* `block w-full min-w-0` SUR LE BOUTON, et c'est la moitié qu'on
+                 oublie : `truncate` ne peut rétrécir que si TOUS ses parents
+                 acceptent de rétrécir. Sans cela, le bouton garde la largeur de
+                 son texte et déborde sa cellule — mesuré à 61 px sur
+                 « Immeuble Akwa Nord — B4 » à 320 et 360 px, par `mesure-ui`,
+                 qui est la seule garde à voir un débordement LOCAL : la page,
+                 elle, ne défile pas pour autant. */
               <button
                 type="button"
                 onClick={() => setOuverte(a)}
-                className="min-h-11 text-start underline-offset-2 hover:underline"
+                className="block min-h-11 w-full min-w-0 text-start underline-offset-2 hover:underline"
               >
                 <span className="block truncate font-semibold" data-donnee>
                   {nomDuLogement(a.unitId)}

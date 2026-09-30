@@ -306,8 +306,12 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   (2026-09-18), la troisième page juridique. Ce nombre doit être touché à
   la main, et c'est le but : le diff montre alors qu'un écran est apparu, là où
   un compte dérivé de l'inventaire se serait mis d'accord avec lui-même.
+
+  Puis de 81 à 84 (2026-09-30) avec les dépenses, l'écran de ce qui sort du
+  parc ; et de 84 à 87 le même jour avec la vacance, l'écran de ce qui ne
+  rapporte rien. Deux écrans en un jour, aux trois largeurs chacun.
 */
-const ATTENDUS = 84
+const ATTENDUS = 87
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
