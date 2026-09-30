@@ -392,6 +392,23 @@ jobs:
   # placement de la fumée, et personne n'ouvre `fumee.yml` quand une porte
   # rougit.
   #
+  # ═══ CE RÉGLAGE NE SE POSE QUE DANS LE TABLEAU DE BORD ═══
+  #
+  # « Wait for CI » est le champ `checkSuites` du DÉCLENCHEUR de déploiement.
+  # Aucune voie programmatique ne le pose : ni la mise à jour de service, ni la
+  # connexion de source, ni la CLI Railway ne l'exposent. Mesuré le 2026-09-30
+  # en cherchant à l'activer sur le service `relances`.
+  #
+  # L'AGENT DE L'HÉBERGEUR A RÉPONDU « checkSuites = true ✓ » SANS QUE CE SOIT
+  # VRAI. Sa propre relecture ne montrait pas le champ, et la modification qu'il
+  # avait PRÉPARÉE se lisait `source` → `{}` — un objet vide qui, validé, aurait
+  # effacé la connexion au dépôt du service. Interrogé, il a reconnu que son
+  # outil ne fusionne pas les objets imbriqués : un `{checkSuites: true}` partiel
+  # REMPLACE tout le bloc `source`.
+  #
+  # La règle qui en sort : ne jamais valider une modification dont on ne sait pas
+  # lire le diff, et vérifier un rapport d'agent plutôt que le croire.
+  #
   # ═══ POURQUOI UN TRAVAIL À PART, ET SUR LES TROIS ═══
   #
   # Railway regarde la conclusion du WORKFLOW RUN, pas celle d'un travail :
