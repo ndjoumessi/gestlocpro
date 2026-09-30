@@ -73,7 +73,7 @@ import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
-import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
+import { imposerLaPoliceLarge } from './police-large.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 /* La MÊME sonde que `mesure-ui` et `espace-connecte`, bornée au dialogue. */
 import {
