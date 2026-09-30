@@ -23,6 +23,35 @@ import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
  * course et l'envoi. Un déclenchement manuel et le cron ne peuvent donc pas
  * diverger sur CE QUI compte comme un envoi valide ; ils ne diffèrent que sur
  * QUI déclenche et QUAND — exactement la portion que ce lot ne construit pas.
+ *
+ * ═══ EN PRODUCTION, IL MIGRE AVANT DE LIRE — DEPUIS LE 2026-09-30 ═══
+ *
+ * Le service Railway le lance par `npm --prefix server run relances:production`,
+ * qui vaut `prisma migrate deploy && tsx <ce fichier>`. Le nom est choisi pour
+ * être greppable : `relances:auto` reste ce qu'on lance à la main, sans toucher
+ * l'état des migrations d'une base de développement.
+ *
+ * POURQUOI. Seul le service WEB jouait `prisma migrate deploy`, dans son
+ * `start`. Le cron, lui, démarrait droit sur son script. Le 2026-09-30, une
+ * porte rouge sur `main` a gelé le déploiement web pendant quatre heures
+ * pendant que le cron, réglé sans attente de vérifications, prenait le code
+ * neuf : il a tourné quatre fois avec du CODE NEUF SUR UN SCHÉMA ANCIEN.
+ *
+ * RIEN N'A CASSÉ, ET C'ÉTAIT UNE CHANCE. Ce script ne lit aucune des colonnes
+ * qui venaient d'apparaître — il aurait suffi qu'un lot touche `Lease` ou
+ * `Notification` pour que chaque passage horaire échoue. On ne garde pas une
+ * production sur la forme des requêtes que le prochain lot écrira.
+ *
+ * LE DÉCALAGE RESTE POSSIBLE DANS L'AUTRE SENS, et il est accepté : ce cron
+ * peut appliquer une migration avant que le web ait fini de déployer, laissant
+ * un instant du code ANCIEN sur un schéma NEUF. C'est déjà le cas à chaque
+ * déploiement — le conteneur web migre puis démarre, pendant que l'ancien sert
+ * encore — et les migrations de ce dépôt sont additives. Une migration
+ * destructrice demanderait une autre méthode, et ce commentaire est l'endroit
+ * où l'on s'en souviendra.
+ *
+ * DEUX SERVICES PEUVENT MIGRER SANS SE MARCHER DESSUS : `prisma migrate deploy`
+ * prend un verrou consultatif sur la base, et le second attend.
  */
 /**
  * L'HEURE QU'IL EST DANS LE FUSEAU D'UN PARC, de 0 à 23.
