@@ -157,6 +157,58 @@ describe('corriger le parc', () => {
     expect(await screen.findByText(/Rien n’a changé/)).toBeInTheDocument()
   })
 
+  it('AVERTIT AVANT LE CHOIX que WhatsApp exige un modèle approuvé', async () => {
+    const dialogue = await ouvrirLaCorrection()
+    const user = userEvent.setup()
+
+    /* RIEN TANT QU'ON N'A PAS CHOISI. Un avertissement permanent sous un canal
+       qu'on n'a pas pris se lirait comme un défaut du produit, et on
+       apprendrait à ne plus le voir. */
+    expect(
+      within(dialogue).queryByText(/modèle de message approuvé/),
+    ).not.toBeInTheDocument()
+
+    await user.selectOptions(
+      within(dialogue).getByLabelText(/Canal de la relance/),
+      'whatsapp',
+    )
+
+    /**
+     * MAINTENANT, ET AVANT LE CLIC.
+     *
+     * Meta n'autorise un message WhatsApp sortant hors d'une fenêtre de 24 h
+     * après le dernier message du destinataire que s'il suit un MODÈLE qu'elle
+     * a approuvé ; une relance de loyer est par nature non sollicitée. Sans ce
+     * modèle, la couture rend `false` et la relance reste dans le produit.
+     *
+     * La découverte naturelle de cette règle est un parc dont plus aucune
+     * relance ne part, sans rien à l'écran pour l'expliquer. C'est exactement
+     * la forme de panne que ce dépôt refuse ailleurs : un réglage qui a l'air
+     * de marcher et n'envoie rien.
+     */
+    expect(within(dialogue).getByText(/modèle de message approuvé/)).toBeInTheDocument()
+  })
+
+  it('n’envoie le canal que s’il a changé', async () => {
+    const dialogue = await ouvrirLaCorrection()
+    serveur.quand('PATCH', `/parks/${PARC}`, {
+      status: 200,
+      body: { park: { id: PARC, name: 'Parc Bastos', countryCode: 'FR', currency: 'EUR' } },
+    })
+    const user = userEvent.setup()
+
+    await user.selectOptions(
+      within(dialogue).getByLabelText(/Canal de la relance/),
+      'whatsapp',
+    )
+    await user.click(within(dialogue).getByRole('button', { name: /Enregistrer/ }))
+
+    /* LE CANAL SEUL, et rien d'autre : la correction ne porte que ce qui a
+       bougé, comme partout dans cette boîte. */
+    expect(correctionsEnvoyees()).toHaveLength(1)
+    expect(correctionsEnvoyees()[0]!.corps).toEqual({ reminderChannel: 'whatsapp' })
+  })
+
   it('avertit que changer la devise ne convertit rien, et nomme le geste', async () => {
     const dialogue = await ouvrirLaCorrection()
     serveur.quand('PATCH', `/parks/${PARC}`, {

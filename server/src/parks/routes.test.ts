@@ -2208,6 +2208,7 @@ describe('envoi du code par SMS', () => {
     // message.
     const { remplacerMessagerie } = await import('../messagerie/messagerie.js')
     const restaurer = remplacerMessagerie({
+      envoyerWhatsApp: async () => false,
       envoyerSms: async () => {
         throw new Error('fournisseur injoignable')
       },
@@ -2235,6 +2236,7 @@ describe('envoi du code par SMS', () => {
     const { remplacerMessagerie } = await import('../messagerie/messagerie.js')
     const envoyes: string[] = []
     const restaurer = remplacerMessagerie({
+      envoyerWhatsApp: async () => false,
       envoyerSms: async (destinataire, texte) => {
         envoyes.push(`${destinataire}|${texte}`)
         return true
@@ -2589,6 +2591,9 @@ describe('relance des loyers', () => {
 
     const envoyes: string[] = []
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms(destinataire: string) {
         envoyes.push(destinataire)
         return true
@@ -2734,6 +2739,9 @@ describe('relance automatique par e-mail — jalon J+7', () => {
 
     const envoyes: { destinataire: string; sujet: string }[] = []
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -2767,6 +2775,9 @@ describe('relance automatique par e-mail — jalon J+7', () => {
 
     let envoyes = 0
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -2807,6 +2818,9 @@ describe('relance automatique par e-mail — jalon J+7', () => {
 
     let envoyes = 0
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -2854,6 +2868,9 @@ describe('relance automatique par e-mail — jalon J+7', () => {
 
     let envoyes = 0
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -2881,6 +2898,9 @@ describe('relance automatique par e-mail — jalon J+7', () => {
 
     let envoyes = 0
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -2910,6 +2930,9 @@ describe('relance automatique par e-mail — jalon J+7', () => {
 
     let envoyes = 0
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },

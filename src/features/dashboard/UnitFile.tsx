@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
 import { LeaseModal } from './LeaseModal'
+import { ChargesModal } from './ChargesModal'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { lien, useBase } from '@/lib/base'
 import { Button } from '@/components/primitives/Button'
@@ -106,6 +107,10 @@ export function UnitFile() {
      premier rendu qu'au second et refuse : le dossier rendait « Cet écran s'est
      interrompu », et aucun type ne pouvait le dire. */
   const [bailOuvert, setBailOuvert] = useState(false)
+  /* MÊME RAISON QUE `bailOuvert` CI-DESSUS, ET AU MÊME ENDROIT : un `useState`
+     posé après le retour anticipé du chargement change le NOMBRE de hooks entre
+     deux rendus, et React interrompt l'écran sans qu'aucun type ne l'annonce. */
+  const [chargesOuvertes, setChargesOuvertes] = useState(false)
   const { money } = useCurrency()
   const {
     unitById,
@@ -275,6 +280,14 @@ export function UnitFile() {
                   {t('app.lease.open')}
                 </MenuElement>
               )}
+              {/* LES CHARGES, DANS LEUR PROPRE BOÎTE ET NON DANS CELLE DU BAIL.
+                  Même condition — sans bail courant, il n'y a rien à convenir ni
+                  à régulariser. */}
+              {bailCourant && (
+                <MenuElement icone="card" onClick={() => setChargesOuvertes(true)}>
+                  {t('app.leaseCharges.open')}
+                </MenuElement>
+              )}
               <MenuElement icone="clipboard" onClick={() => setEtatOuvert(true)}>
                 {t('app.inspections.record')}
               </MenuElement>
@@ -363,6 +376,13 @@ export function UnitFile() {
           leaseId={bailCourant.id}
           unite={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
           onClose={() => setBailOuvert(false)}
+        />
+      )}
+      {chargesOuvertes && bailCourant && (
+        <ChargesModal
+          leaseId={bailCourant.id}
+          unite={immeuble ? `${immeuble.name} — ${unit.label}` : unit.label}
+          onClose={() => setChargesOuvertes(false)}
         />
       )}
       {etatOuvert && (

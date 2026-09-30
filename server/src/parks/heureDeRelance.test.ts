@@ -44,6 +44,9 @@ beforeEach(async () => {
   await prisma.userAccount.deleteMany()
   envoyes = []
   rendre = remplacerMessagerie({
+    async envoyerWhatsApp() {
+      return false
+    },
     async envoyerSms() {
       return false
     },

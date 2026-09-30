@@ -168,6 +168,7 @@ model UserAccount {
   resolvedDocumentRequests DocumentRequest[] @relation("DocumentResolver")
   recordedExpenses Expense[]   @relation("ExpenseRecorder")
   decidedRevisions RentRevision[] @relation("RevisionDecider")
+  createdPlans SettlementPlan[] @relation("PlanCreator")
 
   @@index([disabledAt])
   @@index([closureRequestedAt])
@@ -287,6 +288,18 @@ model Park {
   /// C'est le fuseau de qui REÇOIT qui compte, jamais celui de qui administre.
   reminderHour Int @default(6)
   reminderTimeZone String @default("UTC")
+  /// PAR QUEL CANAL la relance automatique part, quand elle part.
+  ///
+  /// `sms` par défaut, et ce défaut n'est pas neutre : c'est exactement ce que
+  /// la route écrivait en dur jusqu'ici. Aucun parc ne change de canal au moment
+  /// où le réglage apparaît.
+  ///
+  /// SEULS `sms` ET `whatsapp` ONT UN SENS ICI. `in_app` est ce que le produit
+  /// écrit quand RIEN n'est parti — c'est un constat, pas une intention —, et
+  /// `email` n'a pas de rédaction de relance. Prisma ne sait pas restreindre une
+  /// énumération à deux de ses membres : la garde est en zod à l'entrée, et un
+  /// cas la tient.
+  reminderChannel NotificationChannel @default(sms)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -547,6 +560,88 @@ model Unit {
   /// Les gestionnaires à qui CE logement est confié. Voir `MembershipUnit`.
   gestionnaires MembershipUnit[]
   expenses    Expense[]
+  listings    Listing[]
+}
+
+/// UNE ANNONCE POUR UN LOGEMENT VIDE.
+///
+/// Le produit savait qu'un logement était vacant — « pas de bail en cours » — et
+/// s'arrêtait là. Ce qui se passe ENTRE le départ et le bail suivant n'avait
+/// aucune place : à quel loyer on remet, à partir de quand, et qui s'est
+/// présenté. Ces semaines-là sont pourtant les plus coûteuses de la vie d'un
+/// logement, et c'est la seule période où le produit ne servait à rien.
+///
+/// LE LOYER DEMANDÉ N'EST PAS `Unit.baseRentMinor`. On remet souvent à un autre
+/// prix que le précédent — le marché a bougé, le logement a été refait —, et
+/// écraser la référence du logement pour porter une intention effacerait ce que
+/// le bail en cours paie réellement. L'annonce porte donc SON prix ; le bail
+/// signé posera le sien.
+model Listing {
+  id     String @id @default(uuid()) @db.Uuid
+  unitId String @db.Uuid
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  /// Ce qu'on demande, et la caution qu'on exige.
+  rentMinor    Int
+  depositMinor Int
+  currency     Currency
+
+  /// À partir de quand le logement peut être occupé. Une DATE et non « libre
+  /// tout de suite » : une annonce publiée trois semaines avant un départ est
+  /// exactement ce qui évite la vacance, et elle doit pouvoir le dire.
+  availableFrom DateTime @db.Date
+
+  /// Le texte de l'annonce. Facultatif : un logement se décrit déjà par son
+  /// type, sa surface et son quartier, tous portés par le produit.
+  description String?
+
+  status ListingStatus @default(draft)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applicants Applicant[]
+
+  /// Les annonces d'un logement, la plus récente d'abord — la seule lecture de
+  /// cette table qui ne passe pas par son identifiant.
+  @@index([unitId])
+}
+
+/// QUELQU'UN QUI S'EST PRÉSENTÉ POUR UNE ANNONCE.
+///
+/// PAS UN `Tenant`, et la distinction n'est pas cosmétique. Un candidat n'a
+/// signé aucun bail : le créer comme locataire le ferait apparaître dans les
+/// quittances, les relances et le registre des accès d'un parc où il n'habite
+/// pas. Le jour où il signe, le produit crée son locataire — et la candidature
+/// reste, comme trace de la façon dont il est arrivé.
+model Applicant {
+  id        String  @id @default(uuid()) @db.Uuid
+  listingId String  @db.Uuid
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  fullName String
+  /// AU MOINS UN MOYEN DE JOINDRE, et les deux sont facultatifs ici : la garde
+  /// est en zod à l'entrée, qui refuse la candidature sans aucun des deux.
+  /// Prisma ne sait pas exprimer « l'un ou l'autre », et deux colonnes
+  /// obligatoires exigeraient une adresse de qui n'a qu'un téléphone — ce qui
+  /// est le cas le plus courant sur le marché visé.
+  phoneE164 String?
+  email     String?
+
+  /// Ce que la visite a appris. C'est la seule chose qui distingue deux
+  /// candidats solvables trois semaines plus tard.
+  note String?
+
+  status ApplicantStatus @default(received)
+
+  /// Le jour où il s'est présenté. Une date, pas l'horodatage de la saisie :
+  /// on enregistre le soir une visite du matin.
+  appliedOn DateTime @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
 }
 
 // ─── Locataires et baux ──────────────────────────────────────────────────────
@@ -638,9 +733,23 @@ model Lease {
   reminderEmails RentReminderEmail[]
   revisions   RentRevision[]
   guarantors  Guarantor[]
+  plans       SettlementPlan[]
+  chargeLines LeaseChargeLine[]
+  settlements ChargeSettlement[]
 
   @@index([unitId, status])
   @@index([tenantId])
+  /// LES DÉPARTS À VENIR — « quels baux s'arrêtent dans les deux mois » est la
+  /// seule lecture des quatre colonnes du congé.
+  ///
+  /// DÉCLARÉ PARCE QU'IL EXISTE. La migration du congé l'a créé à la main, et le
+  /// schéma l'ignorait : une sonde `migrate dev --create-only` a rendu un
+  /// `DROP INDEX` dessus. C'est MOT POUR MOT le défaut que le premier commit de
+  /// cette session venait de corriger sur `WorkThreadEmail_notificationId_idx` —
+  /// écrire un index en SQL sans le déclarer ici le condamne à disparaître dans
+  /// la première migration générée ensuite, glissé dans un lot qui parle d'autre
+  /// chose.
+  @@index([moveOutOn])
 }
 
 /// Une échéance de loyer pour une période donnée.
@@ -669,9 +778,115 @@ model RentCharge {
   createdAt DateTime @default(now())
 
   payments Payment[]
+  /// Les lignes libres, RECOPIÉES du bail à l'émission — voir `RentChargeLine`.
+  lines    RentChargeLine[]
 
   @@unique([leaseId, periodStart])
   @@index([dueOn])
+}
+
+/// UNE LIGNE DE CHARGE RÉCURRENTE, telle qu'elle est convenue au bail.
+///
+/// `waterMinor` et `powerMinor` ne couvraient que ce qui se CALCULE — un index
+/// de compteur multiplié par un tarif. Tout le reste de ce qu'un bailleur
+/// refacture se TAPE : ordures ménagères, gardiennage, ascenseur, entretien des
+/// parties communes. Faute de place où l'écrire, ces sommes étaient ajoutées au
+/// loyer, et la quittance appelait « loyer » ce qui n'en était pas.
+///
+/// C'est la DÉFINITION, pas la dette. Elle dit ce qui sera appelé chaque mois ;
+/// l'échéance émise en porte une copie figée.
+model LeaseChargeLine {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  /// Ce que le locataire lira sur sa quittance. Deux lignes du même libellé sur
+  /// un même bail seraient indiscernables sur le papier : l'unicité le refuse.
+  label String
+
+  amountMinor Int
+
+  kind ChargeLineKind
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leaseId, label])
+}
+
+/// LA MÊME LIGNE, FIGÉE DANS UNE ÉCHÉANCE ÉMISE.
+///
+/// Même règle que `rentMinor`, `waterMinor` et `powerMinor` : corriger la
+/// définition plus tard ne doit pas réécrire un mois déjà appelé. Une quittance
+/// rééditée en décembre pour le mois de mars doit porter le montant de mars.
+///
+/// Sans cette copie, la seule façon de servir une quittance passée serait de
+/// relire la définition COURANTE — c'est-à-dire de mentir sur le papier remis
+/// au locataire, en silence et sans trace.
+model RentChargeLine {
+  id       String     @id @default(uuid()) @db.Uuid
+  chargeId String     @db.Uuid
+  charge   RentCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+
+  label       String
+  amountMinor Int
+  kind        ChargeLineKind
+
+  @@unique([chargeId, label])
+}
+
+/// UNE RÉGULARISATION DE CHARGES, ARRÊTÉE POUR UN EXERCICE.
+///
+/// Le commentaire de `ExpenseCategory.utility` la nommait déjà sans qu'elle
+/// existe : « la différence entre les deux est exactement ce qu'une
+/// régularisation de charges cherche ». Les provisions APPELÉES au locataire
+/// d'un côté, les dépenses RÉELLEMENT engagées de l'autre, et un solde.
+///
+/// POURQUOI LES SOMMES SONT STOCKÉES, alors que le relevé de gestion, lui, se
+/// recalcule à chaque lecture. Une régularisation est ARRÊTÉE : elle est
+/// notifiée au locataire, qui paie un complément ou reçoit un remboursement.
+/// Recalculée six mois plus tard — une dépense ressaisie, une facture arrivée
+/// en retard —, elle rendrait un autre chiffre que celui qu'on lui a réclamé.
+/// Le relevé de gestion n'engage personne ; celle-ci, si.
+///
+/// LE SOLDE N'EST PAS STOCKÉ, et c'est délibéré. Il vaut
+/// `provisionedMinor - actualMinor`, sans exception ni arrondi : une troisième
+/// colonne ne pourrait que diverger des deux premières, et rien ne dirait
+/// laquelle a raison. Positif, le bailleur doit un remboursement ; négatif, le
+/// locataire doit un complément.
+model ChargeSettlement {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  /// L'exercice régularisé, bornes incluses. Deux dates plutôt qu'une année :
+  /// un exercice ne commence pas partout le 1er janvier, et un bail signé en
+  /// avril se régularise d'avril à mars.
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+
+  /// Ce qui a été APPELÉ au locataire sur l'exercice, en provisions seules —
+  /// les forfaits sont dus quoi qu'il arrive et n'entrent pas au décompte.
+  provisionedMinor Int
+  /// Ce que le bailleur a RÉELLEMENT engagé sur l'exercice pour ce logement et
+  /// pour son immeuble.
+  actualMinor Int
+
+  currency Currency
+
+  /// Le jour où elle a été arrêtée. C'est cette date qui la rend opposable, pas
+  /// celle où la ligne a été écrite en base.
+  settledOn DateTime @db.Date
+
+  /// Ce que le décompte ne dit pas : une facture d'eau exceptionnelle, un mois
+  /// de vacance déduit.
+  note String?
+
+  createdAt DateTime @default(now())
+
+  /// Un exercice ne se régularise qu'une fois. Deux décomptes pour la même
+  /// période rendraient la question « combien doit-il ? » sans réponse.
+  @@unique([leaseId, periodStart])
 }
 
 model Payment {
@@ -849,6 +1064,72 @@ model PaymentProof {
   @@index([paymentId])
   /// Le balayage des réservations jamais montées interroge cette colonne seule.
   @@index([confirmedAt])
+}
+
+/// Un accord d'apurement : « 50 000 par mois pendant quatre mois ».
+///
+/// ═══ LA TROISIÈME ISSUE D'UN IMPAYÉ, QUE LE PRODUIT NE CONNAISSAIT PAS ═══
+///
+/// Les paiements partiels existaient déjà de fait — `Payment.amountMinor` est
+/// libre — et la relance comme la mise en demeure étaient là. Ce qui manquait
+/// était l'ACCORD : rien ne portait la promesse, ni le suivi de son respect. Un
+/// impayé n'avait donc que deux issues visibles dans le produit, payé ou pas,
+/// alors que la sortie réelle est presque toujours la troisième.
+///
+/// La conséquence était concrète : un locataire qui respectait scrupuleusement
+/// un échelonnement convenu à l'oral continuait de recevoir des relances
+/// automatiques pour la totalité de sa dette, et son solde s'affichait en rouge.
+/// Le produit travaillait contre l'accord que ses utilisateurs avaient passé.
+model SettlementPlan {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  agreedOn   DateTime @db.Date
+  totalMinor Int
+  currency   Currency
+  status     SettlementPlanStatus @default(active)
+
+  /// Ce qui a été convenu et que le barème ne dit pas : « après la vente de sa
+  /// moto », « son employeur retient sur salaire ». Lu par un humain.
+  note String?
+
+  createdById String?      @db.Uuid
+  createdBy   UserAccount? @relation("PlanCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  instalments SettlementInstalment[]
+
+  /// UN SEUL PLAN ACTIF PAR BAIL, tenu par un index unique PARTIEL en SQL —
+  /// Prisma ne sait pas déclarer la condition, et la migration l'écrit. Deux
+  /// plans en cours rendraient indéterminable ce qu'on attend ce mois-ci.
+  @@index([leaseId, status])
+}
+
+/// Une échéance du plan : une date, un montant.
+///
+/// ═══ AUCUNE COLONNE « PAYÉ », ET C'EST LE CŒUR DU MODÈLE ═══
+///
+/// Une colonne `paidMinor` entretenue à la main divergerait le jour où quelqu'un
+/// encaisse sans passer par le plan — ce qui est le cas normal, l'argent
+/// arrivant par `Payment` sur une échéance de loyer. Ce qui est payé se DÉDUIT
+/// donc des paiements du bail sur l'intervalle de l'échéance, et rien ne peut
+/// mentir : il n'y a qu'une source.
+///
+/// Le prix de ce choix est qu'« est-ce respecté ? » est un calcul et non une
+/// lecture. Il se paie une fois, dans `etatDuPlan`, et non à chaque encaissement.
+model SettlementInstalment {
+  id     String         @id @default(uuid()) @db.Uuid
+  planId String         @db.Uuid
+  plan   SettlementPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  dueOn       DateTime @db.Date
+  amountMinor Int
+
+  /// UNE SEULE ÉCHÉANCE PAR PLAN ET PAR DATE : deux montants dus le même jour se
+  /// disent en une ligne, et les séparer rendrait le respect indécidable.
+  @@unique([planId, dueOn])
 }
 
 // ─── Terrain ─────────────────────────────────────────────────────────────────
@@ -1453,6 +1734,17 @@ enum Currency {
 /// fermée forcerait à ranger une dépense réelle dans une case fausse, ce qui
 /// abîme le résultat plus sûrement qu'une ligne non classée. Le libellé reste là
 /// pour dire ce que la catégorie ne dit pas.
+/// Ce qu'une ligne de charge devient à la régularisation.
+enum ChargeLineKind {
+  /// Une AVANCE sur une dépense réelle. Elle entre au décompte annuel, et le
+  /// solde revient au locataire ou lui est réclamé.
+  provision
+  /// Un montant DÛ, point. Un forfait de gardiennage convenu à 5 000 par mois
+  /// reste 5 000 même si le gardien a coûté moins : le rendre au locataire
+  /// reviendrait à réécrire le bail.
+  forfait
+}
+
 enum ExpenseCategory {
   /// Taxe foncière, patente, tout prélèvement public sur le bien.
   tax
@@ -1536,6 +1828,23 @@ enum LeaseStatus {
   pending
   active
   ended
+}
+
+/// Où en est un accord d'apurement.
+///
+/// QUATRE VALEURS, ET `broken` EST LA PLUS IMPORTANTE : sans elle, un plan que
+/// le locataire ne respecte plus resterait `active`, et le produit continuerait
+/// de retenir les relances au nom d'un accord mort. C'est le défaut que ce
+/// modèle doit le plus éviter — il transformerait une bienveillance en perte.
+///
+/// `honoured` ET `cancelled` SE DISTINGUENT, contrairement à ce qu'un seul
+/// « clos » dirait : l'un est un locataire qui a payé, l'autre un accord que le
+/// bailleur a retiré. Ce n'est pas la même personne qu'on rappelle l'an prochain.
+enum SettlementPlanStatus {
+  active
+  honoured
+  broken
+  cancelled
 }
 
 /// QUI a donné le congé. Deux valeurs, et la distinction se paie : un départ à
@@ -1668,10 +1977,51 @@ enum NotificationSeverity {
   low
 }
 
+/// L'état d'une annonce.
+enum ListingStatus {
+  /// Écrite, pas encore diffusée. L'état par défaut : on rédige une annonce
+  /// avant de la publier, et une annonce publiée par accident engage un prix.
+  draft
+  /// Diffusée. C'est le seul état où l'on attend des candidats.
+  published
+  /// Fermée. Le logement est reloué, ou l'on renonce. L'annonce RESTE : c'est
+  /// elle qui dit à quel prix on avait demandé, et combien de temps il a fallu.
+  closed
+}
+
+/// Où en est un candidat.
+enum ApplicantStatus {
+  /// Il s'est présenté. Rien d'autre n'est encore su.
+  received
+  /// Il a visité le logement.
+  visited
+  /// On lui a donné l'accord. UN SEUL par annonce n'est PAS tenu par la base :
+  /// un accord peut se retirer et se redonner à un autre le lendemain, et un
+  /// index unique partiel obligerait à passer par un état intermédiaire pour
+  /// un geste que le produit doit rendre immédiat.
+  accepted
+  /// On ne donne pas suite. L'ÉTAT EXISTE plutôt que la suppression : trois
+  /// semaines plus tard, « il n'a jamais postulé » et « on lui a dit non » ne
+  /// sont pas la même réponse à lui faire.
+  declined
+}
+
 enum NotificationChannel {
   in_app
   email
   sms
+  /// WhatsApp, par la MÊME API que le SMS — Twilio, avec un préfixe `whatsapp:`
+  /// sur l'expéditeur et le destinataire.
+  ///
+  /// CE QUE CE MEMBRE NE PROMET PAS. Meta n'autorise un message SORTANT hors
+  /// d'une fenêtre de 24 h après le dernier message du destinataire que s'il
+  /// suit un MODÈLE approuvé par ses soins. Une relance de loyer est par nature
+  /// non sollicitée : sans modèle approuvé, Twilio la refuse (code 63016) et la
+  /// couture rend `false` — le produit écrit alors `in_app`, et l'écran dit
+  /// qu'elle n'est pas partie. Le canal ne ment donc pas ; il exige une
+  /// démarche que le code ne peut pas faire à la place de l'exploitant, et le
+  /// produit le DIT là où on le choisit.
+  whatsapp
 }
 
 /// CE QU'UNE PERSONNE A CONFIRMÉ À L'INSCRIPTION — le texte, et le VERBE.

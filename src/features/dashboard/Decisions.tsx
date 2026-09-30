@@ -246,6 +246,68 @@ const DETAIL: Record<string, Champ[]> = {
      tout : un départ à l'initiative du locataire et une reprise par le bailleur
      n'ouvrent pas les mêmes droits et ne se racontent pas pareil devant qui
      arbitre. Les deux dates suivent, dans l'ordre où elles arrivent. */
+  /* LE PLAN CONVENU. Le TOTAL et le NOMBRE d'échéances, parce que « 150 000 »
+     seul ne dit pas si c'est en deux fois ou en douze — et c'est la différence
+     entre un arrangement et un abandon de créance déguisé. */
+  'lease.settlement_plan': [
+    { champ: 'totalMinor', nature: 'argent' },
+    { champ: 'agreedOn', nature: 'date' },
+    { champ: 'instalments', nature: 'texte' },
+  ],
+  /* LE PLAN CLOS. Le SORT d'abord : honoré, rompu ou retiré ne désignent pas la
+     même personne l'an prochain, et c'est la seule chose qu'on vient chercher. */
+  'lease.settlement_close': [
+    { champ: 'status', nature: 'texte' },
+    { champ: 'totalMinor', nature: 'argent' },
+  ],
+  /* L'ANNONCE OUVERTE. Le LOYER DEMANDÉ d'abord : c'est le seul chiffre que ce
+     geste engage, et celui qu'on vient relire quand un logement ne se reloue
+     pas. La date de disponibilité suit — une annonce ouverte trop tard explique
+     une vacance mieux qu'un prix. */
+  'listing.open': [
+    { champ: 'rentMinor', nature: 'argent' },
+    { champ: 'depositMinor', nature: 'argent' },
+    { champ: 'availableFrom', nature: 'date' },
+  ],
+  /* L'ÉTAT D'AVANT ET CELUI D'APRÈS. « Publiée » seul ne dit pas si l'on vient
+     de la rédiger ou de la rouvrir après l'avoir fermée — et la seconde est un
+     renoncement qu'on revient sur. */
+  'listing.status': [
+    { champ: 'from', nature: 'texte' },
+    { champ: 'to', nature: 'texte' },
+    { champ: 'rentMinor', nature: 'argent' },
+  ],
+  /* LE CANDIDAT NOMMÉ, et les deux états. Donner son accord engage le logement ;
+     le retirer le libère. « Refusé » se trace aussi : trois semaines plus tard,
+     « il n'a jamais postulé » et « on lui a dit non » ne sont pas la même
+     réponse à lui faire. */
+  'applicant.status': [
+    { champ: 'fullName', nature: 'texte' },
+    { champ: 'from', nature: 'texte' },
+    { champ: 'to', nature: 'texte' },
+  ],
+  /* LA CHARGE CONVENUE. Le LIBELLÉ d'abord : c'est lui qui identifie, la somme
+     seule ne dit pas ce qu'on refacture. La NATURE ensuite, parce qu'elle décide
+     si cet argent revient au locataire au décompte annuel. */
+  'lease.charge_line_added': [
+    { champ: 'label', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'kind', nature: 'texte' },
+  ],
+  'lease.charge_line_removed': [
+    { champ: 'label', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'kind', nature: 'texte' },
+  ],
+  /* LE DÉCOMPTE ARRÊTÉ. LES DEUX SOMMES, jamais le solde : c'est leur écart
+     qu'une contestation attaque, et un solde seul ne dit pas laquelle des deux
+     on lui reproche. */
+  'lease.charge_settlement': [
+    { champ: 'periodStart', nature: 'date' },
+    { champ: 'periodEnd', nature: 'date' },
+    { champ: 'provisionedMinor', nature: 'argent' },
+    { champ: 'actualMinor', nature: 'argent' },
+  ],
   'lease.notice': [
     { champ: 'givenBy', nature: 'texte' },
     { champ: 'givenOn', nature: 'date' },

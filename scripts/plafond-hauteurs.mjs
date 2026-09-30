@@ -647,7 +647,13 @@ const PLAFONDS = [
      c'est une réserve et non un résultat : sur les écrans applicatifs l'écart
      local/CI va de −67 à +21 px. Le travail `polices` corrigera la colonne
      large, et c'est lui qui fait autorité. */
-  { adresse: '/demo/depenses', largeur: 360, plafond: 1650, plafondLarge: 1671 },
+  /* 1671 → 1650 EN POLICE LARGE, RELEVÉ PAR `polices` LE 2026-09-30, comme le
+     commentaire ci-dessus l'annonçait. L'estimation locale avait 21 px de MOU,
+     et un plafond au-dessus de la mesure ne refuse plus rien : c'est ce que
+     cette garde appelle du mou, et elle le refuse au même titre qu'un
+     dépassement. Les deux colonnes coïncident désormais — la police large ne
+     rallonge pas cet écran sur cette machine-là. */
+  { adresse: '/demo/depenses', largeur: 360, plafond: 1650, plafondLarge: 1650 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
@@ -661,7 +667,20 @@ const PLAFONDS = [
   /* +48 px le 2026-09-30 : le bouton « Honoraires et relevé » sur la ligne
      de chaque mandataire. Un bouton de rangée et rien d'autre — le relevé
      lui-même vit dans une modale, et n'allonge donc pas l'écran. */
-  { adresse: '/demo/acces', largeur: 360, plafond: 2231, plafondLarge: 2343 },
+  /* 2343 → 2213 EN POLICE LARGE, même relevé et même motif : 130 px de mou,
+     le plus gros des deux. La colonne large reste SOUS l'étroite — 2213 contre
+     2231 — et ce n'est pas une anomalie : c'est la dissymétrie de largeur de
+     texte que `releve-polices-machine` mesure entre les deux machines, et qui
+     va dans les deux sens. */
+  { adresse: '/demo/acces', largeur: 360, plafond: 2231, plafondLarge: 2213 },
+  /* L'ÉCRAN DE LA VACANCE, né avec le lot des annonces. Trois indicateurs, une
+     note de portée inconditionnelle et un tableau d'annonces — la même forme
+     que l'écran des dépenses, qui rend 1650 à la même largeur. */
+  /* 1321 EN POLICE LARGE, RELEVÉ PAR `polices` : l'écran est PLUS COURT là-bas
+     qu'ici (1343), comme `/demo/acces`. La dissymétrie de largeur de texte
+     entre les deux machines va dans les deux sens, et recopier la colonne
+     étroite aurait laissé 22 px de mou sur la porte publique. */
+  { adresse: '/demo/vacance', largeur: 360, plafond: 1343, plafondLarge: 1321 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
@@ -789,6 +808,7 @@ const PLAFONDS = [
      de chaque mandataire. Un bouton de rangée et rien d'autre — le relevé
      lui-même vit dans une modale, et n'allonge donc pas l'écran. */
   { adresse: '/demo/acces', largeur: 1280, plafond: 1240, plafondLarge: 1240 },
+  { adresse: '/demo/vacance', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
@@ -873,8 +893,12 @@ const ADRESSES = routes.map((r) => r.adresse)
        2026-09-13 ; la 27e `/demo/mes-donnees`, le 2026-09-16 ; la 28e
        `/conditions-generales`, le 2026-09-18.
    4 = les deux adresses hors portée, à leurs deux largeurs.
+
+  52 → 54 LE 2026-09-30 : `/demo/depenses`, l'écran de ce qui sort du parc.
+  54 → 56 LE 2026-09-30 : `/demo/vacance`, l'écran de ce qui ne rapporte rien —
+       le second écran du même jour, et le dernier des huit lots.
 */
-const ATTENDUS = 54
+const ATTENDUS = 56
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.

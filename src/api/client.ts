@@ -257,6 +257,13 @@ export interface AdhesionApi {
       c'est exactement l'ancien cron quotidien. */
   reminderHour?: number
   reminderTimeZone?: string
+  /** PAR QUEL CANAL la relance part. Absent d'un serveur antérieur : `sms` est
+      alors le défaut du schéma, et c'est exactement ce que la route écrivait en
+      dur. `in_app` et `email` ne sont pas réglables — le premier est ce que le
+      produit écrit quand rien n'est parti, le second n'a pas de rédaction de
+      relance — mais le TYPE porte les quatre, parce qu'un serveur peut rendre
+      un parc dont la colonne a été posée autrement. */
+  reminderChannel?: 'in_app' | 'email' | 'sms' | 'whatsapp'
 }
 
 export interface SessionApi {
@@ -690,6 +697,200 @@ export const api = {
    */
   decisions: <T>(parkId: string, avant?: string) =>
     requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
+
+  /**
+   * LE PLAN D'APUREMENT D'UN BAIL, avec ce qui a été imputé sur chaque échéance.
+   *
+   * Rend `{ plan: null }` quand il n'y en a pas — et `null` plutôt qu'un 404 :
+   * l'absence d'accord est une réponse, pas une adresse introuvable, et l'écran
+   * doit pouvoir proposer d'en convenir un.
+   *
+   * AUCUNE COLONNE « PAYÉ » N'EXISTE EN BASE : ce qui est réglé se déduit des
+   * paiements du bail depuis l'accord, imputés chronologiquement. Une colonne
+   * entretenue divergerait dès le premier encaissement fait hors du plan, qui
+   * est le cas normal.
+   */
+  settlementPlan: <T>(parkId: string, leaseId: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/settlement-plan`),
+
+  /**
+   * CONVENIR D'UN PLAN. Au propriétaire seul : échelonner, c'est renoncer à
+   * exiger immédiatement ce qui est dû.
+   *
+   * Les échéances s'écrivent UNE PAR UNE et ne se déduisent pas d'un nombre de
+   * mois : le premier versement est souvent plus gros, et les dates suivent la
+   * paie du locataire plutôt que le calendrier. `409 plan_actif` si le bail en a
+   * déjà un en cours.
+   */
+  createSettlementPlan: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: {
+      agreedOn: string
+      note?: string | null
+      instalments: { dueOn: string; amountMinor: number }[]
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/settlement-plans`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * CLORE UN PLAN — honoré, rompu, ou retiré.
+   *
+   * `broken` est la valeur qui compte : sans elle, un plan que le locataire ne
+   * respecte plus resterait actif, et le produit continuerait de retenir les
+   * relances au nom d'un accord mort. On ne revient pas à `active` : un plan
+   * clos est clos, et l'on en convient un nouveau.
+   */
+  closeSettlementPlan: <T>(
+    parkId: string,
+    planId: string,
+    status: 'honoured' | 'broken' | 'cancelled',
+  ) =>
+    requete<T>(`/parks/${parkId}/settlement-plans/${planId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  /**
+   * LES ANNONCES DU PARC, chacune avec ses candidats.
+   *
+   * Aux deux rôles de gestion : relouer est l'administratif courant, le cœur de
+   * ce qu'on délègue, et publier une annonce n'engage aucune dépense.
+   */
+  listings: <T>(parkId: string) => requete<T>(`/parks/${parkId}/listings`),
+
+  /**
+   * OUVRIR UNE ANNONCE pour un logement.
+   *
+   * `409 logement_occupe` si le logement a un bail en cours SANS départ annoncé.
+   * Un congé donné rouvre la fenêtre : c'est là que publier évite la vacance.
+   */
+  openListing: <T>(
+    parkId: string,
+    unitId: string,
+    corps: {
+      rentMinor: number
+      depositMinor: number
+      availableFrom: string
+      description?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}/listings`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Publier, remettre en brouillon ou fermer. L'annonce fermée RESTE. */
+  setListingStatus: <T>(parkId: string, listingId: string, status: 'draft' | 'published' | 'closed') =>
+    requete<T>(`/parks/${parkId}/listings/${listingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  /**
+   * ENREGISTRER UN CANDIDAT. Un téléphone OU une adresse est exigé : quelqu'un
+   * qu'on ne peut pas rappeler n'est pas un candidat, c'est une ligne qui
+   * occupera la liste jusqu'à ce qu'on se demande qui c'était.
+   */
+  addApplicant: <T>(
+    parkId: string,
+    listingId: string,
+    corps: {
+      fullName: string
+      phoneE164?: string | null
+      email?: string | null
+      note?: string | null
+      appliedOn: string
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/listings/${listingId}/applicants`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Où en est un candidat, et ce que la visite a appris. */
+  setApplicantStatus: <T>(
+    parkId: string,
+    applicantId: string,
+    corps: { status: 'received' | 'visited' | 'accepted' | 'declined'; note?: string | null },
+  ) =>
+    requete<T>(`/parks/${parkId}/applicants/${applicantId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * LES CHARGES CONVENUES AU BAIL, et les décomptes déjà arrêtés.
+   *
+   * Au gestionnaire aussi : c'est lui qui répond au locataire quand celui-ci
+   * demande ce que couvrent ses provisions.
+   */
+  leaseChargeLines: <T>(parkId: string, leaseId: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/charge-lines`),
+
+  /**
+   * CONVENIR D'UNE LIGNE. Au propriétaire seul : c'est une clause du bail.
+   *
+   * `409 libelle_deja_pris` si le bail en porte déjà une du même nom — deux
+   * « Ordures ménagères » sur une quittance seraient indiscernables.
+   */
+  addLeaseChargeLine: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: { label: string; amountMinor: number; kind: 'provision' | 'forfait' },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/charge-lines`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * RETIRER UNE LIGNE. Elle cesse d'être appelée le mois prochain ; les
+   * quittances déjà émises en gardent leur copie figée.
+   */
+  removeLeaseChargeLine: <T>(parkId: string, lineId: string) =>
+    requete<T>(`/parks/${parkId}/charge-lines/${lineId}`, { method: 'DELETE' }),
+
+  /**
+   * LE BROUILLON D'UN DÉCOMPTE : trois faits, jamais additionnés.
+   *
+   * Les provisions appelées sont exactes. Les dépenses du LOGEMENT lui sont
+   * imputables en entier ; celles de l'IMMEUBLE ne le sont que par une clé de
+   * répartition que le produit n'a pas — d'où deux nombres séparés, et une somme
+   * que le gestionnaire arrête lui-même.
+   */
+  settlementDraft: <T>(parkId: string, leaseId: string, from: string, to: string) => {
+    /* LES BORNES EN SUFFIXE, et le chemin composé d'une seule pièce : la garde
+       des orphelins lit les chemins tels qu'ils s'écrivent ici, et un `?` collé
+       au gabarit lui cachait la route entière. */
+    const bornes = new URLSearchParams({ from, to }).toString()
+    return requete<T>(`/parks/${parkId}/leases/${leaseId}/settlement-draft` + `?${bornes}`)
+  },
+
+  /**
+   * ARRÊTER LE DÉCOMPTE. Le serveur recalcule les provisions et ignore ce que le
+   * client lui dicterait : c'est le chiffre qu'on oppose ensuite au locataire.
+   *
+   * `409 exercice_deja_regularise` — un exercice ne se régularise qu'une fois.
+   */
+  settleCharges: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: {
+      periodStart: string
+      periodEnd: string
+      settledOn: string
+      actualMinor: number
+      note?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/settlements`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
 
   /**
    * LE PANNEAU ADMINISTRATIF D'UN BAIL : congé, révisions, garants.

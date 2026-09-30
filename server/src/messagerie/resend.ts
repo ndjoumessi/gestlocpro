@@ -24,6 +24,14 @@ export class MessagerieResend implements Messagerie {
     return false
   }
 
+  /* NI L'UN NI L'AUTRE : Resend n'envoie que du courriel. Rendre `true` pour
+     faire propre annoncerait un envoi qui n'a pas lieu — le mensonge exact que
+     cette couture existe pour empêcher, et c'est pourquoi les deux
+     fournisseurs se COMPOSENT au lieu de se remplacer. */
+  async envoyerWhatsApp(): Promise<boolean> {
+    return false
+  }
+
   async envoyerEmail(
     destinataire: string,
     sujet: string,

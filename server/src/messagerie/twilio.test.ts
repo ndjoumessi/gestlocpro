@@ -66,6 +66,41 @@ describe('l’envoi de SMS par Twilio', () => {
     expect(corps.get('Body')).toBe('votre code : ABCD')
   })
 
+  it('PRÉFIXE LES DEUX NUMÉROS en WhatsApp, et pas seulement le destinataire', async () => {
+    const avecWhatsApp = new MessagerieTwilio(
+      'ACfaux',
+      'un-jeton',
+      '+15550000000',
+      '+15551111111',
+    )
+    const appels = fauxFetch(new Response('{"sid":"SM2"}', { status: 201 }))
+
+    const parti = await avecWhatsApp.envoyerWhatsApp('+237677111111', 'loyer en retard')
+    expect(parti).toBe(true)
+
+    const corps = new URLSearchParams(String(appels[0]!.init.body))
+    /* LES DEUX, ET C'EST LA MOITIÉ QU'ON OUBLIE. Twilio choisit le transport
+       d'après le couple : un `To` préfixé et un `From` qui ne l'est pas rend
+       21211, et l'échec serait muet. */
+    expect(corps.get('To')).toBe('whatsapp:+237677111111')
+    expect(corps.get('From')).toBe('whatsapp:+15551111111')
+    /* ET L'EXPÉDITEUR WHATSAPP N'EST PAS CELUI DU SMS : sans cette ligne, le
+       cas passerait sur un adaptateur qui préfixe le numéro de SMS. */
+    expect(corps.get('From')).not.toBe('whatsapp:+15550000000')
+  })
+
+  it('rend FAUX sans RIEN POSTER quand aucun numéro WhatsApp n’est configuré', async () => {
+    const appels = fauxFetch(new Response('{"sid":"SM3"}', { status: 201 }))
+
+    /* `twilio` est construit avec TROIS arguments : un compte ouvert pour le
+       SMS, sans numéro WhatsApp — l'état normal. Émettre depuis l'expéditeur
+       SMS ferait refuser Meta, avec un code que personne n'irait lire. */
+    const parti = await twilio.envoyerWhatsApp('+237677111111', 'loyer en retard')
+
+    expect(parti).toBe(false)
+    expect(appels).toHaveLength(0)
+  })
+
   it('rend FAUX quand le fournisseur refuse, sans lever', async () => {
     fauxFetch(new Response('{"message":"unverified number","code":21608}', { status: 400 }))
     await expect(twilio.envoyerSms('+237677111111', 'texte')).resolves.toBe(false)
@@ -114,10 +149,16 @@ describe('la composition des deux fournisseurs', () => {
   it('achemine le SMS d’un côté et le courriel de l’autre', async () => {
     const traces: string[] = []
     const sms = {
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() { traces.push('sms'); return true },
       async envoyerEmail() { traces.push('sms→courriel'); return false },
     }
     const courriel = {
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() { traces.push('courriel→sms'); return false },
       async envoyerEmail() { traces.push('courriel'); return true },
     }
@@ -133,6 +174,9 @@ describe('la composition des deux fournisseurs', () => {
 
   it('retombe sur le journal quand un côté manque, sans emporter l’autre', async () => {
     const courriel = {
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() { return false },
       async envoyerEmail() { return true },
     }

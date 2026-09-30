@@ -136,8 +136,12 @@ const SANS_ECRAN = ['/app']
 
   Ajouter un écran applicatif oblige donc à toucher ce nombre, et le diff le
   montre.
+
+  54 → 57 (2026-09-30) : les dépenses, l'écran de ce qui sort du parc.
+  57 → 60 (2026-09-30) : la vacance, l'écran de ce qui ne rapporte rien — le
+  second du même jour, et le dernier des huit lots.
 */
-const ATTENDUS = 57
+const ATTENDUS = 60
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

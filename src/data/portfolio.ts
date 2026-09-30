@@ -736,6 +736,85 @@ export const MOIS_DEMO = `${PERIODE_DEMO.year}-${String(PERIODE_DEMO.month + 1).
  * un état que l'écran rend en mots, et il ne serait visible nulle part si les
  * trois lignes étaient payées.
  */
+/**
+ * DEUX ANNONCES POUR LA DÉMONSTRATION, ET UN LOGEMENT VIDE QUI N'EN A AUCUNE.
+ *
+ * La première est PUBLIÉE, sur `B4`, et porte deux candidats — l'écran a
+ * quelque chose à montrer. La seconde est FERMÉE, sur `C2` : c'est l'annonce
+ * qui a amené Sylvie Manga, et elle survit pour dire à quel prix on avait
+ * demandé. `C3`, vide lui aussi, n'a RIEN — c'est le cas qui coûte, et celui
+ * que cet écran existe pour rendre visible.
+ *
+ * CETTE ABSENCE EST DÉLIBÉRÉE, ET ELLE EST CE QUI REND UN CAS MESURABLE.
+ * Première rédaction : une annonce par logement vide, donc zéro logement non
+ * annoncé. Le compteur « logements vides » et le compte des annonces ouvertes
+ * rendaient alors le MÊME nombre, et une mutation qui dérivait le premier des
+ * seconds passait au vert. Une démonstration où deux quantités distinctes
+ * coïncident ne démontre rien — c'est exactement ce que la mutation a dit.
+ *
+ * Le loyer demandé DIFFÈRE de celui du logement dans les deux cas : c'est la
+ * distinction que le lot porte, et une démonstration où les deux coïncident ne
+ * l'aurait pas montrée non plus.
+ */
+export const ANNONCES_DEMO: {
+  id: string
+  unitId: string
+  rentMinor: number
+  depositMinor: number
+  availableFrom: string
+  description: string | null
+  status: 'draft' | 'published' | 'closed'
+  applicants: {
+    id: string
+    fullName: string
+    phoneE164: string | null
+    email: string | null
+    note: string | null
+    status: 'received' | 'visited' | 'accepted' | 'declined'
+    appliedOn: string
+  }[]
+}[] = [
+  {
+    id: 'ann-demo-1',
+    unitId: 'B4',
+    rentMinor: 128000,
+    depositMinor: 256000,
+    availableFrom: `${MOIS_DEMO}-15`,
+    description: 'Deux chambres, eau et courant au compteur, quartier calme.',
+    status: 'published',
+    applicants: [
+      {
+        id: 'cand-demo-1',
+        fullName: 'Chantal Ekwalla',
+        phoneE164: '+237677214408',
+        email: null,
+        note: 'Visite faite, cherche pour le mois prochain.',
+        status: 'visited',
+        appliedOn: `${MOIS_DEMO}-04`,
+      },
+      {
+        id: 'cand-demo-2',
+        fullName: 'Paul Etoga',
+        phoneE164: null,
+        email: 'paul.etoga@example.com',
+        note: null,
+        status: 'received',
+        appliedOn: `${MOIS_DEMO}-07`,
+      },
+    ],
+  },
+  {
+    id: 'ann-demo-2',
+    unitId: 'C2',
+    rentMinor: 138000,
+    depositMinor: 276000,
+    availableFrom: `${MOIS_DEMO}-01`,
+    description: null,
+    status: 'closed',
+    applicants: [],
+  },
+]
+
 export const DEPENSES_DEMO: {
   id: string
   buildingId: string | null

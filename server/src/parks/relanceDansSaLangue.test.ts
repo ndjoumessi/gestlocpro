@@ -37,6 +37,9 @@ function cookieDe(res: request.Response): string {
 let sujets: string[] = []
 let rétablir: () => void = () => {}
 const capture: Messagerie = {
+  async envoyerWhatsApp() {
+    return false
+  },
   async envoyerSms() {
     return false
   },

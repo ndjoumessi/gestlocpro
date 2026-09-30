@@ -131,6 +131,13 @@ const DESTRUCTIONS_ATOMIQUES = [
      quelqu'un l'a effacé. */
   'guarantor.remove',
   'inspection.photo_delete',
+  /* LA CHARGE RETIRÉE DU BAIL. Sa ligne ne survit pas — ni statut ni corbeille —
+     et son retrait change ce qui sera APPELÉ dès le mois prochain : une
+     quittance passe de 82 000 à 75 000 sans qu'aucun loyer n'ait bougé. Le
+     locataire qui compare deux quittances vient poser exactement cette
+     question, et la trace est la seule chose qui puisse y répondre — la
+     définition, elle, n'existe plus. */
+  'lease.charge_line_removed',
   'payment.delete',
   /* LA PREUVE DE PAIEMENT RETIRÉE. Ni la ligne ni les octets ne survivent, et la
      trace est la seule chose qui dira ensuite qu'une pièce avait été versée puis

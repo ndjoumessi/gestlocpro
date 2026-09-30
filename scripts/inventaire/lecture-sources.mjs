@@ -724,7 +724,11 @@ export const PLANCHERS_DE_LECTURE = {
      à lui seul — quatre pour le congé, trois pour la révision, quatre pour le
      garant — et c'est le formulaire le plus long ajouté depuis les fiches de
      locataire. */
-  'champs de formulaire': 152,
+  /* 152 → 173 le 2026-09-30 : 193 champs lus. Les trois lots du jour ont chacun
+     ajouté un formulaire — les charges du bail, le canal de la relance, et
+     l'annonce avec ses cinq champs plus les quatre de son candidat. Le nombre
+     est celui que `planchersDeLecture` a demandé, pas un arrondi de confort. */
+  'champs de formulaire': 173,
   /* 390 → 444 le 2026-09-30 : 494 titres lus. Ceux des deux écrans neufs, ceux
      de leurs modales, et les cinq lignes du relevé de gestion qui portent
      chacune son libellé. */

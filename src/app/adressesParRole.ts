@@ -45,6 +45,10 @@ export const ROLES_PAR_ADRESSE: Record<string, Role[]> = {
   /* Les DÉPENSES : le gestionnaire saisit — c'est souvent lui qui a payé le
      syndic — et le locataire n'a rien à voir avec ce que le parc dépense. */
   depenses: ['owner', 'manager'],
+  /* LA VACANCE : même liste, et pour la même raison. Relouer est l'administratif
+     courant ; le locataire n'a rien à voir avec les logements qu'on cherche à
+     louer, et le serveur le lui refuse déjà. */
+  vacance: ['owner', 'manager'],
   acces: ['owner', 'manager'],
   /* Le propriétaire seul : il délègue, et ces deux écrans sont ses moyens de
      contrôler ce qu'il a délégué. Le serveur refuse déjà le registre des

@@ -45,6 +45,9 @@ function cookieDe(res: request.Response): string {
 /** Les adresses réellement visées par la messagerie, dans l'ordre. */
 let visees: string[] = []
 const messagerieDeSonde: Messagerie = {
+  async envoyerWhatsApp() {
+    return false
+  },
   async envoyerSms() {
     return false
   },
@@ -237,6 +240,9 @@ describe('le courriel lui-même', () => {
        que le premier ne doit pas perdre le pied. */
     const { parkId, unitId, cookieLocataire } = await parcAvecUnLocataire()
     const capture: Messagerie = {
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -354,6 +360,9 @@ describe('la langue du courriel', () => {
 
     const corps: { adresse: string; sujet: string }[] = []
     const capture: Messagerie = {
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -393,6 +402,9 @@ describe('la langue du courriel', () => {
 
     const sujets: string[] = []
     const capture: Messagerie = {
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { z } from 'zod'
 import { Prisma } from '../generated/prisma/client.js'
-import type { ParkRole } from '../generated/prisma/client.js'
+import type { Currency, ParkRole } from '../generated/prisma/client.js'
 import { prisma } from '../db.js'
 import {
   creerCode,
@@ -3227,6 +3227,14 @@ const schemaCorrectionDuParc = z
       .string()
       .refine(estUnFuseauConnu, { message: 'Fuseau horaire inconnu' })
       .optional(),
+    /** PAR QUEL CANAL la relance part. DEUX MEMBRES SEULEMENT sur les quatre que
+        l'énumération porte : `in_app` est ce que le produit ÉCRIT quand rien
+        n'est parti — un constat, pas une intention — et le régler comme une
+        intention ferait choisir « ne rien envoyer » sous le nom d'un canal.
+        `email` n'a pas de rédaction de relance : le choisir enverrait un SMS,
+        ou rien, sans que l'écran puisse le dire. Prisma ne sait pas restreindre
+        un enum à deux membres ; zod, si. */
+    reminderChannel: z.enum(['sms', 'whatsapp']).optional(),
   })
   .refine(
     (v) =>
@@ -3238,7 +3246,8 @@ const schemaCorrectionDuParc = z
       v.autoReminders !== undefined ||
       v.reminderMilestoneDays !== undefined ||
       v.reminderHour !== undefined ||
-      v.reminderTimeZone !== undefined,
+      v.reminderTimeZone !== undefined ||
+      v.reminderChannel !== undefined,
     { message: 'Rien à corriger' },
   )
 
@@ -3825,6 +3834,9 @@ parksRouter.patch(
         ...(corps.reminderHour !== undefined ? { reminderHour: corps.reminderHour } : {}),
         ...(corps.reminderTimeZone !== undefined
           ? { reminderTimeZone: corps.reminderTimeZone }
+          : {}),
+        ...(corps.reminderChannel !== undefined
+          ? { reminderChannel: corps.reminderChannel }
           : {}),
       },
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
@@ -6009,10 +6021,14 @@ parksRouter.post(
      * besoin, et `RentCharge` ne la porte pas — elle appartient au parc, comme
      * partout ailleurs dans le produit.
      */
-    const { currency: devise } = await prisma.park.findUniqueOrThrow({
-      where: { id: parkId },
-      select: { currency: true },
-    })
+    const { currency: devise, reminderChannel: canalVoulu } =
+      await prisma.park.findUniqueOrThrow({
+        where: { id: parkId },
+        /* LE CANAL SE LIT AVEC LA DEVISE, dans la même requête : c'est un
+           réglage du PARC, au même titre, et un second aller pour un enum
+           serait un aller pour rien. */
+        select: { currency: true, reminderChannel: true },
+      })
 
     const envoyees: string[] = []
     const ignorees: { leaseId: string; reason: string }[] = []
@@ -6076,9 +6092,25 @@ parksRouter.post(
        * partie.
        */
       const texte = `${bail.tenant.fullName} — loyer en retard de ${jours} j. Merci de régulariser.`
-      const parti = bail.tenant.phoneE164
-        ? await laMessagerie().envoyerSms(bail.tenant.phoneE164, texte)
-        : false
+      /**
+       * LE CANAL SUIT LE RÉGLAGE DU PARC, et le canal ÉCRIT suit l'envoi.
+       *
+       * `channel` disait `'sms'` en dur : le produit ne savait relancer que
+       * par là. WhatsApp atteint plus de gens sur le marché visé, et coûte
+       * moins par envoi.
+       *
+       * LE CANAL VOULU N'EST PAS LE CANAL ÉCRIT. On écrit celui par lequel le
+       * message est RÉELLEMENT parti, et `in_app` quand rien n'est parti — ce
+       * qui est précisément ce qui arrive à une relance WhatsApp tant qu'aucun
+       * modèle n'est approuvé par Meta. Écrire le canal VOULU rendrait la
+       * colonne inutile : elle dirait l'intention, que le réglage porte déjà,
+       * et plus jamais le fait.
+       */
+      const parti = !bail.tenant.phoneE164
+        ? false
+        : canalVoulu === 'whatsapp'
+          ? await laMessagerie().envoyerWhatsApp(bail.tenant.phoneE164, texte)
+          : await laMessagerie().envoyerSms(bail.tenant.phoneE164, texte)
 
       await prisma.notification.create({
         data: {
@@ -6109,7 +6141,7 @@ parksRouter.post(
           },
           severity: jours >= 15 ? 'high' : 'medium',
           unitId: bail.unitId,
-          channel: parti ? 'sms' : 'in_app',
+          channel: parti ? canalVoulu : 'in_app',
           ...(parti ? { sentAt: new Date() } : {}),
           //
           // La clé est posée ou ABSENTE, jamais à `undefined` : un locataire
@@ -7808,7 +7840,7 @@ parksRouter.post(
      * jusqu'à la période et les tarifs se lisent en bloc, puis se répartissent
      * en mémoire. Un parc de cent logements ferait sinon deux cents allers.
      */
-    const [releves, tarifs] = await Promise.all([
+    const [releves, tarifs, appelsExistants] = await Promise.all([
       prisma.meterReading.findMany({
         where: { unitId: { in: baux.map((b) => b.unitId) }, periodStart: { lte: debut } },
         select: { unitId: true, utility: true, periodStart: true, indexValue: true },
@@ -7818,7 +7850,17 @@ parksRouter.post(
         orderBy: { effectiveFrom: 'desc' },
         select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
       }),
+      /* QUI ÉTAIT DÉJÀ APPELÉ POUR CE MOIS, lu AVANT d'écrire. `skipDuplicates`
+         rend un compte, pas une liste : il dit combien d'échéances sont nées,
+         jamais lesquelles. Cette lecture est la seule façon de distinguer
+         ensuite une échéance neuve d'une échéance rappelée — voir le gel des
+         lignes libres plus bas, qui en dépend entièrement. */
+      prisma.rentCharge.findMany({
+        where: { leaseId: { in: baux.map((b) => b.id) }, periodStart: debut },
+        select: { leaseId: true },
+      }),
     ])
+    const dejaAppeles = new Set(appelsExistants.map((c) => c.leaseId))
     const relevesParLogement = new Map<string, typeof releves>()
     for (const r of releves) {
       const liste = relevesParLogement.get(r.unitId) ?? []
@@ -7853,6 +7895,43 @@ parksRouter.post(
       })),
       skipDuplicates: true,
     })
+
+    /**
+     * LES LIGNES LIBRES SE FIGENT ICI, ET SEULEMENT SUR CE QUI VIENT DE NAÎTRE.
+     *
+     * `createMany` ne sait pas créer de relations imbriquées, et il ne rend pas
+     * les identifiants créés — d'où la relecture. Le filtre sur `dejaAppeles`
+     * est ce qui compte : sans lui, rappeler un mois déjà appelé poserait sur
+     * SES échéances les lignes telles qu'elles sont AUJOURD'HUI. Une ligne
+     * ajoutée au bail en décembre apparaîtrait sur la quittance de mars, et le
+     * gel à l'émission serait un gel pour rien.
+     *
+     * DEUX REQUÊTES POUR TOUT LE PARC, comme les relevés plus haut, et non deux
+     * par bail.
+     */
+    const neufs = baux.filter((b) => !dejaAppeles.has(b.id)).map((b) => b.id)
+    if (neufs.length > 0) {
+      const [echeances, definitions] = await Promise.all([
+        prisma.rentCharge.findMany({
+          where: { leaseId: { in: neufs }, periodStart: debut },
+          select: { id: true, leaseId: true },
+        }),
+        prisma.leaseChargeLine.findMany({
+          where: { leaseId: { in: neufs } },
+          select: { leaseId: true, label: true, amountMinor: true, kind: true },
+        }),
+      ])
+      const echeanceParBail = new Map(echeances.map((e) => [e.leaseId, e.id]))
+      const aFiger = definitions.flatMap((d) => {
+        const chargeId = echeanceParBail.get(d.leaseId)
+        return chargeId
+          ? [{ chargeId, label: d.label, amountMinor: d.amountMinor, kind: d.kind }]
+          : []
+      })
+      if (aFiger.length > 0) {
+        await prisma.rentChargeLine.createMany({ data: aFiger, skipDuplicates: true })
+      }
+    }
 
     if (count > 0) {
       await prisma.auditEvent.create({
@@ -10770,5 +10849,1038 @@ parksRouter.delete(
     })
 
     res.status(204).end()
+  },
+)
+
+// ─── Plan d'apurement ────────────────────────────────────────────────────────
+
+const schemaPlan = z
+  .object({
+    agreedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    note: z.string().trim().max(2000).nullish(),
+    /**
+     * LES ÉCHÉANCES, ÉCRITES UNE PAR UNE et non déduites d'un nombre de mois.
+     *
+     * Un « 200 000 en quatre fois » calculé ici rendrait quatre échéances égales
+     * au jour près, et ce n'est presque jamais l'accord réel : le premier
+     * versement est souvent plus gros, et les dates suivent la paie du locataire
+     * plutôt que le calendrier. Les déduire obligerait à négocier contre le
+     * produit.
+     */
+    instalments: z
+      .array(
+        z.object({
+          dueOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+          amountMinor: z.number().int().positive(),
+        }),
+      )
+      .min(1),
+  })
+  /* DES DATES DISTINCTES : deux montants dus le même jour se disent en une
+     ligne, et les séparer rendrait le respect indécidable. La base le tient
+     aussi, par son unique — cette garde-ci rend le refus lisible. */
+  .refine((c) => new Set(c.instalments.map((e) => e.dueOn)).size === c.instalments.length, {
+    message: 'Deux échéances ne peuvent pas porter la même date',
+    path: ['instalments'],
+  })
+
+/**
+ * LA FORME SERVIE D'UN PLAN, avec l'état DÉDUIT de chaque échéance.
+ *
+ * ═══ CE QUI EST PAYÉ NE SE LIT PAS, IL SE CALCULE ═══
+ *
+ * Aucune colonne « payé » n'existe sur une échéance de plan : l'argent arrive
+ * par `Payment`, sur une échéance de LOYER, pas sur une ligne de plan. Une
+ * colonne entretenue à la main divergerait dès le premier encaissement fait
+ * hors du plan — c'est-à-dire le cas normal.
+ *
+ * L'imputation est CHRONOLOGIQUE et cumulative : on somme tout ce que le bail a
+ * encaissé depuis l'accord, puis on remplit les échéances dans l'ordre. Un
+ * locataire qui paie 120 000 d'un coup sur un plan à 50 000 par mois solde donc
+ * la première échéance et entame la deuxième, ce qui est exactement ce qu'un
+ * humain conclurait.
+ */
+function enPlanServi(
+  plan: {
+    id: string
+    agreedOn: Date
+    totalMinor: number
+    currency: string
+    status: string
+    note: string | null
+    instalments: { id: string; dueOn: Date; amountMinor: number }[]
+  },
+  encaisseDepuisLAccord: number,
+) {
+  let reste = encaisseDepuisLAccord
+  const echeances = [...plan.instalments]
+    .sort((a, b) => a.dueOn.getTime() - b.dueOn.getTime())
+    .map((e) => {
+      const impute = Math.min(reste, e.amountMinor)
+      reste -= impute
+      return {
+        id: e.id,
+        dueOn: e.dueOn.toISOString().slice(0, 10),
+        amountMinor: e.amountMinor,
+        paidMinor: impute,
+      }
+    })
+
+  return {
+    id: plan.id,
+    agreedOn: plan.agreedOn.toISOString().slice(0, 10),
+    totalMinor: plan.totalMinor,
+    currency: plan.currency,
+    status: plan.status,
+    note: plan.note,
+    instalments: echeances,
+    /* CE QUI A ÉTÉ IMPUTÉ, et non ce qui a été encaissé : un locataire qui paie
+       PLUS que son plan a soldé son plan, le surplus appartient à ses loyers
+       courants. Rendre l'encaissé brut ferait afficher « 320 000 sur 200 000 ». */
+    paidMinor: encaisseDepuisLAccord - reste,
+  }
+}
+
+/** Ce que le bail a encaissé depuis l'accord — la seule source du calcul. */
+async function encaisseDepuis(leaseId: string, depuis: Date): Promise<number> {
+  const somme = await prisma.payment.aggregate({
+    where: { charge: { leaseId }, paidOn: { gte: depuis } },
+    _sum: { amountMinor: true },
+  })
+  return somme._sum.amountMinor ?? 0
+}
+
+/**
+ * CONVENIR D'UN PLAN D'APUREMENT.
+ *
+ * Au propriétaire seul : accepter un échelonnement, c'est renoncer à exiger
+ * immédiatement ce qui est dû. C'est son argent, et c'est le partage de la
+ * validation d'un devis.
+ *
+ * `409 plan_actif` si le bail en a déjà un : la contrainte vit dans la base, par
+ * un index unique PARTIEL sur `status = 'active'`. Deux plans en cours rendraient
+ * indéterminable ce qu'on attend ce mois-ci.
+ */
+parksRouter.post(
+  '/:parkId/leases/:leaseId/settlement-plans',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaPlan.parse(req.body)
+
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const parc = await prisma.park.findUniqueOrThrow({
+      where: { id: parkId },
+      select: { currency: true },
+    })
+    /* LE TOTAL EST LA SOMME DES ÉCHÉANCES, jamais un champ à part : deux
+       nombres qui doivent s'accorder finissent par diverger, et c'est celui
+       qu'on affiche en gros qui serait faux. */
+    const totalMinor = corps.instalments.reduce((s, e) => s + e.amountMinor, 0)
+
+    try {
+      const plan = await prisma.settlementPlan.create({
+        data: {
+          leaseId,
+          agreedOn: new Date(`${corps.agreedOn}T00:00:00.000Z`),
+          totalMinor,
+          currency: parc.currency,
+          note: corps.note ?? null,
+          createdById: req.compteId!,
+          instalments: {
+            create: corps.instalments.map((e) => ({
+              dueOn: new Date(`${e.dueOn}T00:00:00.000Z`),
+              amountMinor: e.amountMinor,
+            })),
+          },
+        },
+        select: {
+          id: true,
+          agreedOn: true,
+          totalMinor: true,
+          currency: true,
+          status: true,
+          note: true,
+          instalments: { select: { id: true, dueOn: true, amountMinor: true } },
+        },
+      })
+
+      /* UN PLAN SUSPEND DE FAIT L'EXIGIBILITÉ D'UNE DETTE : il se trace. Sans
+         cette ligne, un impayé qui cesse d'être relancé n'aurait aucune
+         explication au registre. */
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.settlement_plan',
+          entity: 'SettlementPlan',
+          entityId: plan.id,
+          payload: {
+            totalMinor: plan.totalMinor,
+            agreedOn: corps.agreedOn,
+            instalments: corps.instalments.length,
+          },
+        },
+      })
+
+      res.status(201).json({ plan: enPlanServi(plan, 0) })
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        res.status(409).json({ error: 'plan_actif' })
+        return
+      }
+      throw err
+    }
+  },
+)
+
+/**
+ * LE PLAN D'UN BAIL, avec ce qui a été imputé sur chaque échéance.
+ *
+ * Rend `null` quand il n'y en a pas — et `null` plutôt qu'un 404 : l'absence de
+ * plan est une réponse, pas une adresse introuvable. L'écran doit pouvoir
+ * proposer d'en convenir un.
+ */
+parksRouter.get(
+  '/:parkId/leases/:leaseId/settlement-plan',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const plan = await prisma.settlementPlan.findFirst({
+      where: { leaseId, status: 'active' },
+      select: {
+        id: true,
+        agreedOn: true,
+        totalMinor: true,
+        currency: true,
+        status: true,
+        note: true,
+        instalments: { select: { id: true, dueOn: true, amountMinor: true } },
+      },
+    })
+    if (!plan) {
+      res.json({ plan: null })
+      return
+    }
+
+    res.json({ plan: enPlanServi(plan, await encaisseDepuis(leaseId, plan.agreedOn)) })
+  },
+)
+
+/**
+ * CLORE UN PLAN — honoré, rompu, ou retiré.
+ *
+ * ═══ `broken` EST LA VALEUR QUI COMPTE ═══
+ *
+ * Sans elle, un plan que le locataire ne respecte plus resterait `active`, et le
+ * produit continuerait de retenir les relances au nom d'un accord mort. Ce
+ * serait transformer une bienveillance en perte.
+ *
+ * `honoured` et `cancelled` se distinguent parce qu'ils ne désignent pas la même
+ * personne l'an prochain : l'un a payé, l'autre s'est vu retirer l'accord.
+ *
+ * ON NE REVIENT PAS À `active` : un plan clos est clos, et le rouvrir effacerait
+ * la raison pour laquelle il l'a été. On en convient un nouveau, que l'index
+ * partiel autorise dès que le précédent n'est plus actif.
+ */
+parksRouter.patch(
+  '/:parkId/settlement-plans/:planId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const planId = z.string().uuid().parse(req.params.planId)
+    const corps = z.object({ status: z.enum(['honoured', 'broken', 'cancelled']) }).parse(req.body)
+
+    const plan = await prisma.settlementPlan.findFirst({
+      where: {
+        id: planId,
+        lease: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      },
+      /* `leaseId` LU ICI, et c'est une correction : la première rédaction passait
+         `maj.id` — l'identifiant du PLAN — à `encaisseDepuis`, qui attend celui
+         du BAIL. Deux `string`, donc `tsc` ne pouvait rien dire, et la somme
+         serait toujours rendue zéro : aucune échéance n'aurait jamais paru
+         payée. */
+      select: { id: true, leaseId: true, status: true, totalMinor: true },
+    })
+    if (!plan) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    if (plan.status !== 'active') {
+      /* 409 : le corps est bon, c'est l'état qui s'y oppose. */
+      res.status(409).json({ error: 'plan_clos' })
+      return
+    }
+
+    const maj = await prisma.settlementPlan.update({
+      where: { id: planId },
+      data: { status: corps.status },
+      select: {
+        id: true,
+        agreedOn: true,
+        totalMinor: true,
+        currency: true,
+        status: true,
+        note: true,
+        instalments: { select: { id: true, dueOn: true, amountMinor: true } },
+      },
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'lease.settlement_close',
+        entity: 'SettlementPlan',
+        entityId: planId,
+        payload: { status: corps.status, totalMinor: plan.totalMinor },
+      },
+    })
+
+    res.json({ plan: enPlanServi(maj, await encaisseDepuis(plan.leaseId, maj.agreedOn)) })
+  },
+)
+
+/* ------------------------------------------------------------------------- *
+ * LES LIGNES DE CHARGES, ET LE DÉCOMPTE QUI LES ARRÊTE
+ * ------------------------------------------------------------------------- */
+
+const schemaLigneDeCharge = z.object({
+  /* Ce que le locataire lira sur sa quittance. Vide, la ligne serait une somme
+     sans motif, et personne ne pourrait la contester. */
+  label: z.string().trim().min(1).max(120),
+  amountMinor: z.number().int().positive(),
+  kind: z.enum(['provision', 'forfait']),
+})
+
+/**
+ * LE DÉCOMPTE SE SAISIT, IL NE SE CALCULE PAS ENTIÈREMENT — et le refus de
+ * calculer est le cœur de ce lot.
+ *
+ * `provisionedMinor` est exactement connu : c'est la somme des lignes de
+ * provision FIGÉES dans les échéances de l'exercice. Le serveur le calcule et
+ * n'accepte pas qu'on le lui dicte.
+ *
+ * `actualMinor` ne l'est PAS. Une régularisation compare les provisions aux
+ * dépenses réelles ; or la plupart des dépenses récupérables sont engagées au
+ * niveau de l'IMMEUBLE — une facture d'eau commune, un salaire de gardien —, et
+ * le produit n'a aucune clé de répartition : ni tantièmes, ni surfaces, ni
+ * nombre d'occupants. En inventer une ici reviendrait à répartir au prorata du
+ * nombre de logements, ce qui est FAUX dès que deux logements n'ont pas la même
+ * taille, et faux en silence.
+ *
+ * Le gestionnaire le saisit donc. Le brouillon lui rend les trois faits que le
+ * produit connaît vraiment, séparés et jamais additionnés à sa place.
+ */
+const schemaDecompte = z
+  .object({
+    periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    settledOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    /* ZÉRO EST ACCEPTÉ, contrairement aux montants ailleurs dans ce fichier :
+       un exercice où le bailleur n'a rien engagé se régularise, et rend au
+       locataire l'intégralité de ses provisions. C'est même le cas où le
+       décompte compte le plus. */
+    actualMinor: z.number().int().nonnegative(),
+    note: z.string().trim().max(2000).nullish(),
+  })
+  /* UN EXERCICE NE FINIT PAS AVANT DE COMMENCER. Inversées, les deux bornes
+     rendraient un intervalle vide : zéro provision appelée, donc un solde égal
+     à tout ce que le bailleur a engagé, à rendre par le locataire. */
+  .refine((c) => c.periodEnd >= c.periodStart, {
+    message: 'La fin de l’exercice précède son début.',
+    path: ['periodEnd'],
+  })
+
+function enDecompteServi(d: {
+  id: string
+  periodStart: Date
+  periodEnd: Date
+  provisionedMinor: number
+  actualMinor: number
+  currency: Currency
+  settledOn: Date
+  note: string | null
+}) {
+  return {
+    id: d.id,
+    periodStart: d.periodStart.toISOString().slice(0, 10),
+    periodEnd: d.periodEnd.toISOString().slice(0, 10),
+    provisionedMinor: d.provisionedMinor,
+    actualMinor: d.actualMinor,
+    /* LE SOLDE SE DÉDUIT ICI, à chaque lecture, et n'existe dans aucune
+       colonne : deux nombres qui doivent s'accorder finissent par diverger.
+       Positif, le bailleur doit un remboursement ; négatif, le locataire doit
+       un complément. */
+    balanceMinor: d.provisionedMinor - d.actualMinor,
+    currency: d.currency,
+    settledOn: d.settledOn.toISOString().slice(0, 10),
+    note: d.note,
+  }
+}
+
+/** Ce qui a été APPELÉ en provisions sur l'exercice, depuis les copies figées. */
+async function provisionsAppelees(leaseId: string, debut: Date, fin: Date): Promise<number> {
+  const somme = await prisma.rentChargeLine.aggregate({
+    where: {
+      kind: 'provision',
+      charge: { leaseId, periodStart: { gte: debut, lte: fin } },
+    },
+    _sum: { amountMinor: true },
+  })
+  return somme._sum.amountMinor ?? 0
+}
+
+parksRouter.get(
+  '/:parkId/leases/:leaseId/charge-lines',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const [lignes, decomptes] = await Promise.all([
+      prisma.leaseChargeLine.findMany({
+        where: { leaseId },
+        orderBy: { label: 'asc' },
+        select: { id: true, label: true, amountMinor: true, kind: true },
+      }),
+      prisma.chargeSettlement.findMany({
+        where: { leaseId },
+        orderBy: { periodStart: 'desc' },
+        select: {
+          id: true,
+          periodStart: true,
+          periodEnd: true,
+          provisionedMinor: true,
+          actualMinor: true,
+          currency: true,
+          settledOn: true,
+          note: true,
+        },
+      }),
+    ])
+
+    res.json({ lines: lignes, settlements: decomptes.map(enDecompteServi) })
+  },
+)
+
+parksRouter.post(
+  '/:parkId/leases/:leaseId/charge-lines',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaLigneDeCharge.parse(req.body)
+
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    try {
+      const ligne = await prisma.leaseChargeLine.create({
+        data: {
+          leaseId,
+          label: corps.label,
+          amountMinor: corps.amountMinor,
+          kind: corps.kind,
+        },
+        select: { id: true, label: true, amountMinor: true, kind: true },
+      })
+
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.charge_line_added',
+          entity: 'LeaseChargeLine',
+          entityId: ligne.id,
+          payload: { label: ligne.label, amountMinor: ligne.amountMinor, kind: ligne.kind },
+        },
+      })
+
+      res.status(201).json({ line: ligne })
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        /* Deux lignes du même libellé sur un bail seraient indiscernables sur la
+           quittance : le locataire verrait deux fois « Ordures ménagères » sans
+           pouvoir dire ce qui les distingue. */
+        res.status(409).json({ error: 'libelle_deja_pris' })
+        return
+      }
+      throw err
+    }
+  },
+)
+
+parksRouter.delete(
+  '/:parkId/charge-lines/:lineId',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const lineId = z.string().uuid().parse(req.params.lineId)
+
+    const ligne = await prisma.leaseChargeLine.findFirst({
+      where: {
+        id: lineId,
+        lease: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      },
+      select: { id: true, label: true, amountMinor: true, kind: true },
+    })
+    if (!ligne) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /* LE RETRAIT ET SON REGISTRE DANS LA MÊME TRANSACTION — une suppression
+       dont la trace peut manquer est une suppression sans auteur. C'est la
+       seule forme où le journal entre dans la transaction ; voir
+       `touteSuppressionVecueEstAtomique`.
+
+       LES COPIES FIGÉES SURVIVENT. `RentChargeLine` ne cascade pas depuis ici :
+       retirer une ligne du bail cesse de l'appeler à partir du mois prochain, et
+       ne touche pas aux quittances déjà remises. */
+    await prisma.$transaction(async (tx) => {
+      await tx.leaseChargeLine.delete({ where: { id: lineId } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.charge_line_removed',
+          entity: 'LeaseChargeLine',
+          entityId: ligne.id,
+          payload: { label: ligne.label, amountMinor: ligne.amountMinor, kind: ligne.kind },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)
+
+/**
+ * LE BROUILLON : TROIS FAITS, JAMAIS ADDITIONNÉS À LA PLACE DU GESTIONNAIRE.
+ *
+ * `provisionedMinor` est ce qui a été appelé, et il est exact.
+ *
+ * `unitExpensesMinor` et `buildingExpensesMinor` sont rendus SÉPARÉMENT parce
+ * qu'ils n'ont pas le même statut. Ce qui est engagé pour LE logement lui est
+ * imputable en entier ; ce qui est engagé pour l'IMMEUBLE ne l'est que par une
+ * clé de répartition que ce produit n'a pas. Les additionner ici imputerait à un
+ * locataire la facture d'eau de tout le bâtiment.
+ *
+ * Les dépenses du PARC entier ne sont pas rendues du tout : une taxe foncière ou
+ * une assurance propriétaire ne sont pas des charges récupérables, et les faire
+ * apparaître dans un écran de régularisation inviterait à les récupérer.
+ */
+parksRouter.get(
+  '/:parkId/leases/:leaseId/settlement-draft',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const bornes = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      })
+      .parse(req.query)
+
+    const bail = await prisma.lease.findFirst({
+      where: { id: leaseId, unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      select: {
+        unitId: true,
+        unit: { select: { buildingId: true, building: { select: { park: { select: { currency: true } } } } } },
+      },
+    })
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const debut = new Date(`${bornes.from}T00:00:00.000Z`)
+    const fin = new Date(`${bornes.to}T00:00:00.000Z`)
+    /* `incurredOn` ET NON `paidOn` : une facture d'octobre réglée en janvier
+       appartient à l'exercice où elle a été engagée. Régulariser sur la date de
+       règlement ferait glisser une charge d'un exercice à l'autre au gré de la
+       trésorerie du bailleur. */
+    const periode = { incurredOn: { gte: debut, lte: fin } }
+
+    const [appelees, duLogement, deLImmeuble] = await Promise.all([
+      provisionsAppelees(leaseId, debut, fin),
+      prisma.expense.aggregate({
+        where: { parkId, unitId: bail.unitId, ...periode },
+        _sum: { amountMinor: true },
+      }),
+      prisma.expense.aggregate({
+        where: { parkId, unitId: null, buildingId: bail.unit.buildingId, ...periode },
+        _sum: { amountMinor: true },
+      }),
+    ])
+
+    res.json({
+      draft: {
+        provisionedMinor: appelees,
+        unitExpensesMinor: duLogement._sum.amountMinor ?? 0,
+        buildingExpensesMinor: deLImmeuble._sum.amountMinor ?? 0,
+        currency: bail.unit.building.park.currency,
+      },
+    })
+  },
+)
+
+parksRouter.post(
+  '/:parkId/leases/:leaseId/settlements',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const leaseId = z.string().uuid().parse(req.params.leaseId)
+    const corps = schemaDecompte.parse(req.body)
+
+    const bail = await bailDuParc(leaseId, parkId, porteeDesUnites(req.adhesion!))
+    if (!bail) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const parc = await prisma.park.findUniqueOrThrow({
+      where: { id: parkId },
+      select: { currency: true },
+    })
+
+    const debut = new Date(`${corps.periodStart}T00:00:00.000Z`)
+    const fin = new Date(`${corps.periodEnd}T00:00:00.000Z`)
+    /* LE SERVEUR CALCULE LES PROVISIONS ET N'ACCEPTE PAS QU'ON LES LUI DICTE.
+       C'est le seul des deux nombres qu'il connaît exactement, et le laisser
+       venir du client rendrait falsifiable le décompte qu'on oppose ensuite au
+       locataire. */
+    const provisionedMinor = await provisionsAppelees(leaseId, debut, fin)
+
+    try {
+      const decompte = await prisma.chargeSettlement.create({
+        data: {
+          leaseId,
+          periodStart: debut,
+          periodEnd: fin,
+          provisionedMinor,
+          actualMinor: corps.actualMinor,
+          currency: parc.currency,
+          settledOn: new Date(`${corps.settledOn}T00:00:00.000Z`),
+          note: corps.note ?? null,
+        },
+        select: {
+          id: true,
+          periodStart: true,
+          periodEnd: true,
+          provisionedMinor: true,
+          actualMinor: true,
+          currency: true,
+          settledOn: true,
+          note: true,
+        },
+      })
+
+      /* UN DÉCOMPTE CRÉE UNE DETTE OU UNE CRÉANCE : il se trace, et le registre
+         porte les deux sommes. Sans elles, une contestation six mois plus tard
+         n'aurait rien à quoi se référer. */
+      await prisma.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'lease.charge_settlement',
+          entity: 'ChargeSettlement',
+          entityId: decompte.id,
+          payload: {
+            periodStart: corps.periodStart,
+            periodEnd: corps.periodEnd,
+            provisionedMinor: decompte.provisionedMinor,
+            actualMinor: decompte.actualMinor,
+          },
+        },
+      })
+
+      res.status(201).json({ settlement: enDecompteServi(decompte) })
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        /* Deux décomptes pour le même exercice rendraient « combien doit-il ? »
+           sans réponse. */
+        res.status(409).json({ error: 'exercice_deja_regularise' })
+        return
+      }
+      throw err
+    }
+  },
+)
+
+/* ------------------------------------------------------------------------- *
+ * LES ANNONCES ET LEURS CANDIDATS
+ * ------------------------------------------------------------------------- */
+
+const schemaAnnonce = z.object({
+  rentMinor: z.number().int().positive(),
+  /* ZÉRO EST ACCEPTÉ POUR LA CAUTION, contrairement au loyer : « sans caution »
+     est une offre réelle, et la refuser obligerait à mentir sur le montant. */
+  depositMinor: z.number().int().nonnegative(),
+  availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+  description: z.string().trim().max(4000).nullish(),
+})
+
+const schemaCandidat = z
+  .object({
+    fullName: z.string().trim().min(1).max(160),
+    phoneE164: z.string().trim().max(32).nullish(),
+    email: z.string().trim().email().max(320).nullish(),
+    note: z.string().trim().max(2000).nullish(),
+    appliedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+  })
+  /**
+   * AU MOINS UN MOYEN DE JOINDRE.
+   *
+   * Un candidat qu'on ne peut pas rappeler n'est pas un candidat : c'est une
+   * ligne qui occupera la liste jusqu'à ce que quelqu'un la supprime en se
+   * demandant qui c'était. Les deux colonnes sont nullables en base parce que
+   * Prisma ne sait pas dire « l'un ou l'autre », et parce qu'exiger les deux
+   * refuserait le cas le plus courant du marché visé — quelqu'un qui n'a qu'un
+   * téléphone.
+   */
+  .refine((c) => Boolean(c.phoneE164?.trim()) || Boolean(c.email?.trim()), {
+    message: 'Un téléphone ou une adresse est nécessaire pour rappeler ce candidat.',
+    path: ['phoneE164'],
+  })
+
+function enAnnonceServie(a: {
+  id: string
+  unitId: string
+  rentMinor: number
+  depositMinor: number
+  currency: Currency
+  availableFrom: Date
+  description: string | null
+  status: 'draft' | 'published' | 'closed'
+  applicants: {
+    id: string
+    fullName: string
+    phoneE164: string | null
+    email: string | null
+    note: string | null
+    status: 'received' | 'visited' | 'accepted' | 'declined'
+    appliedOn: Date
+  }[]
+}) {
+  return {
+    id: a.id,
+    unitId: a.unitId,
+    rentMinor: a.rentMinor,
+    depositMinor: a.depositMinor,
+    currency: a.currency,
+    availableFrom: a.availableFrom.toISOString().slice(0, 10),
+    description: a.description,
+    status: a.status,
+    applicants: a.applicants.map((c) => ({
+      id: c.id,
+      fullName: c.fullName,
+      phoneE164: c.phoneE164,
+      email: c.email,
+      note: c.note,
+      status: c.status,
+      appliedOn: c.appliedOn.toISOString().slice(0, 10),
+    })),
+  }
+}
+
+/** La projection commune aux trois routes qui rendent une annonce. */
+const CHAMPS_ANNONCE = {
+  id: true,
+  unitId: true,
+  rentMinor: true,
+  depositMinor: true,
+  currency: true,
+  availableFrom: true,
+  description: true,
+  status: true,
+  applicants: {
+    orderBy: { appliedOn: 'asc' },
+    select: {
+      id: true,
+      fullName: true,
+      phoneE164: true,
+      email: true,
+      note: true,
+      status: true,
+      appliedOn: true,
+    },
+  },
+} as const
+
+parksRouter.get(
+  '/:parkId/listings',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+
+    const annonces = await prisma.listing.findMany({
+      /* LA PORTÉE DU DEMANDEUR EN CLAUSE DE REQUÊTE, jamais après lecture : un
+         gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+         pouvoir ramener les annonces des deux autres, fût-ce pour les filtrer
+         ensuite. */
+      where: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      orderBy: { createdAt: 'desc' },
+      select: CHAMPS_ANNONCE,
+    })
+
+    res.json({ listings: annonces.map(enAnnonceServie) })
+  },
+)
+
+parksRouter.post(
+  '/:parkId/units/:unitId/listings',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaAnnonce.parse(req.body)
+
+    const logement = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId }, ...porteeDesUnites(req.adhesion!) },
+      select: { id: true, building: { select: { park: { select: { currency: true } } } } },
+    })
+    if (!logement) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * UN LOGEMENT OCCUPÉ NE SE REMET PAS EN ANNONCE — mais un logement dont le
+     * congé est donné, SI.
+     *
+     * C'est exactement ce que le lot du congé a rendu possible : un bail reste
+     * `active` jusqu'à la date d'effet, et les trois semaines qui précèdent le
+     * départ sont la seule fenêtre où publier évite réellement la vacance. La
+     * garde porte donc sur « occupé SANS départ annoncé », et non sur « occupé ».
+     */
+    const occupeSansFin = await prisma.lease.findFirst({
+      where: { unitId, status: { in: ['active', 'pending'] }, moveOutOn: null },
+      select: { id: true },
+    })
+    if (occupeSansFin) {
+      res.status(409).json({ error: 'logement_occupe' })
+      return
+    }
+
+    const annonce = await prisma.listing.create({
+      data: {
+        unitId,
+        rentMinor: corps.rentMinor,
+        depositMinor: corps.depositMinor,
+        currency: logement.building.park.currency,
+        availableFrom: new Date(`${corps.availableFrom}T00:00:00.000Z`),
+        description: corps.description ?? null,
+      },
+      select: CHAMPS_ANNONCE,
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'listing.open',
+        entity: 'Listing',
+        entityId: annonce.id,
+        payload: {
+          rentMinor: annonce.rentMinor,
+          depositMinor: annonce.depositMinor,
+          availableFrom: corps.availableFrom,
+        },
+      },
+    })
+
+    res.status(201).json({ listing: enAnnonceServie(annonce) })
+  },
+)
+
+parksRouter.patch(
+  '/:parkId/listings/:listingId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const listingId = z.string().uuid().parse(req.params.listingId)
+    const corps = z.object({ status: z.enum(['draft', 'published', 'closed']) }).parse(req.body)
+
+    const annonce = await prisma.listing.findFirst({
+      where: {
+        id: listingId,
+        unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) },
+      },
+      select: { id: true, status: true, rentMinor: true },
+    })
+    if (!annonce) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const maj = await prisma.listing.update({
+      where: { id: listingId },
+      data: { status: corps.status },
+      select: CHAMPS_ANNONCE,
+    })
+
+    /* PUBLIER ENGAGE UN PRIX, FERMER RENONCE : les deux se tracent, et le
+       registre porte l'état d'AVANT comme celui d'après — « publiée » seul ne
+       dit pas si l'on vient de la rédiger ou de la rouvrir. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'listing.status',
+        entity: 'Listing',
+        entityId: annonce.id,
+        payload: { from: annonce.status, to: corps.status, rentMinor: annonce.rentMinor },
+      },
+    })
+
+    res.json({ listing: enAnnonceServie(maj) })
+  },
+)
+
+parksRouter.post(
+  '/:parkId/listings/:listingId/applicants',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const listingId = z.string().uuid().parse(req.params.listingId)
+    const corps = schemaCandidat.parse(req.body)
+
+    const annonce = await prisma.listing.findFirst({
+      where: {
+        id: listingId,
+        unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) },
+      },
+      select: { id: true },
+    })
+    if (!annonce) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const candidat = await prisma.applicant.create({
+      data: {
+        listingId,
+        fullName: corps.fullName,
+        phoneE164: corps.phoneE164?.trim() || null,
+        email: corps.email?.trim() || null,
+        note: corps.note?.trim() || null,
+        appliedOn: new Date(`${corps.appliedOn}T00:00:00.000Z`),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phoneE164: true,
+        email: true,
+        note: true,
+        status: true,
+        appliedOn: true,
+      },
+    })
+
+    res.status(201).json({
+      applicant: { ...candidat, appliedOn: candidat.appliedOn.toISOString().slice(0, 10) },
+    })
+  },
+)
+
+parksRouter.patch(
+  '/:parkId/applicants/:applicantId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const applicantId = z.string().uuid().parse(req.params.applicantId)
+    const corps = z
+      .object({
+        status: z.enum(['received', 'visited', 'accepted', 'declined']),
+        note: z.string().trim().max(2000).nullish(),
+      })
+      .parse(req.body)
+
+    const candidat = await prisma.applicant.findFirst({
+      where: {
+        id: applicantId,
+        listing: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      },
+      select: { id: true, fullName: true, status: true },
+    })
+    if (!candidat) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const maj = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: {
+        status: corps.status,
+        ...(corps.note !== undefined ? { note: corps.note?.trim() || null } : {}),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phoneE164: true,
+        email: true,
+        note: true,
+        status: true,
+        appliedOn: true,
+      },
+    })
+
+    /* DONNER SON ACCORD ENGAGE LE LOGEMENT, le retirer le libère : les deux se
+       tracent. « Refusé » se trace aussi — trois semaines plus tard, « il n'a
+       jamais postulé » et « on lui a dit non » ne sont pas la même réponse à
+       lui faire, et c'est le registre qui les sépare. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'applicant.status',
+        entity: 'Applicant',
+        entityId: candidat.id,
+        payload: { fullName: candidat.fullName, from: candidat.status, to: corps.status },
+      },
+    })
+
+    res.json({
+      applicant: { ...maj, appliedOn: maj.appliedOn.toISOString().slice(0, 10) },
+    })
   },
 )

@@ -115,6 +115,38 @@ async function choisirLeProfil(page, nom) {
  * primaire d'un dossier, pas le congé. Le menu porte son nom accessible en
  * français comme en anglais, d'où l'alternative.
  */
+/**
+ * LE CANAL WHATSAPP : la modale de correction du parc, puis sa liste déroulante.
+ *
+ * `select[name]` et non un rôle : c'est une VRAIE liste déroulante, comme la
+ * devise de la même boîte, et `selectOption` déclenche l'événement que React
+ * écoute. Le `Combobox` du dépôt aurait demandé d'ouvrir un panneau.
+ */
+async function ouvrirLeCanalWhatsApp(page) {
+  /* DERRIÈRE LE MENU DE DÉBORDEMENT, comme le bail : « Corriger le parc » n'est
+     pas une action primaire de l'écran du parc, et le chercher au premier
+     niveau expire au bout de trente secondes sans rien dire de plus. */
+  await page.getByRole('button', { name: /^Autres actions$|^More actions$/ }).first().click()
+  await page.waitForTimeout(250)
+  await page
+    .getByRole('menuitem', { name: /^Corriger le parc$|^Correct the park$/ })
+    .first()
+    .click()
+  await page.waitForTimeout(250)
+  await page.locator('select[name="reminderChannel"]').selectOption('whatsapp')
+  await page.waitForTimeout(250)
+}
+
+/** Le plan d'apurement : le panneau du bail, puis sa quatrième section. */
+async function ouvrirLePlan(page) {
+  await ouvrirLeBail(page)
+  await page
+    .getByRole('button', { name: /^Plan d’apurement$|^Settlement plan$/ })
+    .first()
+    .click()
+  await page.waitForTimeout(250)
+}
+
 async function ouvrirLeBail(page) {
   await page.getByRole('button', { name: /^Autres actions$|^More actions$/ }).first().click()
   await page.waitForTimeout(250)
@@ -231,6 +263,17 @@ const REGISTRE = {
      celui où la note doit être là. Aucun geste à jouer, elle est rendue dès que
      l'écran l'est. */
   'app.expenses.worksApart': { adresse: '/demo/depenses' },
+  /* LA NOTE QUI DIT CE QUE L'ÉCRAN NE SAIT PAS CHIFFRER. Sans geste, et pour la
+     même raison que sa voisine : elle est INCONDITIONNELLE. Le produit sait ce
+     qu'un logement A rapporté, jamais ce qu'il AURAIT rapporté ; un parc sans
+     logement vide est précisément celui où l'on croirait l'écran complet.
+
+     C'EST AUSSI LA SEULE GARDE QU'ELLE AIT. Son inconditionnalité n'est pas
+     mesurable depuis la démonstration — qui a toujours des logements vides, donc
+     rend vraie toute condition qu'on lui accrocherait —, et `vacanceDuParc`
+     l'écrit noir sur blanc. Ce registre-ci ne garde que sa PRÉSENCE et sa
+     géométrie ; le caractère inconditionnel vit dans le code, sous les yeux. */
+  'app.vacancy.scopeNote': { adresse: '/demo/vacance' },
   /* LA NOTE DE SÛRETÉ du rapprochement des noms. Mesurable depuis que la
      démonstration porte un locataire entré sans fiche — voir `ACCES_DEMO`. */
   'app.access.linkMismatch': { adresse: '/demo/acces', geste: ouvrirLaLiaison },
@@ -276,6 +319,11 @@ const REGISTRE = {
      note nomme l'absence. C'est précisément l'état qu'on voulait ne pas laisser
      muet. */
   'app.lease.noticeNone': { adresse: '/demo/parc/A1', geste: ouvrirLeBail },
+
+  /* L'ABSENCE D'ACCORD D'APUREMENT — mesurable, et c'est l'état par défaut :
+     sans parc réel il n'y a pas de plan, et la note nomme l'état où l'on propose
+     d'en convenir un plutôt que de laisser la section muette. */
+  'app.lease.planNone': { adresse: '/demo/parc/A1', geste: ouvrirLePlan },
 
   /* ── Les aveux, et leur motif ── */
   'app.lease.noticeTitle': {
@@ -458,6 +506,10 @@ const REGISTRE = {
       'mesure fermée sur son état d’ouverture. La rendre visible ici demanderait ' +
       'd’envoyer une annonce à chaque passage de porte, donc d’écrire dans la ' +
       'démonstration à seule fin de la mesurer.',
+  },
+  'app.parkSettings.reminderChannelWhatsAppWarning': {
+    adresse: '/demo/parc',
+    geste: ouvrirLeCanalWhatsApp,
   },
   'app.parkSettings.currencyWarning': {
     nonMesurable:

@@ -279,6 +279,7 @@ export const fr = {
     works: 'Travaux',
     deposits: 'Cautions',
     expenses: 'Dépenses',
+    vacancy: 'Vacance',
     access: 'Accès au parc',
     tenants: 'Locataires',
     report: 'Signaler',
@@ -1638,6 +1639,21 @@ export const fr = {
          6 h en UTC part à 7 h à Douala, et l'aide ne disait que la règle. */
       reminderHourHintLocal:
         'De 0 à 23, dans le fuseau choisi ci-dessous — soit {heure} chez vous.',
+      reminderChannel: 'Canal de la relance',
+      /* COURTE À DESSEIN. La première rédaction expliquait ici que le produit
+         écrit le canal réellement emprunté : deux lignes de plus sur un
+         formulaire qui en porte déjà dix, pour une règle que la note du canal
+         WhatsApp dit mieux et au moment où elle compte. Mesuré : 161 px de
+         défilement en plus à 360, dont une quarantaine pour cette seule
+         phrase. */
+      reminderChannelHint: 'Par où part la relance automatique.',
+      reminderChannelSms: 'SMS',
+      reminderChannelWhatsApp: 'WhatsApp',
+      /* LA CONTRAINTE EST DITE AVANT LE CHOIX, pas découverte après. Sans
+         modèle approuvé, toutes les relances de ce parc cesseraient de partir
+         sans qu'aucun écran n'explique pourquoi. */
+      reminderChannelWhatsAppWarning:
+        'WhatsApp exige un modèle de message approuvé par Meta pour tout envoi non sollicité. Sans ce modèle, les relances de ce parc resteront dans le produit sans partir.',
       reminderZone: 'Fuseau horaire',
       reminderZoneHint: 'Celui de vos locataires, qui n’est pas forcément le vôtre.',
       currencyWarning:
@@ -1712,6 +1728,118 @@ export const fr = {
        logement. UNE SEULE pour les trois gestes (congé, révision, garant) : ils
        portent tous sur le même bail, et trois boîtes auraient coûté trois fois
        les registres de géométrie pour trois formulaires de quatre champs. */
+    vacancy: {
+      title: 'Vacance',
+      subtitle: 'Ce qui ne rapporte rien, et où en est-on pour y remédier.',
+      open: 'Ouvrir une annonce',
+      openTitle: 'Ouvrir une annonce',
+      followTitle: 'Suivre l’annonce',
+      modalDescription: 'Le loyer demandé, la date de disponibilité et les candidats.',
+      openCta: 'Ouvrir l’annonce',
+      publish: 'Publier',
+      close: 'Fermer l’annonce',
+      /* LE PREMIER INDICATEUR N'EST PAS UNE SOMME D'ANNONCES : un logement vide
+         SANS annonce est le cas qui coûte, et une somme d'annonces l'aurait
+         rendu invisible. */
+      kpiEmpty: 'Logements vides',
+      kpiEmptyNote: '{count} sans annonce en cours',
+      kpiEmptyNote_one: '{count} sans annonce en cours',
+      kpiPublished: 'Annonces publiées',
+      kpiPublishedNote: '{count} au total, brouillons et fermées comprises',
+      kpiPublishedNote_one: '{count} au total, brouillon et fermées comprises',
+      kpiApplicants: 'Candidats',
+      kpiApplicantsNote: 'Toutes annonces confondues',
+      scopeNote:
+        'Cet écran ne chiffre pas ce que la vacance coûte : le produit sait ce qu’un logement a rapporté, pas ce qu’il aurait rapporté.',
+      colUnit: 'Logement',
+      colStatus: 'État',
+      colRent: 'Loyer demandé',
+      colFrom: 'Disponible le',
+      colApplicants: 'Candidats',
+      status_draft: 'Brouillon',
+      status_published: 'Publiée',
+      status_closed: 'Fermée',
+      empty: 'Aucune annonce',
+      emptyHint: 'Une annonce porte le loyer demandé, la date de disponibilité et les candidats reçus.',
+      unitUnknown: 'Logement retiré du parc',
+      unit: 'Logement',
+      unitHint: 'Seuls les logements sans bail en cours sont proposés.',
+      noEmptyUnit: 'Aucun logement vide',
+      rent: 'Loyer demandé',
+      /* LA CRAINTE EST RÉELLE : on hésite à écrire un autre prix si l'on croit
+         écraser la référence du logement. */
+      rentHint: 'Le loyer de référence du logement n’est pas modifié.',
+      deposit: 'Caution demandée',
+      availableFrom: 'Disponible à partir du',
+      availableFromHint: 'Une annonce publiée avant un départ est ce qui évite la vacance.',
+      description: 'Texte de l’annonce',
+      askingLine: 'Demandé : {rent} de loyer, {deposit} de caution.',
+      applicantsTitle: 'Candidats',
+      applicantsNone: 'Aucun candidat pour l’instant.',
+      applicantName: 'Nom du candidat',
+      applicantPhone: 'Téléphone',
+      applicantReachHint: 'Un téléphone ou une adresse suffit — il faut pouvoir le rappeler.',
+      applicantEmail: 'Adresse électronique',
+      applicantOn: 'S’est présenté le',
+      applicantAdd: 'Ajouter le candidat',
+      applicantFollow: 'Suite donnée à {name}',
+      applicant_received: 'Reçu',
+      applicant_visited: 'A visité',
+      applicant_accepted: 'Accepté',
+      applicant_declined: 'Refusé',
+      applicantAdded: 'Candidat enregistré.',
+      applicantIncomplete: 'Un nom et une date sont nécessaires.',
+      applicantNeedsReach: 'Un téléphone ou une adresse est nécessaire pour rappeler ce candidat.',
+      listingOpened: 'Annonce ouverte, en brouillon.',
+      listingUpdated: 'Annonce mise à jour.',
+      listingIncomplete: 'Un logement, un loyer et une date de disponibilité sont nécessaires.',
+      unitOccupied: 'Ce logement a un bail en cours sans départ annoncé.',
+      failed: 'L’opération n’a pas pu être enregistrée.',
+    },
+    leaseCharges: {
+      open: 'Charges et régularisation',
+      title: 'Charges du bail',
+      linesTitle: 'Charges convenues',
+      linesNone: 'Aucune charge convenue — seuls le loyer, l’eau et le courant sont appelés.',
+      lineLabel: 'Libellé',
+      lineAmount: 'Montant par mois',
+      lineKind: 'Nature',
+      /* LA DISTINCTION DÉCIDE DU DÉCOMPTE, et elle est invisible sur la
+         quittance : on l'écrit ici, au moment où elle se choisit. */
+      lineKindHint:
+        'Une provision est une avance : elle revient au locataire si le bailleur a engagé moins. Un forfait est dû quoi qu’il arrive.',
+      kindProvision: 'Provision',
+      kindForfait: 'Forfait',
+      addLine: 'Ajouter la charge',
+      lineAdded: 'Charge convenue.',
+      lineRemoved: 'Charge retirée. Les quittances déjà émises ne changent pas.',
+      lineDuplicate: 'Ce bail porte déjà une charge de ce libellé.',
+      lineIncomplete: 'Un libellé et un montant sont nécessaires.',
+      removeLine: 'Retirer la charge {label}',
+      settlementTitle: 'Régularisation',
+      settlementRange: 'Exercice du {from} au {to}',
+      balanceToRefund: '{amount} à rendre au locataire',
+      balanceToCollect: '{amount} à réclamer au locataire',
+      periodStart: 'Début de l’exercice',
+      periodEnd: 'Fin de l’exercice',
+      draftProvisioned: 'Provisions appelées',
+      draftUnitExpenses: 'Dépenses du logement',
+      draftBuildingExpenses: 'Dépenses de l’immeuble',
+      /* LES DEUX NE S'ADDITIONNENT PAS, et le produit ne sait pas les répartir :
+         on le dit plutôt que d'afficher un total qui serait pris pour argent
+         comptant. */
+      draftNoKey:
+        'Les dépenses de l’immeuble ne sont pas réparties : le produit n’a ni tantièmes ni surfaces. À vous de retenir la part qui revient à ce logement.',
+      actualAmount: 'Dépenses retenues',
+      actualAmountHint: 'La somme que vous opposez au locataire pour cet exercice.',
+      settledOn: 'Arrêté le',
+      note: 'Observation',
+      settle: 'Arrêter le décompte',
+      settled: 'Décompte arrêté.',
+      settlementDuplicate: 'Cet exercice a déjà été régularisé.',
+      settlementIncomplete: 'Une date d’arrêté et un montant sont nécessaires.',
+      failed: 'L’opération n’a pas pu être enregistrée.',
+    },
     lease: {
       open: 'Bail et sûretés',
       openLine: 'Bail et sûretés — {unit}',
@@ -1758,6 +1886,41 @@ export const fr = {
       revisionsEmpty: 'Aucune révision',
       revisionLine: 'De {avant} à {apres}, au {date}',
       /* ── LES GARANTS ── */
+      /* ── LE PLAN D'APUREMENT ── */
+      planTitle: 'Plan d’apurement',
+      /* « AUCUN ACCORD » ET NON UNE SECTION MUETTE : un impayé sans plan est un
+         état, et c'est celui où l'on propose d'en convenir un. */
+      planNone: 'Aucun accord en cours',
+      planNoneHint:
+        'Un accord suspend les relances tant qu’il est respecté. Sans lui, le produit ne connaît que « payé » ou « pas payé ».',
+      planAgreedOn: 'Convenu le',
+      planTotal: 'Total échelonné',
+      planPaid: 'Déjà imputé',
+      /* CE QUI EST IMPUTÉ, et non ce qui est encaissé : un locataire qui paie
+         plus que son plan a soldé son plan, le surplus va à ses loyers. */
+      planPaidHint:
+        'Déduit des encaissements du bail depuis l’accord, imputés dans l’ordre des échéances. Le surplus va aux loyers courants.',
+      planInstalment: '{date} · {montant}',
+      planInstalmentPaid: '{date} · {montant} — réglé',
+      planInstalmentPartial: '{date} · {montant} — {paye} imputés',
+      planAddInstalment: 'Ajouter une échéance',
+      planDueOn: 'Échéance le',
+      planAmount: 'Montant ({devise})',
+      planNote: 'Ce qui a été convenu',
+      planNoteHint: 'Ce que le barème ne dit pas : « après la vente de sa moto », « son employeur retient sur salaire ».',
+      planCreate: 'Convenir d’un plan',
+      planCreated: 'Plan convenu',
+      planNeedsInstalment: 'Au moins une échéance est nécessaire.',
+      planDuplicateDate: 'Deux échéances ne peuvent pas porter la même date.',
+      planExists: 'Ce bail a déjà un plan en cours.',
+      planClosed: 'Ce plan est déjà clos.',
+      /* TROIS SORTS DISTINCTS, et la distinction compte l'an prochain : l'un a
+         payé, l'autre a rompu, le troisième s'est vu retirer l'accord. */
+      planHonour: 'Marquer honoré',
+      planBreak: 'Marquer rompu',
+      planCancel: 'Retirer l’accord',
+      planClosedDone: 'Plan clos',
+      planFailed: 'Le plan n’a pas pu être enregistré.',
       guarantorsTitle: 'Garants',
       guarantorsEmpty: 'Aucun garant',
       /* LA CAUTION EN ARGENT N'EST PAS UNE PERSONNE : on le dit, parce que le
@@ -2427,9 +2590,21 @@ export const fr = {
           notice: 'Congé enregistré',
           notice_withdraw: 'Congé retiré',
           revise_rent: 'Loyer révisé',
+          settlement_plan: 'Plan d’apurement convenu',
+          settlement_close: 'Plan d’apurement clos',
+          charge_line_added: 'Charge convenue au bail',
+          charge_line_removed: 'Charge retirée du bail',
+          charge_settlement: 'Décompte de charges arrêté',
         },
         park: {
           update: 'Parc corrigé',
+        },
+        listing: {
+          open: 'Annonce ouverte',
+          status: 'État d’annonce changé',
+        },
+        applicant: {
+          status: 'Suite donnée à un candidat',
         },
         payment: {
           proof_delete: 'Preuve de paiement retirée',

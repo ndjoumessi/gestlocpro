@@ -263,7 +263,31 @@ const MODALES = [
     le témoin de machine de ses deux sœurs. C'est une pièce d'instrument, pas un
     correctif de produit, et ce lot n'a pas à la porter.
   */
-  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 603, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
+  /*
+    603 → 721 À 360, 294 → 408 À 1280, ET VOICI CE QUE LE PLAFOND ACHÈTE.
+
+    Le CANAL de la relance, jusqu'ici écrit en dur dans la route : `sms` quand
+    le message partait, `in_app` sinon. Une liste déroulante, son libellé et son
+    aide, dans un formulaire qui en porte déjà dix.
+
+    L'AIDE A ÉTÉ RACCOURCIE PLUTÔT QUE LE PLAFOND DESSERRÉ. Première rédaction :
+    deux phrases, dont une qui expliquait que le produit écrit le canal
+    RÉELLEMENT emprunté — 764 px. La seconde phrase dit une règle que la note du
+    canal WhatsApp porte mieux, et au moment où elle compte ; la retirer rend 43
+    px à 360 et 22 à 1280. Le reste est le champ lui-même, qui ne se réduit pas
+    sans cesser d'être atteignable au doigt.
+
+    CETTE BOÎTE EST DÉSORMAIS LA PLUS LONGUE DU REGISTRE, et je le dis plutôt que
+    de le laisser découvrir : dix réglages dans une seule modale, dont cinq pour
+    la seule relance. Un onglet ou une seconde boîte serait la réponse, et ce
+    lot-ci n'est pas celui qui doit la faire — mais le prochain réglage qu'on y
+    ajoute devrait payer ce découpage plutôt qu'un plafond de plus.
+  */
+  /* LA COLONNE LARGE VIENT DE L'EXÉCUTEUR : 699 et 591 à 360, 408 et 366 à
+     1280. Elle avait gardé les 581 et 294 d'avant le canal de la relance, et la
+     porte publique l'a refusé sur-le-champ — quatre états rouges. `complet` ne
+     tourne QU'EN POLICE LARGE, donc cette machine ne fait jamais autorité ici. */
+  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 721, 1280: 408 }, defilLarge: { 360: 699, 1280: 408 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -304,9 +328,56 @@ const MODALES = [
        Mêmes réserves de provenance que ci-dessus : reproduction au navigateur,
        et non relevé par ce script. */
     /* 736 → 757 : voir le relevé du 2026-09-28, au-dessus de `ParkSettings`. */
-    defil: { 360: 757, 1280: 405 },
-    defilLarge: { 360: 736, 1280: 405 },
+    /* 757 → 875 à 360, 405 → 519 à 1280 : le canal de la relance s'ajoute à
+       l'état d'ouverture, et cet état-ci le porte comme les autres. L'écart
+       avec `ParkSettings` reste celui de l'avertissement de devise seul — 154
+       px à 360, 111 à 1280 —, inchangé depuis le relevé précédent : le champ
+       neuf coûte la même hauteur dans les deux états, il n'interagit pas avec
+       la note. */
+    defil: { 360: 875, 1280: 519 },
+    /* MÊME RELEVÉ DE L'EXÉCUTEUR : 832 à 360 en français, 724 en anglais ; 519
+       et 477 à 1280. */
+    defilLarge: { 360: 832, 1280: 519 },
     avant: { 360: 35, 1280: 0 },
+  },
+  /*
+    LE CANAL DE LA RELANCE, TROISIÈME ÉTAT DE LA MÊME BOÎTE — et il naît d'une
+    contrainte que le code ne peut pas lever.
+
+    Meta n'autorise un message WhatsApp SORTANT hors d'une fenêtre de 24 h après
+    le dernier message du destinataire que s'il suit un MODÈLE qu'elle a
+    approuvé. Une relance de loyer est non sollicitée : sans ce modèle, Twilio la
+    refuse, la couture rend `false`, et la relance reste dans le produit.
+
+    LA NOTE LE DIT AVANT LE CHOIX, et c'est pour cela qu'elle se mesure ici : la
+    découverte naturelle de cette règle est un parc dont plus aucune relance ne
+    part, sans rien à l'écran pour l'expliquer.
+
+    `select[name="reminderChannel"]` — une VRAIE liste déroulante, comme la
+    devise au-dessus. Le `Combobox` du dépôt pose son `name` sur un champ caché
+    et n'aurait pas été atteignable ainsi.
+  */
+  {
+    nom: 'ParkSettings·whatsapp', fichier: 'features/dashboard/ParkSettingsModal.tsx',
+    adresse: '/demo/parc',
+    bouton: /^Corriger le parc$|^Correct the park$/,
+    apres: (page) =>
+      page.locator('select[name="reminderChannel"]').selectOption('whatsapp'),
+    note: /modèle de message approuvé|message template approved/,
+    /* 875 px à 360, 519 à 1280 — au pixel près les mêmes que l'état de la
+       devise, et ce n'est pas une coïncidence utile : les deux ajoutent UNE
+       note de quatre lignes en français à la même boîte. Les deux langues, en
+       revanche, divergent : 875 contre 789, la phrase française portant
+       « modèle de message approuvé par Meta » là où l'anglaise tient en moins.
+       Le plafond retient la plus longue, comme partout dans ce fichier. */
+    defil: { 360: 875, 1280: 519 },
+    /* 854 ET NON 875 EN POLICE LARGE : l'exécuteur rend 854 et 746 à 360, 519 et
+       477 à 1280. Les 875 recopiés de la colonne étroite laissaient 21 px de
+       MOU, et un plafond au-dessus de sa mesure cesse de refuser quoi que ce
+       soit — `modales` ne le dit pas, mais la règle est la même que pour les
+       hauteurs, qui la disent. */
+    defilLarge: { 360: 854, 1280: 519 },
+    avant: { 360: 721, 1280: 408 },
   },
   { nom: 'AddBuilding', fichier: 'features/dashboard/AddBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', fichier: 'features/dashboard/AddUnitModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
@@ -365,8 +436,55 @@ const MODALES = [
     Le loyer COURANT reste visible même replié : c'est la donnée, pas le geste, et
     on ne décide pas d'une hausse sans elle sous les yeux. C'est ce qui explique
     les 153 px qui restent à 1280.
+
+    434 → 523 À 360, ET CE QUE CES 89 px ACHÈTENT EST UNE QUATRIÈME SECTION.
+    Le plan d'apurement s'installe ici plutôt que dans une boîte à lui : replié,
+    il ne coûte que son en-tête — un bouton de 44 px, son filet et ses marges.
+    C'est le prix EXACT du dépliage choisi au lot précédent, et c'est aussi ce
+    qui le valide : une section de plus se paie en en-tête, pas en corps.
+
+    À 1280 le relevé diverge par langue — 242 en français, 268 en anglais — et
+    le plafond retient l'anglais, comme partout dans ce fichier : caler sur le
+    français laisserait passer 26 px non vus sur la moitié du produit.
+
+    LA COLONNE LARGE VIENT DE L'EXÉCUTEUR, ET ELLE EST PLUS BASSE QUE L'AUTRE.
+    549 et 523 à 360 px en CI, 242 aux deux langues à 1280 ; la machine de
+    développement rend 549 et 570, puis 268 et 268. Les deux colonnes ne se
+    comparent pas : `complet` ne tourne QU'EN POLICE LARGE — c'est écrit dans le
+    travail lui-même —, donc la CI ne mesure jamais `defil`, et cette machine ne
+    fait jamais autorité sur `defilLarge`. Qu'un plafond large tombe SOUS son
+    voisin étroit n'est donc pas une incohérence : ce sont deux relevés de deux
+    machines, chacun gardé là où il est mesuré.
   */
-  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 434, 1280: 179 }, defilLarge: { 360: 481, 1280: 179 }, avant: { 360: 1196, 1280: 747 } },
+  { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 523, 1280: 268 }, defilLarge: { 360: 549, 1280: 242 }, avant: { 360: 1196, 1280: 747 } },
+  /*
+    LES CHARGES DU BAIL — et le premier lot de cette série à REFUSER une section
+    de plus dans la boîte du dessus.
+
+    `LeaseModal` porte quatre sections et 843 lignes, au-dessus du plafond de
+    maintenabilité du dépôt. Une cinquième l'aurait poussée vers 1 100 lignes et
+    son défilement de 523 à 612 px. Le dépliage repousse le moment où une boîte
+    devient illisible ; il ne le supprime pas, et ce lot est celui où la
+    repousser une fois de plus aurait coûté plus que séparer.
+
+    DEUX SECTIONS ICI, dépliées comme là-haut : les charges convenues d'un côté,
+    la régularisation de l'autre. Ouvertes ensemble, il faudrait parcourir toutes
+    les lignes pour atteindre le décompte — exactement le défaut que la boîte du
+    bail a payé en 1 196 px.
+  */
+  { nom: 'LeaseCharges', fichier: 'features/dashboard/ChargesModal.tsx', adresse: '/demo/parc/A1', bouton: /^Charges et régularisation$|^Charges and reconciliation$/, defil: { 360: 24, 1280: 0 }, defilLarge: { 360: 24, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
+    L'OUVERTURE D'UNE ANNONCE, sur l'écran de la vacance — né le même jour.
+    Action PRIMAIRE et non menu de débordement : c'est le seul geste de cet
+    écran, et on ne l'ouvre pas pour autre chose.
+  */
+  /* 80 px à 360 en français contre 37 en anglais — l'écart tient aux deux aides
+     longues, celle qui dit que le loyer de référence du logement n'est PAS
+     modifié et celle qui explique à quoi sert une date de disponibilité. Ni
+     l'une ni l'autre ne se raccourcit : la première désamorce la crainte qui
+     ferait renoncer à demander un autre prix, la seconde est tout l'intérêt du
+     champ. Le plafond retient le français, comme partout ici. Zéro à 1280. */
+  { nom: 'Listing', fichier: 'features/dashboard/ListingModal.tsx', adresse: '/demo/vacance', bouton: /^Ouvrir une annonce$|^Open a listing$/, defil: { 360: 80, 1280: 0 }, defilLarge: { 360: 80, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
     LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
     l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par
@@ -795,7 +913,7 @@ const LANGUES = ['fr', 'en']
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 128
+const ATTENDUS = 140
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

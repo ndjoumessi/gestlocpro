@@ -98,6 +98,18 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
          proposer un changement d'heure que personne n'a demandé. */
       reminderHour: adhesionActive?.reminderHour ?? 6,
       reminderTimeZone: adhesionActive?.reminderTimeZone ?? 'UTC',
+      /* `sms` : exactement ce que la route écrivait EN DUR avant que le canal
+         soit réglable. Supposer autre chose ferait proposer un changement de
+         canal que personne n'a demandé — et proposer `whatsapp` à un parc qui
+         n'a pas de modèle approuvé éteindrait ses relances en silence.
+
+         `in_app` ET `email` NE SONT PAS RÉGLABLES, mais le serveur peut les
+         rendre : on retombe alors sur `sms`, le seul des deux membres réglables
+         qui soit aussi l'ancien comportement. */
+      reminderChannel:
+        adhesionActive?.reminderChannel === 'whatsapp'
+          ? ('whatsapp' as const)
+          : ('sms' as const),
       currency: (adhesionActive?.currency ?? (estDemo ? deviseDeDemo : '')) as DeviseDuParc | '',
       /* `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
          supposer `solo` proposerait de « rétablir » une délégation que le parc
@@ -109,12 +121,13 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       adhesionActive?.countryCode,
       adhesionActive?.currency,
       adhesionActive?.delegation,
-      /* Les quatre réglages de relance : sans eux, la modale rouverte après une
+      /* Les cinq réglages de relance : sans eux, la modale rouverte après une
          correction reproposerait l'état du PREMIER rendu. */
       adhesionActive?.autoReminders,
       adhesionActive?.reminderMilestoneDays,
       adhesionActive?.reminderHour,
       adhesionActive?.reminderTimeZone,
+      adhesionActive?.reminderChannel,
       // Les trois de la démonstration : sans elles, le repli se figerait sur la
       // langue et la devise du premier rendu, et changer l'une des deux dans
       // l'en-tête laisserait la modale sur l'ancienne.
@@ -143,6 +156,7 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   const [jalon, setJalon] = useState(String(origine.reminderMilestoneDays))
   const [heure, setHeure] = useState(String(origine.reminderHour))
   const [fuseau, setFuseau] = useState(origine.reminderTimeZone)
+  const [canal, setCanal] = useState<'sms' | 'whatsapp'>(origine.reminderChannel)
 
   /**
    * LES FUSEAUX VIENNENT D'`Intl`, jamais d'une liste écrite ici.
@@ -208,6 +222,7 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
     reminderMilestoneDays?: number
     reminderHour?: number
     reminderTimeZone?: string
+    reminderChannel?: 'sms' | 'whatsapp'
     name?: string
     countryCode?: string
     currency?: DeviseDuParc
@@ -243,6 +258,7 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
     correction.reminderHour = heureLue
   }
   if (fuseau && fuseau !== origine.reminderTimeZone) correction.reminderTimeZone = fuseau
+  if (canal !== origine.reminderChannel) correction.reminderChannel = canal
 
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
@@ -590,6 +606,61 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
               />
             )}
           </Field>
+        )}
+
+        {/**
+         * PAR QUEL CANAL LA RELANCE PART — et ce que le produit ne peut pas
+         * promettre.
+         *
+         * DEUX CHOIX SEULEMENT, sur les quatre que l'énumération porte.
+         * `in_app` est ce que le produit ÉCRIT quand rien n'est parti : un
+         * constat, pas une intention, et le proposer ici reviendrait à faire
+         * choisir « ne rien envoyer » sous le nom d'un canal. `email` n'a pas
+         * de rédaction de relance.
+         *
+         * L'AVERTISSEMENT N'EST PAS UNE PRÉCAUTION DE STYLE. Meta n'autorise un
+         * message WhatsApp SORTANT hors d'une fenêtre de 24 h après le dernier
+         * message du destinataire que s'il suit un MODÈLE qu'elle a approuvé ;
+         * une relance de loyer est par nature non sollicitée. Sans ce modèle,
+         * Twilio refuse, la couture rend `false`, et la relance reste dans le
+         * produit — visible, mais pas partie.
+         *
+         * LE DIRE ICI, C'EST-À-DIRE AVANT. La découverte naturelle de cette
+         * règle est un parc qui bascule sur WhatsApp et dont plus aucune
+         * relance ne part, sans que rien à l'écran explique pourquoi. C'est
+         * exactement la forme de panne que ce dépôt refuse ailleurs : un
+         * réglage qui a l'air de marcher et n'envoie rien.
+         */}
+        {relances && (
+          <Field
+            label={t('app.parkSettings.reminderChannel')}
+            hint={t('app.parkSettings.reminderChannelHint')}
+          >
+            {/* `Select` ET NON `Combobox` : deux options fixes, connues à
+                l'avance et qui ne se cherchent pas. Le `Combobox` du dépôt sert
+                les listes longues — pays, fuseaux — et pose son `name` sur un
+                champ CACHÉ, ce qui rend le choix inatteignable à une garde de
+                navigateur autrement qu'en déroulant un panneau. */}
+            {(props) => (
+              <Select
+                {...props}
+                name="reminderChannel"
+                value={canal}
+                onChange={(e) => setCanal(e.target.value as 'sms' | 'whatsapp')}
+              >
+                <option value="sms">{t('app.parkSettings.reminderChannelSms')}</option>
+                <option value="whatsapp">
+                  {t('app.parkSettings.reminderChannelWhatsApp')}
+                </option>
+              </Select>
+            )}
+          </Field>
+        )}
+
+        {relances && canal === 'whatsapp' && (
+          <Notice tone="warn" icon="info">
+            {t('app.parkSettings.reminderChannelWhatsAppWarning')}
+          </Notice>
         )}
 
         {/**

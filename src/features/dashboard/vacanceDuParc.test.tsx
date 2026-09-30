@@ -1,0 +1,99 @@
+import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { attendreLeChargement, renderApp, screen, within } from '@/test/render'
+import { installerFauxServeur } from '@/test/api'
+
+/**
+ * L'ÉCRAN DE LA VACANCE, ET LES DEUX CHOSES QUE SEUL L'ÉCRAN DIT.
+ *
+ * Le comportement — le logement occupé refusé, le congé qui rouvre la fenêtre,
+ * le loyer demandé qui ne touche pas celui du logement — vit côté serveur et y
+ * est éprouvé contre une vraie base (`annoncesEtCandidats.test.ts`).
+ *
+ * Ce que ce fichier garde est ce que l'écran DIT, et c'est là qu'un tableau de
+ * bord ment le plus facilement :
+ *
+ *   1. LE PREMIER INDICATEUR N'EST PAS UNE SOMME D'ANNONCES. « Logements
+ *      vides » compte les logements SANS bail, et sa note dit combien n'ont
+ *      AUCUNE annonce — le cas qui coûte, et celui qu'une somme d'annonces
+ *      rendrait invisible.
+ *
+ *   2. CE QUE L'ÉCRAN NE SAIT PAS, IL LE DIT. Il ne chiffre pas ce que la
+ *      vacance coûte : le produit sait ce qu'un logement a rapporté, pas ce
+ *      qu'il aurait rapporté. La note est INCONDITIONNELLE — un parc sans
+ *      logement vide est précisément celui où l'on croirait l'écran complet.
+ */
+async function ouvrirLaVacance() {
+  installerFauxServeur()
+  await renderApp('/demo/vacance', { largeur: 1280 })
+  await screen.findByRole('heading', { level: 1 })
+  await attendreLeChargement()
+  return { user: userEvent.setup() }
+}
+
+describe('la vacance du parc', () => {
+  it('COMPTE LES LOGEMENTS VIDES, et nomme ceux qui n’ont aucune annonce', async () => {
+    await ouvrirLaVacance()
+
+    /* LA DÉMONSTRATION PORTE DEUX LOGEMENTS VIDES — `B4` et `C3` — et DEUX
+       annonces, dont une FERMÉE sur un logement OCCUPÉ. Les deux quantités
+       divergent donc, et c'est ce qui rend ce cas mesurable : dériver le
+       compteur des annonces au lieu des logements rendrait 1 au lieu de 2.
+
+       `C3` N'A AUCUNE ANNONCE, et c'est le cas qui coûte. */
+    /* LA VALEUR EST LUE DANS SA CARTE, et non sur la page : « 2 » paraît
+       ailleurs — le compte des candidats en est un —, et un `getByText` global
+       rendrait le cas vert pour une raison qui n'est pas la sienne.
+
+       `[data-indicateur]` ET NON `div` : la carte en empile plusieurs, et
+       remonter d'un seul niveau attrape la boîte du LIBELLÉ, pas celle qui
+       porte aussi la valeur. Ce repère existe pour cela — voir `Charts.tsx`. */
+    const carte = screen.getByText('Logements vides').closest<HTMLElement>('[data-indicateur]')!
+    expect(within(carte).getByText('2')).toBeInTheDocument()
+    expect(within(carte).getByText(/1 sans annonce en cours/)).toBeInTheDocument()
+  })
+
+  it('DIT CE QU’IL NE SAIT PAS CHIFFRER', async () => {
+    await ouvrirLaVacance()
+
+    /* Le produit sait ce qu'un logement A rapporté ; il ne sait pas ce qu'il
+       AURAIT rapporté. Un écran de vacance qui affiche un coût sans le dire
+       invente un manque à gagner.
+
+       CE CAS NE PROUVE PAS QUE LA NOTE EST INCONDITIONNELLE, et je ne le
+       prétends pas : la démonstration a toujours des logements vides et des
+       annonces, donc toute condition qu'on lui accrocherait serait vraie ici.
+       Une mutation qui la rend conditionnelle passe au vert — mesuré. Ce que ce
+       cas tient est sa PRÉSENCE et son contenu ; l'inconditionnalité vit dans
+       le code, sous les yeux, et rien ici ne la garde. */
+    expect(
+      screen.getByText(/ne chiffre pas ce que la vacance coûte/),
+    ).toBeInTheDocument()
+  })
+
+  it('DISTINGUE UNE ANNONCE PUBLIÉE D’UNE ANNONCE FERMÉE PAR UN MOT', async () => {
+    await ouvrirLaVacance()
+    const tableau = screen.getByRole('table')
+
+    /* PAS DE COULEUR SEULE : « publiée » et « brouillon » sont des MOTS. C'est
+       la seule colonne qui dit si l'on attend encore des candidats, et une
+       teinte aurait demandé une légende. */
+    expect(within(tableau).getByText('Publiée')).toBeInTheDocument()
+    expect(within(tableau).getByText('Fermée')).toBeInTheDocument()
+  })
+
+  it('OUVRE LA BOÎTE D’UNE ANNONCE SUR SES CANDIDATS', async () => {
+    const { user } = await ouvrirLaVacance()
+
+    await user.click(screen.getByRole('button', { name: /Immeuble Akwa Nord — B4/ }))
+    const boite = await screen.findByRole('dialog')
+
+    expect(within(boite).getByText('Chantal Ekwalla')).toBeInTheDocument()
+    /* LA SUITE DONNÉE SE CHOISIT PAR CANDIDAT, et son libellé le NOMME : deux
+       listes déroulantes identiques côte à côte seraient indiscernables à
+       l'oreille. */
+    expect(
+      within(boite).getByLabelText(/Suite donnée à Chantal Ekwalla/),
+    ).toBeInTheDocument()
+  })
+})
