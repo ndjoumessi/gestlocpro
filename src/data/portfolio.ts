@@ -720,6 +720,70 @@ function moisPrecedent(mois: string): string {
 export const MOIS_DEMO = `${PERIODE_DEMO.year}-${String(PERIODE_DEMO.month + 1).padStart(2, '0')}`
 
 /**
+ * LES DÉPENSES DE LA DÉMONSTRATION, sur le mois que la démonstration montre.
+ *
+ * Elles existent pour une raison mécanique autant que commerciale : les portes
+ * au navigateur ne mesurent que `/demo` — contraste, cibles tactiles, hauteurs,
+ * débordement. Un écran sans donnée de démonstration n'y rendrait que son état
+ * vide, et rien de ce qu'un parc réel affiche ne serait jamais mesuré.
+ *
+ * LES TROIS PORTÉES SONT REPRÉSENTÉES, et c'est le point : une dépense du parc
+ * entier (le comptable), une d'immeuble (la taxe), une de logement (le
+ * chauffe-eau). L'écran doit montrer les trois libellés de portée, faute de quoi
+ * deux d'entre eux ne seraient jamais rendus, donc jamais mesurés.
+ *
+ * `paidOn` VIDE SUR UNE LIGNE, délibérément : « engagée, pas encore réglée » est
+ * un état que l'écran rend en mots, et il ne serait visible nulle part si les
+ * trois lignes étaient payées.
+ */
+export const DEPENSES_DEMO: {
+  id: string
+  buildingId: string | null
+  unitId: string | null
+  category: 'tax' | 'insurance' | 'syndic' | 'utility' | 'upkeep' | 'other'
+  label: string
+  amountMinor: number
+  incurredOn: string
+  paidOn: string | null
+  note: string | null
+}[] = [
+  {
+    id: 'dep-demo-1',
+    buildingId: 'bon',
+    unitId: null,
+    category: 'tax',
+    label: 'Taxe foncière — Résidence Bonamoussadi',
+    amountMinor: 185000,
+    incurredOn: `${MOIS_DEMO}-04`,
+    paidOn: `${MOIS_DEMO}-09`,
+    note: null,
+  },
+  {
+    id: 'dep-demo-2',
+    buildingId: null,
+    unitId: null,
+    category: 'other',
+    label: 'Honoraires du comptable',
+    amountMinor: 60000,
+    incurredOn: `${MOIS_DEMO}-12`,
+    paidOn: null,
+    note: null,
+  },
+  {
+    id: 'dep-demo-3',
+    buildingId: null,
+    unitId: 'A3',
+    category: 'upkeep',
+    label: 'Remplacement du chauffe-eau — A3',
+    amountMinor: 48000,
+    incurredOn: `${MOIS_DEMO}-18`,
+    paidOn: `${MOIS_DEMO}-18`,
+    note: null,
+  },
+]
+
+
+/**
  * LES PÉRIODES QU'ON PEUT DEMANDER, de la plus ancienne à la plus récente.
  *
  * Bornes du sélecteur, et rien de plus : entre les deux, un mois sans aucun

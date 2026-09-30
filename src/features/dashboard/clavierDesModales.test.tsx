@@ -182,6 +182,11 @@ const MODALES: Modale[] = [
      à la main et rien ne rougit quand une modale neuve l'oublie. */
   { nom: 'Saisir un relevé', fichier: 'features/dashboard/RecordReadingModal.tsx', adresse: '/demo/releves', bouton: /^Saisir un relevé$/, forme: 'saisie' },
   { nom: 'Ouvrir un chantier', fichier: 'features/dashboard/OpenWorkModal.tsx', adresse: '/demo/travaux', bouton: /^Ouvrir un chantier$/, forme: 'saisie' },
+  /* LA SAISIE D'UNE DÉPENSE, entrée avec le lot qui la crée — et c'est ce
+     registre qui a rougi le premier, avant même la chaîne au navigateur :
+     `registresDesModales` refuse qu'une modale n'entre dans aucun des deux. */
+  { nom: 'Saisir une dépense', fichier: 'features/dashboard/RecordExpenseModal.tsx', adresse: '/demo/depenses', bouton: /^Saisir une dépense$/, forme: 'saisie' },
+
   { nom: 'Enregistrer un paiement', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
     CINQUIÈME, ET ELLE ÉTAIT INATTEIGNABLE. Le bouton de « Corriger le parc »
@@ -629,13 +634,15 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les vingt-sept modales déclarées', () => {
+  it('a bien joué les vingt-huit modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
        faute de cible dans la démonstration. Leur `prealable` la crée.
        26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
-       fiches de l'écran des locataires. */
-    expect(MODALES.length).toBe(27)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(27)
+       fiches de l'écran des locataires.
+       27 → 28 (2026-09-30) : la saisie d'une dépense, née avec l'écran de ce
+       qui sort du parc. */
+    expect(MODALES.length).toBe(28)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(28)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

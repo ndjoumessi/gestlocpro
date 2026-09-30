@@ -19,6 +19,7 @@ import { Meters } from '@/features/dashboard/Meters'
 import { Inspections } from '@/features/dashboard/Inspections'
 import { Works } from '@/features/dashboard/Works'
 import { Deposits } from '@/features/dashboard/Deposits'
+import { Expenses } from '@/features/dashboard/Expenses'
 import { Tenants } from '@/features/dashboard/Tenants'
 import { Alerts } from '@/features/dashboard/Alerts'
 import { Signaler } from '@/features/dashboard/Signaler'
@@ -226,6 +227,9 @@ function ecransDeLApplication() {
       <Route path="mes-donnees" element={<MesDonnees />} />
       <Route path="releves" element={<Meters />} />
       <Route path="cautions" element={<Deposits />} />
+      {/* CE QUI SORT. Aux deux rôles de gestion : le locataire n'a rien à voir
+          avec ce que le parc dépense, et le serveur le lui refuse déjà. */}
+      <Route path="depenses" element={<Restricted adresse="depenses"><Expenses /></Restricted>} />
       <Route path="locataires" element={<Restricted adresse="locataires"><Tenants /></Restricted>} />
       {/* Le registre des accès : ouvert aux deux rôles de gestion, parce que le
           gestionnaire émet des codes de locataire au quotidien et qu'un code

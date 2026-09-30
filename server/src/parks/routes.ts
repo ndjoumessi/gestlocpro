@@ -9124,3 +9124,508 @@ rejoindreRouter.post('/', async (req: Request, res: Response) => {
     })
   res.status(201).json({ parkId: invitation.parkId, role: invitation.role })
 })
+
+// ─── Dépenses ────────────────────────────────────────────────────────────────
+
+/**
+ * LE PÉRIMÈTRE, EN CLAUSE DE REQUÊTE — pour `Expense`.
+ *
+ * Une dépense a trois portées possibles, et le périmètre d'un gestionnaire ne
+ * les traite pas de la même façon :
+ *
+ *   * sur un IMMEUBLE — visible si cet immeuble lui est confié ;
+ *   * sur un LOGEMENT — visible si ce logement entre dans `porteeDesUnites` ;
+ *   * sur LE PARC ENTIER — **jamais visible** d'un gestionnaire borné.
+ *
+ * Ce dernier cas est le seul qui demande un mot. Une dépense de parc n'est
+ * attribuable à aucun des immeubles qu'on lui a confiés : la rendre lui
+ * apprendrait ce que coûte l'ensemble, donc ce que coûtent les immeubles qu'on
+ * lui cache, par simple soustraction. Elle sort du périmètre plutôt que d'être
+ * ventilée au prorata — un prorata inventé ici serait un chiffre faux affiché
+ * comme un fait.
+ *
+ * `porteeDesImmeublesTenus` et non `porteeDesImmeubles` : voir un immeuble
+ * parce qu'il porte un studio confié ne donne pas droit à sa taxe foncière, qui
+ * est la dépense de l'immeuble ENTIER.
+ *
+ * SOUS `AND`, comme les deux autres périmètres, et pour la même raison : ce
+ * fragment se compose avec des clauses qui portent déjà un `id`.
+ */
+function porteeDesDepenses(adhesion: {
+  immeubles: string[] | null
+  unites: string[] | null
+  exclues?: string[] | null
+}): Prisma.ExpenseWhereInput {
+  if (!adhesion.immeubles) return {}
+  return {
+    AND: [
+      {
+        OR: [
+          { buildingId: { in: adhesion.immeubles } },
+          { unit: porteeDesUnites(adhesion) },
+        ],
+      },
+    ],
+  }
+}
+
+/**
+ * La FORME SERVIE d'une dépense, en un seul endroit.
+ *
+ * Les deux dates sortent en `AAAA-MM-JJ` et jamais en instant : les colonnes
+ * sont des jours calendaires, et rendre un `Date` complet inviterait le client
+ * à le relire dans son fuseau, donc à le décaler d'un cran pour la moitié de la
+ * planète. C'est le défaut que ce dépôt a déjà payé sur les dates de bail, et
+ * que `enTarifServi` et `enReleveServi` évitent de la même façon.
+ *
+ * `paidOn` sort `null` et non absent : « engagée, pas encore payée » est un état
+ * que l'écran doit distinguer d'un champ qu'on aurait oublié de servir.
+ */
+function enDepenseServie(d: {
+  id: string
+  buildingId: string | null
+  unitId: string | null
+  category: string
+  label: string
+  amountMinor: number
+  currency: string
+  incurredOn: Date
+  paidOn: Date | null
+  note: string | null
+}) {
+  return {
+    id: d.id,
+    buildingId: d.buildingId,
+    unitId: d.unitId,
+    category: d.category,
+    label: d.label,
+    amountMinor: d.amountMinor,
+    currency: d.currency,
+    incurredOn: d.incurredOn.toISOString().slice(0, 10),
+    paidOn: d.paidOn ? d.paidOn.toISOString().slice(0, 10) : null,
+    note: d.note,
+  }
+}
+
+const schemaDepense = z
+  .object({
+    category: z.enum(['tax', 'insurance', 'syndic', 'utility', 'upkeep', 'other']),
+    /**
+     * Le libellé, obligatoire et non vide.
+     *
+     * La catégorie CLASSE, le libellé IDENTIFIE : douze lignes `tax` d'un même
+     * exercice seraient indiscernables sans lui, et c'est exactement la colonne
+     * qu'un bailleur relit un an plus tard pour savoir ce qu'il a payé.
+     */
+    label: z.string().trim().min(1).max(200),
+    /**
+     * Le montant en unités MINEURES, entier, strictement positif.
+     *
+     * Zéro serait accepté par « positif ou nul » et ne voudrait rien dire : une
+     * dépense de zéro ne se saisit pas, elle ne s'inscrit pas. Le signe reste
+     * positif — une dépense NÉGATIVE serait une recette, qui a ses propres
+     * tables, et l'accepter ici ferait deux façons d'encaisser un loyer.
+     */
+    amountMinor: z.number().int().positive(),
+    incurredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    /** Vide ou absent = engagée, pas encore réglée. */
+    paidOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+      .nullish(),
+    buildingId: z.string().uuid().nullish(),
+    unitId: z.string().uuid().nullish(),
+    note: z.string().trim().max(2000).nullish(),
+  })
+  /**
+   * LA PORTÉE EST EXCLUSIVE, et c'est ici que la garde vit.
+   *
+   * La migration le dit : PostgreSQL saurait l'exprimer par une `CHECK`, et
+   * Prisma ne sait pas la déclarer — elle disparaîtrait au prochain
+   * `migrate dev`. La règle est donc applicative, et son unique gardien est
+   * cette ligne.
+   *
+   * Ce qu'elle empêche : une dépense posée à la fois sur un immeuble et sur un
+   * logement serait comptée DEUX FOIS par un résultat qui agrège par immeuble —
+   * une fois par elle-même, une fois par l'immeuble de son logement. Le total
+   * serait faux sans qu'aucune ligne ne le paraisse.
+   */
+  .refine((c) => !(c.buildingId && c.unitId), {
+    message: 'Une dépense porte sur un immeuble OU sur un logement, jamais sur les deux',
+    path: ['unitId'],
+  })
+
+/**
+ * CE QUE LE PARC A DÉPENSÉ, sur un intervalle.
+ *
+ * ═══ POURQUOI L'INTERVALLE EST OBLIGATOIRE ═══
+ *
+ * Les autres lectures de ce fichier rendent tout et laissent l'écran filtrer.
+ * Celle-ci ne peut pas : une comptabilité s'accumule sans fin, là où un parc a
+ * un nombre borné de logements et de baux. Rendre toutes les dépenses depuis
+ * l'origine ferait grossir la réponse d'un exercice par an, indéfiniment, et le
+ * jour où elle deviendrait lourde serait un jour sans déploiement.
+ *
+ * ═══ LE SORTANT DIT SES DEUX MOITIÉS ═══
+ *
+ * `expensesMinor` et `worksMinor` sortent séparés, et leur somme n'est PAS
+ * précalculée ici. La raison est celle qu'écrit la migration : un chantier est
+ * déjà une dépense et n'est pas recopié dans cette table. Rendre un seul total
+ * laisserait croire qu'il vient d'une seule source, et le premier lecteur qui
+ * voudrait vérifier ne retrouverait pas son compte en additionnant les lignes
+ * servies.
+ *
+ * Le chantier compte par son montant APPROUVÉ, jamais par son devis :
+ * `quotedAmountMinor` est une proposition, que le propriétaire n'a peut-être
+ * pas acceptée. Sommer des devis afficherait comme dépensé de l'argent que
+ * personne n'a engagé.
+ */
+parksRouter.get(
+  '/:parkId/expenses',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const portee = porteeDesDepenses(req.adhesion!)
+    const bornes = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      })
+      .parse(req.query)
+    const debut = new Date(`${bornes.from}T00:00:00.000Z`)
+    const fin = new Date(`${bornes.to}T00:00:00.000Z`)
+
+    const depenses = await prisma.expense.findMany({
+      where: { parkId, incurredOn: { gte: debut, lte: fin }, ...portee },
+      orderBy: [{ incurredOn: 'desc' }, { label: 'asc' }],
+      select: {
+        id: true,
+        buildingId: true,
+        unitId: true,
+        category: true,
+        label: true,
+        amountMinor: true,
+        currency: true,
+        incurredOn: true,
+        paidOn: true,
+        note: true,
+      },
+    })
+
+    /* LE CHANTIER COMPTE PAR SA DATE D'ACHÈVEMENT, et non par sa déclaration :
+       c'est le jour où la dépense est née. Un chantier approuvé mais non
+       terminé est un engagement, pas encore une dépense — il ne compte donc
+       dans aucun intervalle, et c'est cohérent avec `paidOn` vide sur une
+       dépense engagée. */
+    const chantiers = await prisma.workOrder.aggregate({
+      where: {
+        parkId,
+        approvedAmountMinor: { not: null },
+        completedOn: { gte: debut, lte: fin },
+        unit: porteeDesUnites(req.adhesion!),
+      },
+      _sum: { approvedAmountMinor: true },
+    })
+
+    res.json({
+      expenses: depenses.map(enDepenseServie),
+      expensesMinor: depenses.reduce((somme: number, d) => somme + d.amountMinor, 0),
+      worksMinor: chantiers._sum.approvedAmountMinor ?? 0,
+    })
+  },
+)
+
+/**
+ * SAISIR UNE DÉPENSE.
+ *
+ * Au propriétaire ET au gestionnaire, et la frontière mérite d'être dite : ce
+ * fichier réserve au seul propriétaire ce qui ENGAGE son argent — valider un
+ * devis, poser un prix de refacturation. Saisir une dépense n'engage rien : le
+ * syndic a déjà été payé, la taxe déjà réglée, et c'est très souvent le
+ * gestionnaire qui a signé le chèque. Lui interdire la saisie obligerait le
+ * bailleur à ressaisir ce que son mandataire sait déjà, et le registre d'audit
+ * dit de toute façon qui a écrit quoi.
+ */
+parksRouter.post(
+  '/:parkId/expenses',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const portee = porteeDesUnites(req.adhesion!)
+    const corps = schemaDepense.parse(req.body)
+
+    /**
+     * LA PORTÉE EST VÉRIFIÉE CONTRE LE PARC ET CONTRE LE PÉRIMÈTRE.
+     *
+     * Sans cette lecture, un gestionnaire pourrait rattacher une dépense à un
+     * immeuble d'un autre parc — la clé étrangère l'accepterait, seul le `parkId`
+     * de la ligne mentirait. Et 404 plutôt que 403 : un 403 confirmerait
+     * l'existence de l'immeuble qu'on lui cache.
+     */
+    if (corps.buildingId) {
+      const immeuble = await prisma.building.findFirst({
+        where: { id: corps.buildingId, parkId, ...porteeDesImmeublesTenus(req.adhesion!) },
+        select: { id: true },
+      })
+      if (!immeuble) {
+        res.status(404).json({ error: 'not_found' })
+        return
+      }
+    }
+    if (corps.unitId) {
+      const logement = await prisma.unit.findFirst({
+        where: { id: corps.unitId, building: { parkId }, ...portee },
+        select: { id: true },
+      })
+      if (!logement) {
+        res.status(404).json({ error: 'not_found' })
+        return
+      }
+    }
+
+    /* LA DEVISE VIENT DU PARC, jamais du corps de la requête. Le sélecteur de
+       l'interface est une préférence d'AFFICHAGE — l'en-tête du schéma le dit —
+       et laisser le client choisir la devise de stockage suffirait à ce qu'un
+       même parc porte deux unités de compte sans qu'aucune ligne ne le dise. */
+    const parc = await prisma.park.findUniqueOrThrow({
+      where: { id: parkId },
+      select: { currency: true },
+    })
+
+    const depense = await prisma.expense.create({
+      data: {
+        parkId,
+        buildingId: corps.buildingId ?? null,
+        unitId: corps.unitId ?? null,
+        category: corps.category,
+        label: corps.label,
+        amountMinor: corps.amountMinor,
+        currency: parc.currency,
+        incurredOn: new Date(`${corps.incurredOn}T00:00:00.000Z`),
+        paidOn: corps.paidOn ? new Date(`${corps.paidOn}T00:00:00.000Z`) : null,
+        note: corps.note ?? null,
+        recordedById: req.compteId!,
+      },
+      select: {
+        id: true,
+        buildingId: true,
+        unitId: true,
+        category: true,
+        label: true,
+        amountMinor: true,
+        currency: true,
+        incurredOn: true,
+        paidOn: true,
+        note: true,
+      },
+    })
+
+    /* UNE DÉPENSE DÉPLACE LE RÉSULTAT DU PARC, donc elle se trace. Le registre
+       suivait déjà l'entrant ligne par ligne — `payment.record`, `rent.call` —
+       et aurait été aveugle à la moitié qui sort. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'expense.record',
+        entity: 'Expense',
+        entityId: depense.id,
+        payload: {
+          category: depense.category,
+          label: depense.label,
+          amountMinor: depense.amountMinor,
+          incurredOn: corps.incurredOn,
+        },
+      },
+    })
+
+    res.status(201).json({ expense: enDepenseServie(depense) })
+  },
+)
+
+/**
+ * CORRIGER UNE DÉPENSE.
+ *
+ * La catégorie et la portée ne sont PAS corrigibles, et c'est la même raison
+ * qui écarte `utility` de la correction d'un tarif : déplacer une dépense d'un
+ * immeuble à l'autre, ou d'une famille à l'autre, ne corrige pas une saisie —
+ * cela en invente une autre. La ligne se retire, et l'on repose.
+ *
+ * Ce qui se corrige est ce qui se tape : un montant, un libellé, une date, une
+ * note. Le geste visé est la faute de frappe, pas la requalification.
+ */
+const schemaCorrectionDeDepense = z
+  .object({
+    label: schemaDepense.shape.label.optional(),
+    amountMinor: schemaDepense.shape.amountMinor.optional(),
+    incurredOn: schemaDepense.shape.incurredOn.optional(),
+    paidOn: schemaDepense.shape.paidOn.optional(),
+    note: schemaDepense.shape.note.optional(),
+  })
+  /* AU MOINS UN CHAMP, comme les quatre autres corrections du fichier : un
+     corps vide n'est pas une correction, et ferait une écriture et une trace
+     pour rien. Les bornes sont EMPRUNTÉES au schéma de création plutôt que
+     recopiées — deux rédactions du « strictement positif » vieilliraient
+     séparément, et c'est la porte de création qui fait autorité. */
+  .refine((c) => Object.values(c).some((v) => v !== undefined), {
+    message: 'Aucun champ à corriger',
+  })
+
+parksRouter.patch(
+  '/:parkId/expenses/:expenseId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const portee = porteeDesDepenses(req.adhesion!)
+    const expenseId = z.string().uuid().parse(req.params.expenseId)
+    const corps = schemaCorrectionDeDepense.parse(req.body)
+
+    const avant = await prisma.expense.findFirst({
+      where: { id: expenseId, parkId, ...portee },
+      select: {
+        id: true,
+        buildingId: true,
+        unitId: true,
+        category: true,
+        label: true,
+        amountMinor: true,
+        currency: true,
+        incurredOn: true,
+        paidOn: true,
+        note: true,
+      },
+    })
+    if (!avant) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const apresIncurredOn =
+      corps.incurredOn !== undefined
+        ? new Date(`${corps.incurredOn}T00:00:00.000Z`)
+        : avant.incurredOn
+    const apresPaidOn =
+      corps.paidOn !== undefined
+        ? corps.paidOn
+          ? new Date(`${corps.paidOn}T00:00:00.000Z`)
+          : null
+        : avant.paidOn
+
+    /* LE NON-GESTE NE S'ÉCRIT PAS, comme sur les quatre autres corrections : un
+       corps qui répète les valeurs en place ferait une écriture et une ligne de
+       registre disant qu'on n'a rien changé. */
+    const change =
+      (corps.label !== undefined && corps.label !== avant.label) ||
+      (corps.amountMinor !== undefined && corps.amountMinor !== avant.amountMinor) ||
+      apresIncurredOn.getTime() !== avant.incurredOn.getTime() ||
+      (apresPaidOn?.getTime() ?? null) !== (avant.paidOn?.getTime() ?? null) ||
+      (corps.note !== undefined && (corps.note ?? null) !== avant.note)
+    if (!change) {
+      res.json({ expense: enDepenseServie(avant) })
+      return
+    }
+
+    const apres = await prisma.expense.update({
+      where: { id: expenseId },
+      data: {
+        ...(corps.label !== undefined ? { label: corps.label } : {}),
+        ...(corps.amountMinor !== undefined ? { amountMinor: corps.amountMinor } : {}),
+        ...(corps.incurredOn !== undefined ? { incurredOn: apresIncurredOn } : {}),
+        ...(corps.paidOn !== undefined ? { paidOn: apresPaidOn } : {}),
+        ...(corps.note !== undefined ? { note: corps.note ?? null } : {}),
+      },
+      select: {
+        id: true,
+        buildingId: true,
+        unitId: true,
+        category: true,
+        label: true,
+        amountMinor: true,
+        currency: true,
+        incurredOn: true,
+        paidOn: true,
+        note: true,
+      },
+    })
+
+    /* L'AVANT AVEC L'APRÈS, comme la correction d'un tarif : « la dépense vaut
+       120 000 » n'apprend rien à qui relit le registre six mois plus tard. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'expense.update',
+        entity: 'Expense',
+        entityId: apres.id,
+        payload: {
+          label: apres.label,
+          amountMinor: apres.amountMinor,
+          incurredOn: apres.incurredOn.toISOString().slice(0, 10),
+          avant: {
+            label: avant.label,
+            amountMinor: avant.amountMinor,
+            incurredOn: avant.incurredOn.toISOString().slice(0, 10),
+          },
+        },
+      },
+    })
+
+    res.json({ expense: enDepenseServie(apres) })
+  },
+)
+
+/**
+ * RETIRER UNE DÉPENSE.
+ *
+ * DANS la transaction, contrairement à la création et à la correction : c'est la
+ * règle de `touteSuppressionVecueEstAtomique`. Une ligne effacée dont la trace
+ * manquerait serait de l'argent disparu du résultat sans que rien ne dise qui
+ * l'a retiré — et, contrairement à une correction, il n'y aurait plus de ligne
+ * à interroger pour le reconstituer.
+ *
+ * Les valeurs sont lues AVANT l'effacement et portées dans le `payload`, pour
+ * que la trace dise ce qui a disparu et pas seulement qu'il a disparu.
+ */
+parksRouter.delete(
+  '/:parkId/expenses/:expenseId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const portee = porteeDesDepenses(req.adhesion!)
+    const expenseId = z.string().uuid().parse(req.params.expenseId)
+
+    const depense = await prisma.expense.findFirst({
+      where: { id: expenseId, parkId, ...portee },
+      select: { id: true, category: true, label: true, amountMinor: true, incurredOn: true },
+    })
+    if (!depense) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.expense.delete({ where: { id: expenseId } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'expense.delete',
+          entity: 'Expense',
+          entityId: depense.id,
+          payload: {
+            category: depense.category,
+            label: depense.label,
+            amountMinor: depense.amountMinor,
+            incurredOn: depense.incurredOn.toISOString().slice(0, 10),
+          },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)

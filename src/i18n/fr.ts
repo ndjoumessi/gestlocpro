@@ -278,6 +278,7 @@ export const fr = {
     inspections: 'États des lieux',
     works: 'Travaux',
     deposits: 'Cautions',
+    expenses: 'Dépenses',
     access: 'Accès au parc',
     tenants: 'Locataires',
     report: 'Signaler',
@@ -1633,6 +1634,91 @@ export const fr = {
       unchanged: 'Rien n’a changé.',
       saved: 'Parc corrigé',
     },
+    /* LES DÉPENSES — l'écran. La modale de saisie vit sous `expenseEntry`,
+       comme `readings` vit à côté de `meters` : deux branches, parce qu'une
+       modale et son écran ne partagent presque aucun mot. */
+    expenses: {
+      title: 'Dépenses',
+      subtitle:
+        'Ce que le parc a payé sur le mois : taxes, assurances, syndic, factures du distributeur, entretien. Les chantiers sont comptés à part.',
+      /* Voir `works.status`. Ces six-là viennent de `ExpenseCategory`. */
+      category: {
+        tax: 'Taxe',
+        insurance: 'Assurance',
+        syndic: 'Syndic',
+        utility: 'Eau et électricité',
+        upkeep: 'Entretien',
+        other: 'Autre',
+      },
+      /* TROIS INDICATEURS ET NON DEUX : le total ne se lit pas sans ses deux
+         moitiés, et les moitiés ne se lisent pas sans leur somme. Un lecteur
+         qui n'aurait que le total ne saurait pas qu'un chantier en fait partie
+         sans figurer dans le tableau. */
+      totalOut: 'Total sorti',
+      fromExpenses: 'Dont dépenses saisies',
+      fromWorks: 'Dont chantiers achevés',
+      /* La note qui explique pourquoi le tableau ne somme pas au total. Elle
+         est INCONDITIONNELLE : la règle vaut même un mois sans chantier, et
+         c'est justement ce mois-là qu'on croirait le tableau complet. */
+      worksApart: 'Les chantiers ne sont pas dans ce tableau',
+      worksApartHint:
+        'Un chantier porte déjà son montant approuvé dans l’écran Travaux. Le recopier ici en ferait une seconde vérité, libre de diverger.',
+      periodShown: 'Mois affiché',
+      label: 'Libellé',
+      amount: 'Montant',
+      incurredOn: 'Engagée le',
+      paidOn: 'Réglée le',
+      scope: 'Portée',
+      /* Les trois portées, dites en mots plutôt qu'en identifiants. « Le parc »
+         n'est pas un immeuble sans nom : c'est une dépense qui n'appartient à
+         aucun. */
+      scopePark: 'Le parc',
+      /* Une dépense engagée et non réglée n'est pas une donnée manquante :
+         c'est un état, et il porte son mot plutôt qu'un tiret. */
+      unpaid: 'Non réglée',
+      add: 'Saisir une dépense',
+      editLine: 'Corriger la dépense — {label}',
+      removeLine: 'Retirer la dépense — {label}',
+      confirmRemove: 'Retirer cette dépense ?',
+      remove: 'Retirer',
+      removed: 'Dépense retirée',
+      empty: 'Aucune dépense sur ce mois',
+      emptyHint: 'Saisissez une taxe, une prime d’assurance ou une facture réglée pour le parc.',
+    },
+    /* LA SAISIE D'UNE DÉPENSE — la modale. Elle sert la saisie ET la
+       correction : les champs sont les mêmes, seule l'adresse de l'écriture
+       change. Deux boîtes jumelles divergeraient au premier ajustement. */
+    expenseEntry: {
+      title: 'Saisir une dépense',
+      correctTitle: 'Corriger la dépense',
+      description:
+        'Ce que le parc a payé, et pour quoi. La devise est celle du parc — elle ne se choisit pas ici.',
+      category: 'Famille',
+      label: 'Libellé',
+      labelHint: 'Ce que vous relirez dans un an : « Taxe foncière 2026 », « Prime multirisque Bastos ».',
+      labelRequired: 'Un libellé est nécessaire pour retrouver la ligne.',
+      amount: 'Montant ({devise})',
+      amountRequired: 'Un montant est nécessaire.',
+      amountInvalid: 'Un montant strictement positif est attendu.',
+      incurredOn: 'Engagée le',
+      incurredOnHint: 'Le jour où la dépense est née, et non celui où vous la saisissez.',
+      incurredOnRequired: 'Une date d’engagement est nécessaire.',
+      paidOn: 'Réglée le',
+      /* La date de règlement est FACULTATIVE, et son absence a un sens : la
+         dépense est engagée, pas encore payée. L'indice le dit, faute de quoi
+         un champ vide passerait pour un oubli. */
+      paidOnHint: 'Laissez vide si elle n’est pas encore payée.',
+      scope: 'Portée',
+      scopeHint: 'Le parc entier, un immeuble, ou un seul logement — jamais deux à la fois.',
+      scopePark: 'Le parc entier',
+      note: 'Note',
+      saved: 'Dépense enregistrée',
+      corrected: 'Dépense corrigée',
+      /* Ce refus vient du serveur et non de la validation locale : il dit que
+         l'immeuble ou le logement visé n'est pas dans le périmètre. */
+      outOfScope: 'Cet immeuble ou ce logement n’est pas dans votre périmètre.',
+      failed: 'La dépense n’a pas pu être enregistrée.',
+    },
     meters: {
       title: 'Relevé des compteurs',
       subtitle:
@@ -2220,6 +2306,14 @@ export const fr = {
              qu'on pose au registre quand une refacturation est contestée. */
           update: 'Relevé de compteur corrigé',
           delete: 'Relevé de compteur retiré',
+        },
+        /* LA DÉPENSE — trois libellés et non un. Comme pour les tarifs, une
+           ligne qui dirait seulement « dépense modifiée » laisserait indécidable
+           si un montant a été réparé ou si la ligne a disparu du résultat. */
+        expense: {
+          record: 'Dépense saisie',
+          update: 'Dépense corrigée',
+          delete: 'Dépense retirée',
         },
         tariff: {
           set: 'Tarif de refacturation posé',

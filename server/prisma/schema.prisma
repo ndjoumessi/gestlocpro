@@ -166,6 +166,7 @@ model UserAccount {
   capturedReadings MeterReading[] @relation("ReadingCapturer")
   documentRequests DocumentRequest[] @relation("DocumentRequester")
   resolvedDocumentRequests DocumentRequest[] @relation("DocumentResolver")
+  recordedExpenses Expense[]   @relation("ExpenseRecorder")
 
   @@index([disabledAt])
   @@index([closureRequestedAt])
@@ -294,6 +295,7 @@ model Park {
   invitations Invitation[]
   tariffs     UtilityTariff[]
   notifications Notification[]
+  expenses    Expense[]
   auditEvents AuditEvent[]
   /// Les interventions du parc, reliées en direct pour que leur RÉFÉRENCE soit
   /// unique ici — voir `WorkOrder.parkId`, qui dit ce que cette recopie paie.
@@ -457,6 +459,7 @@ model Building {
   units Unit[]
   /// Les gestionnaires à qui CET immeuble est confié. Voir `MembershipBuilding`.
   gestionnaires MembershipBuilding[]
+  expenses Expense[]
 
   @@index([parkId])
 }
@@ -487,6 +490,7 @@ model Unit {
   @@index([buildingId])
   /// Les gestionnaires à qui CE logement est confié. Voir `MembershipUnit`.
   gestionnaires MembershipUnit[]
+  expenses    Expense[]
 }
 
 // ─── Locataires et baux ──────────────────────────────────────────────────────
@@ -966,6 +970,82 @@ model WorkReferenceCounter {
   @@id([parkId, year])
 }
 
+// ─── Argent qui sort ─────────────────────────────────────────────────────────
+
+/// Une dépense du parc qui n'est pas un chantier.
+///
+/// Le produit savait exactement ce qui RENTRE — `RentCharge` appelle, `Payment`
+/// encaisse — et presque rien de ce qui sort. Seuls les travaux portaient de
+/// l'argent engagé, dans `WorkOrder.approvedAmountMinor`. Taxe foncière,
+/// assurance, quote-part de syndic, facture du distributeur réglée par le
+/// bailleur, entretien courant : rien de tout cela n'avait de place. Aucun
+/// résultat ne se calculait donc, et le bailleur refaisait la soustraction dans
+/// un tableur, à côté du produit.
+///
+/// **Un chantier EST déjà une dépense, et n'est pas recopié ici.** Deux réponses
+/// étaient possibles : dupliquer chaque chantier approuvé en `Expense`, ou faire
+/// lire les DEUX tables à tout calcul de résultat. La seconde est retenue — une
+/// copie peut diverger de son original, et une dépense qui doublerait un
+/// chantier gonflerait le sortant sans qu'aucune porte ne puisse le voir. Le
+/// prix de ce choix est que le résultat interroge deux tables ; il se paie une
+/// fois, dans `resultatDuParc`, et non à chaque saisie.
+model Expense {
+  id     String @id @default(uuid()) @db.Uuid
+  parkId String @db.Uuid
+  park   Park   @relation(fields: [parkId], references: [id], onDelete: Cascade)
+
+  /// Portée de la dépense, du plus large au plus étroit : les deux colonnes
+  /// vides désignent le parc entier, `buildingId` seul un immeuble, `unitId` un
+  /// logement.
+  ///
+  /// **Elles ne peuvent pas être posées toutes les deux.** Une prime
+  /// d'assurance appartient à un immeuble, un remplacement de robinet à un
+  /// logement, et une dépense qui prétendrait aux deux serait comptée deux fois
+  /// par un résultat qui agrège par immeuble. Prisma ne sait pas exprimer un
+  /// ou-exclusif : la garde est en zod à l'entrée, et un cas la tient.
+  ///
+  /// `unitId` n'implique PAS son immeuble. Le résultat d'un immeuble remonte ses
+  /// logements par jointure ; le dénormaliser ici ouvrirait la porte à deux
+  /// vérités sur le rattachement d'un même logement.
+  buildingId String?   @db.Uuid
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  unitId     String?   @db.Uuid
+  unit       Unit?     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  category ExpenseCategory
+
+  /// Ce que le bailleur reconnaîtra dans son relevé : « Taxe foncière 2026 »,
+  /// « Prime d'assurance immeuble Bastos ». La catégorie CLASSE, le libellé
+  /// IDENTIFIE — sans lui, douze lignes `tax` d'un même exercice seraient
+  /// indiscernables.
+  label String
+
+  amountMinor Int
+  currency    Currency
+
+  /// Deux dates, parce qu'elles ne répondent pas à la même question. Une taxe
+  /// due en janvier et réglée en mars appartient à janvier dans un résultat et à
+  /// mars dans une trésorerie. `paidOn` vide se lit « engagée, pas encore
+  /// payée » — c'est un état, pas une donnée manquante.
+  incurredOn DateTime  @db.Date
+  paidOn     DateTime? @db.Date
+
+  note String?
+
+  /// Le compte qui a saisi. `SetNull` et non `Cascade` : l'effacement d'un
+  /// gestionnaire ne doit pas emporter la comptabilité du parc qu'il tenait.
+  recordedById String?      @db.Uuid
+  recordedBy   UserAccount? @relation("ExpenseRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Le résultat se demande toujours par parc ET par intervalle de dates.
+  @@index([parkId, incurredOn])
+  @@index([buildingId])
+  @@index([unitId])
+}
+
 // ─── Notifications et traçabilité ────────────────────────────────────────────
 
 /// Message composé par le produit, en clé et en paramètres.
@@ -1159,6 +1239,30 @@ enum Currency {
   EUR
   CAD
   USD
+}
+
+/// Les familles de dépense d'un parc locatif, hors chantier.
+///
+/// Cinq valeurs nommées et un `other`, et le `other` est délibéré : une liste
+/// fermée forcerait à ranger une dépense réelle dans une case fausse, ce qui
+/// abîme le résultat plus sûrement qu'une ligne non classée. Le libellé reste là
+/// pour dire ce que la catégorie ne dit pas.
+enum ExpenseCategory {
+  /// Taxe foncière, patente, tout prélèvement public sur le bien.
+  tax
+  /// Prime d'assurance : multirisque immeuble, responsabilité civile.
+  insurance
+  /// Quote-part de copropriété ou de syndic.
+  syndic
+  /// Eau et électricité réglées par le BAILLEUR au distributeur. À ne pas
+  /// confondre avec `RentCharge.waterMinor`, qui est ce qu'on REFACTURE au
+  /// locataire : la différence entre les deux est exactement ce qu'une
+  /// régularisation de charges cherche.
+  utility
+  /// Entretien courant qui n'ouvre pas de chantier — produits, petite
+  /// main-d'œuvre, gardiennage.
+  upkeep
+  other
 }
 
 enum ParkRole {

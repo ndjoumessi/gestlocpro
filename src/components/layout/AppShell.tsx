@@ -196,6 +196,15 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
       /* Sa caution est SON argent. La lui cacher jusqu'à la restitution est
          exactement ce que ce produit reproche aux pratiques qu'il remplace. */
       { to: 'cautions', labelKey: 'nav.deposits', icon: 'shield' },
+      /* CE QUI SORT, sous ce qui rentre. Aux deux rôles de gestion : la même
+         liste que `ROLES_PAR_ADRESSE`, pour que navigation et accès ne puissent
+         pas diverger. */
+      {
+        to: 'depenses',
+        labelKey: 'nav.expenses',
+        icon: 'file',
+        roles: ['owner', 'manager'],
+      },
     ],
   },
   {

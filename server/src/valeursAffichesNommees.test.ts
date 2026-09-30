@@ -75,6 +75,7 @@ const FAMILLES = [
   { chemin: 'app.unitTypes', enumeration: 'UnitType', compose: 'src/features/dashboard/Portfolio.tsx' },
   { chemin: 'app.trades', enumeration: 'Trade', compose: 'src/features/dashboard/Works.tsx' },
   { chemin: 'app.meters.utility', enumeration: 'Utility', compose: 'src/features/dashboard/TariffsModal.tsx' },
+  { chemin: 'app.expenses.category', enumeration: 'ExpenseCategory', compose: 'src/features/dashboard/Expenses.tsx' },
 ] as const
 
 const schema = () => readFileSync(join(RACINE, 'server/prisma/schema.prisma'), 'utf8')

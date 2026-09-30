@@ -307,7 +307,7 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   la main, et c'est le but : le diff montre alors qu'un écran est apparu, là où
   un compte dérivé de l'inventaire se serait mis d'accord avec lui-même.
 */
-const ATTENDUS = 81
+const ATTENDUS = 84
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

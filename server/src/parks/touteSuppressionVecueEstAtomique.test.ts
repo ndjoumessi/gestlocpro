@@ -58,6 +58,7 @@ const MODELES_VECUS = [
   'Deposit',
   'DocumentRequest',
   'DocumentRequestFile',
+  'Expense',
   'Inspection',
   'InspectionFinding',
   'InspectionPhoto',

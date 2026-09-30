@@ -221,6 +221,33 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'indexValue', nature: 'texte' },
     { champ: 'periodStart', nature: 'mois' },
   ],
+  /* LA DÉPENSE — la famille AVANT le montant, contrairement aux tarifs où le
+     service vient d'abord pour la même raison : c'est la colonne qui dit de
+     quoi on parle. Le libellé le dirait mieux encore, et il est déjà dans la
+     charge utile ; il n'entre pas dans la recette parce qu'il est LIBRE — une
+     colonne de registre remplie de phrases saisies à la main deviendrait
+     illisible au bout de trente lignes. */
+  'expense.record': [
+    { champ: 'category', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'incurredOn', nature: 'date' },
+  ],
+  /* LES MÊMES TROIS CHAMPS que la saisie, dans le même ordre : une correction se
+     lit en comparant à la ligne d'à côté. L'avant vit dans la charge utile, que
+     cette recette ne déplie pas — le choix déjà fait pour les tarifs. */
+  'expense.update': [
+    { champ: 'category', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'incurredOn', nature: 'date' },
+  ],
+  /* LE MONTANT DISPARU EST DANS LA TRACE, et c'est tout ce qui en reste : après
+     le retrait, l'identifiant ne mène nulle part et le résultat du mois a
+     baissé sans autre explication. */
+  'expense.delete': [
+    { champ: 'category', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'incurredOn', nature: 'date' },
+  ],
   'tariff.set': [
     { champ: 'utility', nature: 'service' },
     { champ: 'unitPriceMinor', nature: 'argent' },

@@ -246,12 +246,16 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * droit à la portabilité — le premier que le produit doit à une LOI plutôt
  * qu'à un besoin de gestion.
  *
+ * ET DE 28 À 29 LE 2026-09-30 : `/app/depenses`, l'écran de ce qui sort du
+ * parc. Premier écran ajouté depuis que ce compte existe, et il a rougi ici
+ * avant toute autre porte — une seconde de chaîne, comme annoncé.
+ *
  * ET DE 27 À 28 LE 2026-09-18 : `/conditions-generales`, la troisième page
  * juridique. C'est le CI qui l'a exigé, pas cette machine : la porte serveur
  * n'avait pas été relancée pour un lot qui ne touche que le client — alors que
  * deux PORTES avaient bougé, ce qui suffit à l'exiger.
  */
-export const ROUTES_ATTENDUES = 28
+export const ROUTES_ATTENDUES = 29
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}

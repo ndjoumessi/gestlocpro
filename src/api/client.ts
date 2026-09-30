@@ -692,6 +692,76 @@ export const api = {
     requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
 
   /**
+   * CE QUE LE PARC A DÉPENSÉ sur un intervalle, en deux moitiés séparées.
+   *
+   * L'intervalle est OBLIGATOIRE, contrairement aux autres lectures de ce
+   * fichier : une comptabilité s'accumule sans fin, là où un parc a un nombre
+   * borné de logements. Rendre tout depuis l'origine ferait grossir la réponse
+   * d'un exercice par an, et le jour où elle deviendrait lourde serait un jour
+   * sans déploiement.
+   *
+   * La réponse porte `expenses`, `expensesMinor` et `worksMinor`. Les deux
+   * sommes ne sont PAS additionnées par le serveur : un chantier n'est pas
+   * recopié en dépense, et rendre un total unique laisserait croire qu'il vient
+   * d'une seule table — le lecteur qui voudrait vérifier ne retrouverait pas
+   * son compte en additionnant les lignes servies.
+   */
+  expenses: <T>(parkId: string, from: string, to: string) =>
+    requete<T>(`/parks/${parkId}/expenses`, { query: { from, to } }),
+
+  /**
+   * Saisit une dépense.
+   *
+   * Ouvert au gestionnaire ET au propriétaire : saisir n'engage rien — le
+   * syndic a déjà été payé, et c'est souvent le mandataire qui a signé. La
+   * devise n'est pas au corps : elle vient du parc, et un `currency` glissé ici
+   * serait ignoré.
+   *
+   * `buildingId` et `unitId` s'excluent : une dépense porte sur un immeuble OU
+   * sur un logement OU sur le parc entier. Les deux ensemble rendent 400.
+   */
+  recordExpense: <T>(
+    parkId: string,
+    corps: {
+      category: 'tax' | 'insurance' | 'syndic' | 'utility' | 'upkeep' | 'other'
+      label: string
+      amountMinor: number
+      incurredOn: string
+      paidOn?: string | null
+      buildingId?: string | null
+      unitId?: string | null
+      note?: string | null
+    },
+  ) => requete<T>(`/parks/${parkId}/expenses`, { method: 'POST', body: JSON.stringify(corps) }),
+
+  /**
+   * Corrige une dépense : montant, libellé, dates, note.
+   *
+   * Ni la famille ni la portée ne se corrigent — déplacer une dépense d'un
+   * immeuble à l'autre n'est pas réparer une saisie, c'est en inventer une
+   * autre. La ligne se retire, et l'on repose.
+   */
+  updateExpense: <T>(
+    parkId: string,
+    expenseId: string,
+    corps: {
+      label?: string
+      amountMinor?: number
+      incurredOn?: string
+      paidOn?: string | null
+      note?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/expenses/${expenseId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Retire une dépense. Aucun corps, aucune réponse : le 204 dit tout. */
+  deleteExpense: <T>(parkId: string, expenseId: string) =>
+    requete<T>(`/parks/${parkId}/expenses/${expenseId}`, { method: 'DELETE' }),
+
+  /**
    * Les prix de refacturation, historique compris.
    *
    * Un tarif passé n'est pas un déchet : c'est ce qui explique une quittance de
