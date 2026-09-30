@@ -673,6 +673,10 @@ const PLAFONDS = [
      texte que `releve-polices-machine` mesure entre les deux machines, et qui
      va dans les deux sens. */
   { adresse: '/demo/acces', largeur: 360, plafond: 2231, plafondLarge: 2213 },
+  /* L'ÉCRAN DE LA VACANCE, né avec le lot des annonces. Trois indicateurs, une
+     note de portée inconditionnelle et un tableau d'annonces — la même forme
+     que l'écran des dépenses, qui rend 1650 à la même largeur. */
+  { adresse: '/demo/vacance', largeur: 360, plafond: 1343, plafondLarge: 1343 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
@@ -800,6 +804,7 @@ const PLAFONDS = [
      de chaque mandataire. Un bouton de rangée et rien d'autre — le relevé
      lui-même vit dans une modale, et n'allonge donc pas l'écran. */
   { adresse: '/demo/acces', largeur: 1280, plafond: 1240, plafondLarge: 1240 },
+  { adresse: '/demo/vacance', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
@@ -884,8 +889,12 @@ const ADRESSES = routes.map((r) => r.adresse)
        2026-09-13 ; la 27e `/demo/mes-donnees`, le 2026-09-16 ; la 28e
        `/conditions-generales`, le 2026-09-18.
    4 = les deux adresses hors portée, à leurs deux largeurs.
+
+  52 → 54 LE 2026-09-30 : `/demo/depenses`, l'écran de ce qui sort du parc.
+  54 → 56 LE 2026-09-30 : `/demo/vacance`, l'écran de ce qui ne rapporte rien —
+       le second écran du même jour, et le dernier des huit lots.
 */
-const ATTENDUS = 54
+const ATTENDUS = 56
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.

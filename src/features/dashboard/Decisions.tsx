@@ -260,6 +260,32 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'status', nature: 'texte' },
     { champ: 'totalMinor', nature: 'argent' },
   ],
+  /* L'ANNONCE OUVERTE. Le LOYER DEMANDÉ d'abord : c'est le seul chiffre que ce
+     geste engage, et celui qu'on vient relire quand un logement ne se reloue
+     pas. La date de disponibilité suit — une annonce ouverte trop tard explique
+     une vacance mieux qu'un prix. */
+  'listing.open': [
+    { champ: 'rentMinor', nature: 'argent' },
+    { champ: 'depositMinor', nature: 'argent' },
+    { champ: 'availableFrom', nature: 'date' },
+  ],
+  /* L'ÉTAT D'AVANT ET CELUI D'APRÈS. « Publiée » seul ne dit pas si l'on vient
+     de la rédiger ou de la rouvrir après l'avoir fermée — et la seconde est un
+     renoncement qu'on revient sur. */
+  'listing.status': [
+    { champ: 'from', nature: 'texte' },
+    { champ: 'to', nature: 'texte' },
+    { champ: 'rentMinor', nature: 'argent' },
+  ],
+  /* LE CANDIDAT NOMMÉ, et les deux états. Donner son accord engage le logement ;
+     le retirer le libère. « Refusé » se trace aussi : trois semaines plus tard,
+     « il n'a jamais postulé » et « on lui a dit non » ne sont pas la même
+     réponse à lui faire. */
+  'applicant.status': [
+    { champ: 'fullName', nature: 'texte' },
+    { champ: 'from', nature: 'texte' },
+    { champ: 'to', nature: 'texte' },
+  ],
   /* LA CHARGE CONVENUE. Le LIBELLÉ d'abord : c'est lui qui identifie, la somme
      seule ne dit pas ce qu'on refacture. La NATURE ensuite, parce qu'elle décide
      si cet argent revient au locataire au décompte annuel. */

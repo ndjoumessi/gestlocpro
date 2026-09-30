@@ -11540,3 +11540,347 @@ parksRouter.post(
     }
   },
 )
+
+/* ------------------------------------------------------------------------- *
+ * LES ANNONCES ET LEURS CANDIDATS
+ * ------------------------------------------------------------------------- */
+
+const schemaAnnonce = z.object({
+  rentMinor: z.number().int().positive(),
+  /* ZÉRO EST ACCEPTÉ POUR LA CAUTION, contrairement au loyer : « sans caution »
+     est une offre réelle, et la refuser obligerait à mentir sur le montant. */
+  depositMinor: z.number().int().nonnegative(),
+  availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+  description: z.string().trim().max(4000).nullish(),
+})
+
+const schemaCandidat = z
+  .object({
+    fullName: z.string().trim().min(1).max(160),
+    phoneE164: z.string().trim().max(32).nullish(),
+    email: z.string().trim().email().max(320).nullish(),
+    note: z.string().trim().max(2000).nullish(),
+    appliedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+  })
+  /**
+   * AU MOINS UN MOYEN DE JOINDRE.
+   *
+   * Un candidat qu'on ne peut pas rappeler n'est pas un candidat : c'est une
+   * ligne qui occupera la liste jusqu'à ce que quelqu'un la supprime en se
+   * demandant qui c'était. Les deux colonnes sont nullables en base parce que
+   * Prisma ne sait pas dire « l'un ou l'autre », et parce qu'exiger les deux
+   * refuserait le cas le plus courant du marché visé — quelqu'un qui n'a qu'un
+   * téléphone.
+   */
+  .refine((c) => Boolean(c.phoneE164?.trim()) || Boolean(c.email?.trim()), {
+    message: 'Un téléphone ou une adresse est nécessaire pour rappeler ce candidat.',
+    path: ['phoneE164'],
+  })
+
+function enAnnonceServie(a: {
+  id: string
+  unitId: string
+  rentMinor: number
+  depositMinor: number
+  currency: Currency
+  availableFrom: Date
+  description: string | null
+  status: 'draft' | 'published' | 'closed'
+  applicants: {
+    id: string
+    fullName: string
+    phoneE164: string | null
+    email: string | null
+    note: string | null
+    status: 'received' | 'visited' | 'accepted' | 'declined'
+    appliedOn: Date
+  }[]
+}) {
+  return {
+    id: a.id,
+    unitId: a.unitId,
+    rentMinor: a.rentMinor,
+    depositMinor: a.depositMinor,
+    currency: a.currency,
+    availableFrom: a.availableFrom.toISOString().slice(0, 10),
+    description: a.description,
+    status: a.status,
+    applicants: a.applicants.map((c) => ({
+      id: c.id,
+      fullName: c.fullName,
+      phoneE164: c.phoneE164,
+      email: c.email,
+      note: c.note,
+      status: c.status,
+      appliedOn: c.appliedOn.toISOString().slice(0, 10),
+    })),
+  }
+}
+
+/** La projection commune aux trois routes qui rendent une annonce. */
+const CHAMPS_ANNONCE = {
+  id: true,
+  unitId: true,
+  rentMinor: true,
+  depositMinor: true,
+  currency: true,
+  availableFrom: true,
+  description: true,
+  status: true,
+  applicants: {
+    orderBy: { appliedOn: 'asc' },
+    select: {
+      id: true,
+      fullName: true,
+      phoneE164: true,
+      email: true,
+      note: true,
+      status: true,
+      appliedOn: true,
+    },
+  },
+} as const
+
+parksRouter.get(
+  '/:parkId/listings',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+
+    const annonces = await prisma.listing.findMany({
+      /* LA PORTÉE DU DEMANDEUR EN CLAUSE DE REQUÊTE, jamais après lecture : un
+         gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
+         pouvoir ramener les annonces des deux autres, fût-ce pour les filtrer
+         ensuite. */
+      where: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      orderBy: { createdAt: 'desc' },
+      select: CHAMPS_ANNONCE,
+    })
+
+    res.json({ listings: annonces.map(enAnnonceServie) })
+  },
+)
+
+parksRouter.post(
+  '/:parkId/units/:unitId/listings',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const unitId = z.string().uuid().parse(req.params.unitId)
+    const corps = schemaAnnonce.parse(req.body)
+
+    const logement = await prisma.unit.findFirst({
+      where: { id: unitId, building: { parkId }, ...porteeDesUnites(req.adhesion!) },
+      select: { id: true, building: { select: { park: { select: { currency: true } } } } },
+    })
+    if (!logement) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * UN LOGEMENT OCCUPÉ NE SE REMET PAS EN ANNONCE — mais un logement dont le
+     * congé est donné, SI.
+     *
+     * C'est exactement ce que le lot du congé a rendu possible : un bail reste
+     * `active` jusqu'à la date d'effet, et les trois semaines qui précèdent le
+     * départ sont la seule fenêtre où publier évite réellement la vacance. La
+     * garde porte donc sur « occupé SANS départ annoncé », et non sur « occupé ».
+     */
+    const occupeSansFin = await prisma.lease.findFirst({
+      where: { unitId, status: { in: ['active', 'pending'] }, moveOutOn: null },
+      select: { id: true },
+    })
+    if (occupeSansFin) {
+      res.status(409).json({ error: 'logement_occupe' })
+      return
+    }
+
+    const annonce = await prisma.listing.create({
+      data: {
+        unitId,
+        rentMinor: corps.rentMinor,
+        depositMinor: corps.depositMinor,
+        currency: logement.building.park.currency,
+        availableFrom: new Date(`${corps.availableFrom}T00:00:00.000Z`),
+        description: corps.description ?? null,
+      },
+      select: CHAMPS_ANNONCE,
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'listing.open',
+        entity: 'Listing',
+        entityId: annonce.id,
+        payload: {
+          rentMinor: annonce.rentMinor,
+          depositMinor: annonce.depositMinor,
+          availableFrom: corps.availableFrom,
+        },
+      },
+    })
+
+    res.status(201).json({ listing: enAnnonceServie(annonce) })
+  },
+)
+
+parksRouter.patch(
+  '/:parkId/listings/:listingId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const listingId = z.string().uuid().parse(req.params.listingId)
+    const corps = z.object({ status: z.enum(['draft', 'published', 'closed']) }).parse(req.body)
+
+    const annonce = await prisma.listing.findFirst({
+      where: {
+        id: listingId,
+        unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) },
+      },
+      select: { id: true, status: true, rentMinor: true },
+    })
+    if (!annonce) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const maj = await prisma.listing.update({
+      where: { id: listingId },
+      data: { status: corps.status },
+      select: CHAMPS_ANNONCE,
+    })
+
+    /* PUBLIER ENGAGE UN PRIX, FERMER RENONCE : les deux se tracent, et le
+       registre porte l'état d'AVANT comme celui d'après — « publiée » seul ne
+       dit pas si l'on vient de la rédiger ou de la rouvrir. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'listing.status',
+        entity: 'Listing',
+        entityId: annonce.id,
+        payload: { from: annonce.status, to: corps.status, rentMinor: annonce.rentMinor },
+      },
+    })
+
+    res.json({ listing: enAnnonceServie(maj) })
+  },
+)
+
+parksRouter.post(
+  '/:parkId/listings/:listingId/applicants',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const listingId = z.string().uuid().parse(req.params.listingId)
+    const corps = schemaCandidat.parse(req.body)
+
+    const annonce = await prisma.listing.findFirst({
+      where: {
+        id: listingId,
+        unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) },
+      },
+      select: { id: true },
+    })
+    if (!annonce) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const candidat = await prisma.applicant.create({
+      data: {
+        listingId,
+        fullName: corps.fullName,
+        phoneE164: corps.phoneE164?.trim() || null,
+        email: corps.email?.trim() || null,
+        note: corps.note?.trim() || null,
+        appliedOn: new Date(`${corps.appliedOn}T00:00:00.000Z`),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phoneE164: true,
+        email: true,
+        note: true,
+        status: true,
+        appliedOn: true,
+      },
+    })
+
+    res.status(201).json({
+      applicant: { ...candidat, appliedOn: candidat.appliedOn.toISOString().slice(0, 10) },
+    })
+  },
+)
+
+parksRouter.patch(
+  '/:parkId/applicants/:applicantId',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const applicantId = z.string().uuid().parse(req.params.applicantId)
+    const corps = z
+      .object({
+        status: z.enum(['received', 'visited', 'accepted', 'declined']),
+        note: z.string().trim().max(2000).nullish(),
+      })
+      .parse(req.body)
+
+    const candidat = await prisma.applicant.findFirst({
+      where: {
+        id: applicantId,
+        listing: { unit: { building: { parkId }, ...porteeDesUnites(req.adhesion!) } },
+      },
+      select: { id: true, fullName: true, status: true },
+    })
+    if (!candidat) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const maj = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: {
+        status: corps.status,
+        ...(corps.note !== undefined ? { note: corps.note?.trim() || null } : {}),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phoneE164: true,
+        email: true,
+        note: true,
+        status: true,
+        appliedOn: true,
+      },
+    })
+
+    /* DONNER SON ACCORD ENGAGE LE LOGEMENT, le retirer le libère : les deux se
+       tracent. « Refusé » se trace aussi — trois semaines plus tard, « il n'a
+       jamais postulé » et « on lui a dit non » ne sont pas la même réponse à
+       lui faire, et c'est le registre qui les sépare. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'applicant.status',
+        entity: 'Applicant',
+        entityId: candidat.id,
+        payload: { fullName: candidat.fullName, from: candidat.status, to: corps.status },
+      },
+    })
+
+    res.json({
+      applicant: { ...maj, appliedOn: maj.appliedOn.toISOString().slice(0, 10) },
+    })
+  },
+)

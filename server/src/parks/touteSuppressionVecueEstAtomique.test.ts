@@ -54,6 +54,7 @@ const RACINE = join(import.meta.dirname, '../..')
 
 /** Ce dont la disparition se VIT : elle doit partir avec sa trace, atomiquement. */
 const MODELES_VECUS = [
+  'Applicant',
   'Building',
   'ChargeSettlement',
   'Deposit',
@@ -67,6 +68,7 @@ const MODELES_VECUS = [
   'Invitation',
   'Lease',
   'LeaseChargeLine',
+  'Listing',
   'ManagementFee',
   'Membership',
   'MeterReading',

@@ -463,6 +463,18 @@ const MODALES = [
   */
   { nom: 'LeaseCharges', fichier: 'features/dashboard/ChargesModal.tsx', adresse: '/demo/parc/A1', bouton: /^Charges et régularisation$|^Charges and reconciliation$/, defil: { 360: 24, 1280: 0 }, defilLarge: { 360: 24, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
+    L'OUVERTURE D'UNE ANNONCE, sur l'écran de la vacance — né le même jour.
+    Action PRIMAIRE et non menu de débordement : c'est le seul geste de cet
+    écran, et on ne l'ouvre pas pour autre chose.
+  */
+  /* 80 px à 360 en français contre 37 en anglais — l'écart tient aux deux aides
+     longues, celle qui dit que le loyer de référence du logement n'est PAS
+     modifié et celle qui explique à quoi sert une date de disponibilité. Ni
+     l'une ni l'autre ne se raccourcit : la première désamorce la crainte qui
+     ferait renoncer à demander un autre prix, la seconde est tout l'intérêt du
+     champ. Le plafond retient le français, comme partout ici. Zéro à 1280. */
+  { nom: 'Listing', fichier: 'features/dashboard/ListingModal.tsx', adresse: '/demo/vacance', bouton: /^Ouvrir une annonce$|^Open a listing$/, defil: { 360: 80, 1280: 0 }, defilLarge: { 360: 80, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
     LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
     l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par
     `RemoveTenant`, `Access.tsx` par `RevokeAccess` — ce qui suffisait à la garde
@@ -890,7 +902,7 @@ const LANGUES = ['fr', 'en']
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 136
+const ATTENDUS = 140
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

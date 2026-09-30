@@ -205,6 +205,15 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
         icon: 'file',
         roles: ['owner', 'manager'],
       },
+      /* CE QUI NE RAPPORTE RIEN, sous ce qui rentre et ce qui sort. Même liste
+         de rôles que `ROLES_PAR_ADRESSE`, pour que navigation et accès ne
+         puissent pas diverger. */
+      {
+        to: 'vacance',
+        labelKey: 'nav.vacancy',
+        icon: 'search',
+        roles: ['owner', 'manager'],
+      },
     ],
   },
   {

@@ -20,6 +20,7 @@ import { Inspections } from '@/features/dashboard/Inspections'
 import { Works } from '@/features/dashboard/Works'
 import { Deposits } from '@/features/dashboard/Deposits'
 import { Expenses } from '@/features/dashboard/Expenses'
+import { Vacancy } from '@/features/dashboard/Vacancy'
 import { Tenants } from '@/features/dashboard/Tenants'
 import { Alerts } from '@/features/dashboard/Alerts'
 import { Signaler } from '@/features/dashboard/Signaler'
@@ -230,6 +231,10 @@ function ecransDeLApplication() {
       {/* CE QUI SORT. Aux deux rôles de gestion : le locataire n'a rien à voir
           avec ce que le parc dépense, et le serveur le lui refuse déjà. */}
       <Route path="depenses" element={<Restricted adresse="depenses"><Expenses /></Restricted>} />
+      {/* LA VACANCE. Aux deux rôles de gestion : relouer est l'administratif
+          courant, le cœur de ce qu'on délègue, et le locataire n'a rien à voir
+          avec les logements qu'on cherche à louer. */}
+      <Route path="vacance" element={<Restricted adresse="vacance"><Vacancy /></Restricted>} />
       <Route path="locataires" element={<Restricted adresse="locataires"><Tenants /></Restricted>} />
       {/* Le registre des accès : ouvert aux deux rôles de gestion, parce que le
           gestionnaire émet des codes de locataire au quotidien et qu'un code

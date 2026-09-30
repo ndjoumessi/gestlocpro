@@ -254,8 +254,13 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * juridique. C'est le CI qui l'a exigé, pas cette machine : la porte serveur
  * n'avait pas été relancée pour un lot qui ne touche que le client — alors que
  * deux PORTES avaient bougé, ce qui suffit à l'exiger.
+ *
+ * ET DE 29 À 30 LE 2026-09-30 : `/app/vacance`, l'écran de ce qui ne rapporte
+ * rien. Le produit savait dire qu'un logement était vacant et s'arrêtait là ;
+ * les semaines entre deux baux sont les plus coûteuses de sa vie, et c'était la
+ * seule période où il ne servait à rien.
  */
-export const ROUTES_ATTENDUES = 29
+export const ROUTES_ATTENDUES = 30
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}

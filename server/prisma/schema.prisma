@@ -560,6 +560,88 @@ model Unit {
   /// Les gestionnaires à qui CE logement est confié. Voir `MembershipUnit`.
   gestionnaires MembershipUnit[]
   expenses    Expense[]
+  listings    Listing[]
+}
+
+/// UNE ANNONCE POUR UN LOGEMENT VIDE.
+///
+/// Le produit savait qu'un logement était vacant — « pas de bail en cours » — et
+/// s'arrêtait là. Ce qui se passe ENTRE le départ et le bail suivant n'avait
+/// aucune place : à quel loyer on remet, à partir de quand, et qui s'est
+/// présenté. Ces semaines-là sont pourtant les plus coûteuses de la vie d'un
+/// logement, et c'est la seule période où le produit ne servait à rien.
+///
+/// LE LOYER DEMANDÉ N'EST PAS `Unit.baseRentMinor`. On remet souvent à un autre
+/// prix que le précédent — le marché a bougé, le logement a été refait —, et
+/// écraser la référence du logement pour porter une intention effacerait ce que
+/// le bail en cours paie réellement. L'annonce porte donc SON prix ; le bail
+/// signé posera le sien.
+model Listing {
+  id     String @id @default(uuid()) @db.Uuid
+  unitId String @db.Uuid
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  /// Ce qu'on demande, et la caution qu'on exige.
+  rentMinor    Int
+  depositMinor Int
+  currency     Currency
+
+  /// À partir de quand le logement peut être occupé. Une DATE et non « libre
+  /// tout de suite » : une annonce publiée trois semaines avant un départ est
+  /// exactement ce qui évite la vacance, et elle doit pouvoir le dire.
+  availableFrom DateTime @db.Date
+
+  /// Le texte de l'annonce. Facultatif : un logement se décrit déjà par son
+  /// type, sa surface et son quartier, tous portés par le produit.
+  description String?
+
+  status ListingStatus @default(draft)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applicants Applicant[]
+
+  /// Les annonces d'un logement, la plus récente d'abord — la seule lecture de
+  /// cette table qui ne passe pas par son identifiant.
+  @@index([unitId])
+}
+
+/// QUELQU'UN QUI S'EST PRÉSENTÉ POUR UNE ANNONCE.
+///
+/// PAS UN `Tenant`, et la distinction n'est pas cosmétique. Un candidat n'a
+/// signé aucun bail : le créer comme locataire le ferait apparaître dans les
+/// quittances, les relances et le registre des accès d'un parc où il n'habite
+/// pas. Le jour où il signe, le produit crée son locataire — et la candidature
+/// reste, comme trace de la façon dont il est arrivé.
+model Applicant {
+  id        String  @id @default(uuid()) @db.Uuid
+  listingId String  @db.Uuid
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  fullName String
+  /// AU MOINS UN MOYEN DE JOINDRE, et les deux sont facultatifs ici : la garde
+  /// est en zod à l'entrée, qui refuse la candidature sans aucun des deux.
+  /// Prisma ne sait pas exprimer « l'un ou l'autre », et deux colonnes
+  /// obligatoires exigeraient une adresse de qui n'a qu'un téléphone — ce qui
+  /// est le cas le plus courant sur le marché visé.
+  phoneE164 String?
+  email     String?
+
+  /// Ce que la visite a appris. C'est la seule chose qui distingue deux
+  /// candidats solvables trois semaines plus tard.
+  note String?
+
+  status ApplicantStatus @default(received)
+
+  /// Le jour où il s'est présenté. Une date, pas l'horodatage de la saisie :
+  /// on enregistre le soir une visite du matin.
+  appliedOn DateTime @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
 }
 
 // ─── Locataires et baux ──────────────────────────────────────────────────────
@@ -1893,6 +1975,35 @@ enum NotificationSeverity {
   high
   medium
   low
+}
+
+/// L'état d'une annonce.
+enum ListingStatus {
+  /// Écrite, pas encore diffusée. L'état par défaut : on rédige une annonce
+  /// avant de la publier, et une annonce publiée par accident engage un prix.
+  draft
+  /// Diffusée. C'est le seul état où l'on attend des candidats.
+  published
+  /// Fermée. Le logement est reloué, ou l'on renonce. L'annonce RESTE : c'est
+  /// elle qui dit à quel prix on avait demandé, et combien de temps il a fallu.
+  closed
+}
+
+/// Où en est un candidat.
+enum ApplicantStatus {
+  /// Il s'est présenté. Rien d'autre n'est encore su.
+  received
+  /// Il a visité le logement.
+  visited
+  /// On lui a donné l'accord. UN SEUL par annonce n'est PAS tenu par la base :
+  /// un accord peut se retirer et se redonner à un autre le lendemain, et un
+  /// index unique partiel obligerait à passer par un état intermédiaire pour
+  /// un geste que le produit doit rendre immédiat.
+  accepted
+  /// On ne donne pas suite. L'ÉTAT EXISTE plutôt que la suppression : trois
+  /// semaines plus tard, « il n'a jamais postulé » et « on lui a dit non » ne
+  /// sont pas la même réponse à lui faire.
+  declined
 }
 
 enum NotificationChannel {

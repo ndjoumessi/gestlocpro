@@ -755,6 +755,74 @@ export const api = {
     }),
 
   /**
+   * LES ANNONCES DU PARC, chacune avec ses candidats.
+   *
+   * Aux deux rôles de gestion : relouer est l'administratif courant, le cœur de
+   * ce qu'on délègue, et publier une annonce n'engage aucune dépense.
+   */
+  listings: <T>(parkId: string) => requete<T>(`/parks/${parkId}/listings`),
+
+  /**
+   * OUVRIR UNE ANNONCE pour un logement.
+   *
+   * `409 logement_occupe` si le logement a un bail en cours SANS départ annoncé.
+   * Un congé donné rouvre la fenêtre : c'est là que publier évite la vacance.
+   */
+  openListing: <T>(
+    parkId: string,
+    unitId: string,
+    corps: {
+      rentMinor: number
+      depositMinor: number
+      availableFrom: string
+      description?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/units/${unitId}/listings`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Publier, remettre en brouillon ou fermer. L'annonce fermée RESTE. */
+  setListingStatus: <T>(parkId: string, listingId: string, status: 'draft' | 'published' | 'closed') =>
+    requete<T>(`/parks/${parkId}/listings/${listingId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  /**
+   * ENREGISTRER UN CANDIDAT. Un téléphone OU une adresse est exigé : quelqu'un
+   * qu'on ne peut pas rappeler n'est pas un candidat, c'est une ligne qui
+   * occupera la liste jusqu'à ce qu'on se demande qui c'était.
+   */
+  addApplicant: <T>(
+    parkId: string,
+    listingId: string,
+    corps: {
+      fullName: string
+      phoneE164?: string | null
+      email?: string | null
+      note?: string | null
+      appliedOn: string
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/listings/${listingId}/applicants`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Où en est un candidat, et ce que la visite a appris. */
+  setApplicantStatus: <T>(
+    parkId: string,
+    applicantId: string,
+    corps: { status: 'received' | 'visited' | 'accepted' | 'declined'; note?: string | null },
+  ) =>
+    requete<T>(`/parks/${parkId}/applicants/${applicantId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
    * LES CHARGES CONVENUES AU BAIL, et les décomptes déjà arrêtés.
    *
    * Au gestionnaire aussi : c'est lui qui répond au locataire quand celui-ci

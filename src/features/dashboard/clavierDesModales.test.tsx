@@ -229,6 +229,18 @@ const MODALES: Modale[] = [
     bouton: /^Charges et régularisation$/,
     forme: 'saisie',
   },
+  /*
+    OUVRIR UNE ANNONCE — depuis l'écran de la vacance, en action PRIMAIRE et non
+    dans un débordement : c'est le seul geste de cet écran, et on ne l'ouvre pas
+    pour autre chose.
+  */
+  {
+    nom: 'Ouvrir une annonce',
+    fichier: 'features/dashboard/ListingModal.tsx',
+    adresse: '/demo/vacance',
+    bouton: /^Ouvrir une annonce$/,
+    forme: 'saisie',
+  },
 
   { nom: 'Enregistrer un paiement', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
@@ -677,7 +689,7 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les trente-et-une modales déclarées', () => {
+  it('a bien joué les trente-deux modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
        faute de cible dans la démonstration. Leur `prealable` la crée.
        26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
@@ -690,9 +702,12 @@ describe('le clavier des modales', () => {
        logement — première de ce registre derrière un menu de débordement.
        30 → 31 (2026-09-30) : les charges du bail et leur régularisation, dans
        une boîte à elles — le lot a REFUSÉ d'en faire une cinquième section de
-       la précédente, qui passait déjà les 800 lignes. */
-    expect(MODALES.length).toBe(31)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(31)
+       la précédente, qui passait déjà les 800 lignes.
+       31 → 32 (2026-09-30) : l'ouverture d'une annonce, sur l'écran de la
+       vacance — la première modale de ce registre dont l'écran hôte est né le
+       même jour qu'elle. */
+    expect(MODALES.length).toBe(32)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(32)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.
