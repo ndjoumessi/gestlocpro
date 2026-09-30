@@ -87,6 +87,15 @@ import {
 import { readFileSync } from 'node:fs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 import { MODALES } from './modales/registre.mjs'
+import {
+  ATTENDUS,
+  LANGUES,
+  LARGEURS,
+  NON_OUVRABLES,
+  NON_OUVRABLES_ATTENDUES,
+  plafondDe,
+} from './modales/plafonds.mjs'
+import { lireLaCouvertureClavier } from './modales/couverture-clavier.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -109,151 +118,12 @@ const BASE = `http://127.0.0.1:${PORT}`
  */
 
 /**
- * LES DEUX QUI NE S'OUVRENT PAS, ET POURQUOI — voir l'en-tête.
+ * LES PLAFONDS, LE COMPTE GARDÉ ET LES NON-OUVRABLES : `scripts/modales/plafonds.mjs`.
  *
- * Écrites ici plutôt que passées sous silence : leur nombre entre dans le
- * compte gardé, donc une troisième modale qui deviendrait inatteignable ferait
- * rougir, et l'une de ces deux qui redeviendrait atteignable aussi.
+ * Sortis d'ici le 2026-10-01 avec leur historique — chaque palier d'`ATTENDUS`
+ * et le lot qui l'a fait bouger, et les deux colonnes de police. Ce qui reste
+ * dans ce fichier est la MESURE : les plafonds y sont lus, jamais écrits.
  */
-/*
-  REDEVENUE VIDE, ET C'EST UN ÉTAT QUI SE GARDE COMME UN AUTRE.
-
-  La mise en demeure y a passé un lot : son bouton était masqué en démonstration
-  faute d'un chemin local honnête. Elle en est sortie par le haut — le
-  fournisseur nomme désormais l'issue « démonstration », l'écran écrit « rien
-  n'est enregistré », et la boîte s'ouvre. Les dix-huit modales du produit sont
-  de nouveau toutes ouvrables.
-
-  La liste reste, avec son compte : une dix-neuvième que la démonstration ne
-  rendrait pas devrait s'y inscrire et faire bouger `NON_OUVRABLES_ATTENDUES`,
-  donc apparaître dans un diff. Retirer la liste parce qu'elle est vide, c'est
-  retirer le seul endroit où l'on remarquerait qu'elle a cessé de l'être.
-
-  ANCIEN MOTIF, GARDÉ POUR MÉMOIRE.
-
-  La mise en demeure est conditionnée à `unit.leaseId`, qu'aucun bail de la
-  démonstration ne porte. C'est DÉLIBÉRÉ et il faut que ça le reste :
-  `serveFormalNotice` rend `false` sans parc serveur, donc le bouton ouvrirait
-  une boîte dont la confirmation ne ferait rien — un cul-de-sac sous un libellé
-  qui promet un acte. Poser un `leaseId` fictif pour la faire entrer dans cette
-  garde échangerait un trou de mesure contre un mensonge d'écran.
-
-  C'est la différence avec le `tenantId` du lot précédent, où le chemin
-  local existait : là-bas la donnée manquait sans raison, ici son absence EST la
-  raison. La géométrie de cette boîte reste donc non mesurée, et c'est écrit.
-*/
-const NON_OUVRABLES = []
-
-/**
- * UN PLAFOND, DEUX POLICES — meme arbitrage que `plafond-coquille`.
- *
- * `--font-sans` commence par `system-ui`, qui designe un dessin DIFFERENT par
- * systeme : « Creer mon espace » rend 132,61 px sur macOS et 146,14 px sur
- * l'executeur Ubuntu, ou il vaut DejaVu Sans. Un corps de modale se compose de
- * texte : plus large, il est plus haut, et il defile davantage. Neuf des
- * trente-six etats depassaient leur plafond sous police large, jusqu'a +80 px
- * sur l'etat des lieux.
- *
- * CE N'EST PAS UN DEFAUT, C'EST UN COUT — le pied reste tenu, l'action reste
- * sous les yeux, et c'est ce que ce fichier garde. Relever le plafond unique
- * aurait donne du mou a la mesure locale ; rogner le contenu aurait cache des
- * indications qui disent ce qu'un champ engage. On garde donc LES DEUX MESURES
- * VRAIES, et `defilLarge` porte celle de la police large.
- *
- * LES TRENTE-SIX SONT MESUREES, sans marge, pas seulement les neuf qui
- * depassaient : un plafond recopie d'une autre colonne serait un nombre, pas un
- * releve.
- */
-const LARGEURS = [360, 1280]
-const LANGUES = ['fr', 'en']
-/*
-  ATTENDUS EST UNE CONSTANTE ÉCRITE, JAMAIS UN PRODUIT CALCULÉ.
-
-  `MODALES.length * LARGEURS.length * LANGUES.length` rendrait la garde
-  d'accord avec elle-même : vider `MODALES`, et l'inspection comparerait 0 à 0
-  puis se déclarerait verte. La même mutation a trouvé ce piège trois lots de
-  suite. Ajouter une modale oblige à toucher ce nombre, et le diff le montre.
-
-  48 = 12 modales ouvrables × 2 largeurs × 2 langues.
-  0  = plus aucune modale hors de portée de la démonstration.
-
-  Les deux nombres ont bougé ENSEMBLE, deux fois de suite : `ParkSettings` puis
-  `Tariffs` sont passées de la seconde ligne à la première. C'est exactement ce
-  que ce compte écrit à la main sert à rendre visible dans un diff.
-
-  72 → 76 (2026-08-31) : `InviteGestionnaire`, le SECOND état de la modale
-  d'invitation. Ce n'est pas une modale de plus, c'est un état de plus dans une
-  modale déjà tenue — le premier que ce script mesure grâce au geste `apres`.
-
-  76 → 80 (2026-08-31) : `ConfierImmeubles`, née avec la délégation par
-  immeuble. Elle vient à quatre états comme toute modale ordinaire — deux
-  largeurs, deux chasses.
-  Une modale n'a pas un état, elle en a autant que ses champs, et le compte le
-  dit maintenant.
-
-  80 → 84 (2026-09-02) : `ParkSettings·devise`, le second état de la modale de
-  correction du parc. Comme `InviteGestionnaire`, ce n'est pas une modale de
-  plus mais un ÉTAT de plus — et c'est lui qui éteint l'aveu que
-  `notes-conditionnelles` portait sur `app.parkSettings.currencyWarning`, en
-  désignant ce script comme son propriétaire légitime.
-
-  84 → 92 (2026-09-05) : `EditBuilding` et `EditUnit`, nées avec la correction
-  du parc — deux modales ordinaires, donc huit états. Elles ferment le dernier
-  trou de cet écran : un immeuble ne se corrigeait pas une fois qu'il portait un
-  logement, et un logement ne se corrigeait pas du tout.
-
-  92 → 96 (2026-09-05) : `RecordReading`, la saisie d'un relevé de compteur —
-  le geste qui manquait sous l'écran des relevés, qu'aucune route n'alimentait.
-
-  96 → 108 (2026-09-05) : `CorrigerFiche`, `CreerFiche` et `RelierLaFiche`, les
-  trois modales que le clavier vient de prendre et dont la géométrie n'était
-  mesurée nulle part. « Confier des immeubles » y était déjà, sous le nom
-  `ConfierImmeubles` — le trou n'était donc que de trois sur quatre, ce qu'un
-  registre par fichier ne pouvait pas dire.
-
-  LES DEUX TIENNENT SANS DÉFILEMENT AUX QUATRE ÉTATS — 442 px de boîte au plus
-  large pour l'immeuble, 708 pour le logement, note du loyer comprise. C'est
-  mesuré, pas espéré : le plafond de zéro est le relevé lui-même.
-
-  108 → 112 (2026-09-06) : `DeleteUnit`, le retrait d'un logement — le dernier
-  objet du parc qui n'avait aucune issue. Une modale ordinaire, donc quatre
-  états. Son `prealable` CRÉE le logement qu'elle va retirer : les douze du jeu
-  de démonstration portent tous un bail, un versement ou un relevé, donc leurs
-  douze croix sont fermées et le geste ne s'ouvre sur aucune d'elles.
-
-  112 → 116 (2026-09-07) : `RelancerLocataire`, née avec la refonte de l'écran
-  des locataires en fiches. Une modale ordinaire, donc quatre états. Elle
-  confirme un envoi vers UNE personne, là où la relance des paiements en groupe
-  plusieurs — mêmes mots, au singulier.
-
-  LE MÊME LOT A DÉPLACÉ DEUX LIBELLÉS, et cette garde l'a dit avant tout le
-  monde : « Corriger » et « Retirer » se sont repliés derrière trois points, et
-  leurs noms accessibles portent désormais leur cible. Le script ouvrait déjà
-  les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
-  « sans défaut » sur ce qu'il n'avait pas ouvert.
-*/
-const ATTENDUS = 140
-const NON_OUVRABLES_ATTENDUES = 0
-
-/**
- * Le plafond effectif, selon la police imposee.
- *
- * La garde refuse une entree sans `defilLarge` : une modale ajoutee demain qui
- * n'en porterait qu'un passerait au vert en mode police large sans etre gardee,
- * ce qui est exactement le silence que ce fichier existe pour empecher.
- */
-function plafondDe(modale, largeur) {
-  if (!POLICE_LARGE) return modale.defil[largeur]
-  if (!modale.defilLarge || typeof modale.defilLarge[largeur] !== 'number') {
-    console.error(
-      `\n✗ modales : « ${modale.nom} » n'a pas de \`defilLarge\` pour ${largeur} px.\n` +
-        '   Chaque plafond a deux valeurs depuis que les deux polices sont mesurees.\n' +
-        '   Relancez `MESURER_EN_POLICE_LARGE=1 node scripts/modales.mjs` et inscrivez le releve.\n',
-    )
-    exit(1)
-  }
-  return modale.defilLarge[largeur]
-}
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les
    sources. Un paquet périmé rendrait un verdict sur le code d'AVANT, en
@@ -895,80 +765,12 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
-/*
-  LA LIGNE DE SUCCÈS SUIT L'ÉTAT, elle ne le récite pas.
-
-  Elle disait « TariffsModal et ParkSettingsModal ne sont pas couvertes par les
-  cas clavier » et « sur QUATRE modales » — deux phrases écrites en dur, vraies
-  le jour où on les a tapées et fausses depuis que les deux modales ont rejoint
-  les cas clavier, qui sont six. Une porte dont le rapport se périme apprend à
-  ne plus lire son rapport.
-
-  UNE RÉDACTION PRÉCÉDENTE EN TIRAIT LA MAUVAISE LEÇON. Elle écrivait ici, à la
-  main, `COUVERTES_AU_CLAVIER = 17`, en défendant le choix : « dérivé de l'autre
-  fichier il ne dirait rien, recopié sans compte il se périmerait encore ». La
-  suite lui a donné tort de la façon la plus nette : le nombre s'est périmé
-  quand même, avec la liste recopiée sous ses yeux, et la porte l'a imprimé
-  trois jours durant comme une vérité vérifiée. Voir juste dessous.
-*/
-/**
- * CE QUE LE CLAVIER COUVRE, LU DANS SON REGISTRE — PLUS RECOPIÉ.
- *
- * ═══ CE QUE LA RECOPIE A COÛTÉ ═══
- *
- * Cette ligne portait `const COUVERTES_AU_CLAVIER = 17`, et son commentaire
- * défendait ce nombre : « dérivé de l'autre fichier il ne dirait rien ». La
- * suite lui a donné tort. Le registre du clavier est passé à VINGT le
- * 2026-09-05 ; ce nombre et la liste recopiée juste au-dessus sont restés à
- * dix-sept, d'accord ENTRE EUX puisque tous deux écrits ici, et la porte a
- * continué d'imprimer « sur 17 modales ; TOUTES y sont ». Trois modales n'y
- * étaient pas.
- *
- * Une garde qui AFFIRME est pire qu'une garde absente : elle achète la confiance
- * qu'elle ne mérite pas, et son rapport se lit comme un fait.
- *
- * ═══ LE LIEN SE FAIT PAR LE FICHIER, PAS PAR LE LIBELLÉ ═══
- *
- * Les deux registres ne s'adressent pas pareil : ici le bouton porte sa cible
- * — « Corriger l'immeuble Résidence Bonamoussadi » —, là-bas un nom court. Le
- * FICHIER qui rend la modale, lui, est le même des deux côtés, et c'est le seul
- * point d'accroche qui ne dépende d'aucune rédaction.
- *
- * Le fichier est LU comme un texte : ce script est un module Node, l'autre un
- * cas sous jsdom, et les relier par import ferait dépendre une porte du
- * chargement de l'autre. C'est l'idiome déjà employé par `decisions-nommees`
- * sur `Decisions.tsx` et par `notes-conditionnelles` sur les sources.
- */
-const REGISTRE_CLAVIER = 'src/features/dashboard/clavierDesModales.test.tsx'
-/**
- * BORNÉ AU TABLEAU `MODALES`, ET LA PREMIÈRE RÉDACTION NE L'ÉTAIT PAS.
- *
- * Ce fichier porte aussi `HORS_CLAVIER` — les modales DÉCLARÉES non jouées, avec
- * leur motif — dont les entrées ont le même champ `fichier`. Une lecture qui
- * balaie tout le fichier compte donc les DISPENSES comme des couvertures : elle
- * rendait 23 fichiers pour 19 réellement joués, et déclarait « TOUTES y sont »
- * en s'appuyant sur la liste de celles qui n'y sont pas.
- *
- * C'est exactement le défaut que le commentaire du dessus reproche à la
- * rédaction précédente, reproduit dans son remède au premier essai. Le tableau
- * se délimite donc, et la garde de lisibilité qui suit tient le compte plancher.
- */
-const sourceDuClavier = readFileSync(join(RACINE, REGISTRE_CLAVIER), 'utf8')
-const debutDuTableau = sourceDuClavier.indexOf('const MODALES: Modale[] = [')
-const finDuTableau = sourceDuClavier.indexOf('\n]', debutDuTableau)
-const fichiersAuClavier = new Set(
-  [
-    ...sourceDuClavier.slice(debutDuTableau, finDuTableau).matchAll(/fichier: '([^']+)'/g),
-  ].map((m) => m[1]),
-)
-if (debutDuTableau === -1 || finDuTableau === -1 || fichiersAuClavier.size < 15) {
-  console.error(
-    `\n✗ modales : le registre du clavier est illisible — ${fichiersAuClavier.size} fichier(s) trouvé(s).\n` +
-      `   Un champ renommé rendrait « aucune couverture » là où il y en a vingt.\n`,
-  )
-  exit(1)
-}
-const horsClavier = MODALES.filter((m) => !fichiersAuClavier.has(m.fichier))
+/* LA LIGNE DE SUCCÈS SUIT L'ÉTAT, elle ne le récite pas — et ce qu'elle dit du
+   CLAVIER est lu dans le registre du clavier, jamais recopié ici :
+   `scripts/modales/couverture-clavier.mjs`. Son en-tête porte les deux
+   rédactions qui se sont périmées à cet endroit, dont un `17` que la porte a
+   imprimé trois jours comme une vérité vérifiée. */
+const { fichiers: fichiersAuClavier, horsClavier } = lireLaCouvertureClavier(RACINE, MODALES)
 
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
