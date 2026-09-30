@@ -658,7 +658,10 @@ const PLAFONDS = [
   /* −22 px : le résumé de périmètre cesse de recopier le nom de l'immeuble
      devant chaque logement retranché. Mesuré ici à 2187 en police large ; la
      colonne normale, qui appartient à l'autre machine, reçoit le même écart. */
-  { adresse: '/demo/acces', largeur: 360, plafond: 2183, plafondLarge: 2165 },
+  /* +48 px le 2026-09-30 : le bouton « Honoraires et relevé » sur la ligne
+     de chaque mandataire. Un bouton de rangée et rien d'autre — le relevé
+     lui-même vit dans une modale, et n'allonge donc pas l'écran. */
+  { adresse: '/demo/acces', largeur: 360, plafond: 2231, plafondLarge: 2343 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
@@ -782,7 +785,10 @@ const PLAFONDS = [
   /* −21 px, même cause qu'à 360 : la phrase de périmètre passe de quatre
      lignes à deux sur la fiche du gestionnaire, qui est la plus haute de sa
      rangée et fixe donc la hauteur de la grille. */
-  { adresse: '/demo/acces', largeur: 1280, plafond: 1192, plafondLarge: 1192 },
+  /* +48 px le 2026-09-30 : le bouton « Honoraires et relevé » sur la ligne
+     de chaque mandataire. Un bouton de rangée et rien d'autre — le relevé
+     lui-même vit dans une modale, et n'allonge donc pas l'écran. */
+  { adresse: '/demo/acces', largeur: 1280, plafond: 1240, plafondLarge: 1240 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
