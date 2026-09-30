@@ -78,11 +78,18 @@ jobs:
   fumee:
     name: fumée — l'hôte vivant (rapport, pas verdict)
     runs-on: ubuntu-latest
-    # 15 ET NON 10 DEPUIS LE 2026-09-30 : le balayage de la démonstration ajoute
-    # 55 surfaces. MESURÉ à 81 s en tout sur une machine de développement ; le
-    # relèvement du plafond est une PRUDENCE NON MESURÉE — la latence d'un
-    # exécuteur GitHub vers le bord de Vercel n'a pas été relevée, et un plafond
-    # qui coupe un passage nocturne se lit comme une panne d'hôte.
+    # 15 ET NON 10 DEPUIS LE 2026-09-30, ET LA MESURE A TRANCHÉ.
+    #
+    # Le balayage de la démonstration ajoute 55 surfaces — 81 s sur une machine
+    # de développement, ce qui laissait croire que 10 minutes suffisaient
+    # largement. Le PREMIER passage réel dit autre chose : 20 h 51 min 56 s à
+    # 21 h 01 min 17 s, soit 9 min 21 s. Trente-neuf secondes de marge sous
+    # l'ancien plafond.
+    #
+    # Ce ne sont pas les 81 s de mesure qui dominent : ce sont `npm ci`, le
+    # téléchargement de Chromium et la construction. Un exécuteur un peu plus
+    # lent, un cache manqué, et le passage se faisait couper — ce qui se lit
+    # comme une panne d'hôte, pas comme un plafond trop bas.
     timeout-minutes: 15
     # `continue-on-error` EST LE POINT, pas une commodité. Une porte qui rougit
     # sur un DNS qui hoquette apprend à être ignorée, et c'est la seule façon de
