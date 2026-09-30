@@ -748,6 +748,76 @@ export const api = {
     }),
 
   /**
+   * LES CHARGES CONVENUES AU BAIL, et les décomptes déjà arrêtés.
+   *
+   * Au gestionnaire aussi : c'est lui qui répond au locataire quand celui-ci
+   * demande ce que couvrent ses provisions.
+   */
+  leaseChargeLines: <T>(parkId: string, leaseId: string) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/charge-lines`),
+
+  /**
+   * CONVENIR D'UNE LIGNE. Au propriétaire seul : c'est une clause du bail.
+   *
+   * `409 libelle_deja_pris` si le bail en porte déjà une du même nom — deux
+   * « Ordures ménagères » sur une quittance seraient indiscernables.
+   */
+  addLeaseChargeLine: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: { label: string; amountMinor: number; kind: 'provision' | 'forfait' },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/charge-lines`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
+   * RETIRER UNE LIGNE. Elle cesse d'être appelée le mois prochain ; les
+   * quittances déjà émises en gardent leur copie figée.
+   */
+  removeLeaseChargeLine: <T>(parkId: string, lineId: string) =>
+    requete<T>(`/parks/${parkId}/charge-lines/${lineId}`, { method: 'DELETE' }),
+
+  /**
+   * LE BROUILLON D'UN DÉCOMPTE : trois faits, jamais additionnés.
+   *
+   * Les provisions appelées sont exactes. Les dépenses du LOGEMENT lui sont
+   * imputables en entier ; celles de l'IMMEUBLE ne le sont que par une clé de
+   * répartition que le produit n'a pas — d'où deux nombres séparés, et une somme
+   * que le gestionnaire arrête lui-même.
+   */
+  settlementDraft: <T>(parkId: string, leaseId: string, from: string, to: string) => {
+    /* LES BORNES EN SUFFIXE, et le chemin composé d'une seule pièce : la garde
+       des orphelins lit les chemins tels qu'ils s'écrivent ici, et un `?` collé
+       au gabarit lui cachait la route entière. */
+    const bornes = new URLSearchParams({ from, to }).toString()
+    return requete<T>(`/parks/${parkId}/leases/${leaseId}/settlement-draft` + `?${bornes}`)
+  },
+
+  /**
+   * ARRÊTER LE DÉCOMPTE. Le serveur recalcule les provisions et ignore ce que le
+   * client lui dicterait : c'est le chiffre qu'on oppose ensuite au locataire.
+   *
+   * `409 exercice_deja_regularise` — un exercice ne se régularise qu'une fois.
+   */
+  settleCharges: <T>(
+    parkId: string,
+    leaseId: string,
+    corps: {
+      periodStart: string
+      periodEnd: string
+      settledOn: string
+      actualMinor: number
+      note?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/leases/${leaseId}/settlements`, {
+      method: 'POST',
+      body: JSON.stringify(corps),
+    }),
+
+  /**
    * LE PANNEAU ADMINISTRATIF D'UN BAIL : congé, révisions, garants.
    *
    * UNE lecture et non trois : les trois collections s'ouvrent ensemble, par la

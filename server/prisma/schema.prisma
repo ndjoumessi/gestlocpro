@@ -640,6 +640,8 @@ model Lease {
   revisions   RentRevision[]
   guarantors  Guarantor[]
   plans       SettlementPlan[]
+  chargeLines LeaseChargeLine[]
+  settlements ChargeSettlement[]
 
   @@index([unitId, status])
   @@index([tenantId])
@@ -682,9 +684,115 @@ model RentCharge {
   createdAt DateTime @default(now())
 
   payments Payment[]
+  /// Les lignes libres, RECOPIÉES du bail à l'émission — voir `RentChargeLine`.
+  lines    RentChargeLine[]
 
   @@unique([leaseId, periodStart])
   @@index([dueOn])
+}
+
+/// UNE LIGNE DE CHARGE RÉCURRENTE, telle qu'elle est convenue au bail.
+///
+/// `waterMinor` et `powerMinor` ne couvraient que ce qui se CALCULE — un index
+/// de compteur multiplié par un tarif. Tout le reste de ce qu'un bailleur
+/// refacture se TAPE : ordures ménagères, gardiennage, ascenseur, entretien des
+/// parties communes. Faute de place où l'écrire, ces sommes étaient ajoutées au
+/// loyer, et la quittance appelait « loyer » ce qui n'en était pas.
+///
+/// C'est la DÉFINITION, pas la dette. Elle dit ce qui sera appelé chaque mois ;
+/// l'échéance émise en porte une copie figée.
+model LeaseChargeLine {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  /// Ce que le locataire lira sur sa quittance. Deux lignes du même libellé sur
+  /// un même bail seraient indiscernables sur le papier : l'unicité le refuse.
+  label String
+
+  amountMinor Int
+
+  kind ChargeLineKind
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([leaseId, label])
+}
+
+/// LA MÊME LIGNE, FIGÉE DANS UNE ÉCHÉANCE ÉMISE.
+///
+/// Même règle que `rentMinor`, `waterMinor` et `powerMinor` : corriger la
+/// définition plus tard ne doit pas réécrire un mois déjà appelé. Une quittance
+/// rééditée en décembre pour le mois de mars doit porter le montant de mars.
+///
+/// Sans cette copie, la seule façon de servir une quittance passée serait de
+/// relire la définition COURANTE — c'est-à-dire de mentir sur le papier remis
+/// au locataire, en silence et sans trace.
+model RentChargeLine {
+  id       String     @id @default(uuid()) @db.Uuid
+  chargeId String     @db.Uuid
+  charge   RentCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+
+  label       String
+  amountMinor Int
+  kind        ChargeLineKind
+
+  @@unique([chargeId, label])
+}
+
+/// UNE RÉGULARISATION DE CHARGES, ARRÊTÉE POUR UN EXERCICE.
+///
+/// Le commentaire de `ExpenseCategory.utility` la nommait déjà sans qu'elle
+/// existe : « la différence entre les deux est exactement ce qu'une
+/// régularisation de charges cherche ». Les provisions APPELÉES au locataire
+/// d'un côté, les dépenses RÉELLEMENT engagées de l'autre, et un solde.
+///
+/// POURQUOI LES SOMMES SONT STOCKÉES, alors que le relevé de gestion, lui, se
+/// recalcule à chaque lecture. Une régularisation est ARRÊTÉE : elle est
+/// notifiée au locataire, qui paie un complément ou reçoit un remboursement.
+/// Recalculée six mois plus tard — une dépense ressaisie, une facture arrivée
+/// en retard —, elle rendrait un autre chiffre que celui qu'on lui a réclamé.
+/// Le relevé de gestion n'engage personne ; celle-ci, si.
+///
+/// LE SOLDE N'EST PAS STOCKÉ, et c'est délibéré. Il vaut
+/// `provisionedMinor - actualMinor`, sans exception ni arrondi : une troisième
+/// colonne ne pourrait que diverger des deux premières, et rien ne dirait
+/// laquelle a raison. Positif, le bailleur doit un remboursement ; négatif, le
+/// locataire doit un complément.
+model ChargeSettlement {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  /// L'exercice régularisé, bornes incluses. Deux dates plutôt qu'une année :
+  /// un exercice ne commence pas partout le 1er janvier, et un bail signé en
+  /// avril se régularise d'avril à mars.
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
+
+  /// Ce qui a été APPELÉ au locataire sur l'exercice, en provisions seules —
+  /// les forfaits sont dus quoi qu'il arrive et n'entrent pas au décompte.
+  provisionedMinor Int
+  /// Ce que le bailleur a RÉELLEMENT engagé sur l'exercice pour ce logement et
+  /// pour son immeuble.
+  actualMinor Int
+
+  currency Currency
+
+  /// Le jour où elle a été arrêtée. C'est cette date qui la rend opposable, pas
+  /// celle où la ligne a été écrite en base.
+  settledOn DateTime @db.Date
+
+  /// Ce que le décompte ne dit pas : une facture d'eau exceptionnelle, un mois
+  /// de vacance déduit.
+  note String?
+
+  createdAt DateTime @default(now())
+
+  /// Un exercice ne se régularise qu'une fois. Deux décomptes pour la même
+  /// période rendraient la question « combien doit-il ? » sans réponse.
+  @@unique([leaseId, periodStart])
 }
 
 model Payment {
@@ -1532,6 +1640,17 @@ enum Currency {
 /// fermée forcerait à ranger une dépense réelle dans une case fausse, ce qui
 /// abîme le résultat plus sûrement qu'une ligne non classée. Le libellé reste là
 /// pour dire ce que la catégorie ne dit pas.
+/// Ce qu'une ligne de charge devient à la régularisation.
+enum ChargeLineKind {
+  /// Une AVANCE sur une dépense réelle. Elle entre au décompte annuel, et le
+  /// solde revient au locataire ou lui est réclamé.
+  provision
+  /// Un montant DÛ, point. Un forfait de gardiennage convenu à 5 000 par mois
+  /// reste 5 000 même si le gardien a coûté moins : le rendre au locataire
+  /// reviendrait à réécrire le bail.
+  forfait
+}
+
 enum ExpenseCategory {
   /// Taxe foncière, patente, tout prélèvement public sur le bien.
   tax

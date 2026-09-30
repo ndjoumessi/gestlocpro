@@ -83,8 +83,12 @@ interface PanneauApi {
  * lecteur d'écran annonce trois boutons dont rien ne dit qu'ils ouvrent quelque
  * chose, ni lequel est ouvert. Le titre reste un `h3` — il structure le document
  * même replié, et `lecture-sources` compte les niveaux de titre.
+ *
+ * EXPORTÉ DEPUIS LE LOT DES CHARGES, qui a sa propre boîte et le même besoin.
+ * Le dupliquer aurait fait diverger deux en-têtes au premier ajustement — et
+ * c'est la ROTATION du chevron, pas le titre, qui coûte à reproduire.
  */
-function EnTeteDeSection({
+export function EnTeteDeSection({
   titre,
   ouverte,
   onBascule,

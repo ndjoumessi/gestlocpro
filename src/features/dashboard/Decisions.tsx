@@ -260,6 +260,28 @@ const DETAIL: Record<string, Champ[]> = {
     { champ: 'status', nature: 'texte' },
     { champ: 'totalMinor', nature: 'argent' },
   ],
+  /* LA CHARGE CONVENUE. Le LIBELLÉ d'abord : c'est lui qui identifie, la somme
+     seule ne dit pas ce qu'on refacture. La NATURE ensuite, parce qu'elle décide
+     si cet argent revient au locataire au décompte annuel. */
+  'lease.charge_line_added': [
+    { champ: 'label', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'kind', nature: 'texte' },
+  ],
+  'lease.charge_line_removed': [
+    { champ: 'label', nature: 'texte' },
+    { champ: 'amountMinor', nature: 'argent' },
+    { champ: 'kind', nature: 'texte' },
+  ],
+  /* LE DÉCOMPTE ARRÊTÉ. LES DEUX SOMMES, jamais le solde : c'est leur écart
+     qu'une contestation attaque, et un solde seul ne dit pas laquelle des deux
+     on lui reproche. */
+  'lease.charge_settlement': [
+    { champ: 'periodStart', nature: 'date' },
+    { champ: 'periodEnd', nature: 'date' },
+    { champ: 'provisionedMinor', nature: 'argent' },
+    { champ: 'actualMinor', nature: 'argent' },
+  ],
   'lease.notice': [
     { champ: 'givenBy', nature: 'texte' },
     { champ: 'givenOn', nature: 'date' },

@@ -211,6 +211,24 @@ const MODALES: Modale[] = [
     bouton: /^Bail et sûretés$/,
     forme: 'saisie',
   },
+  /*
+    LES CHARGES DU BAIL, DANS LEUR PROPRE BOÎTE — et c'est le seul lot à avoir
+    refusé une section de plus dans la modale au-dessus. `LeaseModal` portait
+    déjà quatre sections et 843 lignes, au-dessus du plafond de maintenabilité
+    du dépôt ; une cinquième l'aurait poussée vers 1 100 lignes et son
+    défilement de 523 px vers 612. Le dépliage repousse le moment où une boîte
+    devient illisible, il ne le supprime pas.
+
+    MÊME ADRESSE ET MÊME CONDITION que le bail : `A1` a un bail courant, et sans
+    bail il n'y a ni charge à convenir ni exercice à régulariser.
+  */
+  {
+    nom: 'Charges et régularisation',
+    fichier: 'features/dashboard/ChargesModal.tsx',
+    adresse: '/demo/parc/A1',
+    bouton: /^Charges et régularisation$/,
+    forme: 'saisie',
+  },
 
   { nom: 'Enregistrer un paiement', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
@@ -659,7 +677,7 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les trente modales déclarées', () => {
+  it('a bien joué les trente-et-une modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
        faute de cible dans la démonstration. Leur `prealable` la crée.
        26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
@@ -669,9 +687,12 @@ describe('le clavier des modales', () => {
        28 → 29 (2026-09-30) : les honoraires d'un gestionnaire, sur la ligne de
        son mandat — le même jour, le lot suivant.
        29 → 30 (2026-09-30) : le bail et ses sûretés, depuis le dossier d'un
-       logement — première de ce registre derrière un menu de débordement. */
-    expect(MODALES.length).toBe(30)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(30)
+       logement — première de ce registre derrière un menu de débordement.
+       30 → 31 (2026-09-30) : les charges du bail et leur régularisation, dans
+       une boîte à elles — le lot a REFUSÉ d'en faire une cinquième section de
+       la précédente, qui passait déjà les 800 lignes. */
+    expect(MODALES.length).toBe(31)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(31)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

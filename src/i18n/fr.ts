@@ -1712,6 +1712,50 @@ export const fr = {
        logement. UNE SEULE pour les trois gestes (congé, révision, garant) : ils
        portent tous sur le même bail, et trois boîtes auraient coûté trois fois
        les registres de géométrie pour trois formulaires de quatre champs. */
+    leaseCharges: {
+      open: 'Charges et régularisation',
+      title: 'Charges du bail',
+      linesTitle: 'Charges convenues',
+      linesNone: 'Aucune charge convenue — seuls le loyer, l’eau et le courant sont appelés.',
+      lineLabel: 'Libellé',
+      lineAmount: 'Montant par mois',
+      lineKind: 'Nature',
+      /* LA DISTINCTION DÉCIDE DU DÉCOMPTE, et elle est invisible sur la
+         quittance : on l'écrit ici, au moment où elle se choisit. */
+      lineKindHint:
+        'Une provision est une avance : elle revient au locataire si le bailleur a engagé moins. Un forfait est dû quoi qu’il arrive.',
+      kindProvision: 'Provision',
+      kindForfait: 'Forfait',
+      addLine: 'Ajouter la charge',
+      lineAdded: 'Charge convenue.',
+      lineRemoved: 'Charge retirée. Les quittances déjà émises ne changent pas.',
+      lineDuplicate: 'Ce bail porte déjà une charge de ce libellé.',
+      lineIncomplete: 'Un libellé et un montant sont nécessaires.',
+      removeLine: 'Retirer la charge {label}',
+      settlementTitle: 'Régularisation',
+      settlementRange: 'Exercice du {from} au {to}',
+      balanceToRefund: '{amount} à rendre au locataire',
+      balanceToCollect: '{amount} à réclamer au locataire',
+      periodStart: 'Début de l’exercice',
+      periodEnd: 'Fin de l’exercice',
+      draftProvisioned: 'Provisions appelées',
+      draftUnitExpenses: 'Dépenses du logement',
+      draftBuildingExpenses: 'Dépenses de l’immeuble',
+      /* LES DEUX NE S'ADDITIONNENT PAS, et le produit ne sait pas les répartir :
+         on le dit plutôt que d'afficher un total qui serait pris pour argent
+         comptant. */
+      draftNoKey:
+        'Les dépenses de l’immeuble ne sont pas réparties : le produit n’a ni tantièmes ni surfaces. À vous de retenir la part qui revient à ce logement.',
+      actualAmount: 'Dépenses retenues',
+      actualAmountHint: 'La somme que vous opposez au locataire pour cet exercice.',
+      settledOn: 'Arrêté le',
+      note: 'Observation',
+      settle: 'Arrêter le décompte',
+      settled: 'Décompte arrêté.',
+      settlementDuplicate: 'Cet exercice a déjà été régularisé.',
+      settlementIncomplete: 'Une date d’arrêté et un montant sont nécessaires.',
+      failed: 'L’opération n’a pas pu être enregistrée.',
+    },
     lease: {
       open: 'Bail et sûretés',
       openLine: 'Bail et sûretés — {unit}',
@@ -2464,6 +2508,9 @@ export const fr = {
           revise_rent: 'Loyer révisé',
           settlement_plan: 'Plan d’apurement convenu',
           settlement_close: 'Plan d’apurement clos',
+          charge_line_added: 'Charge convenue au bail',
+          charge_line_removed: 'Charge retirée du bail',
+          charge_settlement: 'Décompte de charges arrêté',
         },
         park: {
           update: 'Parc corrigé',

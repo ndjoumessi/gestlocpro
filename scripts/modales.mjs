@@ -378,6 +378,22 @@ const MODALES = [
   */
   { nom: 'Lease', fichier: 'features/dashboard/LeaseModal.tsx', adresse: '/demo/parc/A1', bouton: /^Bail et sûretés$|^Lease and sureties$/, defil: { 360: 523, 1280: 268 }, defilLarge: { 360: 481, 1280: 179 }, avant: { 360: 1196, 1280: 747 } },
   /*
+    LES CHARGES DU BAIL — et le premier lot de cette série à REFUSER une section
+    de plus dans la boîte du dessus.
+
+    `LeaseModal` porte quatre sections et 843 lignes, au-dessus du plafond de
+    maintenabilité du dépôt. Une cinquième l'aurait poussée vers 1 100 lignes et
+    son défilement de 523 à 612 px. Le dépliage repousse le moment où une boîte
+    devient illisible ; il ne le supprime pas, et ce lot est celui où la
+    repousser une fois de plus aurait coûté plus que séparer.
+
+    DEUX SECTIONS ICI, dépliées comme là-haut : les charges convenues d'un côté,
+    la régularisation de l'autre. Ouvertes ensemble, il faudrait parcourir toutes
+    les lignes pour atteindre le décompte — exactement le défaut que la boîte du
+    bail a payé en 1 196 px.
+  */
+  { nom: 'LeaseCharges', fichier: 'features/dashboard/ChargesModal.tsx', adresse: '/demo/parc/A1', bouton: /^Charges et régularisation$|^Charges and reconciliation$/, defil: { 360: 24, 1280: 0 }, defilLarge: { 360: 24, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
     LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
     l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par
     `RemoveTenant`, `Access.tsx` par `RevokeAccess` — ce qui suffisait à la garde
@@ -805,7 +821,7 @@ const LANGUES = ['fr', 'en']
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 128
+const ATTENDUS = 132
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**
