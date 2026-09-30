@@ -276,6 +276,11 @@ describe('session', () => {
            qui avait choisi 7 h à Douala. */
         reminderHour: 6,
         reminderTimeZone: 'UTC',
+        /* ET LE CANAL. `sms` est le défaut du schéma, et c'est exactement ce
+           que la route de relance écrivait en dur avant qu'il soit réglable :
+           un défaut inventé côté client rebasculerait sur SMS un parc passé à
+           WhatsApp, en silence et sans que personne ne l'ait demandé. */
+        reminderChannel: 'sms',
       },
     ])
   })
@@ -499,6 +504,9 @@ describe('réinitialisation du mot de passe', () => {
   function messagerieQuiCapture() {
     const envoyes: { destinataire: string; texte: string; html: string }[] = []
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },

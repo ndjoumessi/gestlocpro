@@ -647,7 +647,13 @@ const PLAFONDS = [
      c'est une réserve et non un résultat : sur les écrans applicatifs l'écart
      local/CI va de −67 à +21 px. Le travail `polices` corrigera la colonne
      large, et c'est lui qui fait autorité. */
-  { adresse: '/demo/depenses', largeur: 360, plafond: 1650, plafondLarge: 1671 },
+  /* 1671 → 1650 EN POLICE LARGE, RELEVÉ PAR `polices` LE 2026-09-30, comme le
+     commentaire ci-dessus l'annonçait. L'estimation locale avait 21 px de MOU,
+     et un plafond au-dessus de la mesure ne refuse plus rien : c'est ce que
+     cette garde appelle du mou, et elle le refuse au même titre qu'un
+     dépassement. Les deux colonnes coïncident désormais — la police large ne
+     rallonge pas cet écran sur cette machine-là. */
+  { adresse: '/demo/depenses', largeur: 360, plafond: 1650, plafondLarge: 1650 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
@@ -661,7 +667,12 @@ const PLAFONDS = [
   /* +48 px le 2026-09-30 : le bouton « Honoraires et relevé » sur la ligne
      de chaque mandataire. Un bouton de rangée et rien d'autre — le relevé
      lui-même vit dans une modale, et n'allonge donc pas l'écran. */
-  { adresse: '/demo/acces', largeur: 360, plafond: 2231, plafondLarge: 2343 },
+  /* 2343 → 2213 EN POLICE LARGE, même relevé et même motif : 130 px de mou,
+     le plus gros des deux. La colonne large reste SOUS l'étroite — 2213 contre
+     2231 — et ce n'est pas une anomalie : c'est la dissymétrie de largeur de
+     texte que `releve-polices-machine` mesure entre les deux machines, et qui
+     va dans les deux sens. */
+  { adresse: '/demo/acces', largeur: 360, plafond: 2231, plafondLarge: 2213 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },

@@ -52,6 +52,9 @@ let rendre = true
 let retablir: () => void
 
 const messagerieDeSonde: Messagerie = {
+  async envoyerWhatsApp() {
+    return false
+  },
   async envoyerSms() {
     return rendre
   },

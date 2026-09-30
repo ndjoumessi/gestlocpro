@@ -288,6 +288,18 @@ model Park {
   /// C'est le fuseau de qui REÇOIT qui compte, jamais celui de qui administre.
   reminderHour Int @default(6)
   reminderTimeZone String @default("UTC")
+  /// PAR QUEL CANAL la relance automatique part, quand elle part.
+  ///
+  /// `sms` par défaut, et ce défaut n'est pas neutre : c'est exactement ce que
+  /// la route écrivait en dur jusqu'ici. Aucun parc ne change de canal au moment
+  /// où le réglage apparaît.
+  ///
+  /// SEULS `sms` ET `whatsapp` ONT UN SENS ICI. `in_app` est ce que le produit
+  /// écrit quand RIEN n'est parti — c'est un constat, pas une intention —, et
+  /// `email` n'a pas de rédaction de relance. Prisma ne sait pas restreindre une
+  /// énumération à deux de ses membres : la garde est en zod à l'entrée, et un
+  /// cas la tient.
+  reminderChannel NotificationChannel @default(sms)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1887,6 +1899,18 @@ enum NotificationChannel {
   in_app
   email
   sms
+  /// WhatsApp, par la MÊME API que le SMS — Twilio, avec un préfixe `whatsapp:`
+  /// sur l'expéditeur et le destinataire.
+  ///
+  /// CE QUE CE MEMBRE NE PROMET PAS. Meta n'autorise un message SORTANT hors
+  /// d'une fenêtre de 24 h après le dernier message du destinataire que s'il
+  /// suit un MODÈLE approuvé par ses soins. Une relance de loyer est par nature
+  /// non sollicitée : sans modèle approuvé, Twilio la refuse (code 63016) et la
+  /// couture rend `false` — le produit écrit alors `in_app`, et l'écran dit
+  /// qu'elle n'est pas partie. Le canal ne ment donc pas ; il exige une
+  /// démarche que le code ne peut pas faire à la place de l'exploitant, et le
+  /// produit le DIT là où on le choisit.
+  whatsapp
 }
 
 /// CE QU'UNE PERSONNE A CONFIRMÉ À L'INSCRIPTION — le texte, et le VERBE.

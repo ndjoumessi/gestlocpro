@@ -1109,6 +1109,12 @@ export const en: Dictionary = {
       reminderHourHint: 'From 0 to 23, in the time zone chosen below.',
       reminderHourHintLocal:
         'From 0 to 23, in the time zone chosen below — that is {heure} where you are',
+      reminderChannel: 'Reminder channel',
+      reminderChannelHint: 'Where the automatic reminder goes out.',
+      reminderChannelSms: 'SMS',
+      reminderChannelWhatsApp: 'WhatsApp',
+      reminderChannelWhatsAppWarning:
+        'WhatsApp requires a message template approved by Meta for any unsolicited message. Without that template, this park’s reminders will stay in the app without going out.',
       reminderZone: 'Time zone',
       reminderZoneHint: 'Your tenants’, which is not necessarily your own.',
       currencyWarning:

@@ -78,6 +78,9 @@ describe('executerRelancesAutomatiques — le futur cron', () => {
 
     let envoyes = 0
     const rendre = remplacerMessagerie({
+      async envoyerWhatsApp() {
+        return false
+      },
       async envoyerSms() {
         return false
       },
@@ -138,6 +141,9 @@ describe('executerRelancesAutomatiques — le futur cron', () => {
       await executerRelancesAutomatiques({ aBlanc: true })
 
       const rendre = remplacerMessagerie({
+        async envoyerWhatsApp() {
+          return false
+        },
         async envoyerSms() {
           return false
         },

@@ -79,6 +79,27 @@ const schema = z.object({
   TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
   TWILIO_SMS_FROM: z.string().min(1).optional(),
   /**
+   * LE NUMÉRO WHATSAPP, ET IL NE FAIT PAS UN QUATRIÈME DU TRIO.
+   *
+   * Les trois ci-dessus vont ensemble parce que sans l'une d'elles l'adaptateur
+   * est faux. Celle-ci s'ajoute : un compte Twilio ouvert pour le SMS n'a pas
+   * forcément de numéro WhatsApp activé, et ce cas-là est normal. Absente,
+   * `envoyerWhatsApp` rend `false` et le journal le dit ; un parc réglé sur ce
+   * canal voit alors ses relances rester dans le produit, ce que l'écran
+   * annonce.
+   *
+   * MÊME FORMAT QUE `TWILIO_SMS_FROM` — E.164, SANS le préfixe `whatsapp:`.
+   * L'adaptateur le pose lui-même, sur l'expéditeur ET le destinataire : le
+   * poser ici aussi rendrait `whatsapp:whatsapp:+237…`, refusé en 21211.
+   *
+   * ET ELLE NE SUFFIT PAS À FAIRE PARTIR UNE RELANCE. Meta exige un MODÈLE
+   * approuvé pour tout message sortant hors d'une fenêtre de 24 h ; une relance
+   * de loyer est non sollicitée. Configurer cette variable ouvre le canal, elle
+   * n'obtient pas l'approbation — et le produit le dit là où le canal se
+   * choisit, plutôt que de le laisser découvrir à la première relance muette.
+   */
+  TWILIO_WHATSAPP_FROM: z.string().min(1).optional(),
+  /**
    * Où le stockage des pièces pose ses octets. FACULTATIVE ICI, EXIGÉE PLUS BAS
    * EN PRODUCTION.
    *

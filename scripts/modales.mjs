@@ -263,7 +263,27 @@ const MODALES = [
     le témoin de machine de ses deux sœurs. C'est une pièce d'instrument, pas un
     correctif de produit, et ce lot n'a pas à la porter.
   */
-  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 603, 1280: 294 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
+  /*
+    603 → 721 À 360, 294 → 408 À 1280, ET VOICI CE QUE LE PLAFOND ACHÈTE.
+
+    Le CANAL de la relance, jusqu'ici écrit en dur dans la route : `sms` quand
+    le message partait, `in_app` sinon. Une liste déroulante, son libellé et son
+    aide, dans un formulaire qui en porte déjà dix.
+
+    L'AIDE A ÉTÉ RACCOURCIE PLUTÔT QUE LE PLAFOND DESSERRÉ. Première rédaction :
+    deux phrases, dont une qui expliquait que le produit écrit le canal
+    RÉELLEMENT emprunté — 764 px. La seconde phrase dit une règle que la note du
+    canal WhatsApp porte mieux, et au moment où elle compte ; la retirer rend 43
+    px à 360 et 22 à 1280. Le reste est le champ lui-même, qui ne se réduit pas
+    sans cesser d'être atteignable au doigt.
+
+    CETTE BOÎTE EST DÉSORMAIS LA PLUS LONGUE DU REGISTRE, et je le dis plutôt que
+    de le laisser découvrir : dix réglages dans une seule modale, dont cinq pour
+    la seule relance. Un onglet ou une seconde boîte serait la réponse, et ce
+    lot-ci n'est pas celui qui doit la faire — mais le prochain réglage qu'on y
+    ajoute devrait payer ce découpage plutôt qu'un plafond de plus.
+  */
+  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 721, 1280: 408 }, defilLarge: { 360: 581, 1280: 294 }, avant: { 360: 35, 1280: 0 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -304,9 +324,49 @@ const MODALES = [
        Mêmes réserves de provenance que ci-dessus : reproduction au navigateur,
        et non relevé par ce script. */
     /* 736 → 757 : voir le relevé du 2026-09-28, au-dessus de `ParkSettings`. */
-    defil: { 360: 757, 1280: 405 },
+    /* 757 → 875 à 360, 405 → 519 à 1280 : le canal de la relance s'ajoute à
+       l'état d'ouverture, et cet état-ci le porte comme les autres. L'écart
+       avec `ParkSettings` reste celui de l'avertissement de devise seul — 154
+       px à 360, 111 à 1280 —, inchangé depuis le relevé précédent : le champ
+       neuf coûte la même hauteur dans les deux états, il n'interagit pas avec
+       la note. */
+    defil: { 360: 875, 1280: 519 },
     defilLarge: { 360: 736, 1280: 405 },
     avant: { 360: 35, 1280: 0 },
+  },
+  /*
+    LE CANAL DE LA RELANCE, TROISIÈME ÉTAT DE LA MÊME BOÎTE — et il naît d'une
+    contrainte que le code ne peut pas lever.
+
+    Meta n'autorise un message WhatsApp SORTANT hors d'une fenêtre de 24 h après
+    le dernier message du destinataire que s'il suit un MODÈLE qu'elle a
+    approuvé. Une relance de loyer est non sollicitée : sans ce modèle, Twilio la
+    refuse, la couture rend `false`, et la relance reste dans le produit.
+
+    LA NOTE LE DIT AVANT LE CHOIX, et c'est pour cela qu'elle se mesure ici : la
+    découverte naturelle de cette règle est un parc dont plus aucune relance ne
+    part, sans rien à l'écran pour l'expliquer.
+
+    `select[name="reminderChannel"]` — une VRAIE liste déroulante, comme la
+    devise au-dessus. Le `Combobox` du dépôt pose son `name` sur un champ caché
+    et n'aurait pas été atteignable ainsi.
+  */
+  {
+    nom: 'ParkSettings·whatsapp', fichier: 'features/dashboard/ParkSettingsModal.tsx',
+    adresse: '/demo/parc',
+    bouton: /^Corriger le parc$|^Correct the park$/,
+    apres: (page) =>
+      page.locator('select[name="reminderChannel"]').selectOption('whatsapp'),
+    note: /modèle de message approuvé|message template approved/,
+    /* 875 px à 360, 519 à 1280 — au pixel près les mêmes que l'état de la
+       devise, et ce n'est pas une coïncidence utile : les deux ajoutent UNE
+       note de quatre lignes en français à la même boîte. Les deux langues, en
+       revanche, divergent : 875 contre 789, la phrase française portant
+       « modèle de message approuvé par Meta » là où l'anglaise tient en moins.
+       Le plafond retient la plus longue, comme partout dans ce fichier. */
+    defil: { 360: 875, 1280: 519 },
+    defilLarge: { 360: 875, 1280: 519 },
+    avant: { 360: 721, 1280: 408 },
   },
   { nom: 'AddBuilding', fichier: 'features/dashboard/AddBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   { nom: 'AddUnit', fichier: 'features/dashboard/AddUnitModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un logement$|^Add a unit$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
@@ -830,7 +890,7 @@ const LANGUES = ['fr', 'en']
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 132
+const ATTENDUS = 136
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

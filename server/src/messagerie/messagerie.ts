@@ -53,6 +53,28 @@ export interface Messagerie {
     sujet: string,
     corps: { texte: string; html: string },
   ): Promise<boolean>
+
+  /**
+   * Rend `true` si le message WhatsApp est PARTI, `false` sinon. Mêmes règles
+   * que les deux autres : jamais d'exception, et le `false` se dit à l'écran.
+   *
+   * LA COUTURE S'ÉLARGIT UNE SECONDE FOIS, et le motif est le même que pour le
+   * courriel : un besoin réel l'exige. Sur le marché visé, WhatsApp atteint plus
+   * de gens que le SMS et coûte moins par envoi. Ce n'est pas un SMS déguisé —
+   * le transport diffère, les règles d'acheminement aussi — et le faire passer
+   * par `envoyerSms` aurait rendu indécidable, dans `Notification.channel`, par
+   * où un message est réellement parti.
+   *
+   * CE QUE CETTE MÉTHODE NE PROMET PAS. Meta n'autorise un message SORTANT hors
+   * d'une fenêtre de 24 h après le dernier message du destinataire que s'il suit
+   * un MODÈLE qu'elle a approuvé. Une relance de loyer est non sollicitée : sans
+   * modèle, Twilio la refuse — code 63016 — et cette méthode rend `false`.
+   *
+   * C'est exactement ce que la couture existe pour rendre visible. L'appelant
+   * écrit alors `in_app`, l'écran dit que la relance n'est pas partie, et
+   * personne ne croit avoir relancé.
+   */
+  envoyerWhatsApp(destinataire: string, texte: string): Promise<boolean>
 }
 
 /**
@@ -100,6 +122,16 @@ export class MessagerieDeJournal implements Messagerie {
     )
     return false
   }
+
+  async envoyerWhatsApp(destinataire: string, texte: string): Promise<boolean> {
+    /* Même masque et même règle que le SMS : le destinataire est un NUMÉRO, et
+       le texte peut porter un nom de locataire et une dette. */
+    const masque = destinataire.slice(0, 4) + '…' + destinataire.slice(-2)
+    console.log(
+      `WhatsApp non envoyé — aucun fournisseur configuré — vers ${masque} (${texte.length} car.)`,
+    )
+    return false
+  }
 }
 
 /**
@@ -119,6 +151,12 @@ export function composerLaMessagerie(sms: Messagerie, courriel: Messagerie): Mes
     envoyerSms: (destinataire, texte) => sms.envoyerSms(destinataire, texte),
     envoyerEmail: (destinataire, sujet, corps) =>
       courriel.envoyerEmail(destinataire, sujet, corps),
+    /* WHATSAPP SUIT LE CANAL SMS, et ce n'est pas un raccourci : c'est le MÊME
+       fournisseur, la même requête HTTP et les mêmes identifiants de compte —
+       seul l'expéditeur change. L'aiguiller ailleurs supposerait un second
+       fournisseur qui n'existe pas, et un troisième paramètre à ce composeur
+       qui ne porterait jamais autre chose. */
+    envoyerWhatsApp: (destinataire, texte) => sms.envoyerWhatsApp(destinataire, texte),
   }
 }
 
@@ -139,9 +177,20 @@ const parCourriel: Messagerie = env.RESEND_API_KEY
   ? new MessagerieResend(env.RESEND_API_KEY, env.EMAIL_FROM)
   : new MessagerieDeJournal()
 
+/* LE QUATRIÈME ARGUMENT EST FACULTATIF, ET C'EST TOUT SON INTÉRÊT. Un compte
+   Twilio ouvert pour le SMS n'a pas forcément de numéro WhatsApp : sans lui,
+   `envoyerWhatsApp` rend `false` et le dit, plutôt que de tenter un envoi depuis
+   un expéditeur SMS que Meta refuserait. Les trois premières restent exigées
+   ENSEMBLE — deux sur trois donnent un fournisseur qui a l'air branché et
+   n'envoie rien. */
 const parSms: Messagerie =
   env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_SMS_FROM
-    ? new MessagerieTwilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN, env.TWILIO_SMS_FROM)
+    ? new MessagerieTwilio(
+        env.TWILIO_ACCOUNT_SID,
+        env.TWILIO_AUTH_TOKEN,
+        env.TWILIO_SMS_FROM,
+        env.TWILIO_WHATSAPP_FROM,
+      )
     : new MessagerieDeJournal()
 
 let messagerie: Messagerie = composerLaMessagerie(parSms, parCourriel)

@@ -115,6 +115,28 @@ async function choisirLeProfil(page, nom) {
  * primaire d'un dossier, pas le congé. Le menu porte son nom accessible en
  * français comme en anglais, d'où l'alternative.
  */
+/**
+ * LE CANAL WHATSAPP : la modale de correction du parc, puis sa liste déroulante.
+ *
+ * `select[name]` et non un rôle : c'est une VRAIE liste déroulante, comme la
+ * devise de la même boîte, et `selectOption` déclenche l'événement que React
+ * écoute. Le `Combobox` du dépôt aurait demandé d'ouvrir un panneau.
+ */
+async function ouvrirLeCanalWhatsApp(page) {
+  /* DERRIÈRE LE MENU DE DÉBORDEMENT, comme le bail : « Corriger le parc » n'est
+     pas une action primaire de l'écran du parc, et le chercher au premier
+     niveau expire au bout de trente secondes sans rien dire de plus. */
+  await page.getByRole('button', { name: /^Autres actions$|^More actions$/ }).first().click()
+  await page.waitForTimeout(250)
+  await page
+    .getByRole('menuitem', { name: /^Corriger le parc$|^Correct the park$/ })
+    .first()
+    .click()
+  await page.waitForTimeout(250)
+  await page.locator('select[name="reminderChannel"]').selectOption('whatsapp')
+  await page.waitForTimeout(250)
+}
+
 /** Le plan d'apurement : le panneau du bail, puis sa quatrième section. */
 async function ouvrirLePlan(page) {
   await ouvrirLeBail(page)
@@ -473,6 +495,10 @@ const REGISTRE = {
       'mesure fermée sur son état d’ouverture. La rendre visible ici demanderait ' +
       'd’envoyer une annonce à chaque passage de porte, donc d’écrire dans la ' +
       'démonstration à seule fin de la mesurer.',
+  },
+  'app.parkSettings.reminderChannelWhatsAppWarning': {
+    adresse: '/demo/parc',
+    geste: ouvrirLeCanalWhatsApp,
   },
   'app.parkSettings.currencyWarning': {
     nonMesurable:

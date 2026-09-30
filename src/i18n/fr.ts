@@ -1638,6 +1638,21 @@ export const fr = {
          6 h en UTC part à 7 h à Douala, et l'aide ne disait que la règle. */
       reminderHourHintLocal:
         'De 0 à 23, dans le fuseau choisi ci-dessous — soit {heure} chez vous.',
+      reminderChannel: 'Canal de la relance',
+      /* COURTE À DESSEIN. La première rédaction expliquait ici que le produit
+         écrit le canal réellement emprunté : deux lignes de plus sur un
+         formulaire qui en porte déjà dix, pour une règle que la note du canal
+         WhatsApp dit mieux et au moment où elle compte. Mesuré : 161 px de
+         défilement en plus à 360, dont une quarantaine pour cette seule
+         phrase. */
+      reminderChannelHint: 'Par où part la relance automatique.',
+      reminderChannelSms: 'SMS',
+      reminderChannelWhatsApp: 'WhatsApp',
+      /* LA CONTRAINTE EST DITE AVANT LE CHOIX, pas découverte après. Sans
+         modèle approuvé, toutes les relances de ce parc cesseraient de partir
+         sans qu'aucun écran n'explique pourquoi. */
+      reminderChannelWhatsAppWarning:
+        'WhatsApp exige un modèle de message approuvé par Meta pour tout envoi non sollicité. Sans ce modèle, les relances de ce parc resteront dans le produit sans partir.',
       reminderZone: 'Fuseau horaire',
       reminderZoneHint: 'Celui de vos locataires, qui n’est pas forcément le vôtre.',
       currencyWarning:

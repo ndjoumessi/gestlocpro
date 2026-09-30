@@ -67,6 +67,16 @@ const AFFIRMATIONS: Record<string, string> = {
     'fin de tous les baux du produit. Un congé n’est pas une fin, le bail reste ' +
     '`active` jusqu’à cette date, et un défaut ici aurait fait cesser l’appel de ' +
     'loyer sur des logements occupés.',
+  'Park.reminderChannel':
+    'Le défaut `sms` affirme que TOUS les parcs déjà en base relancent par SMS. ' +
+    'VRAI SANS RÉSERVE, et vérifié plutôt que supposé : la valeur était écrite ' +
+    'EN DUR dans la route de relance — `channel: parti ? \'sms\' : \'in_app\'` — ' +
+    'sans réglage, sans exception et sans autre chemin d’écriture. Le défaut ne ' +
+    'fait donc que rendre explicite ce que le code imposait déjà, et aucun parc ' +
+    'ne change de comportement le jour où le réglage apparaît. ' +
+    'UN DÉFAUT À `whatsapp` AURAIT ÉTÉ UNE PANNE SILENCIEUSE : faute de modèle ' +
+    'approuvé par Meta, les relances de tous les parcs auraient cessé de partir, ' +
+    'et l’écran n’aurait eu aucune raison à donner.',
   'WorkOrder.parkId':
     'AUCUN DÉFAUT, ET AUCUN NULL : la migration REMPLIT la colonne depuis ' +
     '`unit.building.parkId` avant de la rendre obligatoire. Elle n’affirme donc ' +
@@ -197,12 +207,23 @@ function colonnesAjoutees(): string[] {
       continue
     }
     /* `ALTER TABLE "X" ADD COLUMN "y"` sur une ligne, ou l'`ALTER` sur une ligne
-       et ses `ADD COLUMN` sur les suivantes — les deux formes existent. */
+       et ses `ADD COLUMN` sur les suivantes — les deux formes existent.
+
+       `\s+` ET NON UNE ESPACE, ET C'ÉTAIT UN TROU. Les migrations de ce dépôt
+       sont écrites à la main, alignées sur une espace ; `prisma migrate dev`,
+       lui, ÉMET « ADD COLUMN     "x" » avec cinq espaces d'alignement. Une
+       migration recopiée du générateur sans retouche passait donc sous ce motif
+       entière et en silence : sa colonne n'existait pas pour cette garde, et son
+       défaut n'avait rien à affirmer.
+
+       Trouvé le 2026-09-30 par l'autre moitié de cette garde — celle qui refuse
+       une AFFIRMATION en trop —, et seulement parce que l'affirmation avait été
+       écrite d'abord. Sans elle, la colonne serait passée sans un mot. */
     let table = ''
     for (const ligne of sql.split('\n')) {
       const t = ligne.match(/ALTER TABLE "(\w+)"/)
       if (t) table = t[1]!
-      const c = ligne.match(/ADD COLUMN "(\w+)"/)
+      const c = ligne.match(/ADD COLUMN\s+"(\w+)"/)
       if (c && table) trouvees.push(`${table}.${c[1]}`)
     }
   }
@@ -230,13 +251,19 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont VINGT-DEUX, et le compte est écrit à la main', () => {
+  it('sont VINGT-SEPT, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
-       schéma dont personne n’aurait relu les affirmations. */
+       schéma dont personne n’aurait relu les affirmations.
+
+       26 → 27 (2026-09-30) : `Park.reminderChannel`, le canal de la relance.
+       ÉLARGIR LE MOTIF N'EN A RÉVÉLÉ AUCUNE AUTRE — les migrations de ce dépôt
+       sont écrites à la main, sur une espace. Le `\s+` est une garde contre
+       l'avenir, pas la réparation d'un oubli passé, et le dire évite de croire
+       qu'il a rattrapé quelque chose. */
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(26)
+    ).toBe(27)
   })
 })

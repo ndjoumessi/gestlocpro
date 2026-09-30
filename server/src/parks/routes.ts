@@ -3227,6 +3227,14 @@ const schemaCorrectionDuParc = z
       .string()
       .refine(estUnFuseauConnu, { message: 'Fuseau horaire inconnu' })
       .optional(),
+    /** PAR QUEL CANAL la relance part. DEUX MEMBRES SEULEMENT sur les quatre que
+        l'énumération porte : `in_app` est ce que le produit ÉCRIT quand rien
+        n'est parti — un constat, pas une intention — et le régler comme une
+        intention ferait choisir « ne rien envoyer » sous le nom d'un canal.
+        `email` n'a pas de rédaction de relance : le choisir enverrait un SMS,
+        ou rien, sans que l'écran puisse le dire. Prisma ne sait pas restreindre
+        un enum à deux membres ; zod, si. */
+    reminderChannel: z.enum(['sms', 'whatsapp']).optional(),
   })
   .refine(
     (v) =>
@@ -3238,7 +3246,8 @@ const schemaCorrectionDuParc = z
       v.autoReminders !== undefined ||
       v.reminderMilestoneDays !== undefined ||
       v.reminderHour !== undefined ||
-      v.reminderTimeZone !== undefined,
+      v.reminderTimeZone !== undefined ||
+      v.reminderChannel !== undefined,
     { message: 'Rien à corriger' },
   )
 
@@ -3825,6 +3834,9 @@ parksRouter.patch(
         ...(corps.reminderHour !== undefined ? { reminderHour: corps.reminderHour } : {}),
         ...(corps.reminderTimeZone !== undefined
           ? { reminderTimeZone: corps.reminderTimeZone }
+          : {}),
+        ...(corps.reminderChannel !== undefined
+          ? { reminderChannel: corps.reminderChannel }
           : {}),
       },
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
@@ -6009,10 +6021,14 @@ parksRouter.post(
      * besoin, et `RentCharge` ne la porte pas — elle appartient au parc, comme
      * partout ailleurs dans le produit.
      */
-    const { currency: devise } = await prisma.park.findUniqueOrThrow({
-      where: { id: parkId },
-      select: { currency: true },
-    })
+    const { currency: devise, reminderChannel: canalVoulu } =
+      await prisma.park.findUniqueOrThrow({
+        where: { id: parkId },
+        /* LE CANAL SE LIT AVEC LA DEVISE, dans la même requête : c'est un
+           réglage du PARC, au même titre, et un second aller pour un enum
+           serait un aller pour rien. */
+        select: { currency: true, reminderChannel: true },
+      })
 
     const envoyees: string[] = []
     const ignorees: { leaseId: string; reason: string }[] = []
@@ -6076,9 +6092,25 @@ parksRouter.post(
        * partie.
        */
       const texte = `${bail.tenant.fullName} — loyer en retard de ${jours} j. Merci de régulariser.`
-      const parti = bail.tenant.phoneE164
-        ? await laMessagerie().envoyerSms(bail.tenant.phoneE164, texte)
-        : false
+      /**
+       * LE CANAL SUIT LE RÉGLAGE DU PARC, et le canal ÉCRIT suit l'envoi.
+       *
+       * `channel` disait `'sms'` en dur : le produit ne savait relancer que
+       * par là. WhatsApp atteint plus de gens sur le marché visé, et coûte
+       * moins par envoi.
+       *
+       * LE CANAL VOULU N'EST PAS LE CANAL ÉCRIT. On écrit celui par lequel le
+       * message est RÉELLEMENT parti, et `in_app` quand rien n'est parti — ce
+       * qui est précisément ce qui arrive à une relance WhatsApp tant qu'aucun
+       * modèle n'est approuvé par Meta. Écrire le canal VOULU rendrait la
+       * colonne inutile : elle dirait l'intention, que le réglage porte déjà,
+       * et plus jamais le fait.
+       */
+      const parti = !bail.tenant.phoneE164
+        ? false
+        : canalVoulu === 'whatsapp'
+          ? await laMessagerie().envoyerWhatsApp(bail.tenant.phoneE164, texte)
+          : await laMessagerie().envoyerSms(bail.tenant.phoneE164, texte)
 
       await prisma.notification.create({
         data: {
@@ -6109,7 +6141,7 @@ parksRouter.post(
           },
           severity: jours >= 15 ? 'high' : 'medium',
           unitId: bail.unitId,
-          channel: parti ? 'sms' : 'in_app',
+          channel: parti ? canalVoulu : 'in_app',
           ...(parti ? { sentAt: new Date() } : {}),
           //
           // La clé est posée ou ABSENTE, jamais à `undefined` : un locataire

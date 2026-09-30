@@ -43,6 +43,9 @@ function cookieDe(res: request.Response): string {
 let visees: { adresse: string; sujet: string }[] = []
 let rétablir: () => void = () => {}
 const capture: Messagerie = {
+  async envoyerWhatsApp() {
+    return false
+  },
   async envoyerSms() {
     return false
   },

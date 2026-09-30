@@ -26,8 +26,10 @@ import type { DateParts } from '@/data/portfolio'
  * (`vercel.json`), vérifié par une requête le 2026-09-13 — Vercel voit donc
  * l'adresse IP, le cookie et la requête de qui passe par là.
  *
- * TWILIO N'Y EST PAS, et c'est un relevé : le code sait envoyer des SMS, mais
- * aucune des trois variables `TWILIO_*` n'existe en production — rien ne part.
+ * TWILIO N'Y EST PAS, et c'est un relevé : le code sait envoyer des SMS ET des
+ * messages WhatsApp, mais aucune des QUATRE variables `TWILIO_*` n'existe en
+ * production — rien ne part. La quatrième, `TWILIO_WHATSAPP_FROM`, est née avec
+ * le canal WhatsApp ; elle ne change pas ce relevé, elle l'allonge.
  * Le jour où elles existeront, Twilio recevra des numéros de téléphone et ce
  * tableau deviendra faux ; un cas refuse aujourd'hui son nom sur la page, pour
  * que l'ajouter oblige à le toucher.

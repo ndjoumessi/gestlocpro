@@ -613,6 +613,7 @@ authRouter.get('/me', async (req: Request, res: Response) => {
           autoReminders: true,
           reminderMilestoneDays: true,
           reminderHour: true,
+          reminderChannel: true,
           reminderTimeZone: true,
         },
       },
@@ -641,6 +642,7 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       autoReminders: m.park.autoReminders,
       reminderMilestoneDays: m.park.reminderMilestoneDays,
       reminderHour: m.park.reminderHour,
+      reminderChannel: m.park.reminderChannel,
       reminderTimeZone: m.park.reminderTimeZone,
     })),
   })

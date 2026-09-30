@@ -257,6 +257,13 @@ export interface AdhesionApi {
       c'est exactement l'ancien cron quotidien. */
   reminderHour?: number
   reminderTimeZone?: string
+  /** PAR QUEL CANAL la relance part. Absent d'un serveur antérieur : `sms` est
+      alors le défaut du schéma, et c'est exactement ce que la route écrivait en
+      dur. `in_app` et `email` ne sont pas réglables — le premier est ce que le
+      produit écrit quand rien n'est parti, le second n'a pas de rédaction de
+      relance — mais le TYPE porte les quatre, parce qu'un serveur peut rendre
+      un parc dont la colonne a été posée autrement. */
+  reminderChannel?: 'in_app' | 'email' | 'sms' | 'whatsapp'
 }
 
 export interface SessionApi {
