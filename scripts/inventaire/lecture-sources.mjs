@@ -689,7 +689,12 @@ export const PLANCHERS_DE_LECTURE = {
      parc, les menus déplacés — et c'est la page des mentions légales, huit
      lignes d'éditeur et quatre d'hébergeur, qui a franchi le seuil. Le nombre
      est celui que la suite a demandé. */
-  'balises JSX lues': 2594,
+  /* 2594 → 2957 le 2026-09-30, réclamé par la suite : 3286 balises lues. Deux
+     lots l'ont fait monter le même jour — l'écran des dépenses avec sa table de
+     six colonnes et sa modale de six champs, puis la boîte des honoraires avec
+     son formulaire et son relevé de cinq lignes. Le nombre est celui que
+     `planchersDeLecture` a demandé, pas un arrondi de confort. */
+  'balises JSX lues': 2957,
   /* 285 → 321, le 2026-09-24 : DEUXIÈME plancher que le lot du mouvement fait
      monter, et par un chemin que le premier n'avait pas montré. Les gardes
      ajoutées DÉFINISSENT des composants — la surface montée en permanence, les
@@ -705,9 +710,17 @@ export const PLANCHERS_DE_LECTURE = {
      les pastilles de filtre. Le réel monte à 313 et 142, et
      `planchersDeLecture` refuse plus de 20 % d'écart : il a demandé ces deux
      nombres. */
-  'sites interactifs': 281,
+  /* 281 → 323 le 2026-09-30 : 359 sites lus. Les deux boutons de rangée neufs —
+     « Honoraires et relevé » sur la ligne d'un mandataire, le menu de
+     débordement de chaque ligne de dépense — et les champs des deux modales,
+     que ce relevé compte dans les SOURCES même s'ils ne sont montés qu'à
+     l'ouverture. */
+  'sites interactifs': 323,
   'champs de formulaire': 127,
-  'titres composés': 390,
+  /* 390 → 444 le 2026-09-30 : 494 titres lus. Ceux des deux écrans neufs, ceux
+     de leurs modales, et les cinq lignes du relevé de gestion qui portent
+     chacune son libellé. */
+  'titres composés': 444,
   // 198 et non 176, le 2026-09-24 : le lot du MOUVEMENT a ajouté cinq gardes —
   // sortie différée, sortie de modale, seconde ouverture de l'invitation et des
   // prix, sortie des panneaux ancrés — et porté le réel à 221.

@@ -330,6 +330,8 @@ model Membership {
   /// Les LOGEMENTS confiés, quand la maille de l'immeuble est trop large. Le
   /// périmètre est l'UNION des deux ; vide des deux côtés = tout le parc.
   units MembershipUnit[]
+  /// Le barème d'honoraires de CE mandat, quand il y en a un convenu.
+  fee   ManagementFee?
   createdAt DateTime @default(now())
 
   /// Une personne n'a qu'un rôle par parc : être à la fois propriétaire et
@@ -441,6 +443,59 @@ model Invitation {
 
   @@index([parkId, role])
   @@index([expiresAt])
+}
+
+/// Le barème d'honoraires d'un gestionnaire, sur le parc qu'il gère.
+///
+/// ═══ CE QUE LE PRODUIT NE SAVAIT PAS FAIRE ═══
+///
+/// `ParkRole` connaissait `gest` depuis l'origine, `MembershipBuilding` et
+/// `MembershipUnit` bornaient son périmètre, et rien nulle part ne portait ce
+/// qu'il GAGNE. Un cabinet pouvait donc suivre un parc avec ce produit sans
+/// pouvoir facturer son mandant depuis ce produit — c'est-à-dire en refaisant
+/// le calcul à côté, ce que la grille tarifaire vend précisément au palier
+/// « Cabinet ».
+///
+/// ═══ UN SEUL BARÈME À LA FOIS, ET L'HISTORIQUE N'EST PAS ICI ═══
+///
+/// `@unique` sur l'adhésion : deux barèmes valables le même mois rendraient
+/// indéterminable ce qu'on facture — exactement ce que `UtilityTariff` évite par
+/// son unique sur (parc, énergie, date). La différence est que le tarif GARDE
+/// son historique, parce qu'une quittance passée doit rester explicable, tandis
+/// qu'un barème changé ne réécrit aucun document déjà remis : les relevés émis
+/// seront figés le jour où le produit saura les rééditer. Le dire ici évite
+/// qu'on croie l'historique oublié.
+model ManagementFee {
+  id           String     @id @default(uuid()) @db.Uuid
+  membershipId String     @unique @db.Uuid
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  basis FeeBasis
+
+  /// Le taux en POINTS DE BASE : 8,5 % s'écrit `850`.
+  ///
+  /// Jamais un flottant, pour la raison que l'en-tête du schéma donne aux
+  /// montants : `0.085` n'existe pas en binaire, et 8,5 % d'un million rendrait
+  /// un entier différent selon la machine qui l'arrondit. Le point de base est
+  /// la plus petite unité qu'un contrat de gestion écrive réellement.
+  ///
+  /// Nul quand la base est un forfait, et c'est pourquoi il est nullable : un
+  /// `0` signifierait « zéro pour cent », qui est un barème valable et pas la
+  /// même chose que « ce barème ne se compte pas en pourcentage ».
+  rateBasisPoints Int?
+
+  /// Le forfait en unités mineures : par logement géré, ou par mois. Nul quand
+  /// la base est un pourcentage, pour la même raison que ci-dessus.
+  fixedMinor Int?
+
+  currency Currency
+
+  /// La date d'entrée en vigueur. `endsOn` nul = toujours en vigueur.
+  startsOn DateTime  @db.Date
+  endsOn   DateTime? @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Biens ───────────────────────────────────────────────────────────────────
@@ -1269,6 +1324,25 @@ enum ParkRole {
   owner
   manager
   tenant
+}
+
+/// Comment se calculent les honoraires d'un gestionnaire.
+///
+/// TROIS BASES ET NON UNE, parce que les trois existent sur le terrain : le
+/// pourcentage de l'encaissé, qui est le plus courant et qui aligne l'intérêt du
+/// mandataire sur celui du mandant ; le forfait par logement géré, que préfèrent
+/// les cabinets à gros volume ; le forfait mensuel, pour un mandat de surveillance
+/// sans encaissement. N'en offrir qu'une aurait forcé les deux autres à se
+/// déguiser — un pourcentage recalculé à la main chaque mois, par exemple, ce qui
+/// sort le calcul du produit.
+enum FeeBasis {
+  /// Un pourcentage de ce qui a été ENCAISSÉ sur la période, jamais de ce qui a
+  /// été appelé : un gestionnaire n'est pas payé sur un loyer impayé.
+  percentOfCollected
+  /// Un forfait par logement effectivement géré sur la période.
+  fixedPerUnit
+  /// Un forfait mensuel, indépendant du parc et de l'encaissement.
+  fixedPerMonth
 }
 
 enum MembershipStatus {

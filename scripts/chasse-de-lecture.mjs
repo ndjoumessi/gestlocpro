@@ -137,7 +137,7 @@ const SANS_ECRAN = ['/app']
   Ajouter un écran applicatif oblige donc à toucher ce nombre, et le diff le
   montre.
 */
-const ATTENDUS = 54
+const ATTENDUS = 57
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

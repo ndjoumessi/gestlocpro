@@ -1637,6 +1637,66 @@ export const fr = {
     /* LES DÉPENSES — l'écran. La modale de saisie vit sous `expenseEntry`,
        comme `readings` vit à côté de `meters` : deux branches, parce qu'une
        modale et son écran ne partagent presque aucun mot. */
+    /* HONORAIRES ET COMPTE-RENDU DE GESTION — une modale ouverte depuis `Accès`,
+       ligne par ligne de gestionnaire. Le barème appartient au MANDAT, et le
+       mandat vit déjà là : un écran séparé aurait obligé à choisir un
+       gestionnaire avant de rien voir, c'est-à-dire à refaire cette liste. */
+    fees: {
+      open: 'Honoraires et relevé',
+      openLine: 'Honoraires et relevé — {name}',
+      title: 'Honoraires de gestion',
+      description:
+        'Ce que ce gestionnaire facture, et le relevé de ce qu’il doit vous reverser sur la période.',
+      /* Voir `works.status`. Ces trois-là viennent de `FeeBasis`. */
+      basis: {
+        percentOfCollected: 'Pourcentage de l’encaissé',
+        fixedPerUnit: 'Forfait par logement géré',
+        fixedPerMonth: 'Forfait mensuel',
+      },
+      basisLabel: 'Base de calcul',
+      /* LE TAUX EN POUR CENT À L'ÉCRAN, EN POINTS DE BASE EN BASE. L'utilisateur
+         tape « 8,5 » ; la base stocke 850. Aucun flottant ne survit à la
+         saisie — le champ n'accepte qu'un nombre à une décimale, converti en
+         entier avant l'envoi. */
+      rate: 'Taux (%)',
+      rateHint: 'Une décimale au plus : 8,5 se saisit « 8,5 ».',
+      rateRequired: 'Un taux est nécessaire pour un pourcentage.',
+      rateInvalid: 'Un taux entre 0,01 et 100 est attendu.',
+      fixed: 'Forfait ({devise})',
+      fixedRequired: 'Un montant est nécessaire pour un forfait.',
+      startsOn: 'En vigueur depuis',
+      endsOn: 'Jusqu’au',
+      endsOnHint: 'Laissez vide si le barème court toujours.',
+      /* LE RELEVÉ — cinq lignes, et la dernière est une soustraction. Elles sont
+         toutes nommées : un relevé dont une ligne ne porte pas son nom n'est pas
+         un compte-rendu, c'est un chiffre. */
+      statement: 'Relevé de la période',
+      collected: 'Encaissé',
+      /* « SUR LE PÉRIMÈTRE CONFIÉ » et non « du parc » : c'est ce que CE
+         gestionnaire a perçu, pas ce que le parc a perçu. Sans cette mention, un
+         propriétaire lirait le chiffre comme celui de son parc entier. */
+      collectedHint: 'Sur le périmètre confié à ce gestionnaire, et non sur le parc entier.',
+      expensesOut: 'Dépenses',
+      worksOut: 'Chantiers achevés',
+      feeDue: 'Honoraires',
+      net: 'Net à reverser',
+      /* LE NET PEUT ÊTRE NÉGATIF, et la note le dit AVANT qu'on le lise. Sans
+         elle, un montant négatif se lirait comme un défaut d'affichage. */
+      netNegative: 'Vous devez de l’argent à ce gestionnaire sur cette période',
+      netNegativeHint:
+        'Les dépenses et les chantiers de la période dépassent l’encaissé. C’est un solde, pas une erreur : il se reporte ou se règle.',
+      noFee: 'Aucun barème convenu',
+      noFeeHint:
+        'Le mandat existe sans honoraires : le relevé reste juste, il ne retient rien. Posez un barème pour que les honoraires soient calculés.',
+      managedUnits: 'Logements gérés',
+      periodShown: 'Période du relevé',
+      save: 'Enregistrer le barème',
+      saved: 'Barème enregistré',
+      removeFee: 'Retirer le barème',
+      confirmRemoveFee: 'Retirer le barème de ce gestionnaire ?',
+      removedFee: 'Barème retiré',
+      failed: 'Le barème n’a pas pu être enregistré.',
+    },
     expenses: {
       title: 'Dépenses',
       subtitle:
@@ -2310,6 +2370,15 @@ export const fr = {
         /* LA DÉPENSE — trois libellés et non un. Comme pour les tarifs, une
            ligne qui dirait seulement « dépense modifiée » laisserait indécidable
            si un montant a été réparé ou si la ligne a disparu du résultat. */
+        /* LE BARÈME D'HONORAIRES — deux libellés. Comme pour les tarifs, une
+           ligne qui dirait seulement « honoraires modifiés » laisserait
+           indécidable si un taux a été réparé ou si le barème a disparu, et
+           c'est la question qu'on vient poser au registre quand un net reversé
+           change sans qu'aucun loyer n'ait bougé. */
+        fee: {
+          set: 'Barème d’honoraires posé',
+          delete: 'Barème d’honoraires retiré',
+        },
         expense: {
           record: 'Dépense saisie',
           update: 'Dépense corrigée',

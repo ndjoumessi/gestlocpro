@@ -692,6 +692,57 @@ export const api = {
     requete<T>(`/parks/${parkId}/decisions`, { query: { avant } }),
 
   /**
+   * LE BARÈME D'HONORAIRES d'un gestionnaire, posé ou remplacé.
+   *
+   * `PUT` et non `POST` : il y a au plus un barème par adhésion, et reposer le
+   * même doit rendre le même état plutôt qu'un 409. Au propriétaire seul —
+   * fixer des honoraires engage son argent.
+   *
+   * La devise n'est pas au corps : elle vient du parc. Le taux voyage en POINTS
+   * DE BASE — 8,5 % s'écrit 850 — parce qu'aucun flottant ne doit toucher de
+   * l'argent, et c'est l'écran qui convertit ce que l'utilisateur a tapé.
+   */
+  setFee: <T>(
+    parkId: string,
+    membershipId: string,
+    corps: {
+      basis: 'percentOfCollected' | 'fixedPerUnit' | 'fixedPerMonth'
+      rateBasisPoints?: number | null
+      fixedMinor?: number | null
+      startsOn: string
+      endsOn?: string | null
+    },
+  ) =>
+    requete<T>(`/parks/${parkId}/memberships/${membershipId}/fee`, {
+      method: 'PUT',
+      body: JSON.stringify(corps),
+    }),
+
+  /** Retire le barème. Le mandat continue, les honoraires cessent d'être calculés. */
+  deleteFee: <T>(parkId: string, membershipId: string) =>
+    requete<T>(`/parks/${parkId}/memberships/${membershipId}/fee`, { method: 'DELETE' }),
+
+  /**
+   * LE COMPTE-RENDU DE GESTION sur une période.
+   *
+   * Il se CALCULE et ne se stocke pas : quatre sommes en base seraient quatre
+   * compteurs libres de diverger des lignes qu'ils résument — un paiement
+   * corrigé le mois suivant laisserait le relevé sur son ancien chiffre.
+   *
+   * La réponse porte `collectedMinor`, `expensesMinor`, `worksMinor`,
+   * `feeMinor`, `netMinor` et `managedUnits`. **`netMinor` peut être NÉGATIF** :
+   * un mois de gros travaux sur un parc peu encaissé laisse le propriétaire
+   * devoir de l'argent à son mandataire, et l'écran doit le dire.
+   *
+   * L'encaissé est celui du PÉRIMÈTRE DU GESTIONNAIRE VISÉ, pas du demandeur :
+   * c'est ce que lui a perçu, et la base de ce qu'il facture.
+   */
+  statement: <T>(parkId: string, membershipId: string, from: string, to: string) =>
+    requete<T>(`/parks/${parkId}/memberships/${membershipId}/statement`, {
+      query: { from, to },
+    }),
+
+  /**
    * CE QUE LE PARC A DÉPENSÉ sur un intervalle, en deux moitiés séparées.
    *
    * L'intervalle est OBLIGATOIRE, contrairement aux autres lectures de ce

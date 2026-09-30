@@ -9629,3 +9629,427 @@ parksRouter.delete(
     res.status(204).end()
   },
 )
+
+// ─── Honoraires et compte-rendu de gestion ───────────────────────────────────
+
+/**
+ * LE BARÈME SERVI. Les deux dates en jour calendaire, comme partout.
+ *
+ * `rateBasisPoints` et `fixedMinor` sortent tels quels, `null` compris : c'est
+ * la BASE qui dit lequel des deux compte, et masquer celui qui ne sert pas
+ * obligerait l'écran à deviner la forme de la réponse.
+ */
+function enBaremeServi(h: {
+  basis: string
+  rateBasisPoints: number | null
+  fixedMinor: number | null
+  currency: string
+  startsOn: Date
+  endsOn: Date | null
+}) {
+  return {
+    basis: h.basis,
+    rateBasisPoints: h.rateBasisPoints,
+    fixedMinor: h.fixedMinor,
+    currency: h.currency,
+    startsOn: h.startsOn.toISOString().slice(0, 10),
+    endsOn: h.endsOn ? h.endsOn.toISOString().slice(0, 10) : null,
+  }
+}
+
+const schemaBareme = z
+  .object({
+    basis: z.enum(['percentOfCollected', 'fixedPerUnit', 'fixedPerMonth']),
+    /**
+     * Le taux en POINTS DE BASE, de 1 à 10 000.
+     *
+     * La borne haute est 100 % : un mandataire qui prendrait tout l'encaissé ne
+     * reverse rien, et au-delà il facturerait plus que ce qu'il a perçu. Ce
+     * n'est pas une prudence, c'est la définition. La borne basse est 1 et non
+     * 0 : « zéro pour cent » se dit en ne posant pas de barème, et un barème à
+     * zéro afficherait « 0 FCFA d'honoraires » sur chaque relevé.
+     */
+    rateBasisPoints: z.number().int().min(1).max(10000).nullish(),
+    fixedMinor: z.number().int().positive().nullish(),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ'),
+    endsOn: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
+      .nullish(),
+  })
+  /**
+   * LA BASE COMMANDE LEQUEL DES DEUX CHAMPS EST EXIGÉ.
+   *
+   * Sans cette garde, un barème `percentOfCollected` sans taux passerait, et le
+   * relevé rendrait `0` d'honoraires — un chiffre faux, présenté comme un fait,
+   * sur un document remis à un mandant. Le symétrique est aussi vrai : un
+   * forfait sans montant.
+   *
+   * ET PAS LES DEUX À LA FOIS : un barème qui porterait un taux ET un forfait
+   * laisserait indécidable ce qu'on facture, et le lecteur du relevé ne pourrait
+   * pas refaire le calcul.
+   */
+  .refine(
+    (c) =>
+      c.basis === 'percentOfCollected'
+        ? typeof c.rateBasisPoints === 'number' && c.fixedMinor == null
+        : typeof c.fixedMinor === 'number' && c.rateBasisPoints == null,
+    {
+      message:
+        'Un pourcentage exige un taux et rien d’autre ; un forfait exige un montant et rien d’autre',
+      path: ['basis'],
+    },
+  )
+
+/**
+ * L'ADHÉSION VISÉE, ET QUI A LE DROIT DE LA VISER.
+ *
+ * Un gestionnaire ne peut demander QUE son propre relevé : celui d'un confrère
+ * dirait ce que le parc lui verse, donc ce qu'il gagne. Le propriétaire, lui,
+ * peut demander celui de n'importe lequel de ses mandataires — c'est lui qui
+ * paie, et le relevé est l'état de sa dette.
+ *
+ * 404 ET NON 403 quand l'adhésion n'appartient pas à ce parc : un 403
+ * confirmerait qu'elle existe ailleurs.
+ */
+async function adhesionDeGestionVisee(
+  req: Request,
+  membershipId: string,
+): Promise<{
+  id: string
+  userId: string
+  immeubles: string[] | null
+  unites: string[]
+  exclues: string[]
+} | null> {
+  const { parkId } = req.adhesion!
+  const visee = await prisma.membership.findFirst({
+    where: { id: membershipId, parkId, role: 'manager', status: 'active' },
+    /* LE PÉRIMÈTRE SORT D'ICI, et non d'une seconde lecture.
+       Première rédaction : cette fonction rendait `{ id, userId }`, et le relevé
+       relisait l'adhésion par `findUniqueOrThrow({ where: { id } })` pour en
+       tirer les immeubles confiés. `touteLectureDAdhesionNommeSonStatut` l'a
+       refusé — cette seconde lecture ramassait `requested` et `revoked` sans le
+       dire. La réponse n'était pas de lui écrire une exemption : c'était de ne
+       lire qu'UNE FOIS, ici, où le statut est déjà nommé. */
+    select: {
+      id: true,
+      userId: true,
+      buildings: { select: { buildingId: true } },
+      units: { select: { unitId: true, exclue: true } },
+    },
+  })
+  if (!visee) return null
+  if (req.adhesion!.role === 'manager' && visee.userId !== req.compteId) return null
+  const immeubles = visee.buildings.map((b) => b.buildingId)
+  return {
+    id: visee.id,
+    userId: visee.userId,
+    /* `null` VAUT « rien ne borne », c'est la convention de `porteeDesUnites` :
+       un gestionnaire sans aucune ligne de périmètre gère tout le parc. */
+    immeubles: immeubles.length > 0 ? immeubles : null,
+    unites: visee.units.filter((u) => !u.exclue).map((u) => u.unitId),
+    exclues: visee.units.filter((u) => u.exclue).map((u) => u.unitId),
+  }
+}
+
+/**
+ * POSER OU REMPLACER LE BARÈME D'UN GESTIONNAIRE.
+ *
+ * `PUT` et non `POST` : il y a au plus un barème par adhésion, et le geste est
+ * idempotent — reposer le même barème doit rendre le même état, pas un 409. Le
+ * seul `PUT` du fichier, et c'est la seule ressource unique par son parent.
+ *
+ * AU PROPRIÉTAIRE SEUL. Fixer des honoraires engage son argent, exactement comme
+ * valider un devis ou poser un prix de refacturation. Un mandataire qui pourrait
+ * écrire ce qu'on lui doit n'aurait plus de mandant.
+ */
+parksRouter.put(
+  '/:parkId/memberships/:membershipId/fee',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const membershipId = z.string().uuid().parse(req.params.membershipId)
+    const corps = schemaBareme.parse(req.body)
+
+    const visee = await adhesionDeGestionVisee(req, membershipId)
+    if (!visee) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /* LA DEVISE VIENT DU PARC, jamais du corps — même règle que les dépenses :
+       le sélecteur de l'interface est une préférence d'affichage. */
+    const parc = await prisma.park.findUniqueOrThrow({
+      where: { id: parkId },
+      select: { currency: true },
+    })
+
+    const donnees = {
+      basis: corps.basis,
+      rateBasisPoints: corps.rateBasisPoints ?? null,
+      fixedMinor: corps.fixedMinor ?? null,
+      currency: parc.currency,
+      startsOn: new Date(`${corps.startsOn}T00:00:00.000Z`),
+      endsOn: corps.endsOn ? new Date(`${corps.endsOn}T00:00:00.000Z`) : null,
+    }
+
+    const avant = await prisma.managementFee.findUnique({
+      where: { membershipId },
+      select: { basis: true, rateBasisPoints: true, fixedMinor: true },
+    })
+
+    const bareme = await prisma.managementFee.upsert({
+      where: { membershipId },
+      create: { membershipId, ...donnees },
+      update: donnees,
+      select: {
+        basis: true,
+        rateBasisPoints: true,
+        fixedMinor: true,
+        currency: true,
+        startsOn: true,
+        endsOn: true,
+      },
+    })
+
+    /* LE BARÈME PRODUIT TOUS LES RELEVÉS À VENIR, donc il se trace — et avec son
+       AVANT quand il en avait un, pour la raison que la correction d'un tarif
+       écrit : « les honoraires valent 8,5 % » n'apprend rien à qui relit. */
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'fee.set',
+        entity: 'ManagementFee',
+        entityId: membershipId,
+        payload: {
+          basis: bareme.basis,
+          rateBasisPoints: bareme.rateBasisPoints,
+          fixedMinor: bareme.fixedMinor,
+          ...(avant ? { avant } : {}),
+        },
+      },
+    })
+
+    res.json({ fee: enBaremeServi(bareme) })
+  },
+)
+
+/**
+ * RETIRER LE BARÈME. Le mandat continue, les honoraires cessent d'être calculés.
+ *
+ * DANS la transaction, comme tout retrait vécu : un barème disparu change tous
+ * les relevés suivants, et sans sa trace le net reversé aurait augmenté sans
+ * explication.
+ */
+parksRouter.delete(
+  '/:parkId/memberships/:membershipId/fee',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const membershipId = z.string().uuid().parse(req.params.membershipId)
+
+    const visee = await adhesionDeGestionVisee(req, membershipId)
+    if (!visee) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    const bareme = await prisma.managementFee.findUnique({
+      where: { membershipId },
+      select: { basis: true, rateBasisPoints: true, fixedMinor: true },
+    })
+    if (!bareme) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.managementFee.delete({ where: { membershipId } })
+      await tx.auditEvent.create({
+        data: {
+          parkId,
+          actorId: req.compteId!,
+          action: 'fee.delete',
+          entity: 'ManagementFee',
+          entityId: membershipId,
+          payload: {
+            basis: bareme.basis,
+            rateBasisPoints: bareme.rateBasisPoints,
+            fixedMinor: bareme.fixedMinor,
+          },
+        },
+      })
+    })
+
+    res.status(204).end()
+  },
+)
+
+/**
+ * LE COMPTE-RENDU DE GESTION — ce que le mandataire doit à son mandant.
+ *
+ * ═══ IL SE CALCULE, ET NE SE STOCKE PAS ═══
+ *
+ * Première intention : une table `OwnerStatement` portant l'encaissé, les
+ * dépenses, les honoraires et le net. Refusée par la règle que l'en-tête de ce
+ * schéma écrit en toutes lettres — « les compteurs sont stockés au lieu d'être
+ * comptés […] aucun compteur ici ». Quatre sommes stockées sont quatre
+ * compteurs, libres de diverger des lignes qu'ils résument : un paiement corrigé
+ * le mois suivant laisserait le relevé sur son ancien chiffre, sans un mot.
+ *
+ * CE QUE CE CHOIX LAISSE DEHORS : un relevé ÉMIS ne doit plus bouger, c'est un
+ * document remis. Le figer demande un instantané, comme `RentCharge` fige son
+ * loyer. Tant que personne ne réédite un relevé passé, le calcul suffit — et
+ * figer sans besoin ferait les quatre compteurs qu'on vient de refuser.
+ *
+ * ═══ LE NET PEUT ÊTRE NÉGATIF, ET IL SORT NÉGATIF ═══
+ *
+ * Un mois de gros travaux sur un parc peu encaissé laisse le propriétaire
+ * DEVOIR de l'argent à son mandataire. Rendre `0` « parce qu'on ne reverse pas
+ * une dette » serait le premier chiffre faux de ce produit.
+ */
+parksRouter.get(
+  '/:parkId/memberships/:membershipId/statement',
+  exigerAppartenance,
+  exigerRole('owner', 'manager'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const membershipId = z.string().uuid().parse(req.params.membershipId)
+    const bornes = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      })
+      .parse(req.query)
+    const debut = new Date(`${bornes.from}T00:00:00.000Z`)
+    const fin = new Date(`${bornes.to}T00:00:00.000Z`)
+
+    const visee = await adhesionDeGestionVisee(req, membershipId)
+    if (!visee) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    /**
+     * LE PÉRIMÈTRE DU RELEVÉ EST CELUI DU GESTIONNAIRE VISÉ, pas celui du
+     * demandeur — et c'est la seule lecture du fichier où les deux diffèrent.
+     *
+     * Un propriétaire sans périmètre demandant le relevé d'un mandataire borné à
+     * deux immeubles doit obtenir l'encaissé de CES deux immeubles : c'est ce
+     * que ce mandataire a perçu, et la base de ce qu'il facture. Prendre le
+     * périmètre du demandeur rendrait ici l'encaissé du parc entier, donc des
+     * honoraires calculés sur des loyers que personne ne lui a confiés.
+     */
+    const perimetre = {
+      immeubles: visee.immeubles,
+      unites: visee.unites,
+      exclues: visee.exclues,
+    }
+    const porteeUnite = porteeDesUnites(perimetre)
+
+    const [encaisse, depenses, chantiers, logementsGeres, bareme] = await Promise.all([
+      /* L'ENCAISSÉ, ET NON L'APPELÉ : un gestionnaire n'est pas payé sur un
+         loyer impayé. Le périmètre descend jusqu'au paiement par le bail et
+         l'unité — sans quoi un mandataire borné facturerait sur le parc. */
+      prisma.payment.aggregate({
+        where: {
+          paidOn: { gte: debut, lte: fin },
+          charge: { lease: { unit: { building: { parkId }, ...porteeUnite } } },
+        },
+        _sum: { amountMinor: true },
+      }),
+      prisma.expense.aggregate({
+        where: {
+          parkId,
+          incurredOn: { gte: debut, lte: fin },
+          ...porteeDesDepenses(perimetre),
+        },
+        _sum: { amountMinor: true },
+      }),
+      prisma.workOrder.aggregate({
+        where: {
+          parkId,
+          approvedAmountMinor: { not: null },
+          completedOn: { gte: debut, lte: fin },
+          unit: porteeUnite,
+        },
+        _sum: { approvedAmountMinor: true },
+      }),
+      /* LES LOGEMENTS GÉRÉS, pour un forfait à l'unité : ceux du périmètre, et
+         non ceux du parc. Comptés sur l'état actuel du mandat — un logement
+         confié hier compte ce mois-ci, et le produit n'historise pas le
+         périmètre. C'est une approximation, et elle est avouée. */
+      prisma.unit.count({ where: { building: { parkId }, ...porteeUnite } }),
+      prisma.managementFee.findUnique({
+        where: { membershipId },
+        select: {
+          basis: true,
+          rateBasisPoints: true,
+          fixedMinor: true,
+          currency: true,
+          startsOn: true,
+          endsOn: true,
+        },
+      }),
+    ])
+
+    const collectedMinor = encaisse._sum.amountMinor ?? 0
+    const expensesMinor = depenses._sum.amountMinor ?? 0
+    const worksMinor = chantiers._sum.approvedAmountMinor ?? 0
+    const feeMinor = honorairesDus(bareme, {
+      collectedMinor,
+      logementsGeres,
+      moisCouverts: moisEntre(bornes.from, bornes.to),
+    })
+
+    res.json({
+      fee: bareme ? enBaremeServi(bareme) : null,
+      collectedMinor,
+      expensesMinor,
+      worksMinor,
+      feeMinor,
+      /* LE NET, ET IL PEUT ÊTRE NÉGATIF. Voir l'en-tête de la route. */
+      netMinor: collectedMinor - expensesMinor - worksMinor - feeMinor,
+      managedUnits: logementsGeres,
+    })
+  },
+)
+
+/**
+ * LES MOIS CALENDAIRES TOUCHÉS par un intervalle, bornes comprises.
+ *
+ * Un forfait MENSUEL doit se multiplier par quelque chose, et ce quelque chose
+ * n'est pas « le nombre de jours divisé par trente ». Un mandat facture le mois,
+ * entamé ou non : un relevé du 12 au 20 mars porte un mois de forfait, et non
+ * neuf trentièmes. C'est une décision de facturation, pas un arrondi — et elle
+ * est écrite ici pour qu'on la discute au bon endroit si elle se révèle fausse.
+ */
+function moisEntre(du: string, au: string): number {
+  const [a1, m1] = du.split('-').map(Number) as [number, number]
+  const [a2, m2] = au.split('-').map(Number) as [number, number]
+  return Math.max(1, (a2 - a1) * 12 + (m2 - m1) + 1)
+}
+
+/**
+ * CE QUE LE GESTIONNAIRE FACTURE, selon sa base.
+ *
+ * `Math.round` et non `Math.floor` : l'arrondi au centime le plus proche est ce
+ * qu'un contrat écrit, et tronquer ferait perdre systématiquement un centime au
+ * mandataire — un biais dans un seul sens, répété douze fois par an.
+ *
+ * SANS BARÈME, ZÉRO. Ce n'est pas un chiffre faux : le mandat existe sans
+ * honoraires convenus, et le relevé le dit en rendant `fee: null` à côté.
+ */
+function honorairesDus(
+  bareme: { basis: string; rateBasisPoints: number | null; fixedMinor: number | null } | null,
+  contexte: { collectedMinor: number; logementsGeres: number; moisCouverts: number },
+): number {
+  if (!bareme) return 0
+  if (bareme.basis === 'percentOfCollected')
+    return Math.round((contexte.collectedMinor * (bareme.rateBasisPoints ?? 0)) / 10000)
+  if (bareme.basis === 'fixedPerUnit') return (bareme.fixedMinor ?? 0) * contexte.logementsGeres
+  return (bareme.fixedMinor ?? 0) * contexte.moisCouverts
+}

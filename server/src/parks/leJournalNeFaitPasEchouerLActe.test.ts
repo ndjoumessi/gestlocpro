@@ -106,6 +106,19 @@ const DESTRUCTIONS_ATOMIQUES = [
      est exactement la question posée quand un locataire soutient l'avoir
      reçue. */
   'document.file_delete',
+  /* LA DÉPENSE RETIRÉE. Sa ligne ne survit pas au retrait — la table ne porte ni
+     statut ni corbeille —, et le résultat du mois BAISSE à l'instant du
+     retrait. Sans trace atomique, un sortant qui diminue de 185 000 n'aurait
+     aucune explication : ni la ligne, qui n'existe plus, ni le registre, qui ne
+     l'aurait pas reçue. C'est le même critère que le tarif, et la question qu'on
+     vient poser est la même — pourquoi ce mois-là ne dit plus la même chose. */
+  'expense.delete',
+  /* LE BARÈME D'HONORAIRES RETIRÉ. Il ne survit pas non plus, et son retrait
+     change TOUS les relevés suivants : le net à reverser augmente sans qu'aucun
+     loyer n'ait bougé. C'est exactement ce qu'un propriétaire ou un mandataire
+     vient chercher au registre quand un compte-rendu change de montant sans
+     raison apparente, et la trace est la seule chose qui puisse répondre. */
+  'fee.delete',
   'inspection.photo_delete',
   'payment.delete',
   /* LE RELEVÉ RETIRÉ. L'index disparaît avec sa ligne — la table ne porte ni

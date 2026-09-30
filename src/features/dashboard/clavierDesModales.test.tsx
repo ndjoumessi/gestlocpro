@@ -186,6 +186,12 @@ const MODALES: Modale[] = [
      registre qui a rougi le premier, avant même la chaîne au navigateur :
      `registresDesModales` refuse qu'une modale n'entre dans aucun des deux. */
   { nom: 'Saisir une dépense', fichier: 'features/dashboard/RecordExpenseModal.tsx', adresse: '/demo/depenses', bouton: /^Saisir une dépense$/, forme: 'saisie' },
+  /* LES HONORAIRES D'UN GESTIONNAIRE, ouverte depuis la ligne de Diane Fotso —
+     la seule gestionnaire de la démonstration, et bornée à deux immeubles sur
+     trois, ce qui fait que son relevé exerce vraiment son cloisonnement. Le
+     bouton suit le RÔLE actif et non `adhesionActive` : c'est la leçon des deux
+     modales qui étaient inatteignables faute de compte réel. */
+  { nom: 'Honoraires de gestion', fichier: 'features/dashboard/FeesModal.tsx', adresse: '/demo/acces', bouton: /^Honoraires et relevé — Diane Fotso$/, forme: 'saisie' },
 
   { nom: 'Enregistrer un paiement', fichier: 'features/dashboard/RecordPaymentModal.tsx', adresse: '/demo/paiements', bouton: /^Enregistrer un paiement$/, forme: 'saisie' },
   /*
@@ -634,15 +640,17 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les vingt-huit modales déclarées', () => {
+  it('a bien joué les vingt-neuf modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
        faute de cible dans la démonstration. Leur `prealable` la crée.
        26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
        fiches de l'écran des locataires.
        27 → 28 (2026-09-30) : la saisie d'une dépense, née avec l'écran de ce
-       qui sort du parc. */
-    expect(MODALES.length).toBe(28)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(28)
+       qui sort du parc.
+       28 → 29 (2026-09-30) : les honoraires d'un gestionnaire, sur la ligne de
+       son mandat — le même jour, le lot suivant. */
+    expect(MODALES.length).toBe(29)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(29)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

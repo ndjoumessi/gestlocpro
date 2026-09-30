@@ -335,6 +335,18 @@ const MODALES = [
   */
   { nom: 'RecordReading', fichier: 'features/dashboard/RecordReadingModal.tsx', adresse: '/demo/releves', bouton: /^Saisir un relevé$|^Record a reading$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
   /*
+    LA SAISIE D'UNE DÉPENSE, inscrite avec le lot qui la crée — et elle a failli
+    ne pas l'être. `registresDesModales` était vert dès qu'elle entrait dans le
+    registre CLAVIER : cette garde-là n'exige qu'une présence dans l'un des deux
+    registres. Suffisant ne veut pas dire mesuré — ni sa hauteur, ni son pied
+    atteignable, ni ses cibles au doigt n'auraient été relevés, exactement comme
+    les quatre modales dont le commentaire plus bas raconte le rattrapage.
+  */
+  { nom: 'RecordExpense', fichier: 'features/dashboard/RecordExpenseModal.tsx', adresse: '/demo/depenses', bouton: /^Saisir une dépense$|^Record an expense$/, defil: { 360: 326, 1280: 103 }, defilLarge: { 360: 347, 1280: 125 }, avant: { 360: 0, 1280: 0 } },
+  /* LES HONORAIRES — sur la ligne de Diane Fotso, la gestionnaire de la
+     démonstration. Le bouton suit le RÔLE actif, donc il est ouvrable ici. */
+  { nom: 'Fees', fichier: 'features/dashboard/FeesModal.tsx', adresse: '/demo/acces', bouton: /^Honoraires et relevé — Diane Fotso$|^Fees and statement — Diane Fotso$/, defil: { 360: 104, 1280: 0 }, defilLarge: { 360: 147, 1280: 0 }, avant: { 360: 0, 1280: 0 } },
+  /*
     LES QUATRE MODALES QUE LE CLAVIER VIENT DE PRENDRE, et dont la géométrie ne
     l'était toujours pas. Leurs FICHIERS étaient couverts ici — `Tenants.tsx` par
     `RemoveTenant`, `Access.tsx` par `RevokeAccess` — ce qui suffisait à la garde
@@ -762,7 +774,7 @@ const LANGUES = ['fr', 'en']
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
 */
-const ATTENDUS = 116
+const ATTENDUS = 124
 const NON_OUVRABLES_ATTENDUES = 0
 
 /**

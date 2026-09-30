@@ -208,6 +208,12 @@ const REGISTRE = {
     geste: ouvrirLInvitation,
   },
   'app.access.managerNotice': { adresse: '/demo/acces', profil: /Gestionnaire/ },
+  /* LA NOTE QUI DIT POURQUOI LE TABLEAU NE SOMME PAS AU TOTAL. Sans geste :
+     elle est INCONDITIONNELLE, et c'est exactement ce que ce caractère achète —
+     un mois sans chantier est celui où l'on croirait le tableau complet, donc
+     celui où la note doit être là. Aucun geste à jouer, elle est rendue dès que
+     l'écran l'est. */
+  'app.expenses.worksApart': { adresse: '/demo/depenses' },
   /* LA NOTE DE SÛRETÉ du rapprochement des noms. Mesurable depuis que la
      démonstration porte un locataire entré sans fiche — voir `ACCES_DEMO`. */
   'app.access.linkMismatch': { adresse: '/demo/acces', geste: ouvrirLaLiaison },

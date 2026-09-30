@@ -227,6 +227,21 @@ const DETAIL: Record<string, Champ[]> = {
      charge utile ; il n'entre pas dans la recette parce qu'il est LIBRE — une
      colonne de registre remplie de phrases saisies à la main deviendrait
      illisible au bout de trente lignes. */
+  /* LE BARÈME — la BASE avant le chiffre, parce que le chiffre ne veut rien dire
+     sans elle : « 850 » est 8,5 % sous une base, et un forfait de 850 unités
+     mineures sous une autre. Le taux sort en `texte` et non en `argent` : ce
+     sont des points de base, pas une somme, et les rendre en devise afficherait
+     « 850 FCFA » pour un pourcentage. */
+  'fee.set': [
+    { champ: 'basis', nature: 'texte' },
+    { champ: 'rateBasisPoints', nature: 'texte' },
+    { champ: 'fixedMinor', nature: 'argent' },
+  ],
+  'fee.delete': [
+    { champ: 'basis', nature: 'texte' },
+    { champ: 'rateBasisPoints', nature: 'texte' },
+    { champ: 'fixedMinor', nature: 'argent' },
+  ],
   'expense.record': [
     { champ: 'category', nature: 'texte' },
     { champ: 'amountMinor', nature: 'argent' },

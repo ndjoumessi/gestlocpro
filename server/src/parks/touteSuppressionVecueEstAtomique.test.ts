@@ -64,6 +64,7 @@ const MODELES_VECUS = [
   'InspectionPhoto',
   'Invitation',
   'Lease',
+  'ManagementFee',
   'Membership',
   'MeterReading',
   'Park',

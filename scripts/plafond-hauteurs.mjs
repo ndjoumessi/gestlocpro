@@ -641,6 +641,13 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4350 },
   { adresse: '/demo/releves', largeur: 360, plafond: 3902, plafondLarge: 3902 },
   { adresse: '/demo/cautions', largeur: 360, plafond: 2270, plafondLarge: 2270 },
+  /* LES DÉPENSES — mesuré le 2026-09-30, avec le lot qui crée l'écran.
+     1650 px en police système sur cette machine ; 1671 en police large, MESURÉ
+     LOCALEMENT et non sur l'exécuteur. L'en-tête de ce fichier dit pourquoi
+     c'est une réserve et non un résultat : sur les écrans applicatifs l'écart
+     local/CI va de −67 à +21 px. Le travail `polices` corrigera la colonne
+     large, et c'est lui qui fait autorité. */
+  { adresse: '/demo/depenses', largeur: 360, plafond: 1650, plafondLarge: 1671 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
@@ -738,6 +745,10 @@ const PLAFONDS = [
   { adresse: '/demo/parc', largeur: 1280, plafond: 1785, plafondLarge: 1785 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1450, plafondLarge: 1450 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 946, plafondLarge: 926 },
+  /* 900 px aux deux polices, et c'est la HAUTEUR DE VUE : à 1280 l'écran tient
+     dans la fenêtre, il ne défile pas. Les deux colonnes coïncident donc sans
+     que ce soit une coïncidence — il n'y a rien à dépasser. */
+  { adresse: '/demo/depenses', largeur: 1280, plafond: 900, plafondLarge: 900 },
   /*
     −86 px AU BUREAU ET +16 AU TÉLÉPHONE, LE 2026-09-26 : LES DEUX FAITS QUI
     PORTAIENT UN TIRET SONT DEVENUS DES PASTILLES CONDITIONNELLES.
@@ -857,7 +868,7 @@ const ADRESSES = routes.map((r) => r.adresse)
        `/conditions-generales`, le 2026-09-18.
    4 = les deux adresses hors portée, à leurs deux largeurs.
 */
-const ATTENDUS = 52
+const ATTENDUS = 54
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.

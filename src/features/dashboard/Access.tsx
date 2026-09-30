@@ -14,6 +14,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
 import { useToast } from '@/components/primitives/Toast'
+import { FeesModal } from './FeesModal'
 import { useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
 import { useSession } from '@/api/SessionProvider'
@@ -227,6 +228,9 @@ export function Access() {
    * Dérivée, une case cochée aurait écrit dans le registre avant tout envoi.
    */
   const [aConfier, setAConfier] = useState<MembreApi | null>(null)
+  /* LE BARÈME ET LE RELEVÉ de ce mandataire. Sur cet écran et non ailleurs :
+     ils appartiennent au MANDAT, et le mandat se confie et se révoque ici. */
+  const [aBaremer, setABaremer] = useState<MembreApi | null>(null)
   const [choixImmeubles, setChoixImmeubles] = useState<Set<string>>(new Set())
   /* Le second brouillon, à la maille du logement. Deux ensembles et non un :
      confier un immeuble et confier ses logements un à un ne veulent pas dire la
@@ -477,6 +481,25 @@ export function Access() {
                         }}
                       >
                         {t('app.access.scopeAction')}
+                      </Button>
+                    )}
+                    {/* HONORAIRES ET RELEVÉ — au propriétaire seul, parce que
+                        poser un barème engage SON argent : c'est le partage de
+                        la validation d'un devis. Le gestionnaire, lui, lit son
+                        relevé par le serveur, qui ne lui refuse que celui d'un
+                        confrère. */}
+                    {m.role === 'manager' && estProprietaire && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="card"
+                        /* Le nom de la personne, comme les trois autres gestes
+                           de cette ligne : WCAG 2.5.3 veut que le nom accessible
+                           CONTIENNE le libellé visible. */
+                        aria-label={t('app.fees.openLine', { name: m.fullName })}
+                        onClick={() => setABaremer(m)}
+                      >
+                        {t('app.fees.open')}
                       </Button>
                     )}
                     {m.role === 'tenant' && !m.tenantId && fichesLibres.length > 0 && (
@@ -1167,6 +1190,13 @@ export function Access() {
         le seul endroit du produit où « rien de sélectionné » veut dire « tout »,
         et que le deviner à l'envers retirerait un accès en croyant l'élargir.
       */}
+      {aBaremer && (
+        <FeesModal
+          membershipId={aBaremer.id}
+          nom={aBaremer.fullName}
+          onClose={() => setABaremer(null)}
+        />
+      )}
       {aConfier && (
         <Modal
           open
