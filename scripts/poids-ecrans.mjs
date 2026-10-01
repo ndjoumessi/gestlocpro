@@ -58,11 +58,26 @@
  *   node scripts/poids-ecrans.mjs --inscrire          · descend les plafonds au réel
  *   node scripts/poids-ecrans.mjs --relever "motif"   · les fait monter, motif écrit
  *
+ * 5. LA FRAÎCHEUR DE LA BASE, depuis le 2026-10-01. Les plafonds portent
+ *    l'EMPREINTE des sources de rendu sur lesquelles ils ont été mesurés, et la
+ *    porte refuse quand elle a changé. Ce n'est PAS un veto sur les octets — le
+ *    bloc qui l'explique reste vrai, on rapporte et l'on n'arrête pas. C'est le
+ *    refus d'un rapport dont la base est muette : au 2026-10-01, elle datait du
+ *    2026-09-07, `/demo` affichait +136 341 o, et ces octets venaient de huit
+ *    lots et non du lot en cours. Le point 2 bis l'avait prédit mot pour mot.
+ *
+ *    UN LOT QUI TOUCHE AU RENDU DOIT DONC RÉINSCRIRE — et avant la chaîne au
+ *    navigateur, dont cette porte est la dix-huitième sur vingt et une.
+ *
  * PIÈGE TAILWIND v4 : ce fichier est balayé. Aucun nom d'utilitaire n'y est
  * écrit en entier — il n'en a aucun besoin, il ne lit que des octets.
  */
 import { chromium } from 'playwright'
 import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
+/* L'EMPREINTE DES SOURCES DE RENDU, partagée avec le sceau de la colonne
+   normale : même module sans effet de bord, même question — « mesuré sur CE
+   code ? ». Voir le bloc du contrôle de fraîcheur, plus bas. */
+import { empreinteDesSources } from './colonne-normale.mjs'
 import {
   readFileSync,
   writeFileSync,
@@ -428,7 +443,19 @@ if (iInscrire >= 0 || iRelever >= 0) {
   const baisses = Object.entries(mesures).filter(
     ([c, v]) => ancien[c] && v.octets < ancien[c].octets,
   )
-  writeFileSync(PLAFONDS, JSON.stringify({ _lisezMoi: LISEZ_MOI, course, mesures: sortie }, null, 1))
+  /*
+    L'EMPREINTE DES SOURCES EST GRAVÉE AVEC LES PLAFONDS, et c'est ce qui
+    empêche la base de vieillir en silence — voir le bloc de son contrôle,
+    plus bas, pour le défaut qu'elle ferme.
+  */
+  writeFileSync(
+    PLAFONDS,
+    JSON.stringify(
+      { _lisezMoi: LISEZ_MOI, course, empreinteDesSources: empreinteDesSources().empreinte, mesures: sortie },
+      null,
+      1,
+    ),
+  )
   console.log(
     `✓ plafonds inscrits pour ${Object.keys(sortie).length} points (course ${course}) : ` +
       `${baisses.length} en baisse, ${hausses.length} relevé(s)${motif ? ` — « ${motif} »` : ''}.`,
@@ -452,7 +479,8 @@ if (!existsSync(PLAFONDS)) {
       "   puis relisez le diff : un plafond qu'on inscrit sans le regarder ne garde rien.",
   )
 } else {
-  const { mesures: plafond, course: courseDuPlafond } = JSON.parse(readFileSync(PLAFONDS, 'utf8'))
+  const plafondsBase = JSON.parse(readFileSync(PLAFONDS, 'utf8'))
+  const { mesures: plafond, course: courseDuPlafond } = plafondsBase
   /*
     LA BASE DE COMPARAISON SE NOMME, et c'est ce qui manquait.
 
@@ -502,6 +530,59 @@ if (!existsSync(PLAFONDS)) {
       )
     }
   }
+  /*
+    LA BASE DOIT AVOIR ÉTÉ MESURÉE SUR CES SOURCES — ET C'EST LE SEUL REFUS
+    QU'ON AJOUTE ICI.
+
+    ═══ POURQUOI PAS UN VETO SUR LES OCTETS ═══
+
+    Parce que le bloc ci-dessous a raison, et qu'il reste vrai : un veto confond
+    « grossir pour rien » et « grossir en achetant quelque chose », et c'est le
+    second qui demande un arbitrage humain. On ne le rétablit pas.
+
+    ═══ LE DÉFAUT RÉEL, QUE CE FICHIER AVAIT PRÉDIT ═══
+
+    Son point 2 bis l'écrivait déjà : « un écart d'octets dont la base est tue ne
+    s'interprète pas : lu sans elle, le cumul de sept lots passe pour l'effet du
+    lot en cours ». C'est arrivé le 2026-10-01. Les plafonds dataient du
+    2026-09-07 ; `/demo` affichait +136 341 o, et j'ai attribué cette hausse au
+    lot en cours — la vidéo de démonstration. MESURÉ : en compilant le commit
+    d'avant ce lot, `/demo` valait déjà 431 068 o. Le lot coûtait +7 223, pas
+    +136 341. Le motif gravé aurait accusé le mauvais lot, pour toujours.
+
+    Un rapport dont la base peut avoir trois semaines n'est pas un rapport : la
+    seule chose qu'il mesure sûrement est le temps écoulé depuis la dernière
+    inscription. Rapporter reste le bon choix ; LAISSER LA BASE VIEILLIR ne
+    l'était pas.
+
+    ═══ CE QUE LE REFUS COÛTE ═══
+
+    Une commande par lot qui touche au rendu : `--inscrire` si rien ne monte,
+    `--relever "motif"` si quelque chose monte. Dans ce second cas, il faut
+    écrire ce que ces octets achètent — ce qui EST l'arbitrage que ce fichier
+    réclame depuis toujours, et que personne ne rendait obligatoire.
+
+    L'empreinte est celle de `colonne-normale.mjs`, partagée avec le sceau de
+    l'autre cliquet : mêmes sources de rendu, même question — « mesuré sur CE
+    code ? ».
+  */
+  const empreinteActuelle = empreinteDesSources().empreinte
+  if (plafondsBase.empreinteDesSources !== empreinteActuelle) {
+    plaintes.push(
+      'LA BASE DES PLAFONDS N’A PAS ÉTÉ MESURÉE SUR CES SOURCES.\n' +
+        `   Gravée sur la course ${plafondsBase.course ?? '(inconnue)'}` +
+        `${plafondsBase.empreinteDesSources ? '' : ', AVANT que l’empreinte n’existe'}.\n` +
+        '   Tout écart d’octets rapporté ci-dessous mélange donc ce lot et ceux d’avant —\n' +
+        '   c’est ainsi qu’on attribue au lot courant la croissance de trois semaines.\n' +
+        '   Réinscrivez la base — ET FAITES-LE AVANT `check:navigateur`, pas après :\n' +
+        '   cette porte en est la dix-huitième sur vingt et une, et l’apprendre ici\n' +
+        '   coûte la chaîne entière à refaire.\n' +
+        '     node scripts/poids-ecrans.mjs --inscrire            (si rien ne monte)\n' +
+        '     node scripts/poids-ecrans.mjs --relever "ce que le poids achète"\n' +
+        '   Les deux MESURENT avant d’écrire : lancer l’un d’eux remplace ce passage.',
+    )
+  }
+
   for (const [cle, v] of Object.entries(mesures)) {
     const p = plafond[cle]
     if (!p) {

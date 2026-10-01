@@ -8,6 +8,7 @@
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
  "course": "308fb1c0",
+ "empreinteDesSources": "4149d3a889031950da7716c718f882a868b1181757e34c1bd260524cf57d7504",
  "mesures": {
   "/@360": {
    "octets": 575050,
