@@ -214,6 +214,9 @@ export const en: Dictionary = {
        libellés mesurés. */
     alertsShort: 'Re\u00ADports',
     onboarding: 'Onboarding and rights',
+    /* COURT, et c'est la contrainte de la barre : « Manuel d'utilisation » est
+       le titre de l'écran, pas son entrée de navigation. */
+    manual: 'Manual',
     system: 'System states',
     tenantPortal: 'Tenant portal (web)',
     tenantApp: 'Tenant app',
@@ -2240,6 +2243,92 @@ export const en: Dictionary = {
         inviteTenant: 'Invite a tenant',
         editPortfolio: 'Rename or delete',
         ownData: 'View their own data',
+      },
+    },
+
+    /** THE MANUAL — see the French block and `manuelDesGestes.ts` for the why. */
+    manual: {
+      title: 'User manual',
+      subtitle:
+        'The month’s gestures, in the order they come up — and where each one lives in the product.',
+
+      videoTitle: 'A walk through the product',
+      videoBody:
+        'The product in use, on the demonstration portfolio. Nothing is staged: these are the screens you will get.',
+      videoAbsentTitle: 'The walkthrough has not been uploaded yet',
+      videoAbsentBody:
+        'You can walk the product yourself: the demonstration carries three buildings, twelve units and a year of fictional movements.',
+      videoAbsentAction: 'Open the demonstration',
+      videoFallback:
+        'Your browser cannot play this video. The demonstration, however, opens anywhere.',
+
+      mineTitle: 'Your gestures',
+      mineSubtitle: 'What your role does in the product, from the first unit to re-letting it.',
+      othersTitle: 'What the other roles do',
+      othersBody:
+        'Useful to know what you are delegating, and what your tenant sees on their side. Gestures are only named here; the detail is in your own.',
+      openScreen: 'Open {screen}',
+      onScreen: 'In {screen}',
+
+      gestes: {
+        ajouterImmeuble:
+          'A building carries an address and a district; units attach to it. It is the first object to create, before anything else.',
+        ajouterLogement:
+          'Number, type, floor area and reference rent. The rent entered here informs leases and listings; it does not decide them.',
+        corrigerLeParc:
+          'The portfolio currency, automatic reminders, and the channel they go out on — SMS or WhatsApp. One setting per portfolio, not per tenant.',
+        attribuerUnLocataire:
+          'Attaches a person to a unit and opens their lease. This is the gesture that makes their instalments appear in payments.',
+        inviterParCode:
+          'A single-use code, handed to the person. They create their own account and join the portfolio with the role you chose.',
+        confierDesImmeubles:
+          'Bounds a manager to certain buildings. An empty list does not mean “everything”: it means “nothing”, and that is deliberate.',
+        poserLesHonoraires:
+          'The manager’s scale — a basis and a rate — and the statement of what they owe you for the period. Without a scale, the statement withholds nothing.',
+        enregistrerUnPaiement:
+          'A payment received, with its date, method and reference. A partial settlement is accepted: the balance carries to the next period.',
+        encaisser:
+          'Settles a period in one go, at the exact amount still due. The shortcut for the common case.',
+        joindreUnePreuve:
+          'A photo of the receipt or transfer notification, attached to the payment. This is what you produce the day an amount is disputed.',
+        relancerLesRetards:
+          'One message to every tenant in arrears, in a single gesture. The channel is the portfolio’s, and the product keeps a record of what went out.',
+        mettreEnDemeure:
+          'The formal, named warning that precedes proceedings. Reserve it for what a reminder did not settle.',
+        convenirUnPlan:
+          'A written schedule to clear arrears. Compliance is DERIVED from actual payments — there is nothing to tick — and it suspends reminders as long as it holds.',
+        bailEtSuretes:
+          'The panel that gathers the life of the lease: notice if it has been given, the history of rent revisions, and the people who stand as guarantors.',
+        reviserLeLoyer:
+          'A new rent from a given date. Instalments already called keep the old one: a receipt handed over is not rewritten.',
+        enregistrerUnConge:
+          'The date on which departure is announced. The lease stays active until the move-out date, and rent keeps being called.',
+        chargesEtRegularisation:
+          'What you pass on and that cannot be computed — refuse, caretaking, lift. The definition lives on the lease, its frozen copy in each instalment issued.',
+        saisirUnReleve:
+          'The water meter reading and the electricity one. Consumption and its amount are derived from the gap with the previous reading.',
+        saisirUneDepense:
+          'What the portfolio paid: taxes, insurance, building management, utility bills, upkeep. Works are counted separately, under works.',
+        etablirUnEtatDesLieux:
+          'The condition of the unit at entry or exit, finding by finding, photos included. This is the document that stands when the deposit is returned.',
+        ouvrirUnChantier:
+          'An intervention with its trade, its urgency and an amount to approve. Its cost flows into expenses once the works are complete.',
+        repondreAuLocataire:
+          'The written answer to what a tenant reported. It reaches them in their space, and the thread stays attached to the report.',
+        arbitrerUneCaution:
+          'What is returned and what is withheld, with a reason for each deduction. The exit inspection is what makes the ruling defensible.',
+        ouvrirUneAnnonce:
+          'The asking rent — distinct from the unit’s reference — the availability date and the applicants. A unit under notice can already be listed: that is the window that actually avoids vacancy.',
+        registreDesDecisions:
+          'Who did what, and when. The register cannot be edited: that is the point, and it is what makes a delegation auditable.',
+        exporterLeParc:
+          'A spreadsheet of the portfolio’s state, to take outside the product — for an accountant, a bank, or a backup that depends on no one.',
+        voirCeQueJeDois:
+          'What has been called, what has been paid, and what is left. With your water and electricity readings for the month.',
+        telechargerMesQuittances:
+          'Your rent receipts as PDFs, period by period. They serve wherever proof of address or payment is asked for.',
+        signalerUnProbleme:
+          'A leak, a breakdown, a nuisance. What you write reaches the landlord with its date, and the answer comes back in the same thread.',
       },
     },
 

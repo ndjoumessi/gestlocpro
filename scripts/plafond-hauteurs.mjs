@@ -629,7 +629,22 @@ const PLAFONDS = [
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
-  { adresse: '/demo/mon-espace', largeur: 360, plafond: 3249, plafondLarge: 3198 },
+  /*
+    3 249 → 3 220 LE 2026-10-01, ET CE GAIN N'EST PAS DE CE LOT.
+
+    La garde du mou a dénoncé 29 px pendant le lot du manuel, et j'ai d'abord cru
+    les avoir causés : la barre du locataire venait de passer de trois à quatre
+    entrées. MESURÉ PLUTÔT QUE SUPPOSÉ, deux fois — retirer le lien du DOM ne
+    change pas la hauteur d'un pixel, et la MÊME mesure de 3 220 sort d'un `main`
+    remisé, sans aucune de ces modifications.
+
+    C'est donc une dérive ANCIENNE que personne n'avait vue, et la raison tient en
+    une ligne : l'intégration continue n'exécute `complet` qu'en POLICE LARGE.
+    La colonne normale n'est mesurée que lorsqu'on lance la porte à la main sur la
+    machine qui la possède. Entre deux de ces exécutions, un gain reste non
+    inscrit et le plafond cesse de refuser ce qu'il prétend refuser.
+  */
+  { adresse: '/demo/mon-espace', largeur: 360, plafond: 3220, plafondLarge: 3198 },
   /* +48 px LE 2026-09-26 : chaque quittance porte son état de règlement.
      Six lignes annonçaient un mois et un montant DÛ — le fichier s'en
      expliquait — sans jamais dire si la période était soldée : le locataire
@@ -683,6 +698,18 @@ const PLAFONDS = [
   { adresse: '/demo/vacance', largeur: 360, plafond: 1343, plafondLarge: 1321 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
+  /*
+    LE MANUEL, ET C'EST LE PLUS LONG ÉCRAN DU PRODUIT À CETTE LARGEUR — devant
+    les conditions générales (5 248). C'est la nature de l'objet : un manuel se
+    CHERCHE, et `Ctrl+F` ne trouve pas ce qu'un accordéon a replié. La longueur
+    est donc un relevé, pas une ambition.
+
+    7 594 → 6 018 EN DEUX CORRECTIONS MESURÉES, et aucune n'a retiré d'information :
+    la section « les autres rôles » ne réexplique plus ce qu'elle nomme, et elle a
+    perdu douze en-têtes et douze boutons d'écran qui invitaient à des gestes qui
+    ne sont pas ceux du lecteur. Voir l'en-tête de `Manuel.tsx`.
+  */
+  { adresse: '/demo/manuel', largeur: 360, plafond: 6018, plafondLarge: 0 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
@@ -811,6 +838,8 @@ const PLAFONDS = [
   { adresse: '/demo/vacance', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
+  /* 6 111 → 4 555 par les deux mêmes corrections. */
+  { adresse: '/demo/manuel', largeur: 1280, plafond: 4555, plafondLarge: 0 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
   { adresse: '/demo/portail', largeur: 1280, plafond: 1029, plafondLarge: 1029 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 1280, plafond: 900, plafondLarge: 900 },
@@ -897,8 +926,9 @@ const ADRESSES = routes.map((r) => r.adresse)
   52 → 54 LE 2026-09-30 : `/demo/depenses`, l'écran de ce qui sort du parc.
   54 → 56 LE 2026-09-30 : `/demo/vacance`, l'écran de ce qui ne rapporte rien —
        le second écran du même jour, et le dernier des huit lots.
+  56 → 58 LE 2026-10-01 : `/demo/manuel`, le manuel d'utilisation.
 */
-const ATTENDUS = 56
+const ATTENDUS = 58
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.
@@ -947,6 +977,18 @@ const SANS_ATTENTE_DECLARES = new Set([
   '/demo/acces',
   '/demo/decisions',
   '/demo/prise-en-main',
+  /*
+    LE MANUEL N'APPELLE RIEN, et c'est sa nature même : son contenu vit dans le
+    paquet — un registre de gestes et deux dictionnaires. Il ne lit ni parc, ni
+    bail, ni paiement. Le seul fait qu'il consulte est le RÔLE de qui le lit,
+    déjà porté par la coquille.
+
+    LA VIDÉO N'Y CHANGE RIEN tant qu'aucune adresse n'est posée : sans
+    `VITE_VIDEO_DEMO`, il n'y a pas d'élément `<video>`, donc aucune requête.
+    Avec une adresse, `preload="metadata"` en déclencherait une — mais aucune
+    machine du dépôt ne pose cette variable, et cet état n'est mesuré nulle part.
+  */
+  '/demo/manuel',
 ])
 
 const serveur = await servirLaPrevisualisation('plafond-hauteurs', PORT)

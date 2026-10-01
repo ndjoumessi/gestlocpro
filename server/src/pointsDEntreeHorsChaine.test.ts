@@ -59,6 +59,15 @@ const HORS_CHAINE: { script: string; motif: string }[] = [
       'prix qu’on ne paie pas pour de la mesure.',
   },
   {
+    script: 'scripts/video-de-demonstration.mjs',
+    motif:
+      'Il PRODUIT une vidéo, il ne refuse rien — c’est la visite filmée du produit, ' +
+      'enregistrée depuis `/demo` sur le paquet de l’arbre courant. Le mettre dans une ' +
+      'chaîne ferait fabriquer cinq mégaoctets de WebM à chaque poussée, pour un fichier ' +
+      'que `captures/` exclut du dépôt et que personne ne lirait. On le lance quand le ' +
+      'produit a changé assez pour que la visite d’avant mente : `npm run visite`.',
+  },
+  {
     script: 'scripts/setup-test-db.mjs',
     motif:
       'Il PRÉPARE la base de test — création, migrations — avant que les portes ne tournent. ' +

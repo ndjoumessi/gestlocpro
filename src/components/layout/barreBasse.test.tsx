@@ -76,9 +76,14 @@ describe('barre de navigation basse', () => {
    *
    * Elle abrège une navigation de douze entrées dont le reste vit dans un
    * tiroir. Le locataire n'a pas cette coquille : sa barre est en haut, elle
-   * porte ses trois entrées en entier, et rien n'y est replié. Deux
-   * navigations pour trois destinations, dont l'une déplierait exactement ce
+   * porte ses quatre entrées en entier, et rien n'y est replié. Deux
+   * navigations pour quatre destinations, dont l'une déplierait exactement ce
    * que l'autre affiche déjà, ne servaient personne.
+   *
+   * QUATRE DEPUIS LE 2026-10-01 — le manuel s'y est ajouté. Le plafond de cinq
+   * cibles mesuré plus haut vaut pour la barre BASSE, celle de la gestion ; la
+   * barre haute du locataire en porte quatre, et c'est `plafond-coquille` qui
+   * tient sa géométrie à 320 et 360 px, pas ce fichier.
    */
   it('n’existe pas dans la coquille du locataire', async () => {
     // Sous `/demo`, où vit le sélecteur de profil : ce cas a besoin de changer
@@ -96,7 +101,7 @@ describe('barre de navigation basse', () => {
       within(haute)
         .getAllByRole('link')
         .map((a) => a.textContent?.trim()),
-    ).toEqual(['Mon espace', 'Documents', 'Signaler'])
+    ).toEqual(['Mon espace', 'Documents', 'Signaler', 'Manuel'])
   })
 
   it('signale l’entrée courante autrement que par la seule couleur', async () => {

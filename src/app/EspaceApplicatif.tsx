@@ -26,6 +26,7 @@ import { Alerts } from '@/features/dashboard/Alerts'
 import { Signaler } from '@/features/dashboard/Signaler'
 import { Access } from '@/features/dashboard/Access'
 import { Onboarding } from '@/features/dashboard/Onboarding'
+import { Manuel } from '@/features/dashboard/Manuel'
 import { Decisions } from '@/features/dashboard/Decisions'
 import { SystemStates } from '@/features/dashboard/SystemStates'
 import { TenantPortal } from '@/features/dashboard/TenantPortal'
@@ -248,6 +249,17 @@ function ecransDeLApplication() {
           403 — un écran qui l'offrirait promettrait ce que la porte refuse. */}
       <Route path="decisions" element={<Restricted adresse="decisions"><Decisions /></Restricted>} />
       <Route path="prise-en-main" element={<Restricted adresse="prise-en-main"><Onboarding /></Restricted>} />
+      {/* LE MANUEL, AUX TROIS RÔLES — et donc SANS `Restricted`.
+
+          Il n'est pas absent de `ROLES_PAR_ADRESSE` par oubli : « les adresses
+          ABSENTES de la table sont ouvertes à tous », et un locataire bloqué a
+          autant besoin d'un manuel qu'un propriétaire. L'écran, lui, montre
+          d'abord les gestes DU RÔLE qui lit — le contenu se borne, pas l'accès.
+
+          À CÔTÉ DE « PRISE EN MAIN », ET PAS DEDANS : l'une répond à « comment
+          je rejoins un parc », l'autre à « comment je fais ce geste ». La
+          première se lit une fois, le second se rouvre chaque mois. */}
+      <Route path="manuel" element={<Manuel />} />
 
       {/* Vitrines : le même garde que dans la barre latérale, où elles portent
           `vitrine: true`. */}

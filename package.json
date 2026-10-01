@@ -40,6 +40,7 @@
     "notes": "node scripts/notes-conditionnelles.mjs",
     "securite": "node scripts/politique-de-securite.mjs",
     "fumee": "node scripts/fumee.mjs",
+    "visite": "node scripts/video-de-demonstration.mjs",
     "espace": "node scripts/espace-connecte.mjs",
     "inventaire:lectures": "node scripts/inventaire/lecture-sources.mjs && node scripts/inventaire/jetons-i18n.mjs",
     "chasse": "node scripts/chasse-de-lecture.mjs",

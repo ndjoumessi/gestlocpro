@@ -286,6 +286,9 @@ export const fr = {
     alerts: 'Signalements',
     alertsShort: 'Alertes',
     onboarding: 'Prise en main et droits',
+    /* COURT, et c'est la contrainte de la barre : « Manuel d'utilisation » est
+       le titre de l'écran, pas son entrée de navigation. */
+    manual: 'Manuel',
     system: 'États du système',
     tenantPortal: 'Portail locataire (web)',
     tenantApp: 'App locataire',
@@ -3264,6 +3267,109 @@ export const fr = {
         inviteTenant: 'Inviter un locataire',
         editPortfolio: 'Renommer ou supprimer',
         ownData: 'Consulter ses propres données',
+      },
+    },
+
+    /**
+     * LE MANUEL — et il ne recopie aucun nom de bouton.
+     *
+     * Les libellés des gestes et des écrans viennent des clés que le produit
+     * peint déjà (`nav.*`, `app.lease.open`, …) : le manuel affiche ce que
+     * l'utilisateur va réellement lire, et un bouton renommé renomme le manuel.
+     * Ce bloc ne porte donc QUE les phrases d'explication — ce à quoi un geste
+     * sert, et quand on le fait.
+     *
+     * Voir `features/dashboard/manuelDesGestes.ts`, dont l'en-tête dit pourquoi.
+     */
+    manual: {
+      title: 'Manuel d’utilisation',
+      subtitle:
+        'Les gestes du mois, dans l’ordre où ils arrivent — et où chacun se trouve dans le produit.',
+
+      /* ── LA VISITE FILMÉE ── */
+      videoTitle: 'La visite du produit',
+      videoBody:
+        'Un parcours du produit en fonctionnement, sur le parc de démonstration. Rien n’y est mis en scène : ce sont les écrans que vous aurez.',
+      /* « PAS ENCORE DÉPOSÉE » ET NON UN LECTEUR VIDE : une boîte noire sous un
+         titre qui promet une vidéo se lit comme une panne. L'absence est un
+         état, et il a sa propre issue — la démonstration, qui est vivante. */
+      videoAbsentTitle: 'La visite n’est pas encore déposée',
+      videoAbsentBody:
+        'Vous pouvez parcourir le produit vous-même : la démonstration porte trois immeubles, douze logements et une année de mouvements fictifs.',
+      videoAbsentAction: 'Ouvrir la démonstration',
+      videoFallback:
+        'Votre navigateur ne sait pas lire cette vidéo. La démonstration, elle, s’ouvre partout.',
+
+      /* ── LES GESTES ── */
+      mineTitle: 'Vos gestes',
+      mineSubtitle: 'Ce que votre rôle fait dans le produit, du premier logement au relogement.',
+      othersTitle: 'Ce que font les autres rôles',
+      othersBody:
+        'Utile pour savoir ce que vous déléguez, et ce que votre locataire voit de son côté. Les gestes y sont seulement nommés ; le détail est dans vos gestes à vous.',
+      openScreen: 'Ouvrir {screen}',
+      /* L'écran où vit le geste, nommé à côté de lui : sans cela, le lecteur a
+         une liste de gestes et aucune idée d’où les chercher. */
+      onScreen: 'Dans {screen}',
+
+      gestes: {
+        ajouterImmeuble:
+          'Un immeuble porte une adresse et un quartier ; les logements se rattachent à lui. C’est le premier objet à créer, avant tout le reste.',
+        ajouterLogement:
+          'Numéro, type, surface et loyer de référence. Le loyer inscrit ici sert d’appui aux baux et aux annonces ; il ne les décide pas.',
+        corrigerLeParc:
+          'La devise du parc, les relances automatiques et le canal par lequel elles partent — SMS ou WhatsApp. Un réglage par parc, pas par locataire.',
+        attribuerUnLocataire:
+          'Rattache une personne à un logement et ouvre son bail. C’est ce geste qui fait apparaître ses échéances dans les paiements.',
+        inviterParCode:
+          'Un code à usage unique, remis à la personne. Elle crée son compte elle-même et rejoint le parc avec le rôle que vous avez choisi.',
+        confierDesImmeubles:
+          'Borne un gestionnaire à certains immeubles. Une liste vide ne veut pas dire « tout » : elle veut dire « rien », et c’est délibéré.',
+        poserLesHonoraires:
+          'Le barème du gestionnaire — une base de calcul et un taux — et le relevé de ce qu’il vous reverse sur la période. Sans barème, le relevé ne retient rien.',
+        enregistrerUnPaiement:
+          'Un versement reçu, avec sa date, son moyen et sa référence. Un règlement partiel est accepté : le solde suit sur la période suivante.',
+        encaisser:
+          'Solde une période en une fois, au montant exact qui reste dû. Le raccourci du cas courant.',
+        joindreUnePreuve:
+          'La photo du reçu ou de la notification de transfert, attachée au versement. C’est ce que vous ressortirez le jour où le montant est contesté.',
+        relancerLesRetards:
+          'Un message à tous les locataires en retard, d’un seul geste. Le canal est celui du parc, et le produit garde la trace de ce qui est parti.',
+        mettreEnDemeure:
+          'L’avertissement formel, nominatif, qui précède une procédure. À réserver à ce qu’une relance n’a pas réglé.',
+        convenirUnPlan:
+          'Un échéancier écrit pour solder un impayé. Son respect se DÉDUIT des versements réels — il n’y a rien à cocher — et il suspend les relances tant qu’il est tenu.',
+        bailEtSuretes:
+          'Le panneau qui réunit la vie du bail : le congé s’il est donné, l’historique des révisions, et les personnes qui se portent garantes.',
+        reviserLeLoyer:
+          'Un nouveau loyer à compter d’une date. Les échéances déjà appelées gardent l’ancien : une quittance remise ne se réécrit pas.',
+        enregistrerUnConge:
+          'La date à laquelle le départ est annoncé. Le bail reste actif jusqu’à la date de sortie, et le loyer continue d’être appelé.',
+        chargesEtRegularisation:
+          'Ce que vous refacturez et qui ne se calcule pas — ordures, gardiennage, ascenseur. La définition vit au bail, sa copie figée dans chaque échéance émise.',
+        saisirUnReleve:
+          'L’index du compteur d’eau et celui d’électricité. La consommation et son montant se déduisent de l’écart avec le relevé précédent.',
+        saisirUneDepense:
+          'Ce que le parc a payé : taxes, assurances, syndic, factures du distributeur, entretien. Les chantiers sont comptés à part, dans les travaux.',
+        etablirUnEtatDesLieux:
+          'L’état du logement à l’entrée ou à la sortie, réserve par réserve, photos comprises. C’est la pièce qui fait foi au moment de rendre la caution.',
+        ouvrirUnChantier:
+          'Une intervention avec son corps de métier, son urgence et son montant à valider. Son coût remonte dans les dépenses une fois le chantier achevé.',
+        repondreAuLocataire:
+          'La réponse écrite à ce qu’un locataire a signalé. Elle lui arrive dans son espace, et le fil reste attaché au signalement.',
+        arbitrerUneCaution:
+          'Ce qui est rendu et ce qui est retenu, avec le motif de chaque retenue. L’état des lieux de sortie est ce qui rend l’arbitrage défendable.',
+        ouvrirUneAnnonce:
+          'Le loyer demandé — distinct de la référence du logement —, la date de disponibilité et les candidats. Un logement dont le congé est donné peut déjà être annoncé : c’est la fenêtre qui évite la vacance.',
+        registreDesDecisions:
+          'Qui a fait quoi, et quand. Le registre n’est pas modifiable : c’est son intérêt, et c’est ce qui rend une délégation contrôlable.',
+        exporterLeParc:
+          'Un tableur de l’état du parc, à emporter hors du produit — pour un comptable, une banque, ou une sauvegarde qui ne dépend de personne.',
+        voirCeQueJeDois:
+          'Ce qui a été appelé, ce qui a été réglé, et ce qui reste. Avec vos relevés d’eau et d’électricité du mois.',
+        telechargerMesQuittances:
+          'Vos quittances en PDF, période par période. Elles vous servent partout où l’on demande une preuve de domicile ou de paiement.',
+        signalerUnProbleme:
+          'Une fuite, une panne, une nuisance. Ce que vous écrivez arrive au bailleur avec la date, et la réponse revient dans le même fil.',
       },
     },
 

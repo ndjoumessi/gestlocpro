@@ -140,8 +140,11 @@ const SANS_ECRAN = ['/app']
   54 → 57 (2026-09-30) : les dépenses, l'écran de ce qui sort du parc.
   57 → 60 (2026-09-30) : la vacance, l'écran de ce qui ne rapporte rien — le
   second du même jour, et le dernier des huit lots.
+  60 → 63 (2026-10-01) : le manuel d'utilisation. C'est l'écran de ce dépôt où
+  cette garde compte le plus : il est fait de PROSE, et une colonne de lecture
+  trop large y coûte à chaque ligne, pas seulement sur quelques appariements.
 */
-const ATTENDUS = 60
+const ATTENDUS = 63
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

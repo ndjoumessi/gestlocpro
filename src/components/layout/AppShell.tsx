@@ -234,6 +234,11 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
          ce qu'il a délégué. */
       { to: 'decisions', labelKey: 'nav.decisions', icon: 'clipboard', roles: ['owner'] },
       { to: 'prise-en-main', labelKey: 'nav.onboarding', icon: 'info', roles: ['owner'] },
+      /* LE MANUEL, SANS `roles` — donc aux trois. Un locataire bloqué a autant
+         besoin d'un manuel qu'un propriétaire, et c'est le CONTENU de l'écran
+         qui se borne à son rôle, pas son accès. Il figure aussi dans la
+         navigation du locataire, qui n'est pas un filtrage de celle-ci. */
+      { to: 'manuel', labelKey: 'nav.manual', icon: 'info' },
     ],
   },
 ]
@@ -265,6 +270,9 @@ const SECTIONS_LOCATAIRE: { headingKey: string; items: NavItem[] }[] = [
       /* « Signaler » est au locataire ce que « Signalements » est au bailleur :
          l'un déclare, l'autre reçoit. Deux écrans, deux rôles, un seul objet. */
       { to: 'signaler', labelKey: 'nav.report', icon: 'bell' },
+      /* LE MANUEL. Répété ici et non hérité : `SECTIONS_LOCATAIRE` n'est pas une
+         version filtrée de `SECTIONS`, et son en-tête dit pourquoi. */
+      { to: 'manuel', labelKey: 'nav.manual', icon: 'info' },
     ],
   },
 ]

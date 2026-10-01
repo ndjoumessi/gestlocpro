@@ -35,9 +35,23 @@ async function ouvrirEnLocataire(route = '/demo') {
 }
 
 describe('coquille du locataire — navigation', () => {
-  it('n’expose que ses trois entrées', async () => {
+  /**
+   * QUATRE DEPUIS LE 2026-10-01, ET LA QUATRIÈME EST LE MANUEL.
+   *
+   * Ce cas a fait ce pour quoi il est écrit : l'entrée a été ajoutée dans
+   * `SECTIONS` ET dans `SECTIONS_LOCATAIRE` — les deux listes sont disjointes —
+   * et il a refusé le changement jusqu'à ce qu'on vienne l'écrire ici. C'est la
+   * garde qui empêche qu'un écran « ouvert à tous » allonge cette barre sans que
+   * personne ne l'ait décidé.
+   *
+   * ET CELLE-CI EST DÉCIDÉE : un locataire bloqué a autant besoin d'un manuel
+   * qu'un propriétaire, et c'est le CONTENU de l'écran qui se borne à son rôle,
+   * pas son accès. Les trois autres restent ses trois destinations de métier ;
+   * le manuel est ce qui explique comment s'en servir.
+   */
+  it('n’expose que ses quatre entrées', async () => {
     await ouvrirEnLocataire()
-    expect(entrees()).toEqual(['Mon espace', 'Documents', 'Signaler'])
+    expect(entrees()).toEqual(['Mon espace', 'Documents', 'Signaler', 'Manuel'])
   })
 
   /**
@@ -226,22 +240,31 @@ describe('coquille du locataire — une seule navigation', () => {
 
   it('n’y fait entrer aucune page de démonstration', async () => {
     await ouvrirEnLocataire('/demo/mon-espace')
-    expect(entrees()).toEqual(['Mon espace', 'Documents', 'Signaler'])
+    /* QUATRE, le manuel compris — voir le cas d'identité plus haut. Ce qui est
+       gardé ICI est autre chose : que les VITRINES de la démonstration — portail,
+       états du système — ne s'invitent pas dans la barre du locataire. */
+    expect(entrees()).toEqual(['Mon espace', 'Documents', 'Signaler', 'Manuel'])
   })
 
   /**
-   * Trois LIENS, et non trois onglets.
+   * Des LIENS, et non des onglets.
    *
    * La prévisualisation `/portail`, d'où cette barre est portée, tient le motif
    * `tab` en entier — flèches, `tabindex` roulant, panneau lié — parce qu'elle
-   * montre trois vues d'un même dossier. Ici ce sont trois adresses : un
-   * lecteur d'écran doit entendre « lien », et rien ne doit promettre une
-   * navigation aux flèches qui n'existe pas.
+   * montre trois vues d'un même dossier. Ici ce sont des adresses : un lecteur
+   * d'écran doit entendre « lien », et rien ne doit promettre une navigation aux
+   * flèches qui n'existe pas.
+   *
+   * LE COMPTE EST LU SUR LA LISTE, et non recopié : c'est le cas d'identité, un
+   * peu plus haut, qui garde QUELLES entrées s'y trouvent. Répéter le nombre ici
+   * ferait deux endroits à corriger pour une seule décision, et c'est ainsi
+   * qu'un compte se périme.
    */
   it('annonce des liens, pas un groupe d’onglets', async () => {
     await ouvrirEnLocataire('/demo/mon-espace')
     expect(within(nav()).queryAllByRole('tab')).toHaveLength(0)
-    expect(within(nav()).getAllByRole('link')).toHaveLength(3)
+    expect(within(nav()).getAllByRole('link').length).toBe(entrees().length)
+    expect(entrees().length).toBeGreaterThanOrEqual(3)
   })
 
   /**

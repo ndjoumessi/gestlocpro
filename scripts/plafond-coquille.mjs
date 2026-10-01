@@ -310,8 +310,13 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   Puis de 81 à 84 (2026-09-30) avec les dépenses, l'écran de ce qui sort du
   parc ; et de 84 à 87 le même jour avec la vacance, l'écran de ce qui ne
   rapporte rien. Deux écrans en un jour, aux trois largeurs chacun.
+
+  ET DE 87 À 90 (2026-10-01) avec le manuel d'utilisation, aux trois largeurs.
+  C'est le premier écran de ce produit qui n'opère rien : il EXPLIQUE, et il est
+  ouvert aux trois rôles — un locataire bloqué a autant besoin d'un manuel qu'un
+  propriétaire.
 */
-const ATTENDUS = 87
+const ATTENDUS = 90
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

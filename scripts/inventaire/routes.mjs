@@ -259,8 +259,15 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * rien. Le produit savait dire qu'un logement était vacant et s'arrêtait là ;
  * les semaines entre deux baux sont les plus coûteuses de sa vie, et c'était la
  * seule période où il ne servait à rien.
+ *
+ * PUIS DE 30 À 31 LE 2026-10-01 : `/app/manuel`, le manuel d'utilisation. Le
+ * produit n'expliquait aucun de ses gestes ; « prise en main » répond à « comment
+ * je rejoins un parc », et personne ne répondait à « comment je fais ceci ».
+ * AUX TROIS RÔLES — il est absent de `ROLES_PAR_ADRESSE`, ce qui vaut « ouvert à
+ * tous » : un locataire bloqué a autant besoin d'un manuel qu'un propriétaire, et
+ * c'est le contenu de l'écran qui se borne à son rôle, pas son accès.
  */
-export const ROUTES_ATTENDUES = 30
+export const ROUTES_ATTENDUES = 31
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}
