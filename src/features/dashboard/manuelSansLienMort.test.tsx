@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GESTES, cleDe, gestesDe } from './manuelDesGestes'
+import { VISITES } from './visiteFilmee'
+import { LOCALES } from '@/i18n/locales'
 import { adresseOuverteAuRole } from '@/app/adressesParRole'
 import type { Role } from '@/features/auth/signupState'
 import { fr } from '@/i18n/fr'
@@ -149,5 +151,69 @@ describe('chaque geste est décrit dans les deux langues', () => {
     const connus = new Set(GESTES.map(cleDe))
     const orphelines = Object.keys(phrases(fr)).filter((k) => !connus.has(k))
     expect(orphelines).toEqual([])
+  })
+})
+
+
+/**
+ * LA VISITE EST UN LIEN COMME UN AUTRE, ET LE PIRE DE TOUS.
+ *
+ * Un `<video src>` qui ne mène à rien ne lève aucune erreur, n'écrit rien dans
+ * la console et ne fait rougir aucune des quarante portes : le navigateur peint
+ * un RECTANGLE GRIS et se tait. C'est le défaut n°1 de la prose ci-dessus — un
+ * 200 qui se lit « le produit est cassé » — appliqué à un fichier au lieu d'une
+ * adresse, et en plus silencieux encore.
+ *
+ * CES CAS SONT NÉS ROUGES, le 2026-10-01 : `visite-du-produit.en.mp4` n'existait
+ * pas, et c'est cette absence qui a ouvert le lot.
+ *
+ * ═══ POURQUOI `import.meta.glob` ET NON `node:fs` ═══
+ *
+ * Le dépôt range les tests qui LISENT LE DISQUE dans `tsconfig.node.json`, pour
+ * ne pas ouvrir `process` et `Buffer` à tout le code d'application. Aucun d'eux
+ * n'importe quoi que ce soit de `src/` : ce projet-là n'a ni l'alias `@/` ni les
+ * types de Vite. Ce cas-ci a besoin de `VISITES`, donc il reste ici et lit le
+ * disque comme le routeur est lu vingt lignes plus haut.
+ *
+ * LA LISTE EST PARESSEUSE, et ce n'est pas un détail : `eager` chargerait deux
+ * mégaoctets de vidéo dans la suite de tests. On ne veut que les NOMS.
+ */
+const DANS_PUBLIC = new Set(
+  Object.keys(
+    import.meta.glob('/public/visite-*.{mp4,jpg}', { query: '?url', import: 'default' }),
+  ).map((chemin) => chemin.replace(/^\/public/, '')),
+)
+
+const SERVIS = LOCALES.flatMap((l) => [VISITES[l].video, VISITES[l].affiche])
+
+describe('la visite filmée existe dans chaque langue du produit', () => {
+  /* GARDE DU GARDE : un motif cassé rend zéro fichier, et « aucun manquant
+     parmi zéro » s'écrit comme « tout va bien ». */
+  it('a trouvé des fichiers de visite — sinon les cas suivants ne comparent rien', () => {
+    expect(DANS_PUBLIC.size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('chaque langue a la sienne — `Record<Locale>` le compile, ce cas le dit', () => {
+    expect(Object.keys(VISITES).sort()).toEqual([...LOCALES].sort())
+  })
+
+  it('chaque fichier nommé par le produit est servi par `public/`', () => {
+    expect(SERVIS.filter((chemin) => !DANS_PUBLIC.has(chemin))).toEqual([])
+  })
+
+  /* LE DÉFAUT D'ORIGINE, ÉCRIT EN UN CAS. Deux langues qui pointent le même
+     fichier, c'est exactement ce que ce dépôt a servi pendant une journée : une
+     seule visite, en français, pour tout le monde. */
+  it('aucune langue ne sert le film ni l’affiche d’une autre', () => {
+    expect(SERVIS.length).toBe(new Set(SERVIS).size)
+  })
+
+  /* DEUX MÉGAOCTETS QUE PLUS PERSONNE NE NOMME RESTENT DANS LE DÉPÔT POUR
+     TOUJOURS. Un renommage qui laisse l'ancien fichier derrière lui ne casse
+     rien et ne se voit nulle part — c'est le cliquet des poids en plus discret,
+     puisque `public/` n'est pesé par aucune porte. */
+  it('aucun fichier de visite ne traîne sans que le produit le nomme', () => {
+    const nomme = new Set(SERVIS)
+    expect([...DANS_PUBLIC].filter((chemin) => !nomme.has(chemin))).toEqual([])
   })
 })

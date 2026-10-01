@@ -6,6 +6,7 @@ import { useI18n, type MessageKey } from '@/i18n/I18nProvider'
 import { lien, useBase } from '@/lib/base'
 import type { Role } from '@/features/auth/signupState'
 import { ROLES_DOCUMENTES, cleDe, gestesDe, type Geste } from './manuelDesGestes'
+import { VISITES } from './visiteFilmee'
 
 /**
  * LE MANUEL D'UTILISATION — les gestes du mois, et où ils vivent.
@@ -40,6 +41,14 @@ import { ROLES_DOCUMENTES, cleDe, gestesDe, type Geste } from './manuelDesGestes
  * `preload="metadata"` : qui vient chercher un geste ne télécharge pas deux
  * mégaoctets. Le fichier pèse dans le DÉPÔT, pas dans ce que reçoit le visiteur.
  *
+ * ═══ ELLE SUIT LA LANGUE, ET C'EST UN SECOND REVIREMENT ═══
+ *
+ * Elle a d'abord été UN SEUL FILM, tourné en français, servi à tout le monde.
+ * L'habillage traduisait et le film non : « the screens you will get » au-dessus
+ * de soixante-dix secondes de « Vue consolidée du parc ». Le registre
+ * `visiteFilmee.ts` en tient une par langue, et `Record<Locale, …>` fait que la
+ * prochaine langue ajoutée ne compile pas sans la sienne.
+ *
  * DEUX ÉTATS SUBSISTENT, ET LE SECOND N'EST PAS THÉORIQUE :
  *
  *   1. le lecteur, que toute machine sait rendre ;
@@ -58,21 +67,6 @@ const NOM_DU_ROLE: Record<Role, MessageKey> = {
   tenant: 'app.access.role_tenant',
 }
 
-/**
- * LA VISITE, SERVIE PAR CE PRODUIT.
- *
- * Écrite en dur, et c'est le point : une adresse configurable était l'ancienne
- * rédaction, et elle a produit un écran qui s'excusait de ne rien montrer. Le
- * fichier est dans `public/` ; s'il disparaissait, la porte de fumée le dirait
- * — « aucun fichier réclamé et non servi » est l'un de ses sept contrôles.
- */
-const VISITE = '/visite-du-produit.mp4'
-/*
-  L'AFFICHE, ET ELLE EST NÉCESSAIRE. `preload="metadata"` ne peint rien : sans
-  elle, le lecteur est un rectangle gris vide sous un titre qui promet une
-  visite. Vu sur un enregistrement où le manuel se filmait lui-même.
-*/
-const AFFICHE = '/visite-affiche.jpg'
 
 /** Un geste expliqué : son nom tel que l'écran le peint, et ce à quoi il sert. */
 function LigneDeGeste({ geste }: { geste: Geste }) {
@@ -214,8 +208,14 @@ function GroupeDeGestes({
 }
 
 export function Manuel() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { role } = useRole()
+
+  /* LA VISITE DE SA LANGUE. `locale` est la langue EFFECTIVE — celle dont le
+     dictionnaire est chargé —, pas celle qui vient d'être demandée : servir le
+     film anglais pendant que l'écran est encore en français donnerait l'inverse
+     exact du défaut qu'on referme. */
+  const visite = VISITES[locale]
 
   const miens = gestesDe(role)
   /*
@@ -245,8 +245,9 @@ export function Manuel() {
         */}
         <video
           className="mt-4 w-full rounded-lg bg-ink/5"
-          src={VISITE}
-          poster={AFFICHE}
+          key={visite.video}
+          src={visite.video}
+          poster={visite.affiche}
           controls
           preload="metadata"
         >

@@ -64,8 +64,8 @@
  */
 import { chromium } from 'playwright'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readdirSync, renameSync, statSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, statSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
@@ -93,8 +93,15 @@ const PORT = 4181
 const BASE = `http://127.0.0.1:${PORT}`
 /* LA BRUTE, hors dépôt : on ne versionne pas ce que Playwright écrit. */
 const BRUTES = 'captures/visite'
-/* CE QU'ON SERT, et qui entre dans le dépôt. */
-const SERVI = 'public/visite-du-produit.mp4'
+/*
+  CE QU'ON SERT, et qui entre dans le dépôt — UN FILM PAR LANGUE.
+
+  Le nom porte la langue, parce que rien d'autre ne la porte : un MP4 ne se
+  compile pas, aucune porte ne sait lire ce qui y est peint, et `visite-du-
+  produit.mp4` a servi un film français à des visiteurs anglophones pendant une
+  journée sans que rien ne rougisse. Mesuré le 2026-10-01.
+*/
+const SERVI = (code) => `public/visite-du-produit.${code}.mp4`
 /*
   L'AFFICHE, ET ELLE N'EST PAS DÉCORATIVE.
 
@@ -116,7 +123,7 @@ const SERVI = 'public/visite-du-produit.mp4'
   LA SECONDE 3 : le tableau de bord et sa file « À traiter ». C'est ce que le
   produit fait, en une image — pas un écran de titre.
 */
-const AFFICHE = 'public/visite-affiche.jpg'
+const AFFICHE = (code) => `public/visite-affiche.${code}.jpg`
 const SECONDE_DE_L_AFFICHE = '3'
 /* CRF 30 : relevé sur une image de la modale « Bail et sûretés » à 1280 px —
    le texte des champs et des notes reste net. 28 pèse 2,43 Mo pour un gain
@@ -125,6 +132,26 @@ const QUALITE = '30'
 
 /** 1280 × 800 : la forme d'un écran de bureau ordinaire, et un poids tenable. */
 const TAILLE = { width: 1280, height: 800 }
+
+/**
+ * LES LANGUES, ET POURQUOI ELLES SE TOURNENT ENSEMBLE.
+ *
+ * Une seule commande les filme toutes, et c'est la garde contre la dérive :
+ * aucune des deux visites ne peut être refaite seule, donc elles décrivent
+ * toujours le même état du produit. C'est tout ce qu'on sait garantir — qu'un
+ * film décrive encore le produit n'est tenu par personne, et le registre
+ * `visiteFilmee.ts` l'avoue.
+ *
+ * `etiquette` est ce que lit `navigator.language`, et c'est LUI qui décide :
+ * mesuré le 2026-10-01, un contexte `en-US` sans stockage rend `<html lang>` à
+ * `en`. On pose aussi la clé de stockage, par ceinture — avec son VRAI nom,
+ * `gestlocpro.locale` : `modales.mjs` en écrit un autre, qui ne sert à rien.
+ */
+const LANGUES = [
+  { code: 'fr', etiquette: 'fr-FR' },
+  { code: 'en', etiquette: 'en-US' },
+]
+const CLE_DE_LANGUE = 'gestlocpro.locale'
 
 /**
  * LA VISITE, PLAN PAR PLAN.
@@ -140,10 +167,25 @@ const TAILLE = { width: 1280, height: 800 }
 const PLANS = [
   { adresse: '/demo', pause: 4000 },
   { adresse: '/demo/parc', pause: 4000, defiler: true },
-  { adresse: '/demo/parc/A1', pause: 3500, geste: /^Bail et sûretés$/, apresLeGeste: 5000 },
-  { adresse: '/demo/paiements', pause: 4000, geste: /^Quittance/, apresLeGeste: 4500 },
+  {
+    adresse: '/demo/parc/A1',
+    pause: 3500,
+    geste: { fr: /^Bail et sûretés$/, en: /^Lease and sureties$/ },
+    apresLeGeste: 5000,
+  },
+  {
+    adresse: '/demo/paiements',
+    pause: 4000,
+    geste: { fr: /^Quittance/, en: /^Receipt/ },
+    apresLeGeste: 4500,
+  },
   { adresse: '/demo/depenses', pause: 3500, defiler: true },
-  { adresse: '/demo/vacance', pause: 3000, geste: /^Ouvrir une annonce$/, apresLeGeste: 4500 },
+  {
+    adresse: '/demo/vacance',
+    pause: 3000,
+    geste: { fr: /^Ouvrir une annonce$/, en: /^Open a listing$/ },
+    apresLeGeste: 4500,
+  },
   { adresse: '/demo/manuel', pause: 4500, defiler: true },
 ]
 
@@ -199,121 +241,227 @@ async function defilerDoucement(page) {
 const serveur = await servirLaPrevisualisation('visite', PORT)
 mkdirSync(BRUTES, { recursive: true })
 
-const plaintes = []
-let plansJoues = 0
-
 const navigateur = await chromium.launch()
-const contexte = await navigateur.newContext({
-  ...SANS_AGENT_DE_SERVICE,
-  viewport: TAILLE,
-  locale: 'fr-FR',
-  recordVideo: { dir: BRUTES, size: TAILLE },
-})
-const page = await contexte.newPage()
 
-for (const plan of PLANS) {
-  try {
-    await page.goto(`${BASE}${plan.adresse}`, { waitUntil: 'networkidle' })
-    /* ATTENDRE LA DONNÉE, PAS L'IMMOBILITÉ : `networkidle` est satisfait par un
-       squelette. On attend que le cadre porte du texte avant de compter la
-       pause de lecture, sans quoi on filme un gabarit vide. */
-    await page
-      .locator('main')
-      .filter({ hasText: /\S{20,}/ })
-      .first()
-      .waitFor({ timeout: 20000 })
-      .catch(() => {})
-    await page.waitForTimeout(plan.pause)
+/**
+ * UNE LANGUE, UN FILM.
+ *
+ * LA LANGUE EST VÉRIFIÉE, PAS SUPPOSÉE. Poser `locale` sur le contexte est un
+ * RÉGLAGE ; ce qui compte est ce que la page peint. Un produit qui retomberait
+ * sur sa langue par défaut donnerait deux films français nommés différemment —
+ * exactement le défaut qu'on referme, en pire, puisqu'il porterait alors le nom
+ * de l'anglais. On lit donc `<html lang>` sur le premier plan.
+ */
+async function filmerUneLangue(langue) {
+  const plaintes = []
+  let plansJoues = 0
 
-    if (plan.defiler) await defilerDoucement(page)
-
-    if (plan.geste) {
-      const bouton = await trouverLeGeste(page, plan.geste)
-      if (!bouton) {
-        plaintes.push(
-          `${plan.adresse} : le geste ${plan.geste} est introuvable.\n` +
-            `   La visite filmerait un clic manqué, ce qui est pire qu'un plan en moins.`,
-        )
-        continue
+  const contexte = await navigateur.newContext({
+    ...SANS_AGENT_DE_SERVICE,
+    viewport: TAILLE,
+    locale: langue.etiquette,
+    recordVideo: { dir: BRUTES, size: TAILLE },
+  })
+  const page = await contexte.newPage()
+  await page.addInitScript(
+    ([cle, code]) => {
+      try {
+        localStorage.setItem(cle, code)
+      } catch {
+        /* stockage refusé : l'étiquette du contexte décide, et elle suffit */
       }
-      await bouton.click()
-      await page.waitForTimeout(plan.apresLeGeste ?? 3000)
-      await page.keyboard.press('Escape').catch(() => {})
-      await page.waitForTimeout(600)
+    },
+    [CLE_DE_LANGUE, langue.code],
+  )
+
+  for (const plan of PLANS) {
+    try {
+      await page.goto(`${BASE}${plan.adresse}`, { waitUntil: 'networkidle' })
+      /* ATTENDRE LA DONNÉE, PAS L'IMMOBILITÉ : `networkidle` est satisfait par un
+         squelette. On attend que le cadre porte du texte avant de compter la
+         pause de lecture, sans quoi on filme un gabarit vide. */
+      await page
+        .locator('main')
+        .filter({ hasText: /\S{20,}/ })
+        .first()
+        .waitFor({ timeout: 20000 })
+        .catch(() => {})
+      await page.waitForTimeout(plan.pause)
+
+      if (plansJoues === 0) {
+        const peinte = await page.evaluate(() => document.documentElement.lang)
+        if (peinte !== langue.code) {
+          plaintes.push(
+            `la page est peinte en « ${peinte} » alors qu'on filme « ${langue.code} ».\n` +
+              `   Le film porterait le nom d'une langue qu'il ne parle pas.`,
+          )
+        }
+      }
+
+      if (plan.defiler) await defilerDoucement(page)
+
+      const motif = plan.geste?.[langue.code]
+      if (plan.geste && !motif) {
+        plaintes.push(
+          `${plan.adresse} : aucun motif de geste déclaré pour « ${langue.code} ».\n` +
+            `   Le plan serait filmé sans son geste, et nul ne le verrait.`,
+        )
+      } else if (motif) {
+        const bouton = await trouverLeGeste(page, motif)
+        if (!bouton) {
+          plaintes.push(
+            `${plan.adresse} : le geste ${motif} est introuvable en ${langue.code}.\n` +
+              `   La visite filmerait un clic manqué, ce qui est pire qu'un plan en moins.`,
+          )
+        } else {
+          await bouton.click()
+          await page.waitForTimeout(plan.apresLeGeste ?? 3000)
+          await page.keyboard.press('Escape').catch(() => {})
+          await page.waitForTimeout(600)
+        }
+      }
+      plansJoues++
+    } catch (erreur) {
+      plaintes.push(`${plan.adresse} (${langue.code}) : ${String(erreur).split('\n')[0]}`)
     }
-    plansJoues++
-  } catch (erreur) {
-    plaintes.push(`${plan.adresse} : ${String(erreur).split('\n')[0]}`)
   }
+
+  /* LA VIDÉO N'EXISTE QU'APRÈS LA FERMETURE DU CONTEXTE : Playwright l'écrit à ce
+     moment-là, sous un nom aléatoire. On la renomme ensuite. */
+  await contexte.close()
+
+  const brutes = readdirSync(BRUTES)
+    .filter((f) => f.endsWith('.webm') && !f.startsWith('visite-'))
+    .map((f) => ({ f, t: statSync(join(BRUTES, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)
+
+  let brute = null
+  if (brutes.length > 0) {
+    const horodatage = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')
+    brute = `visite-${langue.code}-${horodatage}.webm`
+    renameSync(join(BRUTES, brutes[0].f), join(BRUTES, brute))
+  }
+
+  /* GARDE DU GARDE : « aucune plainte » et « rien de filmé » s'écrivent pareil. */
+  if (plansJoues !== PLANS.length) {
+    plaintes.push(`${plansJoues} plan(s) joué(s) pour ${PLANS.length} déclarés en ${langue.code}.`)
+  }
+  if (!brute) {
+    plaintes.push(`aucun fichier vidéo écrit en ${langue.code} — l'enregistrement n'a pas eu lieu.`)
+  }
+
+  return { plaintes, plansJoues, brute }
 }
 
-/* LA VIDÉO N'EXISTE QU'APRÈS LA FERMETURE DU CONTEXTE : Playwright l'écrit à ce
-   moment-là, sous un nom aléatoire. On la renomme ensuite. */
-await contexte.close()
-await navigateur.close()
-serveur.kill()
-
-/*
-  LA BRUTE, PUIS CE QU'ON SERT.
-
-  Playwright écrit un WebM sous un nom aléatoire à la fermeture du contexte. On
-  le ré-encode en H.264 vers `public/`, et l'on GARDE la brute : c'est la source
-  du prochain ré-encodage si l'on veut changer de qualité sans refilmer.
-*/
-const brutes = readdirSync(BRUTES)
-  .filter((f) => f.endsWith('.webm') && !f.startsWith('visite-'))
-  .map((f) => ({ f, t: statSync(join(BRUTES, f)).mtimeMs }))
-  .sort((a, b) => b.t - a.t)
-
-let brute = null
-if (brutes.length > 0) {
-  brute = `visite-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.webm`
-  renameSync(join(BRUTES, brutes[0].f), join(BRUTES, brute))
-}
-
-/* GARDE DU GARDE : « aucune plainte » et « rien de filmé » s'écrivent pareil. */
-if (plansJoues !== PLANS.length) {
-  plaintes.push(`${plansJoues} plan(s) joué(s) pour ${PLANS.length} déclarés.`)
-}
-if (!brute) {
-  plaintes.push("aucun fichier vidéo n'a été écrit — l'enregistrement n'a pas eu lieu.")
-}
-
-let poidsServi = null
-let poidsAffiche = null
-if (brute) {
-  /*
-    SANS `ffmpeg`, ON NE SERT PAS LA BRUTE. Cinq mégaoctets non optimisés dans
-    `public/` seraient pires que pas de vidéo : le dépôt les porterait pour
-    toujours. On le DIT, on garde la brute, et l'on sort en 1 — c'est un échec
-    de production, pas un avertissement.
-  */
+/**
+ * LA BRUTE, PUIS CE QU'ON SERT.
+ *
+ * Playwright écrit un WebM. On le ré-encode en H.264 vers `public/`, et l'on
+ * GARDE la brute : c'est la source du prochain ré-encodage si l'on veut changer
+ * de qualité sans refilmer.
+ *
+ * SANS `ffmpeg`, ON NE SERT PAS LA BRUTE. Cinq mégaoctets non optimisés dans
+ * `public/` seraient pires que pas de vidéo : le dépôt les porterait pour
+ * toujours. On le DIT, on garde la brute, et l'on sort en 1 — c'est un échec de
+ * production, pas un avertissement.
+ *
+ * ET L'ON DÉPOSE DANS `dist/`, CE QUI N'EST PAS UNE COMMODITÉ.
+ *
+ * La caméra filme `vite preview`, qui sert `dist/` — jamais `public/`, jamais
+ * les sources. Un fichier écrit dans `public/` après la construction est donc
+ * INVISIBLE à la caméra. Mesuré le 2026-10-01 : la première rédaction refilmait
+ * la langue neuve en croyant lui montrer sa visite, et `dist/` n'a jamais porté
+ * que le français — le manuel anglais s'est filmé avec un lecteur vide, et le
+ * défaut était cuit dans le film livré. Raisonner sur l'ORDRE des passes ne
+ * touchait pas la cause, qui est la RACINE SERVIE.
+ */
+function encoder(langue, brute) {
+  const video = join(RACINE_DU_DEPOT, SERVI(langue.code))
+  const affiche = join(RACINE_DU_DEPOT, AFFICHE(langue.code))
   try {
     execFileSync(
       'ffmpeg',
       ['-y', '-v', 'error', '-i', join(BRUTES, brute),
        '-c:v', 'libx264', '-crf', QUALITE, '-preset', 'slow',
        '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an',
-       join(RACINE_DU_DEPOT, SERVI)],
+       video],
       { stdio: 'pipe' },
     )
     execFileSync(
       'ffmpeg',
-      ['-y', '-v', 'error', '-ss', SECONDE_DE_L_AFFICHE, '-i', join(RACINE_DU_DEPOT, SERVI),
+      ['-y', '-v', 'error', '-ss', SECONDE_DE_L_AFFICHE, '-i', video,
        '-frames:v', '1', '-vf', 'scale=960:-2', '-q:v', '9',
-       join(RACINE_DU_DEPOT, AFFICHE)],
+       affiche],
       { stdio: 'pipe' },
     )
-    poidsServi = statSync(join(RACINE_DU_DEPOT, SERVI)).size
-    poidsAffiche = statSync(join(RACINE_DU_DEPOT, AFFICHE)).size
+    /* Vers la racine servie, pour que la passe suivante puisse les voir. */
+    for (const fichier of [video, affiche]) {
+      const servi = join(RACINE_DU_DEPOT, 'dist', basename(fichier))
+      if (existsSync(dirname(servi))) copyFileSync(fichier, servi)
+    }
+
+    return { video: statSync(video).size, affiche: statSync(affiche).size, plainte: null }
   } catch (erreur) {
-    plaintes.push(
-      `le ré-encodage a échoué : ${String(erreur.message ?? erreur).split('\n')[0]}\n` +
+    return {
+      video: null,
+      affiche: null,
+      plainte:
+        `le ré-encodage de ${langue.code} a échoué : ${String(erreur.message ?? erreur).split('\n')[0]}\n` +
         `   La brute reste dans ${BRUTES}/${brute}. Sans \`ffmpeg\`, on ne pose rien\n` +
         `   dans \`public/\` : cinq mégaoctets non optimisés y resteraient pour toujours.`,
-    )
+    }
   }
 }
+
+/*
+  LA VISITE SE FILME ELLE-MÊME, et il faut parfois deux passes pour que ce soit
+  vrai.
+
+  Le dernier plan est `/demo/manuel`, qui PORTE le lecteur de la visite de sa
+  langue. Si ce fichier n'était pas encore dans `dist/` au moment du tournage, on
+  a filmé un lecteur vide là où le produit montre une affiche — et le défaut est
+  cuit dans le film livré, invisible à toute porte.
+
+  LA CONDITION PORTE SUR `dist/`, PAS SUR `public/`, et c'est la correction d'une
+  première rédaction fausse : écrire dans `public/` après la construction ne
+  montre rien à la caméra. On relève donc, AVANT chaque tournage, ce que la
+  racine servie portait vraiment ; `encoder` l'y dépose ensuite, ce qui rend la
+  seconde passe possible dans la même exécution.
+*/
+const AVEUGLES = new Set()
+
+const plaintes = []
+const rapports = []
+
+for (const passe of [1, 2]) {
+  for (const langue of LANGUES) {
+    if (passe === 1) {
+      const dansLaRacineServie = existsSync(
+        join(RACINE_DU_DEPOT, 'dist', basename(SERVI(langue.code))),
+      )
+      if (!dansLaRacineServie) AVEUGLES.add(langue.code)
+    } else if (!AVEUGLES.has(langue.code)) continue
+
+    const { plaintes: dites, plansJoues, brute } = await filmerUneLangue(langue)
+    plaintes.push(...dites)
+    if (!brute) continue
+
+    const { video, affiche, plainte } = encoder(langue, brute)
+    if (plainte) {
+      plaintes.push(plainte)
+      continue
+    }
+    /* Le rapport de la SECONDE passe remplace celui de la première. */
+    const deja = rapports.findIndex((r) => r.code === langue.code)
+    const rapport = { code: langue.code, plansJoues, brute, video, affiche, passe }
+    if (deja >= 0) rapports[deja] = rapport
+    else rapports.push(rapport)
+  }
+  if (AVEUGLES.size === 0) break
+}
+
+serveur.kill()
+await navigateur.close()
 
 if (plaintes.length > 0) {
   console.error(`\n✗ visite : ${plaintes.length} plainte(s).\n`)
@@ -322,15 +470,23 @@ if (plaintes.length > 0) {
 }
 
 const mo = (o) => (o / 1_048_576).toFixed(2)
+console.log(`\n✓ visite : ${LANGUES.length} langue(s) filmées sur le paquet de cet arbre.\n`)
+for (const r of rapports) {
+  console.log(
+    `  ${r.code} — ${r.plansJoues} plans, ${SERVI(r.code)} à ${mo(r.video)} Mo en H.264,\n` +
+      `       depuis ${mo(statSync(join(BRUTES, r.brute)).size)} Mo de brute ;\n` +
+      `       ${AFFICHE(r.code)} à ${Math.round(r.affiche / 1024)} Ko, sans quoi le lecteur\n` +
+      `       est un rectangle gris sous un titre qui promet une visite.` +
+      (r.passe === 2
+        ? `\n       Seconde passe : la racine servie ne portait pas cette visite\n` +
+          `       au premier tournage, le manuel s'y filmait avec un lecteur vide.`
+        : ''),
+  )
+}
 console.log(
-  `\n✓ visite : ${plansJoues} plans filmés sur le paquet de cet arbre.\n` +
-    `  ${SERVI} — ${mo(poidsServi)} Mo en H.264, ` +
-    `depuis ${mo(statSync(join(BRUTES, brute)).size)} Mo de brute.\n` +
-    `  ${AFFICHE} — ${Math.round(poidsAffiche / 1024)} Ko, sans quoi le lecteur\n` +
-    `  est un rectangle gris sous un titre qui promet une visite.\n` +
-    `  ${TAILLE.width}×${TAILLE.height}, sans son, sans sous-titres.\n\n` +
-    `  CE FICHIER ENTRE DANS LE DÉPÔT : committez-le avec le lot, et relancez\n` +
-    `  les portes — il change la hauteur de l'écran du manuel et son poids.\n` +
-    `  La brute reste dans ${BRUTES}/, qui est exclu : elle sert à ré-encoder\n` +
-    `  sans refilmer.\n`,
+  `\n  ${TAILLE.width}×${TAILLE.height}, sans son, sans sous-titres.\n\n` +
+    `  CES FICHIERS ENTRENT DANS LE DÉPÔT : committez-les avec le lot, et relancez\n` +
+    `  les portes — ils changent la hauteur de l'écran du manuel et son poids.\n` +
+    `  Les brutes restent dans ${BRUTES}/, qui est exclu : elles servent à\n` +
+    `  ré-encoder sans refilmer.\n`,
 )

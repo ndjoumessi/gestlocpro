@@ -7,29 +7,29 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "308fb1c0",
- "empreinteDesSources": "4149d3a889031950da7716c718f882a868b1181757e34c1bd260524cf57d7504",
+ "course": "e4900d99",
+ "empreinteDesSources": "c370268ef3f94282b89cc57e9365ddd06f9283bfa5f2aa7345ff31cec1ff70f7",
  "mesures": {
   "/@360": {
-   "octets": 575050,
-   "octetsFil": 187159,
+   "octets": 575059,
+   "octetsFil": 187164,
    "requetes": 4,
    "releve": {
-    "de": 535166,
+    "de": 575050,
     "requetesDe": 4,
-    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
-    "course": "308fb1c0"
+    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
+    "course": "e4900d99"
    }
   },
   "/demo@360": {
-   "octets": 438291,
-   "octetsFil": 124299,
+   "octets": 438482,
+   "octetsFil": 124356,
    "requetes": 2,
    "releve": {
-    "de": 294727,
+    "de": 438291,
     "requetesDe": 2,
-    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
-    "course": "308fb1c0"
+    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
+    "course": "e4900d99"
    }
   },
   "/demo/paiements@360": {
@@ -55,30 +55,36 @@
    }
   },
   "/demo/manuel@360": {
-   "octets": 65639,
-   "octetsFil": 64449,
-   "requetes": 3
+   "octets": 65803,
+   "octetsFil": 64613,
+   "requetes": 3,
+   "releve": {
+    "de": 65639,
+    "requetesDe": 3,
+    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
+    "course": "e4900d99"
+   }
   },
   "/@1280": {
-   "octets": 575050,
-   "octetsFil": 187159,
+   "octets": 575059,
+   "octetsFil": 187164,
    "requetes": 4,
    "releve": {
-    "de": 535166,
+    "de": 575050,
     "requetesDe": 4,
-    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
-    "course": "308fb1c0"
+    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
+    "course": "e4900d99"
    }
   },
   "/demo@1280": {
-   "octets": 438291,
-   "octetsFil": 124299,
+   "octets": 438482,
+   "octetsFil": 124356,
    "requetes": 2,
    "releve": {
-    "de": 294727,
+    "de": 438291,
     "requetesDe": 2,
-    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
-    "course": "308fb1c0"
+    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
+    "course": "e4900d99"
    }
   },
   "/demo/paiements@1280": {
@@ -104,9 +110,15 @@
    }
   },
   "/demo/manuel@1280": {
-   "octets": 65639,
-   "octetsFil": 64449,
-   "requetes": 3
+   "octets": 65803,
+   "octetsFil": 64613,
+   "requetes": 3,
+   "releve": {
+    "de": 65639,
+    "requetesDe": 3,
+    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
+    "course": "e4900d99"
+   }
   }
  }
 }

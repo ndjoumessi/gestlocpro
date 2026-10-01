@@ -280,6 +280,62 @@ try {
   plaintes.push(`/api/auth/me : injoignable — ${String(erreur).split('\n')[0]}`)
 }
 
+/*
+  LES VISITES FILMÉES, SERVIES PAR L'HÔTE — UNE PAR LANGUE.
+
+  POURQUOI CE CONTRÔLE N'EST PAS COUVERT PAR CELUI D'EN HAUT : « aucun fichier
+  réclamé et non servi » ne regarde que les entrées `script` et `link` de
+  l'accueil. Une vidéo est une entrée `video`, son affiche une entrée `img`, et
+  toutes deux vivent sur `/demo/manuel`. Le manuel a longtemps porté une prose
+  disant que cette porte-ci le dirait ; elle ne l'aurait pas dit. C'est réparé
+  en rendant la phrase VRAIE, et non en la supprimant.
+
+  ET LE 200 NE SUFFIT PAS. Le produit est servi derrière une réécriture : un
+  fichier absent rend la coquille de l'application avec un 200 et du
+  `text/html`. C'est le piège mesuré au début de cette session — « toute adresse
+  rend 200 » —, appliqué à un binaire. On lit donc le TYPE, et l'on demande le
+  premier octet plutôt que deux mégaoctets : un `Range` suffit à prouver qu'un
+  corps existe, et la fumée tourne tous les jours.
+
+  LA LISTE VIENT DU REGISTRE, LUE COMME UN TEXTE — l'idiome du dépôt pour un
+  `.ts` qu'un `.mjs` ne peut pas importer. Une troisième langue ajoutée demain
+  est donc contrôlée ici sans que personne y pense.
+*/
+const REGISTRE_DES_VISITES = readFileSync(
+  new URL('../src/features/dashboard/visiteFilmee.ts', import.meta.url),
+  'utf8',
+)
+const FICHIERS_DE_VISITE = [...REGISTRE_DES_VISITES.matchAll(/'(\/visite-[^']+)'/g)].map((m) => m[1])
+
+/* GARDE DU GARDE : un registre déplacé rendrait zéro chemin, et « aucune visite
+   manquante parmi zéro » s'écrit comme « tout va bien ». */
+controles++
+if (FICHIERS_DE_VISITE.length < 2) {
+  plaintes.push(
+    `visites : ${FICHIERS_DE_VISITE.length} chemin(s) lus dans le registre, au moins 2 attendus.\n` +
+      `   Le registre a bougé : ce contrôle ne contrôle plus rien.`,
+  )
+}
+
+for (const chemin of FICHIERS_DE_VISITE) {
+  controles++
+  try {
+    const r = await contexte.request.get(`${HOTE}${chemin}`, { headers: { Range: 'bytes=0-0' } })
+    const type = r.headers()['content-type'] ?? ''
+    if (!r.ok()) {
+      plaintes.push(`${chemin} : ${r.status()} — la visite n'est pas servie par l'hôte.`)
+    } else if (!/^(video|image)\//.test(type)) {
+      plaintes.push(
+        `${chemin} : servi en « ${type} » au lieu d'une vidéo ou d'une image.\n` +
+          `   C'est la coquille de l'application rendue par la réécriture : le\n` +
+          `   fichier est ABSENT, et le 200 ne le dit pas.`,
+      )
+    }
+  } catch (erreur) {
+    plaintes.push(`${chemin} : injoignable — ${String(erreur).split('\n')[0]}`)
+  }
+}
+
 /* UNE SEULE POLITIQUE DE SÉCURITÉ. Deux en-têtes s'appliquent en INTERSECTION,
    et le résultat n'est écrit nulle part — personne ne l'a voulu ni relu. */
 controles++
@@ -579,7 +635,8 @@ if (plaintes.length > 0) {
 console.log(
   `✓ fumée : ${controles} contrôles sur l'hôte VIVANT, dans un vrai navigateur —\n` +
     `  la vitrine, un lien profond et l'écran de connexion PEINTS, aucun fichier\n` +
-    `  réclamé et non servi, les deux réponses de l'API, une seule politique.\n` +
+    `  réclamé et non servi, les deux réponses de l'API, une seule politique,\n` +
+    `  ${FICHIERS_DE_VISITE.length} fichier(s) de visite servis en vidéo ou en image, non en coquille.\n` +
     `  Du contenu rendu, jamais un code ni un titre statique.\n` +
     `  Puis ${demonstration.ecrans} écran(s) de démonstration et ${demonstration.modales} modale(s)\n` +
     `  OUVERTS sur l'hôte, sans compte — aucun ne rend l'écran « introuvable », et les\n` +
