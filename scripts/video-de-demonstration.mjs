@@ -142,16 +142,15 @@ const TAILLE = { width: 1280, height: 800 }
  * film décrive encore le produit n'est tenu par personne, et le registre
  * `visiteFilmee.ts` l'avoue.
  *
- * `etiquette` est ce que lit `navigator.language`, et c'est LUI qui décide :
- * mesuré le 2026-10-01, un contexte `en-US` sans stockage rend `<html lang>` à
- * `en`. On pose aussi la clé de stockage, par ceinture — avec son VRAI nom,
- * `gestlocpro.locale` : `modales.mjs` en écrit un autre, qui ne sert à rien.
+ * `etiquette` est ce que lit `navigator.language` : mesuré le 2026-10-01, un
+ * contexte `en-US` sans stockage rend `<html lang>` à `en`. On pose AUSSI
+ * `gestlocpro.locale`, et cette ceinture-là est réelle — elle est lue avant
+ * l'étiquette. Écrite en toutes lettres : une clé de stockage doit se gripper.
  */
 const LANGUES = [
   { code: 'fr', etiquette: 'fr-FR' },
   { code: 'en', etiquette: 'en-US' },
 ]
-const CLE_DE_LANGUE = 'gestlocpro.locale'
 
 /**
  * LA VISITE, PLAN PAR PLAN.
@@ -263,16 +262,13 @@ async function filmerUneLangue(langue) {
     recordVideo: { dir: BRUTES, size: TAILLE },
   })
   const page = await contexte.newPage()
-  await page.addInitScript(
-    ([cle, code]) => {
-      try {
-        localStorage.setItem(cle, code)
-      } catch {
-        /* stockage refusé : l'étiquette du contexte décide, et elle suffit */
-      }
-    },
-    [CLE_DE_LANGUE, langue.code],
-  )
+  await page.addInitScript((code) => {
+    try {
+      localStorage.setItem('gestlocpro.locale', code)
+    } catch {
+      /* stockage refusé : l'étiquette du contexte décide, et elle suffit */
+    }
+  }, langue.code)
 
   for (const plan of PLANS) {
     try {

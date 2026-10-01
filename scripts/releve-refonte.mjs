@@ -217,7 +217,7 @@ try {
     const page = await contexte.newPage()
     await page.addInitScript((l) => {
       try {
-        localStorage.setItem('gestloc.lang', l)
+        localStorage.setItem('gestlocpro.locale', l)
       } catch {
         /* stockage refusé : la langue reste celle du contexte */
       }
