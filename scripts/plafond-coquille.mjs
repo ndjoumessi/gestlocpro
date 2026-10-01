@@ -49,6 +49,7 @@ import { mkdir } from 'node:fs/promises'
 import { exit } from 'node:process'
 import { inventaireDesRoutes, exigerUnInventairePlein } from './inventaire/routes.mjs'
 import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
+import { laColonneNormalePeutEtreANous, releverLeTemoin } from './temoin-de-la-machine.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 import { neutraliserLApiLocale } from './api-locale-neutralisee.mjs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
@@ -331,6 +332,10 @@ const ADRESSES = routes.map((r) => r.adresse)
 
 const serveur = await servirLaPrevisualisation('plafond-coquille', PORT)
 const plaintes = []
+/* Le témoin de la machine, relevé une fois sur la première page — voir son
+   usage plus bas. `true` par défaut en police imposée : elle est reproductible. */
+let temoinDeLaMachine = null
+let colonneANous = true
 const releve = []
 let inspectes = 0
 /** Les routes déclarées sans écran, comptées pour que leur nombre soit gardé. */
@@ -352,6 +357,13 @@ try {
     const page = await contexte.newPage()
     for (const adresse of ADRESSES) {
       await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
+      /* LE TÉMOIN DE LA MACHINE, une fois pour toute la porte : il décrit la
+         MACHINE, pas l'écran. Relevé sur la première page ouverte plutôt que
+         dans une page à lui. */
+      if (temoinDeLaMachine === null) {
+        temoinDeLaMachine = await releverLeTemoin(page)
+        if (!POLICE_LARGE) colonneANous = laColonneNormalePeutEtreANous(temoinDeLaMachine)
+      }
       await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
       /*
         ON ATTEND LES POLICES — MAIS PLUS POUR LA RAISON QU'ON CROYAIT.
@@ -436,7 +448,21 @@ try {
          a cote d'une hauteur mesuree en police large, et se contredirait. */
       releve.push({ nom, h, famille, ...p, plafond: plafondDe(p) })
       const plafond = plafondDe(p)
-      if (h > plafond) {
+      /*
+        ON NE REFUSE QUE SUR UNE COLONNE QUI EST LA NÔTRE.
+
+        Cette porte portait deux colonnes et AUCUN témoin — le défaut même que
+        `temoin-de-la-machine` a été écrit pour corriger le 2026-09-27, resté
+        ici parce que la correction n'avait visé que trois portes sur cinq. Sur
+        une machine dont `system-ui` vaut la face de repli, elle refusait sur un
+        plafond qu'aucune de ses mesures ne concerne, et ce rouge-là s'annonce
+        comme une dette alors qu'il ne mesure rien.
+
+        EN POLICE IMPOSÉE, ON JUGE PARTOUT : Verdana est posée par CSS et toute
+        machine la rend pareil. C'est la colonne NATIVE, et elle seule, qui
+        appartient à une machine.
+      */
+      if (h > plafond && colonneANous) {
         /*
           ON REMESURE, ET LES DEUX LECTURES SONT DITES — SANS QUE LA SECONDE
           SAUVE LA PREMIÈRE.
@@ -542,6 +568,14 @@ if (plaintes.length > 0) {
 console.log(
   `\n✓ plafond-coquille : ${inspectes}/${ATTENDUS} écrans sous leur plafond de hauteur avant contenu.\n` +
     '  Ce script ne dit RIEN de ce que cette hauteur contient — voir son en-tête.' +
+    /* AU VERT AUSSI, et c'est le point : un vert obtenu sur une colonne qui
+       n'est pas la nôtre n'est pas une assurance. Il ne se dirait qu'au rouge
+       si on le laissait au seul refus. */
+    (colonneANous
+      ? ''
+      : `\n  ⚠ Colonne « plafond » NON JUGÉE : \`system-ui\` vaut ici la face de repli\n` +
+        `    (${temoinDeLaMachine?.systeme} px contre ${temoinDeLaMachine?.repli} px), donc cette machine\n` +
+        '    ne possède pas la colonne native. Ce vert ne porte que sur ce qui a été mesuré.\n') +
     (policesEnRetard.length > 0
       ? `\n  ⚠ ${policesEnRetard.length} point(s) mesuré(s) SANS que les polices soient prêtes : ` +
         `${policesEnRetard.join(', ')}.\n` +

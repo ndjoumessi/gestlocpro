@@ -73,7 +73,12 @@ import { exigerUnPaquetAJour } from './paquet-a-jour.mjs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
-import { imposerLaPoliceLarge } from './police-large.mjs'
+/* `POLICE_LARGE` EST REVENU ICI LE 2026-10-01, et ce n'est pas un retour en
+   arrière : il était parti avec `plafondDe` vers `modales/plafonds.mjs`, et il
+   revient pour une AUTRE question — savoir si la colonne native appartient à
+   cette machine. Le témoin ci-dessous en a besoin ; le choix de colonne, non. */
+import { POLICE_LARGE, imposerLaPoliceLarge } from './police-large.mjs'
+import { laColonneNormalePeutEtreANous, releverLeTemoin } from './temoin-de-la-machine.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 /* La MÊME sonde que `mesure-ui` et `espace-connecte`, bornée au dialogue. */
 import {
@@ -133,6 +138,22 @@ exigerUnPaquetAJour()
 
 const serveur = await servirLaPrevisualisation('modales', PORT)
 const plaintes = []
+/*
+  LE TÉMOIN DE LA MACHINE, et cette porte n'en avait pas.
+
+  Elle porte deux colonnes — `defil` et `defilLarge` — depuis le 2026-09-09, et
+  refusait sur la NATIVE quelle que soit la machine. C'est exactement le faux
+  rapport que `temoin-de-la-machine` a été écrit pour corriger le 2026-09-27 ;
+  la correction n'avait visé que trois portes sur cinq, et celle-ci était du
+  mauvais côté. Sur un exécuteur Linux sans commutateur, elle refuse des modales
+  sur des plafonds relevés sous SF Pro, qu'aucune de ses mesures ne concerne.
+
+  `true` par défaut : en police IMPOSÉE, Verdana est posée par CSS et toute
+  machine la rend pareil — cette colonne-là n'appartient à personne en
+  particulier, donc elle se juge partout.
+*/
+let temoinDeLaMachine = null
+let colonneANous = true
 /* Combien de modales la sonde des gabarits a lues — voir sa garde du garde. */
 let gabaritsInspectes = 0
 /* Ce que les deux audits de modale ont réellement examiné — leurs gardes. */
@@ -166,6 +187,12 @@ try {
         await page.goto(BASE + modale.adresse, { waitUntil: 'domcontentloaded' })
         await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {})
         await page.waitForTimeout(400)
+        /* UNE FOIS SUFFIT : le témoin décrit la MACHINE, pas la modale. Relevé
+           sur la première page ouverte plutôt que dans une page à lui. */
+        if (temoinDeLaMachine === null) {
+          temoinDeLaMachine = await releverLeTemoin(page)
+          if (!POLICE_LARGE) colonneANous = laColonneNormalePeutEtreANous(temoinDeLaMachine)
+        }
 
         const nom = `${modale.nom}@${largeur}/${langue}`
 
@@ -660,7 +687,9 @@ try {
               '   gardant la forme longue dans sa liste (`OptionCombobox.resume`).',
           )
         }
-        if (m.defil > plafondDe(modale, largeur)) {
+        /* ON NE REFUSE QUE SUR UNE COLONNE QUI EST LA NÔTRE — voir la
+           déclaration de `colonneANous` et son motif. */
+        if (m.defil > plafondDe(modale, largeur) && colonneANous) {
           plaintes.push(
             `${nom} : ${m.defil} px de défilement pour un plafond de ${plafondDe(modale, largeur)}.\n` +
               `   Avant ce lot : ${modale.avant[largeur]} px.`,
@@ -774,6 +803,13 @@ const { fichiers: fichiersAuClavier, horsClavier } = lireLaCouvertureClavier(RAC
 
 console.log(
   `\n✓ modales : ${inspectees}/${ATTENDUS} états ouverts et mesurés sur ${MODALES.length} modales,\n` +
+    /* AU VERT AUSSI : un vert obtenu sur une colonne qui n'est pas la nôtre
+       n'est pas une assurance, et il ne se dirait qu'au rouge sans cette ligne. */
+    (colonneANous
+      ? ''
+      : `  ⚠ Colonne « defil » NON JUGÉE : \`system-ui\` vaut ici la face de repli\n` +
+        `    (${temoinDeLaMachine?.systeme} px contre ${temoinDeLaMachine?.repli} px) — ce vert ne\n` +
+        '    porte que sur ce que cette machine pouvait mesurer.\n') +
     `  ${textesDeModaleAudites} textes confrontés au seuil WCAG AA dans les boîtes, deux thèmes ;\n` +
     `  ${ciblesDeModaleSondees} cibles de modale sondées au doigt, plancher ${PLANCHER_CIBLE} px.\n` +
     `  ${cloturesDeModaleSondees} état(s) confronté(s) aux clôtures perméables : une boîte qui borne\n` +
