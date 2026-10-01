@@ -157,8 +157,20 @@ function octetsSurLeFil(url, corps, type) {
   return gzipSync(corps).length
 }
 
-/** Les écrans dont ce lot a touché la hiérarchie, et leurs deux largeurs. */
-const ECRANS = ['/', '/demo', '/demo/paiements', '/demo/prise-en-main']
+/**
+ * Les écrans dont ce lot a touché la hiérarchie, et leurs deux largeurs.
+ *
+ * `/demo/manuel` S'Y AJOUTE LE 2026-10-01, et pour une raison qui n'est pas la
+ * hiérarchie : il porte désormais l'actif le PLUS LOURD du produit — une visite
+ * filmée de 2,1 Mo et son affiche de 50 Ko. C'est le seul écran dont le poids
+ * peut changer sans qu'une ligne de composant bouge, et c'était le seul que
+ * cette porte ne regardait pas.
+ *
+ * CE QU'ON VEUT SAVOIR N'EST PAS LA TAILLE DU FICHIER — elle se lit avec `ls` —
+ * mais ce qu'un visiteur TÉLÉCHARGE VRAIMENT. `preload="metadata"` ne tire que
+ * l'en-tête du MP4 ; l'affiche, elle, part en entier. Seule une mesure le dit.
+ */
+const ECRANS = ['/', '/demo', '/demo/paiements', '/demo/prise-en-main', '/demo/manuel']
 const LARGEURS = [360, 1280]
 
 /**

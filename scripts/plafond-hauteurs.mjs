@@ -714,7 +714,11 @@ const PLAFONDS = [
      développement. L'inverse de ce qu'on attend, et l'inverse de ce qui se passe
      à 1280 sur le même écran — c'est précisément pourquoi aucun de ces deux
      nombres ne se recopie dans l'autre colonne. */
-  { adresse: '/demo/manuel', largeur: 360, plafond: 6018, plafondLarge: 5867 },
+  /* 6 018 → 6 112 LE 2026-10-01 : la visite filmée est entrée dans `public/` et
+     l'écran porte désormais un lecteur avec son affiche. +94 px ici, +532 à
+     1280 — l'écart tient à la largeur du lecteur, qui suit celle de la carte.
+     La colonne LARGE est relevée sur le CI, exécution citée plus bas. */
+  { adresse: '/demo/manuel', largeur: 360, plafond: 6112, plafondLarge: 0 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
@@ -843,10 +847,8 @@ const PLAFONDS = [
   { adresse: '/demo/vacance', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
-  /* 6 111 → 4 555 par les deux mêmes corrections. En police large, 4 602 : ici
-     l'écran s'ALLONGE de 47 px, quand il raccourcit de 151 à 360 px. Relevé sur
-     le CI (exécution 36821681475). */
-  { adresse: '/demo/manuel', largeur: 1280, plafond: 4555, plafondLarge: 4602 },
+  /* 4 555 → 5 087 LE 2026-10-01, par l'entrée du lecteur vidéo. */
+  { adresse: '/demo/manuel', largeur: 1280, plafond: 5087, plafondLarge: 0 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
   { adresse: '/demo/portail', largeur: 1280, plafond: 1029, plafondLarge: 1029 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 1280, plafond: 900, plafondLarge: 900 },

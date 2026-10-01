@@ -274,19 +274,6 @@ const REGISTRE = {
      l'écrit noir sur blanc. Ce registre-ci ne garde que sa PRÉSENCE et sa
      géométrie ; le caractère inconditionnel vit dans le code, sous les yeux. */
   'app.vacancy.scopeNote': { adresse: '/demo/vacance' },
-  /*
-    LA VISITE NON DÉPOSÉE, ET ELLE EST MESURABLE SANS AUCUN GESTE.
-
-    `VITE_VIDEO_DEMO` est absente en local comme en intégration : l'écran rend
-    donc cette note par DÉFAUT, et toutes les portes au navigateur la voient.
-
-    ET C'EST L'INVERSE QUI N'EST PAS MESURÉ, il faut le dire : l'état où la
-    variable EST posée — un lecteur vidéo à la place de cette note — n'est vu par
-    aucune porte, puisqu'aucune machine du dépôt ne la pose. C'est le prix d'un
-    fichier qui ne vit pas dans le dépôt, et il est écrit ici autant que dans
-    l'en-tête de `Manuel.tsx`.
-  */
-  'app.manual.videoAbsentTitle': { adresse: '/demo/manuel' },
   /* LA NOTE DE SÛRETÉ du rapprochement des noms. Mesurable depuis que la
      démonstration porte un locataire entré sans fiche — voir `ACCES_DEMO`. */
   'app.access.linkMismatch': { adresse: '/demo/acces', geste: ouvrirLaLiaison },

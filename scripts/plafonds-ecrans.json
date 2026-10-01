@@ -7,33 +7,33 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "10c37ae7",
+ "course": "308fb1c0",
  "mesures": {
   "/@360": {
-   "octets": 535166,
-   "octetsFil": 187306,
+   "octets": 575050,
+   "octetsFil": 187159,
    "requetes": 4,
    "releve": {
-    "de": 516542,
-    "requetesDe": 6,
-    "motif": "LA POLICE DES TITRES VIENT DU PRODUIT, et ces octets étaient payés sans être comptés. Nelson a tranché le 2026-09-07 : Plus Jakarta Sans quitte fonts.googleapis.com (une feuille de style bloquante et deux origines à résoudre avant la première peinture) pour public/polices/, un seul sous-ensemble latin de 27 272 octets, préchargé, rangé par l’agent de service. poids-ecrans ne comptait que l’origine du produit : ces 27 Ko arrivent donc dans chaque point mesuré — c’est EXACTEMENT le +25 826 sur le fil de /demo/paiements et /demo/prise-en-main, qui ne chargent rien d’autre de neuf. Sur /, le paquet a MAIGRI de 8,6 Ko bruts malgré la police (+18 624 dont 27 272 de police) : la feuille de style partagée a perdu text-caps sur 83 sites et les trois flous d’arrière-plan. Sur /demo, +24 046 bruts hors police : le parc en cartes par immeuble, le sélecteur de mois borné, les icônes des puces et la barre du partiel — le lot du parc du même jour, dont le morceau applicatif porte le coût. CE QUE CES OCTETS ACHÈTENT : une première peinture sans aller-retour tiers, des titres qui tiennent hors ligne, et un repli ajusté qui ne fait plus sauter la page. CE QUI RESTE VRAI : sur une PREMIÈRE visite à 400 kb/s, la police coûte 517 ms sur le fil ; sur toute visite suivante elle vient du cache de l’agent, à zéro milliseconde, ce que ce relevé de premier chargement ne voit pas.",
-    "course": "10c37ae7"
+    "de": 535166,
+    "requetesDe": 4,
+    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
+    "course": "308fb1c0"
    }
   },
   "/demo@360": {
-   "octets": 294727,
-   "octetsFil": 77665,
+   "octets": 438291,
+   "octetsFil": 124299,
    "requetes": 2,
    "releve": {
-    "de": 243409,
-    "requetesDe": 4,
-    "motif": "LA POLICE DES TITRES VIENT DU PRODUIT, et ces octets étaient payés sans être comptés. Nelson a tranché le 2026-09-07 : Plus Jakarta Sans quitte fonts.googleapis.com (une feuille de style bloquante et deux origines à résoudre avant la première peinture) pour public/polices/, un seul sous-ensemble latin de 27 272 octets, préchargé, rangé par l’agent de service. poids-ecrans ne comptait que l’origine du produit : ces 27 Ko arrivent donc dans chaque point mesuré — c’est EXACTEMENT le +25 826 sur le fil de /demo/paiements et /demo/prise-en-main, qui ne chargent rien d’autre de neuf. Sur /, le paquet a MAIGRI de 8,6 Ko bruts malgré la police (+18 624 dont 27 272 de police) : la feuille de style partagée a perdu text-caps sur 83 sites et les trois flous d’arrière-plan. Sur /demo, +24 046 bruts hors police : le parc en cartes par immeuble, le sélecteur de mois borné, les icônes des puces et la barre du partiel — le lot du parc du même jour, dont le morceau applicatif porte le coût. CE QUE CES OCTETS ACHÈTENT : une première peinture sans aller-retour tiers, des titres qui tiennent hors ligne, et un repli ajusté qui ne fait plus sauter la page. CE QUI RESTE VRAI : sur une PREMIÈRE visite à 400 kb/s, la police coûte 517 ms sur le fil ; sur toute visite suivante elle vient du cache de l’agent, à zéro milliseconde, ce que ce relevé de premier chargement ne voit pas.",
-    "course": "10c37ae7"
+    "de": 294727,
+    "requetesDe": 2,
+    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
+    "course": "308fb1c0"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -44,7 +44,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -53,31 +53,36 @@
     "course": "10c37ae7"
    }
   },
+  "/demo/manuel@360": {
+   "octets": 65639,
+   "octetsFil": 64449,
+   "requetes": 3
+  },
   "/@1280": {
-   "octets": 535166,
-   "octetsFil": 187306,
+   "octets": 575050,
+   "octetsFil": 187159,
    "requetes": 4,
    "releve": {
-    "de": 516542,
-    "requetesDe": 6,
-    "motif": "LA POLICE DES TITRES VIENT DU PRODUIT, et ces octets étaient payés sans être comptés. Nelson a tranché le 2026-09-07 : Plus Jakarta Sans quitte fonts.googleapis.com (une feuille de style bloquante et deux origines à résoudre avant la première peinture) pour public/polices/, un seul sous-ensemble latin de 27 272 octets, préchargé, rangé par l’agent de service. poids-ecrans ne comptait que l’origine du produit : ces 27 Ko arrivent donc dans chaque point mesuré — c’est EXACTEMENT le +25 826 sur le fil de /demo/paiements et /demo/prise-en-main, qui ne chargent rien d’autre de neuf. Sur /, le paquet a MAIGRI de 8,6 Ko bruts malgré la police (+18 624 dont 27 272 de police) : la feuille de style partagée a perdu text-caps sur 83 sites et les trois flous d’arrière-plan. Sur /demo, +24 046 bruts hors police : le parc en cartes par immeuble, le sélecteur de mois borné, les icônes des puces et la barre du partiel — le lot du parc du même jour, dont le morceau applicatif porte le coût. CE QUE CES OCTETS ACHÈTENT : une première peinture sans aller-retour tiers, des titres qui tiennent hors ligne, et un repli ajusté qui ne fait plus sauter la page. CE QUI RESTE VRAI : sur une PREMIÈRE visite à 400 kb/s, la police coûte 517 ms sur le fil ; sur toute visite suivante elle vient du cache de l’agent, à zéro milliseconde, ce que ce relevé de premier chargement ne voit pas.",
-    "course": "10c37ae7"
+    "de": 535166,
+    "requetesDe": 4,
+    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
+    "course": "308fb1c0"
    }
   },
   "/demo@1280": {
-   "octets": 294727,
-   "octetsFil": 77665,
+   "octets": 438291,
+   "octetsFil": 124299,
    "requetes": 2,
    "releve": {
-    "de": 243409,
-    "requetesDe": 4,
-    "motif": "LA POLICE DES TITRES VIENT DU PRODUIT, et ces octets étaient payés sans être comptés. Nelson a tranché le 2026-09-07 : Plus Jakarta Sans quitte fonts.googleapis.com (une feuille de style bloquante et deux origines à résoudre avant la première peinture) pour public/polices/, un seul sous-ensemble latin de 27 272 octets, préchargé, rangé par l’agent de service. poids-ecrans ne comptait que l’origine du produit : ces 27 Ko arrivent donc dans chaque point mesuré — c’est EXACTEMENT le +25 826 sur le fil de /demo/paiements et /demo/prise-en-main, qui ne chargent rien d’autre de neuf. Sur /, le paquet a MAIGRI de 8,6 Ko bruts malgré la police (+18 624 dont 27 272 de police) : la feuille de style partagée a perdu text-caps sur 83 sites et les trois flous d’arrière-plan. Sur /demo, +24 046 bruts hors police : le parc en cartes par immeuble, le sélecteur de mois borné, les icônes des puces et la barre du partiel — le lot du parc du même jour, dont le morceau applicatif porte le coût. CE QUE CES OCTETS ACHÈTENT : une première peinture sans aller-retour tiers, des titres qui tiennent hors ligne, et un repli ajusté qui ne fait plus sauter la page. CE QUI RESTE VRAI : sur une PREMIÈRE visite à 400 kb/s, la police coûte 517 ms sur le fil ; sur toute visite suivante elle vient du cache de l’agent, à zéro milliseconde, ce que ce relevé de premier chargement ne voit pas.",
-    "course": "10c37ae7"
+    "de": 294727,
+    "requetesDe": 2,
+    "motif": "TROIS SEMAINES DE CROISSANCE NON INSCRITE, ET L'ATTRIBUTION EST MESURÉE. Les plafonds dataient du 2026-09-07 ; en mode normal cette porte RAPPORTE une hausse sans la refuser, et le cliquet n'avait été actionné par personne depuis. Mesuré à 9a95849, juste avant le lot du manuel : / valait déjà 569 241 o et /demo 431 068. Les huit lots fonctionnels de septembre portent donc +34 075 et +136 341 — dépenses, honoraires, congé, apurement, justificatif, charges, WhatsApp, vacance, chacun avec ses écrans, ses modales et ses dictionnaires. LE MANUEL ET SA VISITE NE COÛTENT QUE +5 809 ET +7 223 : trente gestes, leurs phrases dans deux langues, et un lecteur vidéo. Le FILM lui-même ne pèse sur AUCUN de ces deux points — il vit sur /demo/manuel, désormais mesuré à son tour, et preload=metadata ne tire que l'en-tête du MP4. Ce qu'un visiteur télécharge n'est pas ce que le dépôt porte.",
+    "course": "308fb1c0"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -88,7 +93,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -96,6 +101,11 @@
     "motif": "LA POLICE DES TITRES VIENT DU PRODUIT, et ces octets étaient payés sans être comptés. Nelson a tranché le 2026-09-07 : Plus Jakarta Sans quitte fonts.googleapis.com (une feuille de style bloquante et deux origines à résoudre avant la première peinture) pour public/polices/, un seul sous-ensemble latin de 27 272 octets, préchargé, rangé par l’agent de service. poids-ecrans ne comptait que l’origine du produit : ces 27 Ko arrivent donc dans chaque point mesuré — c’est EXACTEMENT le +25 826 sur le fil de /demo/paiements et /demo/prise-en-main, qui ne chargent rien d’autre de neuf. Sur /, le paquet a MAIGRI de 8,6 Ko bruts malgré la police (+18 624 dont 27 272 de police) : la feuille de style partagée a perdu text-caps sur 83 sites et les trois flous d’arrière-plan. Sur /demo, +24 046 bruts hors police : le parc en cartes par immeuble, le sélecteur de mois borné, les icônes des puces et la barre du partiel — le lot du parc du même jour, dont le morceau applicatif porte le coût. CE QUE CES OCTETS ACHÈTENT : une première peinture sans aller-retour tiers, des titres qui tiennent hors ligne, et un repli ajusté qui ne fait plus sauter la page. CE QUI RESTE VRAI : sur une PREMIÈRE visite à 400 kb/s, la police coûte 517 ms sur le fil ; sur toute visite suivante elle vient du cache de l’agent, à zéro milliseconde, ce que ce relevé de premier chargement ne voit pas.",
     "course": "10c37ae7"
    }
+  },
+  "/demo/manuel@1280": {
+   "octets": 65639,
+   "octetsFil": 64449,
+   "requetes": 3
   }
  }
 }

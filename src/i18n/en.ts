@@ -2255,10 +2255,7 @@ export const en: Dictionary = {
       videoTitle: 'A walk through the product',
       videoBody:
         'The product in use, on the demonstration portfolio. Nothing is staged: these are the screens you will get.',
-      videoAbsentTitle: 'The walkthrough has not been uploaded yet',
-      videoAbsentBody:
-        'You can walk the product yourself: the demonstration carries three buildings, twelve units and a year of fictional movements.',
-      videoAbsentAction: 'Open the demonstration',
+      videoTryIt: 'Open the demonstration',
       videoFallback:
         'Your browser cannot play this video. The demonstration, however, opens anywhere.',
 

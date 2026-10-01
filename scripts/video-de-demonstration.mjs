@@ -28,21 +28,31 @@
  * c'est équivalent serait faux — une personne sourde n'a pas la vidéo, elle a le
  * manuel — et c'est pourquoi le manuel n'est pas optionnel.
  *
- * ═══ OÙ LE FICHIER VA, ET POURQUOI PAS DANS LE DÉPÔT ═══
+ * ═══ OÙ LE FICHIER VA — DANS LE DÉPÔT, ET C'EST UN REVIREMENT ═══
  *
- * Dans `captures/visite/`, qui est DÉJÀ exclu du dépôt. Un WebM de plusieurs
- * mégaoctets dans `public/` — 76 Ko aujourd'hui, polices comprises — changerait
- * ce que chaque visiteur télécharge, et ferait entrer un binaire dérivé dans
- * chaque revue. C'est le même arbitrage que les brutes de photos, et il a déjà
- * été tranché ici.
+ * La première rédaction le laissait dans `captures/`, exclu du dépôt, à charge
+ * pour quelqu'un de l'héberger et d'en poser l'adresse dans `VITE_VIDEO_DEMO`.
+ * Conséquence observée : le fichier existait, le lecteur existait, et le produit
+ * affichait « la visite n'est pas encore déposée ». Une vidéo qu'il faut
+ * héberger à la main est une vidéo qui n'existe pas pour l'utilisateur.
  *
- * CE QU'IL FAUT FAIRE DU FICHIER, en deux gestes :
+ * ELLE VIT DONC DANS `public/`, et le prix est mesuré, pas supposé :
  *
- *   1. le déposer sur un hébergement que vous contrôlez (un espace de stockage,
- *      un sous-domaine, un CDN) ;
- *   2. poser son adresse dans `VITE_VIDEO_DEMO` à la construction. Sans elle,
- *      l'écran du manuel DIT que la visite n'est pas déposée et propose la
- *      démonstration vivante — il ne peint pas un lecteur vide.
+ *   5,20 Mo   ce que Playwright écrit — VP8, 790 kbps, non optimisé
+ *   2,04 Mo   après ré-encodage H.264 (CRF 30), texte des modales intact
+ *
+ * H.264 ET NON WEBM : il se lit PARTOUT, Safari compris. Le marché visé est le
+ * téléphone, et un bailleur sur iPhone qui ne voit rien n'a pas de visite. Un
+ * second format en repli doublerait le poids du dépôt pour un cas que celui-ci
+ * couvre déjà.
+ *
+ * `preload="metadata"` dans le produit : un visiteur du manuel qui ne lance pas
+ * la vidéo n'en télécharge que l'en-tête. Le fichier pèse dans le DÉPÔT, pas
+ * dans ce que reçoit quelqu'un venu chercher un geste.
+ *
+ * LE RÉ-ENCODAGE EST DANS CE SCRIPT, et non dans une note à suivre. L'outil qui
+ * produit l'artefact doit produire CELUI QU'ON SERT ; une étape manuelle entre
+ * les deux est une étape qu'on oublie, et le dépôt porterait alors les 5,2 Mo.
  *
  *   node scripts/video-de-demonstration.mjs        ·     npm run visite
  *
@@ -53,11 +63,16 @@
  * écran figé sur un clic manqué —, et c'est la seule chose qu'il vérifie.
  */
 import { chromium } from 'playwright'
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, readdirSync, renameSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
+
+/* La racine, déduite de ce fichier : ce script peut être lancé d'ailleurs. */
+const RACINE_DU_DEPOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /*
   4181 ET NON 4190, ET LA RAISON EST MESURÉE.
@@ -76,7 +91,37 @@ import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
 */
 const PORT = 4181
 const BASE = `http://127.0.0.1:${PORT}`
-const SORTIE = 'captures/visite'
+/* LA BRUTE, hors dépôt : on ne versionne pas ce que Playwright écrit. */
+const BRUTES = 'captures/visite'
+/* CE QU'ON SERT, et qui entre dans le dépôt. */
+const SERVI = 'public/visite-du-produit.mp4'
+/*
+  L'AFFICHE, ET ELLE N'EST PAS DÉCORATIVE.
+
+  `preload="metadata"` ne peint aucune image : sans affiche, le lecteur est un
+  RECTANGLE GRIS VIDE sous un titre qui promet une visite — exactement ce qu'on
+  lit comme une panne. Vu sur le dernier plan du premier enregistrement, où le
+  manuel se filme lui-même.
+
+  960 px DE LARGE ET `-q:v 9`, SOIT 35 Ko. Le lecteur rend au plus ~1 100 px sur
+  un écran de bureau : une affiche fixe légèrement agrandie ne se distingue pas.
+  Relevé des variantes, sur l'image du tableau de bord : 1280 px → 90 Ko,
+  960/q5 → 50 Ko, 960/q7 → 41, 960/q9 → 35, et le texte des cartes « À traiter »
+  reste net à l'œil. En dessous, les libellés gris commencent à baver.
+
+  CES 15 Ko COMPTENT : l'écran du manuel pèse 80 801 o au total pour un visiteur,
+  dont l'affiche était la moitié. Sur le profil visé — 400 kb/s — chaque dizaine
+  de kilo-octets vaut deux dixièmes de seconde.
+
+  LA SECONDE 3 : le tableau de bord et sa file « À traiter ». C'est ce que le
+  produit fait, en une image — pas un écran de titre.
+*/
+const AFFICHE = 'public/visite-affiche.jpg'
+const SECONDE_DE_L_AFFICHE = '3'
+/* CRF 30 : relevé sur une image de la modale « Bail et sûretés » à 1280 px —
+   le texte des champs et des notes reste net. 28 pèse 2,43 Mo pour un gain
+   invisible, 32 descend à 1,72 et commence à baver sur les libellés gris. */
+const QUALITE = '30'
 
 /** 1280 × 800 : la forme d'un écran de bureau ordinaire, et un poids tenable. */
 const TAILLE = { width: 1280, height: 800 }
@@ -152,7 +197,7 @@ async function defilerDoucement(page) {
 }
 
 const serveur = await servirLaPrevisualisation('visite', PORT)
-mkdirSync(SORTIE, { recursive: true })
+mkdirSync(BRUTES, { recursive: true })
 
 const plaintes = []
 let plansJoues = 0
@@ -162,7 +207,7 @@ const contexte = await navigateur.newContext({
   ...SANS_AGENT_DE_SERVICE,
   viewport: TAILLE,
   locale: 'fr-FR',
-  recordVideo: { dir: SORTIE, size: TAILLE },
+  recordVideo: { dir: BRUTES, size: TAILLE },
 })
 const page = await contexte.newPage()
 
@@ -208,24 +253,66 @@ await contexte.close()
 await navigateur.close()
 serveur.kill()
 
-const horodatage = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')
-const brutes = readdirSync(SORTIE)
+/*
+  LA BRUTE, PUIS CE QU'ON SERT.
+
+  Playwright écrit un WebM sous un nom aléatoire à la fermeture du contexte. On
+  le ré-encode en H.264 vers `public/`, et l'on GARDE la brute : c'est la source
+  du prochain ré-encodage si l'on veut changer de qualité sans refilmer.
+*/
+const brutes = readdirSync(BRUTES)
   .filter((f) => f.endsWith('.webm') && !f.startsWith('visite-'))
-  .map((f) => ({ f, t: statSync(join(SORTIE, f)).mtimeMs }))
+  .map((f) => ({ f, t: statSync(join(BRUTES, f)).mtimeMs }))
   .sort((a, b) => b.t - a.t)
 
-let fichier = null
+let brute = null
 if (brutes.length > 0) {
-  fichier = `visite-${horodatage}.webm`
-  renameSync(join(SORTIE, brutes[0].f), join(SORTIE, fichier))
+  brute = `visite-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.webm`
+  renameSync(join(BRUTES, brutes[0].f), join(BRUTES, brute))
 }
 
 /* GARDE DU GARDE : « aucune plainte » et « rien de filmé » s'écrivent pareil. */
 if (plansJoues !== PLANS.length) {
   plaintes.push(`${plansJoues} plan(s) joué(s) pour ${PLANS.length} déclarés.`)
 }
-if (!fichier) {
+if (!brute) {
   plaintes.push("aucun fichier vidéo n'a été écrit — l'enregistrement n'a pas eu lieu.")
+}
+
+let poidsServi = null
+let poidsAffiche = null
+if (brute) {
+  /*
+    SANS `ffmpeg`, ON NE SERT PAS LA BRUTE. Cinq mégaoctets non optimisés dans
+    `public/` seraient pires que pas de vidéo : le dépôt les porterait pour
+    toujours. On le DIT, on garde la brute, et l'on sort en 1 — c'est un échec
+    de production, pas un avertissement.
+  */
+  try {
+    execFileSync(
+      'ffmpeg',
+      ['-y', '-v', 'error', '-i', join(BRUTES, brute),
+       '-c:v', 'libx264', '-crf', QUALITE, '-preset', 'slow',
+       '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an',
+       join(RACINE_DU_DEPOT, SERVI)],
+      { stdio: 'pipe' },
+    )
+    execFileSync(
+      'ffmpeg',
+      ['-y', '-v', 'error', '-ss', SECONDE_DE_L_AFFICHE, '-i', join(RACINE_DU_DEPOT, SERVI),
+       '-frames:v', '1', '-vf', 'scale=960:-2', '-q:v', '9',
+       join(RACINE_DU_DEPOT, AFFICHE)],
+      { stdio: 'pipe' },
+    )
+    poidsServi = statSync(join(RACINE_DU_DEPOT, SERVI)).size
+    poidsAffiche = statSync(join(RACINE_DU_DEPOT, AFFICHE)).size
+  } catch (erreur) {
+    plaintes.push(
+      `le ré-encodage a échoué : ${String(erreur.message ?? erreur).split('\n')[0]}\n` +
+        `   La brute reste dans ${BRUTES}/${brute}. Sans \`ffmpeg\`, on ne pose rien\n` +
+        `   dans \`public/\` : cinq mégaoctets non optimisés y resteraient pour toujours.`,
+    )
+  }
 }
 
 if (plaintes.length > 0) {
@@ -234,12 +321,16 @@ if (plaintes.length > 0) {
   exit(1)
 }
 
-const poids = (statSync(join(SORTIE, fichier)).size / 1_048_576).toFixed(1)
+const mo = (o) => (o / 1_048_576).toFixed(2)
 console.log(
   `\n✓ visite : ${plansJoues} plans filmés sur le paquet de cet arbre.\n` +
-    `  ${SORTIE}/${fichier} — ${poids} Mo, ${TAILLE.width}×${TAILLE.height}, sans son.\n\n` +
-    `  CE FICHIER N'EST PAS DANS LE DÉPÔT (\`captures/\` est exclu), et c'est voulu.\n` +
-    `  Déposez-le sur un hébergement que vous contrôlez, puis posez son adresse\n` +
-    `  dans VITE_VIDEO_DEMO à la construction. Sans elle, l'écran du manuel DIT\n` +
-    `  que la visite n'est pas déposée et renvoie à la démonstration vivante.\n`,
+    `  ${SERVI} — ${mo(poidsServi)} Mo en H.264, ` +
+    `depuis ${mo(statSync(join(BRUTES, brute)).size)} Mo de brute.\n` +
+    `  ${AFFICHE} — ${Math.round(poidsAffiche / 1024)} Ko, sans quoi le lecteur\n` +
+    `  est un rectangle gris sous un titre qui promet une visite.\n` +
+    `  ${TAILLE.width}×${TAILLE.height}, sans son, sans sous-titres.\n\n` +
+    `  CE FICHIER ENTRE DANS LE DÉPÔT : committez-le avec le lot, et relancez\n` +
+    `  les portes — il change la hauteur de l'écran du manuel et son poids.\n` +
+    `  La brute reste dans ${BRUTES}/, qui est exclu : elle sert à ré-encoder\n` +
+    `  sans refilmer.\n`,
 )

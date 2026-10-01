@@ -1,6 +1,5 @@
 import { Button } from '@/components/primitives/Button'
 import { Card } from '@/components/primitives/Card'
-import { Notice } from '@/components/primitives/Notice'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useRole } from '@/components/layout/AppShell'
 import { useI18n, type MessageKey } from '@/i18n/I18nProvider'
@@ -26,26 +25,29 @@ import { ROLES_DOCUMENTES, cleDe, gestesDe, type Geste } from './manuelDesGestes
  * La page est donc longue, assumée comme telle : son plafond de hauteur est un
  * relevé, pas une ambition.
  *
- * ═══ LES TROIS ÉTATS DE LA VISITE, ET IL Y EN A BIEN TROIS ═══
+ * ═══ LA VISITE EST SERVIE PAR LE PRODUIT, ET C'EST UN REVIREMENT ═══
  *
- * La vidéo est un FICHIER EXTERNE, dont l'adresse vient de `VITE_VIDEO_DEMO` à
- * la construction. Trois états distincts, et les confondre serait la faute que
- * ce dépôt a déjà payée ailleurs :
+ * Elle a d'abord été un FICHIER EXTERNE, dont l'adresse venait de
+ * `VITE_VIDEO_DEMO`. Résultat observé en production : le fichier existait, ce
+ * lecteur existait, et l'écran affichait « la visite n'est pas encore déposée ».
+ * Une vidéo qu'il faut héberger à la main est une vidéo qui n'existe pas.
  *
- *   1. adresse posée      → le lecteur, avec son repli pour un navigateur
- *                           qui ne sait pas lire le format ;
- *   2. adresse absente    → on le DIT, et on propose la démonstration vivante.
- *                           Un lecteur vide sous un titre qui promet une vidéo
- *                           se lit comme une panne du produit ;
- *   3. format illisible   → le contenu de `<video>`, que le navigateur peint
- *                           lui-même quand aucune source ne lui convient.
+ * Elle vit donc dans `public/`, et le prix est MESURÉ : 2,04 Mo en H.264, depuis
+ * 5,20 Mo de brute Playwright. H.264 et non WebM parce qu'il se lit partout,
+ * Safari compris — le marché est le téléphone, et un bailleur sur iPhone qui ne
+ * voit rien n'a pas de visite.
  *
- * CE QUE LES PORTES NE MESURENT PAS, ET IL FAUT L'ÉCRIRE : `VITE_VIDEO_DEMO`
- * est absente en local comme en intégration, donc toutes les portes au
- * navigateur mesurent l'ÉTAT 2. La géométrie du lecteur n'est vérifiée par
- * aucune d'elles. C'est le prix d'un fichier qui ne vit pas dans le dépôt, et il
- * est payé en connaissance de cause : un WebM de plusieurs mégaoctets dans
- * `public/` — 76 Ko aujourd'hui — changerait ce que chaque visiteur télécharge.
+ * `preload="metadata"` : qui vient chercher un geste ne télécharge pas deux
+ * mégaoctets. Le fichier pèse dans le DÉPÔT, pas dans ce que reçoit le visiteur.
+ *
+ * DEUX ÉTATS SUBSISTENT, ET LE SECOND N'EST PAS THÉORIQUE :
+ *
+ *   1. le lecteur, que toute machine sait rendre ;
+ *   2. un navigateur qui ne lit pas la source — le contenu de `<video>` est
+ *      alors peint par lui, et il nomme l'issue : la démonstration vivante.
+ *
+ * ET LA DÉMONSTRATION RESTE OFFERTE SOUS LA VIDÉO, dans les deux cas. Regarder
+ * n'est pas essayer, et c'est en essayant qu'on apprend un geste.
  */
 
 /* Le nom du rôle, pris là où l'écran des accès le peint déjà. Trois clés
@@ -57,17 +59,20 @@ const NOM_DU_ROLE: Record<Role, MessageKey> = {
 }
 
 /**
- * L'adresse de la visite, lue à la construction.
+ * LA VISITE, SERVIE PAR CE PRODUIT.
  *
- * `trim()` PUIS `|| null` : une variable posée mais vide — ce que rend un
- * `VITE_VIDEO_DEMO=` sans valeur dans un fichier d'environnement — vaut
- * « absente », et non « adresse vide » qui ferait réclamer une ressource à la
- * racine du site. Trois états, pas deux ; voir l'en-tête.
+ * Écrite en dur, et c'est le point : une adresse configurable était l'ancienne
+ * rédaction, et elle a produit un écran qui s'excusait de ne rien montrer. Le
+ * fichier est dans `public/` ; s'il disparaissait, la porte de fumée le dirait
+ * — « aucun fichier réclamé et non servi » est l'un de ses sept contrôles.
  */
-function adresseDeLaVisite(): string | null {
-  const brut = import.meta.env.VITE_VIDEO_DEMO
-  return typeof brut === 'string' && brut.trim() !== '' ? brut.trim() : null
-}
+const VISITE = '/visite-du-produit.mp4'
+/*
+  L'AFFICHE, ET ELLE EST NÉCESSAIRE. `preload="metadata"` ne peint rien : sans
+  elle, le lecteur est un rectangle gris vide sous un titre qui promet une
+  visite. Vu sur un enregistrement où le manuel se filmait lui-même.
+*/
+const AFFICHE = '/visite-affiche.jpg'
 
 /** Un geste expliqué : son nom tel que l'écran le peint, et ce à quoi il sert. */
 function LigneDeGeste({ geste }: { geste: Geste }) {
@@ -211,7 +216,6 @@ function GroupeDeGestes({
 export function Manuel() {
   const { t } = useI18n()
   const { role } = useRole()
-  const visite = adresseDeLaVisite()
 
   const miens = gestesDe(role)
   /*
@@ -229,56 +233,33 @@ export function Manuel() {
       {/* ── LA VISITE ── */}
       <Card className="mb-4">
         <h2 className="title-m text-ink">{t('app.manual.videoTitle')}</h2>
-        {visite ? (
-          <>
-            <p className="mt-1 max-w-[65ch] text-body text-muted">{t('app.manual.videoBody')}</p>
-            {/*
-              `preload="metadata"` : on ne tire pas les mégaoctets d'une vidéo
-              que la plupart des visiteurs de cet écran ne lanceront pas. Ils
-              viennent y chercher un geste, pas un film.
+        <p className="mt-1 max-w-[65ch] text-body text-muted">{t('app.manual.videoBody')}</p>
+        {/*
+          `controls` SANS lecture automatique : une vidéo qui démarre seule sur
+          un écran d'aide parle par-dessus ce qu'on est venu lire.
 
-              `controls` SANS lecture automatique : une vidéo qui démarre seule
-              sur un écran d'aide parle par-dessus ce qu'on est venu lire.
-            */}
-            {/*
-              SANS PISTE DE SOUS-TITRES, ET C'EST UN MANQUE, pas un oubli. Une
-              visite filmée devrait porter ses sous-titres ; ils n'existeront que
-              lorsque la vidéo existera, et ce dépôt ne les fabrique pas. Le
-              manuel écrit, lui, dit la même chose en texte — c'est ce qui rend
-              ce manque supportable, et non acceptable.
-            */}
-            <video
-              className="mt-4 w-full rounded-lg bg-ink/5"
-              src={visite}
-              controls
-              preload="metadata"
-            >
-              {t('app.manual.videoFallback')}
-            </video>
-          </>
-        ) : (
-          /*
-            L'ABSENCE EST DITE, AVEC SON ISSUE. Ce n'est pas un avertissement
-            — rien n'est cassé — mais une information dont la suite est un geste,
-            et c'est pourquoi la note porte un bouton plutôt qu'un point final.
-          */
-          <Notice
-            tone="neutral"
-            titre={t('app.manual.videoAbsentTitle')}
-            className="mt-3"
-          >
-            <p className="max-w-[65ch]">{t('app.manual.videoAbsentBody')}</p>
-            <div className="mt-3">
-              {/* VERS `/demo` ET NON VERS LA BASE COURANTE, même depuis un vrai
-                  espace : c'est un bac à sable, et c'est exactement ce qu'on
-                  veut quand on apprend un geste — essayer sans toucher à son
-                  parc. L'adresse change, donc on voit où l'on est. */}
-              <Button to="/demo" variant="secondary" size="sm" iconAfter="arrowRight">
-                {t('app.manual.videoAbsentAction')}
-              </Button>
-            </div>
-          </Notice>
-        )}
+          SANS PISTE DE SOUS-TITRES, ET C'EST UN MANQUE, pas un oubli. Une visite
+          filmée devrait porter les siens ; ils n'existent pas, et ce dépôt ne
+          les fabrique pas. Le manuel écrit dit la même chose en texte — c'est ce
+          qui rend ce manque supportable, et non acceptable.
+        */}
+        <video
+          className="mt-4 w-full rounded-lg bg-ink/5"
+          src={VISITE}
+          poster={AFFICHE}
+          controls
+          preload="metadata"
+        >
+          {t('app.manual.videoFallback')}
+        </video>
+        {/* REGARDER N'EST PAS ESSAYER. Vers `/demo` même depuis un vrai espace :
+            c'est un bac à sable, et c'est ce qu'on veut quand on apprend un
+            geste — l'essayer sans toucher à son parc. */}
+        <div className="mt-4">
+          <Button to="/demo" variant="secondary" size="sm" iconAfter="arrowRight">
+            {t('app.manual.videoTryIt')}
+          </Button>
+        </div>
       </Card>
 
       {/* ── SES PROPRES GESTES ── */}

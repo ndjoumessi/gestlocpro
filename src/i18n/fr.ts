@@ -3290,13 +3290,7 @@ export const fr = {
       videoTitle: 'La visite du produit',
       videoBody:
         'Un parcours du produit en fonctionnement, sur le parc de démonstration. Rien n’y est mis en scène : ce sont les écrans que vous aurez.',
-      /* « PAS ENCORE DÉPOSÉE » ET NON UN LECTEUR VIDE : une boîte noire sous un
-         titre qui promet une vidéo se lit comme une panne. L'absence est un
-         état, et il a sa propre issue — la démonstration, qui est vivante. */
-      videoAbsentTitle: 'La visite n’est pas encore déposée',
-      videoAbsentBody:
-        'Vous pouvez parcourir le produit vous-même : la démonstration porte trois immeubles, douze logements et une année de mouvements fictifs.',
-      videoAbsentAction: 'Ouvrir la démonstration',
+      videoTryIt: 'Ouvrir la démonstration',
       videoFallback:
         'Votre navigateur ne sait pas lire cette vidéo. La démonstration, elle, s’ouvre partout.',
 
