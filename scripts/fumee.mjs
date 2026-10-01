@@ -608,9 +608,17 @@ await navigateur.close()
  * reproduire : une erreur avalée, une boucle qui ne tourne pas, et il rendrait
  * vert sur un hôte mort.
  */
-const CONTROLES_PUBLICS = 7
+const CONTROLES_PUBLICS = 8
+/*
+  LES VISITES SE COMPTENT DEPUIS LE REGISTRE, pas à la main : une troisième
+  langue en ajouterait deux, et un nombre écrit ici ferait rougir la fumée
+  quotidienne pour un lot qui n'a rien cassé. Ce n'est pas un trou dans la garde
+  du garde — le plancher de deux chemins, compté dans `CONTROLES_PUBLICS`,
+  refuse déjà un registre devenu illisible, et c'est LUI qui tient le compte.
+*/
 const attendus =
   (COMPTE && MDP ? CONTROLES_PUBLICS + 1 + ecransConnectes : CONTROLES_PUBLICS) +
+  FICHIERS_DE_VISITE.length +
   demonstration.controles
 if (controles !== attendus) {
   plaintes.push(
