@@ -718,7 +718,7 @@ const PLAFONDS = [
      l'écran porte désormais un lecteur avec son affiche. +94 px ici, +532 à
      1280 — l'écart tient à la largeur du lecteur, qui suit celle de la carte.
      La colonne LARGE est relevée sur le CI, exécution citée plus bas. */
-  { adresse: '/demo/manuel', largeur: 360, plafond: 6112, plafondLarge: 0 },
+  { adresse: '/demo/manuel', largeur: 360, plafond: 6112, plafondLarge: 5960 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
@@ -847,8 +847,13 @@ const PLAFONDS = [
   { adresse: '/demo/vacance', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
-  /* 4 555 → 5 087 LE 2026-10-01, par l'entrée du lecteur vidéo. */
-  { adresse: '/demo/manuel', largeur: 1280, plafond: 5087, plafondLarge: 0 },
+  /* 4 555 → 5 087 LE 2026-10-01, par l'entrée du lecteur vidéo. La colonne large
+     relevée sur le CI (exécution 36861634587) rend 5 134 : +47 px ici quand elle
+     en perd 152 à 360. LE SENS DE L'ÉCART S'INVERSE AVEC LA LARGEUR, et c'est
+     exactement ce qu'avait rendu le relevé d'avant la vidéo — ce n'est donc pas
+     un hasard de mesure, mais une propriété de cet écran. Aucune des deux
+     colonnes ne se déduit de l'autre. */
+  { adresse: '/demo/manuel', largeur: 1280, plafond: 5087, plafondLarge: 5134 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
   { adresse: '/demo/portail', largeur: 1280, plafond: 1029, plafondLarge: 1029 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 1280, plafond: 900, plafondLarge: 900 },
