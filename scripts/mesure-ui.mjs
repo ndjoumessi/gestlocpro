@@ -67,10 +67,8 @@
  * machine. Le paquet `playwright` n'embarque pas le navigateur.
  */
 import { spawn } from 'node:child_process'
-import { readFileSync, readdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { gzipSync } from 'node:zlib'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { chromium } from 'playwright'
 
 /*
@@ -96,11 +94,20 @@ import {
   MESURER_MENUS_ISOLES,
   MESURER_SECTIONS_ALIGNEES,
   PLANCHER_CIBLE,
-  POSER_L_ARBRE,
   RAYON_SONDAGE,
   SELECTEUR_DE_COMMANDE,
 } from './sondes-de-rendu.mjs'
 
+import { BASE, LARGEURS, PORT, RACINE } from './mesure-ui/contexte.mjs'
+import { arbresEnMouvement, attendre, lenteurs, poserLArbre } from './mesure-ui/attentes.mjs'
+import { adressesDeLApplication } from './mesure-ui/adresses.mjs'
+import {
+  DECLENCHEURS_ATTENDUS, SURFACES_ATTENDUES, SURFACES_INTERACTIVES, declencheursDePanneau,
+} from './mesure-ui/surfaces.mjs'
+import { ETAPES_INTERIEURES, ROLES_DE_L_INSCRIPTION, etapesDeLInscription } from './mesure-ui/inscription.mjs'
+import {
+  BUDGET_PREMIER_CHARGEMENT, RESSOURCES_EXTERNES_PESEES, mesurerFuite, mesurerPremierChargement,
+} from './mesure-ui/premier-chargement.mjs'
 import {
   BLANCS_IMPOSES_TOLERES, CIBLES_EXEMPTES, CONTRASTES_TOLERES, DEBORDS_LOCAUX_TOLERES,
   FIGER_LES_ANIMATIONS, MOTS_DEBORDANTS_TOLERES, TOLERES,
@@ -112,7 +119,6 @@ import {
   MESURER_VALEUR_ROGNEE,
 } from './mesure-ui/mesures-navigateur.mjs'
 
-const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
  * ─── OÙ PASSENT LES TROIS MINUTES ────────────────────────────────────────────
@@ -187,6 +193,7 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  * aller-retour. Les deux chiffres diffèrent d'un dixième de seconde — l'un
  * enveloppe l'autre — et c'est normal.
  */
+
 const DEPART_DU_SCRIPT = performance.now()
 const horloge = new Map()
 
@@ -201,26 +208,80 @@ async function chrono(poste, fn) {
     horloge.set(poste, vu)
   }
 }
-const PORT = 4183
-const BASE = `http://127.0.0.1:${PORT}`
+
 
 /**
- * Les largeurs mesurées.
+ * La largeur À PARTIR DE LAQUELLE une barre d'en-tête ne doit plus se replier.
  *
- * 320 est le plancher réel du marché visé. 700-900 est la bande qui a livré
- * les deux défauts fondateurs de cette garde, et c'est justement la bande que
- * personne ne regarde : ni téléphone, ni bureau. 1440 est le poste de travail
- * du gestionnaire.
+ * 1280 px : c'est le plafond de la bande (`max-w-7xl`), donc la largeur au-delà
+ * de laquelle élargir la fenêtre ne donne plus un pixel de plus au contenu. Si
+ * la barre se replie là, elle se repliera à toutes les largeurs supérieures.
  */
-/* 1536 EST ENTRE PARCE QU'UNE REGLE Y VIT DESORMAIS. `GRILLE_QUATRE_INDICATEURS`
-   pose ses quatre colonnes a `2xl`, c'est-a-dire au-dela de 1440 : sans cette
-   largeur, la rangee a quatre colonnes du tableau de bord et du parc ne serait
-   rendue par AUCUN point de mesure, et un debordement y passerait inapercu.
-   C'est la panne que la garde de `LARGEUR_SANS_REPLI` refuse quelques centaines
-   de lignes plus bas — « porte au-dela de la plus large, il viderait la regle
-   sans que rien ne rougisse ». Une regle qui vit a un point de rupture oblige a
-   mesurer ce point de rupture. */
-const LARGEURS = [320, 360, 375, 414, 700, 768, 800, 900, 1024, 1280, 1440, 1536]
+const LARGEUR_SANS_REPLI = 1280
+
+/*
+  ══ LES GARDES DU GARDE, RENDUES À LA PORTE ══════════════════════════════
+
+  Elles vérifient que les constantes du balayage ont encore un sens, et elles
+  SORTENT EN 1. Elles ont voyagé une heure dans `surfaces.mjs` et
+  `premier-chargement.mjs` lors du découpage du 2026-10-02, et c'est une faute :
+  un module qui s'arrête à l'IMPORT n'est pas un module, c'est un script. Ce
+  dépôt a déjà payé cette confusion — un vérificateur de sceau qui reposait le
+  sceau parce que l'importer l'exécutait.
+
+  Elles reviennent donc ici, où vivent les verdicts. L'une d'elles lit
+  `LARGEURS`, qui n'est jamais partie : elle n'aurait de toute façon pas pu
+  rester ailleurs.
+*/
+{
+  const trouves = declencheursDePanneau()
+  const total = trouves.reduce((s, t) => s + t.n, 0)
+  if (total !== DECLENCHEURS_ATTENDUS) {
+    console.error(
+      `\n✗ mesure-ui : ${total} déclencheur(s) \`aria-haspopup\` dans la source pour ${DECLENCHEURS_ATTENDUS} recensés.\n` +
+        trouves.map((t) => `   ${t.fichier} × ${t.n}`).join('\n') +
+        "\n   Une surface qui s'ouvre sans entrer dans `SURFACES_INTERACTIVES` ne serait mesurée\n" +
+        '   par personne. Ajoutez-la au périmètre, ou écartez-la en écrivant pourquoi.\n',
+    )
+    process.exit(1)
+  }
+}
+
+/*
+  GARDE DU GARDE : le seuil doit tomber dans les largeurs balayées.
+
+  Porté au-delà de la plus large, il viderait la règle sans que rien ne
+  rougisse — la porte dirait « aucun en-tête replié » en n'ayant regardé aucune
+  largeur. C'est la panne qu'`ATTENDUES` surveille déjà pour la liste des
+  adresses, et pour la même raison : une absence de défaut et une absence de
+  mesure se ressemblent trop dans un journal.
+*/
+if (!LARGEURS.some((l) => l >= LARGEUR_SANS_REPLI)) {
+  console.error(
+    `\n✗ mesure-ui : aucune largeur balayée n'atteint ${LARGEUR_SANS_REPLI} px.\n` +
+      "   La règle du repli ne s'exécuterait jamais — ce n'est pas une absence de défaut.\n",
+  )
+  process.exit(1)
+}
+
+/*
+  GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
+
+  À zéro ou en dessous, la porte rougirait sur CHAQUE build, y compris un
+  premier chargement vide — elle cesserait de distinguer un dépassement d'une
+  absence de mesure. Au-delà d'un mégaoctet, elle ne rougirait plus JAMAIS :
+  le premier chargement entier de ce dépôt, vitrine ET application réunies,
+  ne l'atteint pas avant ce lot (176 Ko). La même asymétrie que pour
+  `JEU_MINIMAL` : un seuil trop haut se corrige de lui-même en restant
+  muet, c'est le silence qu'on interdit ici.
+*/
+if (BUDGET_PREMIER_CHARGEMENT <= 0 || BUDGET_PREMIER_CHARGEMENT > 1_000_000) {
+  console.error(
+    `\n✗ mesure-ui : le budget du premier chargement vaut ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
+      "   Hors de [1, 1 000 000], il ne peut plus jouer son rôle de plafond.\n",
+  )
+  process.exit(1)
+}
 
 /**
  * LES DEUX LANGUES, et aucune n'est « la large » partout.
@@ -233,224 +294,8 @@ const LARGEURS = [320, 360, 375, 414, 700, 768, 800, 900, 1024, 1280, 1440, 1536
  */
 const LANGUES = ['en-US', 'fr-FR']
 
-/**
- * Les adresses sont LUES dans DEUX fichiers, jamais recopiées.
- *
- * Une liste recopiée se périme en silence : `appariements.test.ts` a surveillé
- * pendant des lots trois jetons de couleur que le graphe n'employait plus.
- * Ici, un écran neuf est mesuré le jour où sa route est écrite.
- *
- * DEUX FICHIERS, ET NON PLUS UN SEUL, depuis que la vitrine et l'application
- * ont cessé de partager un paquet. `src/App.tsx` ne monte plus `paiements`,
- * `parc` ou les quatorze autres écrans de gestion : il monte `/app/*` et
- * `/demo/*`, deux frontières paresseuses dont le détail vit dans
- * `src/app/EspaceApplicatif.tsx`. Ne lire que le premier ferait tomber le
- * compte de 23 à 8 — un silence que la garde du garde, plus bas, est justement
- * là pour crier au lieu de laisser passer.
- */
-/**
- * CE QUI EST RÉSERVÉ À L'APPLICATION, déduit d'`EspaceApplicatif.tsx` —
- * jamais recopié.
- *
- * `EspaceApplicatif.tsx` importe déjà, une fois, chaque écran de gestion pour
- * les monter : c'est la source de vérité qu'`adressesDeLApplication` lit
- * juste au-dessus pour les ADRESSES, et c'est la même qu'on lit ici pour les
- * MODULES. Recopier les vingt noms d'écran dans ce fichier serait exactement
- * la panne qu'`appariements.test.ts` a déjà payée : une liste qui se périme
- * en silence dès le prochain écran ajouté ailleurs.
- *
- * TROIS FAMILLES, ET C'EST TOUT :
- *
- *  1. `@/features/dashboard/…` — vingt écrans et leurs modales, PAR PRÉFIXE
- *     et non par nom : un écran neuf porte cette adresse le jour de son
- *     import dans `EspaceApplicatif.tsx`, sans qu'il faille toucher ce
- *     fichier-ci.
- *  2. Les fichiers de FRONTIÈRE eux-mêmes — `AppShell.tsx`, qui porte toute
- *     la coque et sa barre latérale ; `PortfolioProvider.tsx`, qui pèse à lui
- *     seul plus que les vingt écrans réunis (voir `BUDGET_PREMIER_CHARGEMENT`
- *     plus bas) ; `RequireAuth.tsx`, la barrière d'accès ; `Demo.tsx`, qui
- *     rejoue la même coque sans compte ; `NotFoundInApp.tsx`, séparé de
- *     l'écran 404 public par ce lot pour cette raison précise — voir son
- *     en-tête.
- *  3. `EspaceApplicatif.tsx` LUI-MÊME : s'il apparaît un jour dans le paquet
- *     impatient, la frontière paresseuse a disparu, `React.lazy` en tête —
- *     c'est la panne la plus grave que cette règle puisse voir, et il n'y a
- *     personne d'autre pour la nommer.
- *
- * CE QUI N'Y FIGURE PAS, ET C'EST UN CHOIX MESURÉ, PAS UN OUBLI :
- * `Charts.tsx`. `EspaceApplicatif.tsx` ne l'importe pas — ce sont les écrans
- * qui l'importent — et il a une seconde raison d'être légitimement impatient :
- * `features/marketing/Hero.tsx`, sur la page de vente, l'utilise pour son
- * illustration. Mesuré : le forcer hors du paquet impatient romprait la
- * landing, pas une fuite. `data/portfolio.ts` et `data/kpis.ts` sont dans le
- * même cas, pour la même page. `@/api/SessionProvider`, qu'`EspaceApplicatif`
- * importe aussi (pour `useSession`), est logiquement PARTAGÉ : `Login.tsx` et
- * `SignUp.tsx`, publics, en dépendent pour la connexion elle-même — c'est
- * pourquoi seuls les préfixes ci-dessus sont retenus, pas « tout ce
- * qu'importe ce fichier ».
- */
-function modulesReservesALApplication() {
-  const source = readFileSync(join(RACINE, 'src/app/EspaceApplicatif.tsx'), 'utf8')
 
-  // `import type` est erasé à la compilation — aucun octet, aucun module dans
-  // le paquet construit. Le compter comme une fuite possible ferait rougir la
-  // porte sur une ligne qui ne pèse rien.
-  const specificateurs = [...source.matchAll(/^import (?!type )[^;]*?from '([^']+)'/gm)].map((m) => m[1])
 
-  const PREFIXES_RESERVES = ['@/features/dashboard/']
-  const FICHIERS_RESERVES = [
-    '@/components/layout/AppShell',
-    '@/data/PortfolioProvider',
-    '@/api/RequireAuth',
-    '@/routes/Demo',
-    '@/routes/NotFoundInApp',
-  ]
-
-  const reserves = specificateurs.filter(
-    (s) => PREFIXES_RESERVES.some((p) => s.startsWith(p)) || FICHIERS_RESERVES.includes(s),
-  )
-
-  // `EspaceApplicatif.tsx` ne s'importe pas lui-même : sa propre présence
-  // éventuelle dans le paquet impatient se vérifie à part, en ajoutant son
-  // propre chemin à la liste.
-  reserves.push('@/app/EspaceApplicatif')
-
-  // `@/X` -> `X.tsx`, le format des chemins que Rollup rapporte dans la carte
-  // des paquets. `.ts` existe aussi dans ce dépôt (voir `data/kpis.ts`), mais
-  // aucun des chemins réservés ci-dessus n'en a besoin aujourd'hui — et le
-  // garder en `.tsx` seul est délibéré : un faux négatif se verrait au premier
-  // écran `.ts` ajouté à `EspaceApplicatif.tsx`, ce que la garde du garde plus
-  // bas transforme en échec explicite plutôt qu'en trou silencieux.
-  return reserves.map((s) => s.replace(/^@\//, '') + '.tsx')
-}
-
-/**
- * LE DICTIONNAIRE ANGLAIS, réservé à son propre chargement paresseux — un
- * SECOND sujet, distinct de `modulesReservesALApplication` ci-dessus.
- *
- * Celui-là dérive la liste des vingt écrans de gestion depuis
- * `EspaceApplicatif.tsx`, la frontière `/app` et `/demo`. `i18n/en.ts` n'a
- * rien à voir avec cette frontière-là : il est paresseux jusque sur `/`, la
- * vitrine elle-même — voir `src/i18n/I18nProvider.tsx`, qui porte
- * l'argumentaire complet de l'échange. Le fondre dans la liste ci-dessus
- * aurait forcé l'extension `.tsx` codée en dur sur UN fichier qui est
- * `i18n/en.ts`, pas `.tsx` — et aurait mélangé deux raisons de rester hors du
- * paquet impatient qui n'ont rien en commun.
- *
- * DÉRIVÉ, et non recopié : le chemin lu dans le seul `import(...)` de
- * `I18nProvider.tsx` — même raison que ci-dessus, une chaîne recopiée se
- * périme le jour où quelqu'un renomme le fichier sans penser à cette garde.
- */
-function moduleReserveALaLangueParesseuse() {
-  const source = readFileSync(join(RACINE, 'src/i18n/I18nProvider.tsx'), 'utf8')
-  const specificateur = source.match(/import\(['"]([^'"]+)['"]\)/)
-  if (!specificateur) return null
-  return 'i18n/' + specificateur[1].replace(/^\.\//, '') + '.ts'
-}
-
-function adressesDeLApplication() {
-  const extraireChemins = (relatif) =>
-    [...readFileSync(join(RACINE, relatif), 'utf8').matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1])
-
-  const cheminsPublics = extraireChemins('src/App.tsx')
-  // `/app/*` et `/demo/*` : la syntaxe qu'exige une frontière paresseuse
-  // (« routes descendantes » de React Router) et non des adresses qu'on
-  // visite telles quelles — `/app` et `/demo` sont ajoutés plus bas, à la
-  // main, pour la même raison que l'écran 404 l'est : ce sont eux qu'un
-  // navigateur atteint réellement.
-  const publiques = cheminsPublics.filter(
-    (c) => c.startsWith('/') && !c.includes(':') && c !== '*' && !c.endsWith('/*'),
-  )
-  // Les écrans de l'application sont montés sous deux adresses ; `/demo` est
-  // celle qui sert un parc complet sans authentification, donc la seule
-  // mesurable ici. `index` n'apparaît pas comme `path` : c'est `/demo` nu.
-  const internes = extraireChemins('src/app/EspaceApplicatif.tsx')
-    .filter((c) => !c.startsWith('/') && !c.includes(':') && c !== '*')
-    .map((c) => `/demo/${c}`)
-
-  /*
-    `KitchenSink` est écarté, et le dépôt a déjà rendu cet arbitrage.
-
-    `scripts/check-i18n.mjs` l'exempte nommément — « ses libellés décrivent les
-    composants eux-mêmes et ne sont pas du produit ». Le même raisonnement vaut
-    ici : une page qui aligne tous les composants côte à côte n'a pas de mise en
-    page à défendre, et personne ne l'ouvre. Elle déborde à toutes les largeurs,
-    ce qui n'apprend rien, et le seul fait de dresser la liste de ses coupables
-    coûtait six minutes sur les huit du balayage — pour garder ce que nul
-    n'utilise.
-
-    Une exclusion, pas une tolérance : `TOLERES` couvre un débordement de
-    PRODUIT qu'on assume, et il meurt avec lui. Ici l'écran entier sort du
-    champ, et c'est autre chose.
-  */
-  const HORS_PRODUIT = ['/kitchen-sink']
-
-  /*
-    L'ÉCRAN 404 EST AJOUTÉ À LA MAIN, et c'est la seule adresse qui ne se lit pas
-    dans `App.tsx`.
-
-    Sa route est `*`, écartée plus haut avec les chemins à paramètre — pour une
-    bonne raison, `*` n'étant pas une adresse qu'on puisse visiter. Mais l'écran
-    qu'elle rend, lui, se visite : il suffit de se tromper de lien. Il portait la
-    même rangée de sélecteurs que les écrans d'authentification, le même
-    débordement de 38 px à 320, et il l'a gardé plus longtemps qu'eux
-    précisément parce que rien ne le regardait.
-
-    N'importe quelle adresse inexistante le rend ; celle-ci le dit en toutes
-    lettres, pour que le rapport d'échec se lise sans avoir à deviner.
-  */
-  const ADRESSE_404 = '/adresse-qui-n-existe-pas'
-
-  /*
-    LE DOSSIER D'UN LOGEMENT, AJOUTÉ À LA MAIN — SECONDE ADRESSE À L'ÊTRE.
-
-    Les chemins À PARAMÈTRE sont écartés du balayage, et pour une bonne raison :
-    `/demo/parc/:unite` n'est pas une adresse qu'on visite. Mais l'ÉCRAN qu'elle
-    rend, lui, se visite — c'est le dossier qu'on ouvre depuis chaque ligne du
-    parc, et il n'était mesuré par RIEN.
-
-    Ce qu'il cachait, relevé à l'ouverture : 217 px de blanc imposé sous la carte
-    « Occupation », 149 sous « Travaux du logement ». Les deux rangées étirent
-    leurs cellules à la hauteur de la plus haute, et cet écran-là n'avait aucune
-    sonde pour le dire. C'est exactement le raisonnement qui a fait ajouter le
-    404 quelques lignes plus haut : « il portait le même débordement de 38 px à
-    320, et il l'a gardé plus longtemps que les autres précisément parce que rien
-    ne le regardait ».
-
-    `A1` est le premier logement du jeu de démonstration : occupé, avec un bail,
-    un historique de quittances, un chantier et une caution. C'est le dossier le
-    plus FOURNI, donc celui qui met le plus de choses sous la sonde.
-  */
-  const DOSSIER_D_UN_LOGEMENT = '/demo/parc/A1'
-
-  const adresses = [
-    ...new Set([...publiques, '/app', '/demo', ...internes, DOSSIER_D_UN_LOGEMENT, ADRESSE_404]),
-  ].filter((c) => !HORS_PRODUIT.includes(c))
-
-  /*
-    Garde du garde, et le plancher COLLE au réel plutôt que de flotter loin
-    dessous.
-
-    Il valait 20 pour 22 écrans : il n'attrapait qu'une lecture d'`App.tsx`
-    entièrement cassée, et laissait retirer deux écrans du balayage en silence.
-    Or c'est exactement ce qui a maintenu le 404 hors de toute mesure pendant
-    des lots — un écran qu'aucun défaut ne pouvait plus atteindre parce que
-    personne ne le regardait.
-
-    Serré, il ne peut rougir que dans un sens : ajouter une route fait monter le
-    compte et ne dérange personne, en retirer une le fait tomber et arrête tout.
-    C'est la seule asymétrie qu'on veuille ici.
-  */
-  const ATTENDUES = 23
-
-  if (adresses.length < ATTENDUES) {
-    throw new Error(
-      `mesure-ui : ${adresses.length} adresses balayées, moins que les ${ATTENDUES} attendues. ` +
-        `Un écran est sorti du champ de la mesure — ce n'est pas une absence de défaut.`,
-    )
-  }
-  return adresses
-}
 
 /**
  * LE CONTRASTE SE MESURE ICI PARCE QUE C'EST ICI QUE LE NAVIGATEUR EST OUVERT.
@@ -542,490 +387,7 @@ const LARGEUR_D_ACCORD = 1280
 const LIGNE_SANS_NOM =
   /^- (button|link|menuitem|menuitemcheckbox|menuitemradio|checkbox|radio|switch|combobox|listbox|tab|textbox|searchbox|spinbutton|option|slider)\s*:?\s*$/
 
-/**
- * LES SURFACES QUI N'EXISTENT QU'APRÈS UN GESTE.
- *
- * ── Le trou, et il est PROUVÉ, pas supposé ────────────────────────────────
- *
- * Deux mutations d'un lot précédent ont rendu le verdict inverse de l'attendu :
- * remettre l'encre fautive sur le chiffre hors-mois du calendrier, puis sur le
- * libellé d'une série masquée, laissait cette porte VERTE. Le calendrier ne
- * s'ouvre qu'au clic, la série ne se masque qu'au clic, et rien ici n'a jamais
- * cliqué. Treize mille textes audités, et pas une seule surface interactive :
- * ce que le premier rendu ne montre pas n'était mesuré par personne.
- *
- * ── Ce qu'on ouvre, et ce qu'on laisse ────────────────────────────────────
- *
- * SIX surfaces, et le nombre est un arbitrage assumé. La porte dure déjà une
- * dizaine de minutes, dont sept de navigateur ; chaque ouverture se paie. Mieux
- * vaut six surfaces ouvertes et prouvées qu'une porte que l'on cesse de lancer.
- * Les deux premières sont exigées par les mutations qui ont découvert le trou —
- * elles sont la démonstration que la garde voit désormais ce qu'elle ne voyait
- * pas. Les quatre autres sont les surfaces que l'utilisateur rencontre le plus.
- *
- * LE TROU DES MODALES EST FERMÉ, et par la voie que cet en-tête annonçait :
- * « les auditer là-bas exigerait d'en extraire les deux sondes, donc un module
- * partagé de plus ». Le module existe — `sondes-de-rendu.mjs` — et
- * `modales.mjs` audite depuis le contraste (deux thèmes, racine posée sur le
- * dialogue) et les cibles de chacune de ses ouvertures. Une seule modale reste
- * auditée ICI, et par nécessité : le calendrier vit dedans, et cette surface-là
- * l'ouvre au fil d'un parcours que `modales.mjs` ne rejoue pas.
- *
- * ── Les règles que ce périmètre s'impose ──────────────────────────────────
- *
- * AUCUN DÉLAI FIXE. On attend le TÉMOIN — un nœud qui n'existe qu'une fois la
- * surface ouverte — jamais un élément que le décor porte déjà, et jamais un
- * nombre de millisecondes. C'est la règle du lot « un test attend une donnée,
- * pas un décor », transposée au navigateur.
- *
- * UNE SURFACE QUI NE S'OUVRE PAS FAIT ROUGIR. Elle n'est pas sautée : « pas
- * ouverte » ne doit jamais s'écrire comme « sans défaut ». C'est la panne que
- * ce fichier reproche déjà à `contrast-audit.js`.
- *
- * UN SEUL THÈME DE PLUS, PAS UNE LANGUE DE PLUS. La couleur ne dépend pas de la
- * langue — « Fermer » et « Close » se peignent pareil —, donc on balaie les deux
- * thèmes et une seule langue. Même raisonnement que les deux largeurs de la
- * passe de contraste, qui ignore déjà les onze autres.
- */
-/**
- * OUVRE UNE ACTION D'EN-TÊTE, QU'ELLE SOIT SOUS LES YEUX OU REPLIÉE.
- *
- * Depuis que la rangée d'actions ne montre plus que deux commandes, les autres
- * vivent derrière trois points. Une sonde qui cherche son bouton par son nom
- * échoue alors sur une action qui n'a pas disparu — elle s'est repliée, et
- * `mesure-ui` a rapporté « la surface ne s'est pas ouverte » pour quatre
- * modales parfaitement saines.
- *
- * Le geste reproduit celui de l'utilisateur : chercher l'action ; si elle n'est
- * pas là, ouvrir le menu de L'EN-TÊTE — pas le premier de la page, la coquille
- * en porte déjà un pour le compte.
- */
-async function ouvrirUneActionDEnTete(page, nom) {
-  const direct = page.getByRole('button', { name: nom }).first()
-  if (await direct.count().then((n) => n > 0).catch(() => false)) {
-    if (await direct.isVisible().catch(() => false)) {
-      await direct.click()
-      return
-    }
-  }
-  await page.locator('[data-en-tete-de-page] [aria-haspopup="menu"]').first().click()
-  await page.getByRole('menuitem', { name: nom }).first().click()
-  /*
-    LE GESTE N'EST PAS FINI QUAND LE MENU EST CLIQUÉ : IL EST FINI QUAND LE MENU
-    EST PARTI.
 
-    Depuis que les panneaux ancrés SORTENT au lieu de disparaître, le menu reste
-    dans le document 150 ms de plus, `inert` et `aria-hidden`, pendant que la
-    modale s'ouvre. Les deux sondes partaient alors sur une page à deux états.
-    MESURÉ le 2026-09-24 sur `prix-de-refacturation` : 150 textes et 6 cibles en
-    clair, 157 et 10 en sombre — LA MÊME page, dans LA MÊME exécution, selon qui
-    gagnait la course.
-
-    On attend donc le détachement plutôt qu'une durée : une attente en
-    millisecondes redeviendrait fausse au premier réglage de la sortie.
-  */
-  await page
-    .locator('[role="menu"]')
-    .first()
-    .waitFor({ state: 'detached', timeout: 2000 })
-    .catch(() => {})
-}
-
-const SURFACES_INTERACTIVES = [
-  /*
-    LES GESTES VISENT LA SÉMANTIQUE, PAS LA TRADUCTION.
-
-    `aria-haspopup` déclare, dans la source même, « ceci ouvre quelque chose » —
-    et les cinq déclencheurs à panneau du produit le portent. Viser cet attribut
-    plutôt qu'un libellé traduit fait survivre le recensement à une retraduction
-    et le fait mourir à une refonte du vocabulaire ARIA, ce qui est le bon sens
-    de la dépendance. Là où aucun attribut ne distingue le déclencheur — la
-    légende, le tiroir — on retombe sur le rôle et le nom accessible, comme
-    `modales.mjs`.
-  */
-  {
-    nom: 'legende-serie-masquee',
-    adresse: '/demo',
-    largeur: 1280,
-    /* LE TÉMOIN EST L'ÉTAT ARIA, PAS LA RATURE.
-       Une entrée de légende expose son état par `aria-pressed` (`Charts.tsx`) :
-       enfoncée = série visible, relâchée = série masquée. `aria-pressed="false"`
-       est donc EXACTEMENT « une série est masquée », et c'est la donnée que le
-       geste produit. La première rédaction visait `.line-through` — une classe
-       utilitaire, donc un détail de style : le jour où le masquage se marque
-       autrement, le témoin disparaîtrait et la garde du garde rougirait pour un
-       non-défaut. Un état ARIA porte du sens, une classe porte une apparence. */
-    temoin: '[aria-pressed="false"]',
-    ouvrir: async (page) => {
-      await page.locator('[aria-pressed="true"]').first().click()
-    },
-  },
-  {
-    nom: 'calendrier-dans-la-modale',
-    adresse: '/demo/paiements',
-    largeur: 1280,
-    temoin: '[role="dialog"][aria-label="Calendar"], [role="dialog"][aria-label="Calendrier"]',
-    ouvrir: async (page) => {
-      await page.getByRole('button', { name: /^Record a payment$|^Enregistrer un paiement$/ }).first().click()
-      await page.locator('[role="dialog"]').first().waitFor({ state: 'visible' })
-      /*
-        PAR L'ÉTIQUETTE DU CHAMP, et deux erreurs successives l'ont imposé.
-
-        La modale de paiement porte DEUX déclencheurs `aria-haspopup="dialog"` :
-        la PÉRIODE (choix du mois) puis la DATE. Une première rédaction de ce
-        commentaire les disait « sans nom accessible » parce que leur `aria-label`
-        est vide. C'ÉTAIT FAUX, et mesuré depuis : `Field` leur passe un `id` et
-        rend un `<label for>`, d'où « Période couverte (obligatoire) » et « Date
-        du versement (obligatoire) » — accname de Playwright rend ces deux noms.
-        L'`aria-label` n'est qu'une des sources d'un nom, jamais le nom.
-
-        Ce qui manquait n'était donc pas un nom mais l'usage du nom : un
-        `.first()` borné à la modale ouvre « Choix du mois »,
-        pas le calendrier — la garde aurait audité une surface en en nommant une
-        autre, ce qui est pire qu'un trou puisque le rapport aurait menti.
-        Un `.nth(1)` marcherait aujourd'hui et se tairait le jour où l'ordre des
-        champs change. On vise donc l'ÉTIQUETTE, qui est ce que l'utilisateur
-        lit et ce que le lecteur d'écran annonce.
-      */
-      await page.getByLabel(/Date du versement|Payment date/).click()
-    },
-  },
-  {
-    /*
-      LA CORRECTION DU PARC, ET POURQUOI ELLE ENTRE ICI PLUTÔT QU'AILLEURS.
-
-      `scripts/modales.mjs` mesure la GÉOMÉTRIE des onze modales, mais en thème
-      CLAIR seulement — son contexte est ouvert `colorScheme: 'light'`. Le
-      contraste des modales, lui, ne se mesure que par cette liste-ci, et une
-      seule y figurait : le calendrier. Une modale de saisie a pourtant quatre
-      familles de couleur — champs, indications, bandeau d'avertissement, pied —
-      et aucune n'avait jamais été relevée en sombre.
-
-      Celle-ci est la bonne candidate : elle porte les quatre, plus un `Notice`
-      de ton `warn` qui n'apparaît qu'au changement de devise, et elle vient
-      d'être rendue atteignable en démonstration. Elle était, jusqu'à ce lot,
-      la modale la moins mesurée du produit — ni géométrie, ni couleurs, ni
-      clavier.
-    */
-    nom: 'prix-de-refacturation',
-    adresse: '/demo/releves',
-    largeur: 1280,
-    temoin: '[role="dialog"] form#tarif',
-    ouvrir: async (page) => {
-      await ouvrirUneActionDEnTete(page, /^Prix de refacturation$|^Rebilling prices$/)
-      /*
-        LE FORMULAIRE PROUVE LE GESTE, L'HISTORIQUE PROUVE LA DONNÉE, et ce ne
-        sont pas le même instant.
-
-        Le témoin de cette surface est `form#tarif` : il naît avec la modale,
-        donc il ne dit que « le geste a ouvert quelque chose ». Sous le
-        formulaire vit l'historique des prix, nourri par une lecture réseau ;
-        vide, il rend un seul `<p>` (« aucun prix posé »), rempli, une liste de
-        lignes. La garde auditait donc l'un ou l'autre au hasard : douze passes
-        ont rendu 149 ou 156 textes, et le clair et le sombre se sont
-        CONTREDITS À L'INTÉRIEUR D'UNE MÊME passe — signature d'une course,
-        jamais d'un changement. L'écart, toujours de 7 textes, est exactement
-        le message vide contre la liste.
-
-        On attend donc la PREMIÈRE LIGNE, sans `.catch()` et sans délai court :
-        le parc de démonstration sert toujours des prix (`TARIFS_DEMO` pose
-        l'eau et l'électricité). Si cette ligne n'arrive pas, l'audit ne mesure
-        rien et la passe DOIT rougir bruyamment.
-      */
-      await page.locator('[role="dialog"] [data-mesure="historique-des-prix"] li').first().waitFor({ state: 'visible' })
-    },
-  },
-  {
-    /*
-      LA SECONDE MODALE DE SAISIE, ET ELLE PORTE CE QUE L'AUTRE N'A PAS : une
-      LISTE de données sous un formulaire. Le contraste d'une ligne d'historique
-      — un libellé, une date en gris secondaire, un montant — n'était relevé
-      dans aucune modale, et celle-ci est la seule du produit à en porter une.
-    */
-    nom: 'correction-du-parc',
-    adresse: '/demo/parc',
-    largeur: 1280,
-    temoin: '[role="dialog"] form#correction-du-parc',
-    ouvrir: async (page) => {
-      await ouvrirUneActionDEnTete(page, /^Corriger le parc$|^Correct the park$/)
-    },
-  },
-  {
-    nom: 'tiroir-de-navigation',
-    adresse: '/demo',
-    largeur: 360,
-    /* Le tiroir monte un `aside` en `role="dialog"` nommé « Navigation
-       principale » — il n'existe pas tant que le tiroir est replié. Viser ce
-       rôle plutôt que deux classes Tailwind : une classe utilitaire change au
-       premier ajustement de mise en page, un rôle ARIA porte du sens. */
-    temoin: '[role="dialog"][aria-modal="true"]',
-    ouvrir: async (page) => {
-      await page.getByRole('button', { name: /Open navigation|Ouvrir la navigation/ }).first().click()
-    },
-  },
-  {
-    nom: 'panneau-des-reglages',
-    adresse: '/demo',
-    largeur: 1280,
-    temoin: '[role="dialog"]',
-    ouvrir: async (page) => {
-      await page.locator('[aria-haspopup="dialog"]').first().click()
-    },
-  },
-  {
-    /*
-      LE MÊME PANNEAU, MAIS SUR L'ÉCRAN DE CONNEXION, ET CE N'EST PAS UN DOUBLON.
-
-      Trois choses diffèrent de celui de `/demo`, et chacune suffirait :
-
-      1. LE FOND. Dans la coquille applicative le panneau flotte au-dessus d'une
-         page de travail ; ici il flotte au-dessus de la carte d'authentification,
-         qui est peinte sur `surface-sunken`. Ce n'est pas la même paire, donc pas
-         le même contraste, et le contraste est ce que cette liste mesure.
-
-      2. LA LARGEUR. 360 délibérément : c'est à cette largeur que la rangée de
-         réglages se repliait sur deux lignes et poussait le `<h1>` à 37 % de la
-         fenêtre — le défaut qui a fait naître ce composant. L'auditer à 1280 le
-         montrerait au large, c'est-à-dire là où il n'a jamais posé problème, et
-         `max-w-[calc(100vw-2.5rem)]` ne serait jamais éprouvé.
-
-      3. LE CHEMIN. `/connexion` n'est pas sous `/demo` : aucune des surfaces de
-         cette liste n'y passait, et le balayage ordinaire ne rend pas non plus
-         les écrans d'authentification en sombre.
-    */
-    nom: 'reglages-a-la-connexion',
-    adresse: '/connexion',
-    largeur: 360,
-    temoin: '[data-mesure="reglages-authentification"]',
-    ouvrir: async (page) => {
-      await page.locator('[data-declencheur-reglages]').first().click()
-    },
-  },
-  {
-    /*
-      LE MÊME PANNEAU SUR LE 404, et il entre pour la même raison que celui de la
-      connexion : le FOND diffère.
-
-      L'écran 404 n'a pas de carte — le panneau y flotte au-dessus de `bg-canvas`,
-      sous un en-tête bordé, là où celui de l'authentification flotte au-dessus
-      d'une carte peinte sur `surface-sunken`. Ce n'est pas la même paire.
-
-      Il entre aussi parce que ce panneau vient d'y remplacer trois sélecteurs en
-      ligne : l'en-tête passe de 193 à 69 px à 360, et le `<h1>` de 300 à 238 —
-      de 33 % à 26 % de la fenêtre. Un geste qui déplace un tiers d'écran mérite
-      d'être audité là où il agit, pas seulement là où il est né.
-    */
-    nom: 'reglages-sur-le-404',
-    adresse: '/adresse-qui-n-existe-pas',
-    largeur: 360,
-    temoin: '[data-mesure="reglages-authentification"]',
-    ouvrir: async (page) => {
-      await page.locator('[data-declencheur-reglages]').first().click()
-    },
-  },
-  {
-    /*
-      LA RANGÉE DE PHOTOS D'UNE RÉSERVE, ET LE GESTE VA JUSQU'À LA VIGNETTE.
-
-      Ouvrir la modale ne suffirait pas. Tant qu'aucune photo n'est choisie, la
-      rangée ne porte qu'un bouton d'ajout et un compte — le bouton de RETRAIT,
-      lui, n'existe pas, et c'est la cible la plus exposée de toute
-      l'interface : 44 px posés sur le coin d'une vignette, atteints au doigt.
-      Une surface auditée sans lui aurait laissé passer exactement ce que cet
-      audit existe pour voir.
-
-      Le geste dépose donc la FIXTURE VERSIONNÉE dans l'entrée de fichier —
-      celle-là même que `photo-transcodage.mjs` mesure. Elle est sous CC0, elle
-      vit dans le dépôt, et elle traverse le vrai transcodage : la vignette
-      auditée est le produit de la fonction réelle, pas une image posée là pour
-      la garde.
-
-      LARGEUR 360, délibérément. C'est au téléphone que la rangée est le plus à
-      l'étroit et que la vignette pousse ses voisins ; l'auditer à 1280 la
-      montrerait au large, c'est-à-dire là où elle ne pose pas de problème.
-    */
-    nom: 'photos-de-reserve',
-    adresse: '/demo/etats-des-lieux',
-    largeur: 360,
-    temoin: '[role="dialog"] li img',
-    ouvrir: async (page) => {
-      await page
-        .getByRole('button', { name: /^Record an inspection$|^Établir un état des lieux$/ })
-        .first()
-        .click()
-      await page.locator('[role="dialog"]').first().waitFor({ state: 'visible' })
-      /* UNE PHOTO APPARTIENT À UNE RÉSERVE, et la liste des réserves part vide
-         depuis le 2026-09-11 : il n'y a plus de champ de fichier à l'ouverture.
-         Cette surface l'a appris en ne s'ouvrant plus — son témoin
-         « li img » ne trouvait aucun `li`. */
-      await page
-        .locator('[role="dialog"]')
-        .getByRole('button', { name: /^Add a finding$|^Ajouter une réserve$/ })
-        .click()
-      await page
-        .locator('[role="dialog"] input[type="file"]')
-        .first()
-        .setInputFiles(join(RACINE, 'server/src/stockage/fixtures/compteur-index.jpg'))
-      await page.locator('[role="dialog"] li img').first().waitFor({ state: 'visible' })
-    },
-  },
-  {
-    /*
-      LA RÉSERVE REPLIÉE EN CARTE, qu'aucun premier rendu ne montre.
-
-      Elle n'existe qu'après une suite de gestes — ajouter, nommer la pièce,
-      décrire, « Terminer ». Sa pastille « Dégradé » est le seul aplat `danger`
-      de la modale, et sa ligne « Imputation · 1 photo » la seule mention en
-      `text-label` sur `muted` : sans cette surface, ni l'une ni l'autre n'était
-      regardée par une seule règle.
-
-      SORTIE, DÉGRADÉ, UN MONTANT ET UNE PHOTO : la carte la plus chargée, donc
-      celle dont les rangées se replient le plus. 360 px pour la même raison que
-      la surface précédente.
-    */
-    nom: 'reserve-repliee',
-    adresse: '/demo/etats-des-lieux',
-    largeur: 360,
-    temoin: '[role="dialog"] li [data-geste="modifier"]',
-    ouvrir: async (page) => {
-      await page
-        .getByRole('button', { name: /^Record an inspection$|^Établir un état des lieux$/ })
-        .first()
-        .click()
-      const modale = page.locator('[role="dialog"]').first()
-      await modale.waitFor({ state: 'visible' })
-      await modale.getByRole('button', { name: /^Move-out$|^Sortie$/ }).click()
-      await modale.getByRole('button', { name: /^Add a finding$|^Ajouter une réserve$/ }).click()
-      await modale.getByLabel(/^Room$|^Pièce$/).fill('Séjour')
-      await modale
-        .getByLabel(/^Finding$|^Constat$/)
-        .fill('Mur défoncé sur un mètre, à hauteur de la prise')
-      await modale.getByLabel(/^Charge$|^Imputation$/).fill('35000')
-      await modale.getByRole('button', { name: /^Damaged$|^Dégradé$/ }).click()
-      await modale
-        .locator('input[type="file"]')
-        .first()
-        .setInputFiles(join(RACINE, 'server/src/stockage/fixtures/compteur-index.jpg'))
-      await modale.locator('li img').first().waitFor({ state: 'visible' })
-      await modale
-        .getByRole('button', { name: /^Finish finding 1$|^Terminer la réserve n° 1$/ })
-        .click()
-    },
-  },
-  {
-    /*
-      LA COQUILLE DU LOCATAIRE, QUE RIEN N'AVAIT JAMAIS REGARDÉE.
-
-      Ce n'est pas une barre BASSE : le locataire n'en a pas. Il a une barre
-      HAUTE — logo, trois destinations, réglages — un composant entier
-      (`BarreLocataire`) que le balayage ordinaire ne rend JAMAIS, parce que la
-      démonstration démarre en propriétaire et que rien ne change de profil.
-      Contraste, cibles de 44 px, noms accessibles : aucune des trois règles ne
-      l'avait vue une seule fois.
-
-      LE GESTE PASSE PAR 1280 PX, ET C'EST FORCÉ. Le sélecteur de profil vit
-      dans la barre latérale, qui n'existe qu'au-dessus de `lg` ; la coquille du
-      locataire, elle, est intéressante à 320, là où elle empile logo, nav et
-      réglages sur trois rangées. On bascule donc au large, puis on redescend —
-      le rôle est un état React, il survit au redimensionnement et ne survit PAS
-      à une navigation, ce qui évite d'empoisonner la suite du balayage.
-
-      320 PX, LA PLUS ÉTROITE. C'est là que cette barre est le plus contrainte,
-      et la seule largeur où l'auditer apprend quelque chose.
-
-      L'ADRESSE FINALE N'EST PAS `/demo`, ET C'EST VOULU : basculer en locataire
-      redirige vers `/demo/mon-espace`, puisque l'index du tableau de bord ne
-      lui est pas destiné. La coquille auditée est la même — c'est elle le
-      sujet, pas l'écran qu'elle encadre.
-    */
-    nom: 'barre-du-locataire',
-    adresse: '/demo',
-    largeur: 320,
-    temoin: '[data-mesure="barre-locataire"]',
-    ouvrir: async (page) => {
-      await page.setViewportSize({ width: 1280, height: 900 })
-      /*
-        ON CLIQUE L'ÉTIQUETTE, PAS LE BOUTON RADIO — mesuré, pas supposé.
-
-        Le radio est masqué visuellement (`sr-only`), et `check()` attend
-        l'actionnabilité : il expire au bout de trente secondes. `getByRole`
-        ne le trouve pas davantage — les cas de ce dépôt le cherchent
-        d'ailleurs avec `hidden: true`. L'étiquette, elle, est la vraie cible :
-        c'est ce que le doigt touche.
-      */
-      await page.locator('label:has(input[value="tenant"])').click()
-      await page.setViewportSize({ width: 320, height: 900 })
-      /*
-        ON ATTEND QUE LA PAGE SE POSE, et ce n'est pas une précaution de style.
-
-        Basculer en locataire REDIRIGE vers `/demo/mon-espace` : le témoin
-        apparaît dès que la coquille se monte, bien avant que l'écran qu'elle
-        encadre n'ait ses données. Mesuré sans cette attente : 136 textes et
-        42 cibles auditées en thème clair, 9 et 8 en sombre — le même geste, la
-        même surface, un rapport qui varie du simple au quinzième selon qui
-        gagne la course. Le témoin dit que la surface EXISTE ; il ne dit pas
-        qu'elle est PRÊTE.
-      */
-      await attendre(page, 'barre-du-locataire')
-    },
-  },
-  {
-    /*
-      LE GESTE DU LOCATAIRE, ET NON PLUS SEULEMENT SA COQUILLE.
-
-      La surface `barre-du-locataire`, juste au-dessus, a fermé la COQUILLE du
-      locataire. Elle n'a pas fermé ses ÉCRANS, et la nuance a coûté un trou
-      entier : `Signaler.tsx` garde son formulaire derrière
-      `peutDeclarer = role === 'tenant' && mesUnites[0]`, et le balayage
-      ordinaire tourne en propriétaire.
-
-      MESURÉ AVANT D'ÉCRIRE CETTE ENTRÉE, à 1280 px, en comptant les commandes
-      dans `<main>` : propriétaire 430 caractères et ZÉRO commande, locataire
-      684 et ONZE. Onze commandes — un champ de titre, un groupe de métiers en
-      `radiogroup`, un groupe d'urgence, une zone de texte, l'envoi — que ni le
-      contraste, ni la sonde des cibles, ni les noms accessibles n'avaient
-      jamais vues. Le témoin de cette entrée l'a prouvé en rougissant d'abord :
-      posée sur `/demo/signaler` SANS bascule de rôle, elle a rendu « la surface
-      ne s'est pas ouverte » aux deux thèmes. C'est le rôle qui manquait, pas le
-      sélecteur.
-
-      LA NAVIGATION SE FAIT AU CLIC, ET C'EST OBLIGATOIRE. L'entrée du dessus
-      l'écrit déjà : « le rôle est un état React, il survit au redimensionnement
-      et ne survit PAS à une navigation ». Un `page.goto('/demo/signaler')`
-      après la bascule rechargerait le document et retomberait en propriétaire —
-      la surface s'ouvrirait sur la page NUE, et la porte auditerait 430
-      caractères sans commande en croyant tenir le formulaire. Le témoin le
-      refuserait, mais un témoin qui rattrape une erreur de geste vaut moins
-      qu'un geste juste.
-
-      1280 POUR LE GESTE, 360 POUR LA MESURE, comme la surface du dessus et pour
-      la même raison : le sélecteur de profil vit dans la barre latérale, qui
-      n'existe qu'au-dessus de `lg`. La mesure, elle, se fait à la largeur où ces
-      onze commandes sont le plus contraintes — c'est celle du marché visé, pas
-      celle du bureau.
-    */
-    nom: 'declaration-du-locataire',
-    adresse: '/demo',
-    largeur: 360,
-    temoin: '[data-mesure="declaration-du-locataire"]',
-    ouvrir: async (page) => {
-      await page.setViewportSize({ width: 1280, height: 900 })
-      /* L'ÉTIQUETTE, PAS LE BOUTON RADIO — le radio est `sr-only`, et `check()`
-         attend l'actionnabilité : il expire. Voir `barre-du-locataire`. */
-      await page.locator('label:has(input[value="tenant"])').click()
-      /* La bascule REDIRIGE vers `/demo/mon-espace`. On attend que cet écran se
-         pose avant de viser son lien : le témoin dit qu'une surface existe, pas
-         qu'elle est prête, et la coquille se monte bien avant ses données. */
-      await attendre(page, 'declaration-du-locataire')
-      await page
-        .getByRole('link', { name: /^Signaler$|^Report$/ })
-        .first()
-        .click()
-      await page.setViewportSize({ width: 360, height: 900 })
-      await attendre(page, 'declaration-du-locataire')
-    },
-  },
-]
 
 /*
   DEUX SURFACES ÉCARTÉES, ET CE N'EST PAS UN OUBLI.
@@ -1046,234 +408,8 @@ const SURFACES_INTERACTIVES = [
     devise l'est avec. Une surface imbriquée n'est pas une surface de plus.
 */
 
-/**
- * LE RECENSEMENT SE DÉDUIT, il ne se recopie pas.
- *
- * Une liste de surfaces écrite à la main se périme au premier renommage, et
- * son silence ressemble à un acquittement. On compte donc, DANS LA SOURCE, les
- * déclencheurs à panneau — `aria-haspopup`, que le produit pose sur chacun — et
- * l'on exige que ce nombre reste celui qu'un humain a arbitré. En ajouter un
- * sans toucher ce fichier fait rougir : l'auteur doit alors dire s'il entre dans
- * le périmètre audité ou s'il en est écarté, et pourquoi.
- *
- * CE QUE LE COMPTE NE VOIT PAS, et il faut le dire : `Combobox` n'annonce PAS
- * `aria-haspopup` — il se déclare par `aria-expanded` et un `role="listbox"`.
- * Il échappe donc à ce recensement comme il échappe au périmètre. C'est une
- * incohérence du produit, nommée ici et laissée : la corriger touche l'ARIA
- * d'un composant, ce qui est un autre sujet que mesurer des surfaces.
- */
-function declencheursDePanneau() {
-  const trouves = []
-  const parcourir = (dossier) => {
-    for (const entree of readdirSync(dossier, { withFileTypes: true })) {
-      const chemin = join(dossier, entree.name)
-      if (entree.isDirectory()) parcourir(chemin)
-      /* `src/test/` EST ÉCARTÉ, et ce n'est pas un élargissement commode : le
-         harnais y CHERCHE des déclencheurs pour les ouvrir — « le geste de
-         l'utilisateur : chercher l'action, et ouvrir le menu si elle n'est pas
-         là ». Deux occurrences de la CHAÎNE qui ne posent aucun panneau. Les
-         compter ferait dire au recensement qu'il y a deux surfaces de plus à
-         auditer, et l'audit irait les chercher dans le produit, où elles ne
-         sont pas. */
-      else if (
-        /\.tsx$/.test(entree.name) &&
-        !entree.name.includes('.test.') &&
-        !chemin.includes('/src/test/')
-      ) {
-        const source = readFileSync(chemin, 'utf8')
-        const n = [...source.matchAll(/aria-haspopup/g)].length
-        if (n > 0) trouves.push({ fichier: chemin.replace(RACINE + '/', ''), n })
-      }
-    }
-  }
-  parcourir(join(RACINE, 'src'))
-  return trouves
-}
-
-/* 7 = deux dans la coquille (réglages, menu du compte), deux dans le sélecteur
-   de date (jour et mois), un dans le sélecteur de devise, un sixième depuis
-   que les écrans d'AUTHENTIFICATION replient leurs trois réglages derrière un
-   déclencheur (`PanneauDeReglages`) — il entre dans le périmètre audité sous le
-   nom `reglages-a-la-connexion`, et la ligne qui le décrit dit pourquoi il ne
-   fait pas doublon avec celui de la coquille.
-
-   LE SEPTIÈME EST LE MENU DE DÉBORDEMENT DES EN-TÊTES DE PAGE. Une seule
-   occurrence dans la source pour QUATRE écrans — paiements, locataires, parc,
-   relevés —, parce que c'est une primitive et non un panneau recopié : c'est
-   précisément ce que les six premiers n'étaient pas, et la raison pour laquelle
-   ce recensement existe. Il monte de un, pas de quatre. */
-const DECLENCHEURS_ATTENDUS = 7
-
-{
-  const trouves = declencheursDePanneau()
-  const total = trouves.reduce((s, t) => s + t.n, 0)
-  if (total !== DECLENCHEURS_ATTENDUS) {
-    console.error(
-      `\n✗ mesure-ui : ${total} déclencheur(s) \`aria-haspopup\` dans la source pour ${DECLENCHEURS_ATTENDUS} recensés.\n` +
-        trouves.map((t) => `   ${t.fichier} × ${t.n}`).join('\n') +
-        "\n   Une surface qui s'ouvre sans entrer dans `SURFACES_INTERACTIVES` ne serait mesurée\n" +
-        '   par personne. Ajoutez-la au périmètre, ou écartez-la en écrivant pourquoi.\n',
-    )
-    process.exit(1)
-  }
-}
-
-/*
-  ATTENDU ÉCRIT, JAMAIS CALCULÉ — même piège que celui de `modales.mjs`.
-
-  `SURFACES_INTERACTIVES.length * THEMES.length` rendrait la garde d'accord avec
-  elle-même : vider la table, et l'on comparerait 0 à 0 avant de se déclarer
-  vert. Le nombre est donc écrit, et l'ajout d'une surface oblige à le toucher.
-
-  24 = 12 surfaces × 2 thèmes.
-*/
-const SURFACES_ATTENDUES = 24
 
 
-
-
-
-
-
-
-
-/*
-  ═══ TROIS TOLÉRANCES RETIRÉES, ET POURQUOI LE JUGEMENT A CHANGÉ ═══
-
-  Trois entrées vivaient ici, chacune exacte et chacune raisonnable :
-
-    span.block text-body                   3 px  « Contrat de bail signé »,
-      « 185 px avant le bord de la carte […] C'est la plus petite chose que cette
-      règle sache voir, et elle ne se voit pas. »
-    p.numeric mt-2 text-title-l …         18 px  « 447 000 FCFA »,
-      « mange les 20 px de rembourrage, s'arrête 3 px avant la bordure. Rien
-      n'est coupé ; le montant est collé au bord. »
-    p.numeric mt-2 text-kpi …             10 px  « 950 000 FCFA »,
-      « 7 px hors de sa boîte, et 89 px de marge avant le bord. Invisible. »
-
-  LES TROIS MOTIFS DISAIENT VRAI, et les trois verdicts se tenaient : ces
-  dépassements ne se voient pas. Ce qu'aucun ne disait — parce que cette règle-ci
-  ne le mesure pas — c'est ce que la boîte OFFRAIT : 46 px pour un libellé dont
-  le premier mot en réclame 49 ; 111 px pour un montant qui en veut 129 ; 160 px
-  pour un montant qui en veut 170.
-
-  Le défaut n'était donc pas le dépassement, c'était la colonne. Et il ne se
-  jugeait pas au pixel qui sort, mais à la place qui reste. `MESURER_DEBORDEMENT_-
-  DE_MOT` rapporte les DEUX chiffres — le manque ET l'offert —, et c'est le
-  second qui a changé la lecture des trois. Deux règles ont vu les mêmes pixels ;
-  celle qui disait combien de place il restait a fait poser la bonne question.
-
-  Les entrées partent parce que les défauts sont réparés, non parce qu'on les a
-  réévalués. La garde du garde l'a exigé dès que la sonde a cessé de les voir.
-*/
-
-/**
- * Les attentes, et ce qu'elles coûtent quand elles échouent.
- *
- * Chaque `.catch(() => {})` avale un dépassement de délai : c'est voulu — un
- * écran qui ne se stabilise pas doit être MESURÉ tel quel, pas faire échouer le
- * balayage. Mais avalé en silence, un dépassement de quinze secondes se paie
- * douze fois par langue sur le même écran, et le balayage entier passe de
- * quelques minutes à une demi-heure sans qu'on sache pourquoi.
- *
- * On compte donc les dépassements et on les rend à la fin. Un écran dont
- * l'`aria-busy` ne s'éteint jamais est d'ailleurs un DÉFAUT en soi, que ce
- * compteur nomme au lieu de le laisser peser sur l'horloge.
- */
-const lenteurs = new Map()
-
-const attendre = async (page, ou) => {
-  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => marquer(ou, 'réseau'))
-  // `waitForFunction(fonction, ARGUMENT, options)` : le deuxième paramètre est
-  // l'argument passé à la fonction, PAS les options. Écrit en deuxième position,
-  // `{ timeout }` partait donc à une fonction qui n'attend rien, et le délai par
-  // défaut de trente secondes s'appliquait — douze attentes par écran, six
-  // minutes sur toute page qui ne se stabilise pas. Trois pages s'y sont
-  // arrêtées au dixième de seconde près, ce qui a trahi le plafond ; sans le
-  // `null`, ces délais ne sont pas des délais, ce sont des commentaires.
-  /*
-    UNE NÉGATION SUR UN CONTENEUR VIDE EST VRAIE SANS RIEN GARANTIR.
-
-    Les trois attentes de cette fonction étaient satisfaites par une page qui
-    n'avait encore RIEN monté. `networkidle` se rend immédiatement — le parc de
-    démonstration ne fait aucune requête. `document.fonts.status === 'loaded'`
-    parle des polices, pas du contenu. Et « zéro nœud `aria-busy="true"` » était
-    VRAI À VIDE : rien n'était monté, donc rien ne pouvait être occupé. Un arbre
-    parfaitement immobile et parfaitement vide passait les trois.
-
-    MESURÉ, sonde Playwright, dix tentatives sur `barre-du-locataire` : au retour
-    d'`attendre()`, le `<main>` était VIDE neuf fois sur dix, zéro squelette et
-    zéro nœud occupé. Ce qui sauvait l'audit d'ordinaire est un ACCIDENT : le
-    balayage attend ensuite que le témoin soit visible, et cette attente-là
-    dépasse normalement le montage de l'écran. Quand elle ne le dépasse pas, on
-    mesure 22 mots au lieu de 320 — `barre-du-locataire` auditée à 8 textes au
-    lieu de 151, `prix-de-refacturation` à 149 au lieu de 156, variable d'une
-    exécution à l'autre et même du clair au sombre dans la MÊME exécution.
-
-    La règle générale : une négation ne se garde que par une VÉRIFICATION
-    D'EXISTENCE placée AVANT elle. On exige donc d'abord qu'un `<main>` existe et
-    porte du texte rendu ; alors seulement l'absence de nœud occupé veut dire
-    quelque chose.
-
-    LE DÉLAI ET SON `.catch` NE CHANGENT PAS, et c'est délibéré : une page qui ne
-    remplit véritablement jamais son `<main>` doit voir l'attente EXPIRER, être
-    COMPTÉE et remontée par `lenteurs`, pas faire échouer le balayage. Un écran
-    nouvellement lent devient ainsi visible au lieu d'être silencieux.
-  */
-  await page
-    .waitForFunction(
-      () => {
-        const principal = document.querySelector('main')
-        if (!principal || principal.innerText.trim() === '') return false
-        return document.querySelectorAll('[aria-busy="true"]').length === 0
-      },
-      null,
-      { timeout: 5000 },
-    )
-    .catch(() => marquer(ou, 'chargement'))
-  await page
-    .waitForFunction(() => document.fonts.status === 'loaded', null, { timeout: 3000 })
-    .catch(() => marquer(ou, 'polices'))
-}
-
-
-/** Les points sondés alors que l'arbre bougeait encore — voir leur garde. */
-const arbresEnMouvement = []
-
-async function poserLArbre(page, ou) {
-  if (!(await page.evaluate(POSER_L_ARBRE))) arbresEnMouvement.push(ou)
-}
-
-function marquer(ou, quoi) {
-  const cle = `${ou} — ${quoi}`
-  lenteurs.set(cle, (lenteurs.get(cle) ?? 0) + 1)
-}
-
-/**
- * La largeur À PARTIR DE LAQUELLE une barre d'en-tête ne doit plus se replier.
- *
- * 1280 px : c'est le plafond de la bande (`max-w-7xl`), donc la largeur au-delà
- * de laquelle élargir la fenêtre ne donne plus un pixel de plus au contenu. Si
- * la barre se replie là, elle se repliera à toutes les largeurs supérieures.
- */
-const LARGEUR_SANS_REPLI = 1280
-
-/*
-  GARDE DU GARDE : le seuil doit tomber dans les largeurs balayées.
-
-  Porté au-delà de la plus large, il viderait la règle sans que rien ne
-  rougisse — la porte dirait « aucun en-tête replié » en n'ayant regardé aucune
-  largeur. C'est la panne qu'`ATTENDUES` surveille déjà pour la liste des
-  adresses, et pour la même raison : une absence de défaut et une absence de
-  mesure se ressemblent trop dans un journal.
-*/
-if (!LARGEURS.some((l) => l >= LARGEUR_SANS_REPLI)) {
-  console.error(
-    `\n✗ mesure-ui : aucune largeur balayée n'atteint ${LARGEUR_SANS_REPLI} px.\n` +
-      "   La règle du repli ne s'exécuterait jamais — ce n'est pas une absence de défaut.\n",
-  )
-  process.exit(1)
-}
 
 /**
  * LE JEU MINIMAL que la rangée de l'en-tête public doit garder.
@@ -1511,214 +647,10 @@ async function colonnesDesEcransDEntree(page) {
   return releves
 }
 
-/**
- * ═══ LES TROIS ÉTAPES INTÉRIEURES DE L'INSCRIPTION ═══
- *
- * Le balayage visite des ADRESSES. `/inscription` en est une, et elle rend
- * l'étape 1 — le choix du rôle. Les trois suivantes — identité, contexte,
- * récapitulatif — vivent dans l'état d'un composant : aucune adresse ne les
- * atteint, aucune porte ne les avait jamais regardées. Trois écrans du parcours
- * le plus exposé du produit, celui par lequel tout le monde entre, et dont on
- * ne savait rien.
- *
- * LE LOT PRÉCÉDENT LE DISAIT DÉJÀ, en réserve : la sonde du rognage « couvre ce
- * que le produit affiche de lui-même, pas ce qui apparaît après une saisie ».
- * C'était vrai de cette sonde-là, et de toutes les autres de ce fichier.
- *
- * ─── CE QU'ELLE MESURE, ET CE QU'ELLE A TROUVÉ ────────────────────────────
- *
- * Trois règles, sur les 198 points du parcours (3 rôles × 3 étapes × 11
- * largeurs × 2 langues) : le rognage d'une valeur dans son champ, le
- * débordement de la page, le débordement local. Zéro défaut. La garde naît
- * VERTE, et c'est la mutation qui prouve qu'elle mord — voir la note en pied.
- *
- * ─── LES SONDES QU'ON A ESSAYÉES ET QU'ON NE BRANCHE PAS ──────────────────
- *
- * Les cinq autres sondes de la boucle principale ont tourné ici avant d'écrire
- * ce bloc — coupures de libellé, troncatures aux deux tailles de police,
- * gestes atteignables, débordement de mot, blanc imposé. Quatre n'ont rien
- * rapporté sur les 198 points. La cinquième, le blanc imposé, en rapporte
- * partout : 207 à 296 px sous la colonne de marque sombre, à 1024 et 1280.
- *
- * ON NE LA BRANCHE PAS, et ce n'est pas un renoncement. Ce blanc est celui de
- * la colonne d'ARGUMENTAIRE, qui est plus courte que le formulaire et le sera
- * toujours ; il est déjà relevé sur `/inscription` par la boucle principale,
- * déjà arbitré, et il grandit ici mécaniquement — de 223 à 296 px — parce que
- * le formulaire grandit d'une étape à l'autre. Brancher la sonde reviendrait à
- * remonter un plafond de 73 px pour redire ce que la première étape dit déjà.
- * Le jour où l'on voudra ce blanc-là, c'est la colonne qu'il faudra changer,
- * pas la mesure.
- *
- * ─── LE TÉMOIN DU PARCOURS : LE FIL D'ÉTAPES ──────────────────────────────
- *
- * Un parcours qui n'avance pas mesurerait trois fois l'étape 2 et rendrait
- * « trois étapes couvertes ». C'est la panne exacte que ce fichier a déjà payée
- * ailleurs — une garde qui passe à vide ressemble à une garde qui passe. Avant
- * chaque relevé, on lit donc le rang que le fil d'étapes DÉCLARE
- * (`aria-current="step"`), et il doit valoir celui qu'on croit mesurer. Ce
- * témoin est indépendant du clic qui l'a produit : il vient du composant, pas
- * de nous. Une marche ratée arrête le parcours de ce rôle plutôt que de le
- * poursuivre sur un écran qu'on nommerait mal.
- */
-const ROLES_DE_L_INSCRIPTION = [
-  /* Chaque rôle a son champ propre à l'étape 3, et sans lui on n'atteint pas la
-     4 : `validateStep('context')` les exige nommément. */
-  { slug: 'proprietaire', champ: 'parkName', valeur: 'Résidence Bonanjo' },
-  { slug: 'gestionnaire', champ: 'ownerCode', valeur: 'GES-4A7B-92CD' },
-  { slug: 'locataire', champ: 'inviteCode', valeur: 'LOC-4A7B-92CD' },
-]
 
-/**
- * LES TROIS ÉTAPES, et le rang que le fil doit annoncer sur chacune.
- *
- * On entre par `/inscription/:role`, qui saute l'étape 1 — c'est le produit qui
- * l'offre, pour la landing, et non un raccourci inventé ici. Le rang commence
- * donc à 2.
- */
-const ETAPES_INTERIEURES = [
-  { rang: 2, nom: 'identité' },
-  { rang: 3, nom: 'contexte' },
-  { rang: 4, nom: 'récapitulatif' },
-]
 
-/**
- * LES VALEURS SAISIES, choisies pour PASSER la validation, pas pour la sonder.
- *
- * Ce n'est pas une garde de validation — il y en a une, en test unitaire, et
- * elle est mieux placée. Ici la saisie n'est qu'un péage : sans elle, l'étape
- * suivante n'existe pas. On prend donc des valeurs justes du premier coup, et
- * plutôt celles du marché que sert la démonstration.
- */
-async function remplirLIdentite(page) {
-  await page.fill('input[name="name"]', 'Amina Fotso Ngassa')
-  await page.fill('input[name="email"]', 'amina.fotso@example.cm')
-  await page.fill('input[name="phone"]', '699 00 00 00')
-  await page.fill('input[name="password"]', 'Kribi-Douala-2026!')
-}
 
-/**
- * LE PAYS SE CHOISIT COMME ON LE CHOISIT — au clavier, dans le champ cherchable.
- *
- * `input[name="country"]` est un champ CACHÉ : le combobox le porte pour que le
- * navigateur remplisse et que le formulaire envoie le code ISO. Le remplir
- * directement ne réglerait rien à l'écran, et la sonde du rognage mesurerait un
- * champ resté vide — un vert obtenu en ne montrant rien.
- *
- * On tape les quatre premières lettres du Cameroun, qui filtrent dans les deux
- * langues (« Cameroun », « Cameroon »), et on valide. Le témoin est le champ
- * caché : s'il reste vide, le choix n'a pas pris.
- */
-async function choisirLePays(page) {
-  await page.locator('input[role="combobox"]').first().click()
-  await page.keyboard.type('Came')
-  await page.waitForFunction(
-    () => document.querySelectorAll('[role="option"]').length > 0,
-    null,
-    { timeout: 3000 },
-  )
-  await page.keyboard.press('Enter')
-  return page.evaluate(() => document.querySelector('input[name="country"]')?.value ?? '')
-}
 
-/**
- * Parcourt l'assistant pour les trois rôles et relève à chaque étape.
- *
- * UNE NAVIGATION PAR RÔLE, et le reste au redimensionnement — la règle de ce
- * fichier depuis le lot qui a fusionné deux passes : ce qui coûte, c'est le
- * chargement. L'état de l'assistant vit dans le composant, donc il SURVIT au
- * redimensionnement ; recharger à chaque largeur voudrait dire refaire les
- * quatre saisies onze fois par rôle.
- */
-async function etapesDeLInscription(page) {
-  const rognages = []
-  const debordsDePage = []
-  const debordsLocaux = []
-  const marchesRatees = []
-  let points = 0
-  let champsMesures = 0
-
-  /*
-    CINQ SECONDES, ET NON TRENTE. Ce parcours est le seul de ce fichier à
-    DÉSIGNER des champs par leur `name` ; le jour où l'un d'eux est renommé,
-    Playwright attend son délai par défaut sur chacun — trois minutes par
-    langue, pour finir sur une trace de pile là où il faut une phrase. Cinq
-    secondes suffisent largement à une page déjà chargée et stabilisée, et
-    l'échec arrive assez tôt pour être RACONTÉ.
-
-    Le contexte se ferme juste après cette passe : le réglage ne survit à rien.
-  */
-  page.setDefaultTimeout(5000)
-
-  for (const role of ROLES_DE_L_INSCRIPTION) {
-    const adresse = `/inscription/${role.slug}`
-    try {
-      await page.setViewportSize({ width: LARGEURS[0], height: 900 })
-    await page.goto(BASE + adresse, { waitUntil: 'domcontentloaded' })
-    await attendre(page, adresse)
-    await remplirLIdentite(page)
-
-    for (const etape of ETAPES_INTERIEURES) {
-      if (etape.rang > 2) {
-        await page.locator('form button[type="submit"]').click()
-        await attendre(page, `${adresse} (étape ${etape.rang})`)
-      }
-
-      const rang = await page.evaluate(() => {
-        const pastille = document.querySelector('[aria-current="step"]')
-        return pastille ? pastille.textContent.trim() : ''
-      })
-      if (rang !== String(etape.rang)) {
-        marchesRatees.push({ adresse, attendu: etape.rang, lu: rang || '(aucun fil)' })
-        break
-      }
-
-      if (etape.rang === 3) {
-        const pays = await choisirLePays(page)
-        if (!pays) {
-          marchesRatees.push({ adresse, attendu: 'un pays choisi', lu: '(champ vide)' })
-          break
-        }
-        await page.fill(`input[name="${role.champ}"]`, role.valeur)
-      }
-
-      for (const largeur of LARGEURS) {
-        await page.setViewportSize({ width: largeur, height: 900 })
-        await attendre(page, `${adresse} (étape ${etape.rang})`)
-        /* Le redimensionnement rend la main avant que l'arbre l'ait suivi —
-           voir `POSER_L_ARBRE`. Sans cela, ces trois sondes mesurent parfois la
-           largeur précédente. */
-        await poserLArbre(page, `${adresse} · étape ${etape.rang} · ${largeur}px`)
-        points += 1
-        const ou = `${adresse} · étape ${etape.rang} (${etape.nom}) ${largeur}px`
-
-        const valeurs = await page.evaluate(MESURER_VALEUR_ROGNEE)
-        champsMesures += valeurs.mesures
-        for (const d of valeurs.defauts) rognages.push({ ...d, ou })
-
-        const page_ = await page.evaluate(MESURER)
-        if (page_) debordsDePage.push({ ...page_, ou })
-
-        const local = await page.evaluate(MESURER_DEBORD_LOCAL)
-        for (const c of local.coupables) debordsLocaux.push({ ...c, ou })
-      }
-      await page.setViewportSize({ width: LARGEURS[0], height: 900 })
-      }
-    } catch (erreur) {
-      /* UN GESTE QUI ÉCHOUE EST UNE MARCHE RATÉE, pas une panne de la porte.
-         Un champ renommé, un bouton qui change de forme, une liste qui ne
-         s'ouvre plus : tout cela retire de la couverture, et c'est ce qu'il
-         faut lire — la trace de pile, elle, ne dit pas quels écrans ont cessé
-         d'être mesurés. */
-      marchesRatees.push({
-        adresse,
-        attendu: 'un parcours complet',
-        lu: String(erreur.message ?? erreur).split('\n')[0].slice(0, 120),
-      })
-    }
-  }
-
-  return { points, champsMesures, rognages, debordsDePage, debordsLocaux, marchesRatees }
-}
 
 
 
@@ -1854,340 +786,9 @@ function construire() {
 }
 
 
-/**
- * LA FUITE — exacte, sans seuil, jamais relevée.
- *
- * Le lot qui a posé le budget d'octets (85e12e0) confondait deux questions :
- * « le mauvais module est-il présent ? » et « le paquet est-il trop lourd ? ».
- * La première se répond par oui ou non ; en faire un seuil en octets voulait
- * dire qu'un import oublié de 200 o pouvait rester invisible tant que la
- * marge tenait, et que la marge, elle, devait rester assez SERRÉE pour
- * l'attraper — au prix de rougir bientôt pour une raison parfaitement
- * légitime : les dictionnaires i18n grossissent d'eux-mêmes, un peu à chaque
- * lot qui ajoute une chaîne visible.
- *
- * ICI ON NE PÈSE RIEN. On lit `.carte-des-paquets.json`, que
- * `vite.config.ts` écrit à chaque build (voir son plugin `carte-des-paquets`
- * pour pourquoi CE moment et pourquoi hors de `dist/`), et on demande une
- * seule chose : aucun des modules réservés à l'application n'apparaît dans un
- * paquet qui N'EST PAS une entrée dynamique. Peu importe qu'il pèse 200 o ou
- * 70 Ko — la question n'est pas combien, c'est présent ou absent.
- */
-function mesurerFuite() {
-  const chemin = join(RACINE, '.carte-des-paquets.json')
-  const carte = JSON.parse(readFileSync(chemin, 'utf8'))
-  const langue = moduleReserveALaLangueParesseuse()
-  const reserves = [...modulesReservesALApplication(), ...(langue ? [langue] : [])]
 
-  const fautifs = []
-  for (const [nomPaquet, info] of Object.entries(carte)) {
-    if (info.isDynamicEntry) continue // C'est là qu'ils ONT LE DROIT d'être.
-    for (const module of info.modules) {
-      if (reserves.includes(module)) fautifs.push({ module, paquet: nomPaquet })
-    }
-  }
-  return { fautifs, reserves, langue }
-}
 
-/**
- * LE BUDGET DU PREMIER CHARGEMENT — ce qu'un prospect télécharge avant de lire
- * la première phrase de vente.
- *
- * SUJET DIFFÉRENT des six règles plus bas, et c'est pour cela qu'il est
- * mesuré à PART : elles regardent ce qu'une page affiche une fois peinte,
- * celui-ci regarde ce qui a dû ARRIVER par le réseau pour qu'elle le soit.
- * Marché visé : Afrique de l'Ouest, réseau mobile, appareils d'entrée de
- * gamme — l'octet compte plus ici qu'un plancher de contraste ne le laisse
- * deviner.
- *
- * MESURÉ avant ce lot : un seul paquet, 176 Ko compressés de JavaScript, pour
- * TOUTE adresse. `vite build` le disait déjà à chaque passage
- * (« chunks larger than 500 kB ») et rien n'écoutait, parce qu'un avertissement
- * qui ne fait pas rougir n'est pas une garde.
- *
- * `React.lazy` (voir `src/App.tsx`) scinde désormais la vitrine — `/`,
- * `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser` — de
- * l'espace applicatif — tout ce qui vit sous `/app` et `/demo`. UNE frontière,
- * pas vingt : un gestionnaire qui passe d'un écran de gestion à l'autre ne la
- * retraverse jamais, et un découpage par écran lui aurait fait payer un
- * aller-retour réseau à chaque clic dans la barre latérale pour économiser un
- * octet qu'un visiteur de la vitrine ne télécharge de toute façon jamais.
- *
- * `PortfolioProvider` a suivi l'espace applicatif et non la vitrine, alors que
- * rien ne l'imposait par la seule forme des routes : mesuré, il pèse À LUI
- * SEUL 70 Ko compressés, plus que les vingt écrans de gestion réunis (39 Ko),
- * et `usePortfolio` n'a AUCUN consommateur public. Le laisser envelopper
- * `<App/>` dans `main.tsx`, comme avant ce lot, aurait rendu le découpage des
- * routes presque cosmétique : la vitrine aurait continué de le télécharger en
- * entier.
- *
- * CE QUI RESTE DANS LA VITRINE ET N'A PAS BOUGÉ, mesuré et volontairement hors
- * du champ de ce lot : le dictionnaire de traduction (`src/i18n/fr.ts` +
- * `en.ts`), chargé pour les deux langues à la fois parce qu'`I18nProvider`
- * l'importe tel quel. Le scinder par écran est un AUTRE sujet, avec ses
- * propres risques — la forme de `useT()`, l'hypothèse qu'une clé existe
- * toujours, `scripts/check-i18n.mjs` — et UN LOT reste UN SUJET. Ce qui EST du
- * ressort de ce fichier, en revanche, c'est de ne pas confondre SA croissance
- * normale avec un accident : voir `BUDGET_PREMIER_CHARGEMENT`, plus bas, et
- * `mesurerFuite`, plus haut, qui se partagent désormais la question que ce
- * seul nombre essayait de couvrir seul.
- */
-function mesurerPremierChargement() {
-  const html = readFileSync(join(RACINE, 'dist/index.html'), 'utf8')
 
-  /*
-    LES ACTIFS SE LISENT DANS `index.html`, jamais recopiés par leur nom.
-
-    Un nom de fichier construit porte un hachage de contenu — `index-C9xSCgIn.js`
-    — qui change à chaque build. Le lire ailleurs que dans le HTML que Vite
-    vient d'écrire se périmerait au build suivant. `index.html` liste
-    exactement, et seulement, ce qu'un navigateur télécharge SANS ATTENDRE :
-    le `<script type="module">` d'entrée et sa feuille de style. Le paquet
-    paresseux n'y figure PAS — c'est tout le sujet de ce lot — donc le lire
-    ainsi mesure le premier chargement par construction, sans avoir à savoir
-    quel fichier est « le bon ».
-  */
-  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1])
-  const styles = [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g)].map((m) => m[1])
-
-  /*
-    LOCAUX SEULEMENT, ET L'EXCLUSION EST DÉSORMAIS CHIFFRÉE.
-
-    Ce budget porte sur ce que CE dépôt construit et sert : une ressource d'une
-    autre origine n'est pas dans `dist/`, donc `readFileSync` ne peut pas la
-    peser. La règle est juste et elle reste.
-
-    CE QUI NE L'ÉTAIT PAS : la ligne d'avant écartait la police en renvoyant à
-    « l'argumentaire complet » d'`index.html`, en la disant « déjà mesurée et
-    tranchée ailleurs ». L'argumentaire existe bel et bien — une seule famille,
-    plage de graisse bornée, repli de même nature, `display=swap` — mais il
-    argumente un CHOIX DE DESSIN et ne pèse rien. Aucun octet n'était écrit nulle
-    part. Ce budget excluait donc un poids réel en s'appuyant sur un renvoi vers
-    une mesure qui n'existait pas, ce qui est exactement la forme de silence que
-    ce fichier reproche ailleurs à une garde qu'on ne lance pas.
-
-    `RESSOURCES_EXTERNES_PESEES`, plus bas, porte les octets et la méthode. Ils
-    ne sont pas ADDITIONNÉS au budget — le seuil de dérive garde la croissance
-    des dictionnaires, pas le poids d'une fonderie qui ne bouge pas d'un lot à
-    l'autre — mais ils sont IMPRIMÉS à côté de lui, à chaque passage, et une
-    garde refuse dès que l'adresse pesée n'est plus celle qui est servie.
-  */
-  const tous = [...scripts, ...styles]
-  const locaux = tous.filter((href) => href.startsWith('/'))
-  const externes = tous.filter((href) => !href.startsWith('/'))
-
-  const detail = locaux.map((href) => {
-    const octets = gzipSync(readFileSync(join(RACINE, 'dist', href.replace(/^\//, '')))).length
-    return { href, octets }
-  })
-  return { octets: detail.reduce((a, d) => a + d.octets, 0), detail, externes }
-}
-
-/**
- * CE QUE LE BUDGET N'EMBARQUE PAS, PESÉ ET DATÉ.
- *
- * MESURÉ LE 2026-08-30, agent utilisateur Android d'entrée de gamme, langue
- * française — c'est-à-dire le visiteur du marché visé :
- *
- *   1 708 o   la feuille `css2` elle-même, qui déclare QUATRE `@font-face`
- *             découpés par `unicode-range` ;
- *  27 272 o   le seul sous-ensemble que le français et l'anglais emploient
- *             (`U+0000-00FF`), en woff2 ;
- *  ────────
- *  28 980 o   ce qu'un premier visiteur télécharge EN PLUS des 155 430 o que
- *             cette garde compte — soit 19 % de plus, invisibles à elle.
- *
- * Les trois autres sous-ensembles — cyrillique, grec, vietnamien — ne sont
- * jamais demandés par ces deux langues, et ne sont donc pas comptés ici. Ils
- * le deviendraient le jour où le produit parlerait une de ces langues.
- *
- * CE QUE CES OCTETS COÛTENT EN PLUS DE LEUR TAILLE, et qui ne se mesure pas en
- * octets : DEUX origines à résoudre avant la première peinture
- * (`fonts.googleapis.com` puis `fonts.gstatic.com`), et une feuille de style
- * BLOQUANTE — `display=swap` gouverne le fichier de police, jamais la requête
- * CSS qui le déclare. Sur le réseau visé, c'est ce délai-là qui se voit, pas
- * les vingt-neuf kilo-octets.
- *
- * POURQUOI CE NOMBRE EST ÉCRIT ET NON MESURÉ À CHAQUE PASSAGE. Le mesurer
- * demanderait d'aller le chercher sur le réseau, donc de rendre cette porte
- * dépendante d'une sortie vers un tiers — exactement le défaut que
- * `plafond-vitrine.mjs` vient de fermer de l'autre côté. Un nombre écrit se
- * périme ; c'est pourquoi il ne vit pas seul, et que la garde ci-dessous refuse
- * dès que l'ADRESSE change. On ne peut pas oublier de remesurer sans que le
- * diff le dise.
- *
- * TRANCHÉ LE 2026-09-07, par Nelson : la police est hébergée dans le produit
- * (`public/polices/`, un sous-ensemble latin de 27 Ko, préchargé, rangé par
- * l'agent de service). Les deux origines et la feuille bloquante sont parties,
- * et ces octets entrent désormais dans les plafonds de `poids-ecrans` — relevés
- * avec ce motif. La table est VIDE, et la garde ci-dessous reste : le jour où
- * une ressource tierce reviendrait, elle arriverait « servie, jamais pesée ».
- */
-const RESSOURCES_EXTERNES_PESEES = {}
-
-/**
- * Le plafond — un seuil de DÉRIVE, plus un seuil d'ACCIDENT.
- *
- * `mesurerFuite`, plus haut, tient désormais l'accident : un import oublié
- * rougit EXACTEMENT, quel que soit son poids. Ce budget-ci n'a donc plus
- * besoin d'être serré au point de confondre les deux — ce que le lot 85e12e0
- * faisait, à 2 821 o de marge, en écrivant lui-même sa propre condamnation :
- * les dictionnaires i18n pèsent 34 Ko DANS ce paquet, chaque chaîne visible
- * ajoutée en ajoute deux (fr et en), et une marge de 3 Ko se dépasse par la
- * croissance la plus ordinaire qui soit.
- *
- * MESURÉ, la croissance ordinaire : gzip de `src/i18n/fr.ts` + `en.ts`,
- * séparément, sur les quinze derniers commits qui les ont touchés (20 août
- * 17h06 → 21 août 11h39) —
- *
- *   moyenne   156 o / commit
- *   médiane    99 o / commit
- *   plus gros bond isolé   665 o  (« l'écran des accès dit ce qu'il sait… »)
- *
- * Gzipper le dictionnaire à part plutôt que dans le paquet entier majore
- * légèrement ce chiffre — le flux combiné compresse au moins aussi bien,
- * jamais moins bien — ce qui va dans le sens PRUDENT : la marge ci-dessous ne
- * sous-estime pas la croissance réelle.
- *
- * BASE MESURÉE APRÈS CE LOT : 145 010 o (132 991 de JavaScript, 12 019 de
- * CSS). MARGE : 3 990 o, soit environ VINGT-CINQ lots à la moyenne mesurée, ou
- * SIX au rythme du plus gros bond observé — de quoi laisser la vitrine
- * grossir un moment sans qu'on y pense, pas indéfiniment.
- *
- * LA CONTREPARTIE, ÉCRITE, parce qu'une marge plus large est aussi une marge
- * plus lente à dire « il est temps de scinder le dictionnaire » : passé ce
- * nombre de lots, la porte rougira pour une raison entièrement légitime, et
- * ce sera le signal — pas un accident à corriger, un sujet à ouvrir (voir la
- * note plus haut sur pourquoi ce lot n'y touche pas). Relever ce chiffre sans
- * remesurer la croissance resterait la même faute que celle qu'il corrige.
- *
- * ═══ LE SIGNAL EST TOMBÉ, ET IL AVAIT RAISON ═══
- *
- * La marge de 3 990 o s'est épuisée en vingt-six lots — la prévision disait
- * vingt-cinq. Le dépassement s'est produit à 149 071 o, soixante et onze
- * octets au-dessus, sur un lot qui ajoutait vingt-deux clés de dictionnaire
- * (quarante-quatre chaînes, français et anglais) pour la file du jour.
- *
- * REMESURÉ AVANT DE RELEVER, et cette fois par la STRUCTURE plutôt que par le
- * rythme — c'est une mesure plus forte, parce qu'elle dit ce qu'on peut
- * récupérer et non seulement à quelle vitesse on consomme. `src/i18n/fr.ts`,
- * gzippé section par section :
- *
- *   app         61 247 o bruts   20 223 o gzip   ← les écrans, jamais lus en vitrine
- *   marketing    9 419 o           3 845 o
- *   auth         8 207 o           3 239 o
- *   common       6 494 o           2 994 o
- *   nav          2 165 o           1 094 o
- *   le reste     2 145 o           1 343 o
- *
- * Un prospect qui lit la page d'accueil et ne s'inscrit jamais télécharge donc
- * 20 223 o de chaînes d'écrans — 13,6 % de son premier chargement — pour des
- * mots qu'il ne verra pas. C'est le chiffre qui manquait à la note d'origine,
- * et il est acquis : personne n'aura à le remesurer.
- *
- * LA SORTIE EST PRÊTE ET NON PRISE, et il faut dire pourquoi. La frontière
- * existe déjà — `App.tsx` charge `EspaceApplicatif` par `lazy()`, « la SEULE
- * frontière qui compte » selon son propre commentaire — et le dictionnaire ne
- * la respecte pas : `I18nProvider` importe `fr` en entier, impatiemment. Sortir
- * la section `app` dans un module chargé par la MÊME promesse rendrait ces
- * 20 Ko sans qu'aucun écran ne puisse se rendre avant ses mots.
- *
- * Ce lot ne le fait pas parce qu'il refait la MISE EN PAGE des écrans, et
- * qu'échanger ce chantier contre un chantier de chargement serait exactement la
- * dérive qu'on vient de reprocher à cette branche : faire le mesurable à la
- * place du demandé.
- *
- * LE NOUVEAU NOMBRE : 156 000, soit 6 929 o de marge sur le mesuré. À la
- * croissance moyenne relevée plus haut — 156 o par lot — cela couvre une
- * quarantaine de lots, et une dizaine au rythme du plus gros bond observé. La
- * refonte en cours touche encore une vingtaine d'écrans, chacun apportant ses
- * clés : la marge est dimensionnée pour ELLE, pas pour le régime ordinaire.
- *
- * ═══ LA SCISSION A ÉTÉ TENTÉE, ET REFUSÉE — VOICI CE QU'ELLE COÛTE ═══
- *
- * Le chiffre de 20 223 o tient. Ce qui ne tenait pas, c'est « la frontière
- * existe déjà, le dictionnaire ne la suit pas » : elle existe, mais le côté
- * IMPATIENT emprunte le dictionnaire applicatif à VINGT endroits, comptés.
- *
- *   app.crash.title / body / details          `FrontiereDErreur`
- *   app.offline.title / body                  `CadreDuParc`
- *   app.parkFailure.* (5 clés)                `CadreDuParc`, `RequireAuth`
- *   app.sessionFailure.* (3 clés)             `RequireAuth`
- *   app.dashboard.chartTitle / openMonth      `Hero` — la page d'accueil
- *   app.dashboard.scalePrimary / Secondary    `Charts`, primitive partagée
- *   app.works.samples.*                       `workTitle`, données de démo
- *   app.exported                              `useCsvExport`
- *
- * LE PREMIER GROUPE EST RÉDHIBITOIRE, et c'est lui qui a arrêté le lot : une
- * FRONTIÈRE D'ERREUR dont le message d'erreur vivrait dans un morceau chargé
- * paresseusement est une contradiction. Le cas où elle sert est précisément
- * celui où un morceau n'a pas pu se charger. Elle rendrait alors ses clés en
- * clair — « app.crash.title » sur un écran blanc — c'est-à-dire le pire écran
- * que ce produit puisse montrer, au pire moment.
- *
- * CE QU'IL FAUDRAIT VRAIMENT FAIRE, et pourquoi c'est un lot et non un geste :
- * ces vingt clés ne sont pas mal rangées par accident. Un message de panne, un
- * libellé d'export, la légende d'un graphique de vitrine ne sont PAS des
- * chaînes d'application — elles sont sous `app.` parce que tout y était. Les
- * sortir demande de les renommer, donc de toucher huit modules dont deux
- * primitives partagées, et de refaire passer `check-i18n` et la parité.
- *
- * Une scission faite À MOITIÉ — garder les vingt sous `app.` et fusionner en
- * profondeur les deux moitiés — marche, et j'ai commencé par là. Elle échoue
- * SILENCIEUSEMENT si l'on en oublie une : la clé s'affiche en clair, et rien
- * dans le typage ne le dit, puisque le TYPE reste entier des deux côtés.
- * Livrer ça en fin de course, sans garde capable de distinguer les modules
- * impatients des autres, aurait été un mauvais échange.
- *
- * Le budget reste donc à 156 000. Le prochain rouge n'aura plus à mesurer —
- * ni le prix, ni l'obstacle.
- *
- * ═══ LE PROCHAIN ROUGE A EU LIEU : 2026-09-05, À HUIT OCTETS ═══
- *
- *     ✗ premier chargement de la vitrine à 156 008 o, au-delà du budget de 156 000
- *
- * Le lot qui l'a déclenché — corriger une fiche locataire — ajoute dix-huit clés
- * dans les deux dictionnaires. REMESURÉ plutôt que supposé, en construisant deux
- * fois et en comparant les mêmes deux fichiers : 156 805 o sans le lot,
- * 156 949 o avec, soit +144 o. (Les absolus diffèrent de ceux du rapport — `gzip`
- * en ligne de commande ne compresse pas comme `zlib` ici — mais l'ÉCART, lui,
- * est mesuré par une seule et même méthode.)
- *
- * 144 OCTETS, SOUS LA MOYENNE DE 156 o PAR LOT relevée plus haut. Ce lot n'est
- * donc pas gourmand : la marge de 6 929 o est simplement DÉPENSÉE, et il n'en
- * restait que 136 avant lui. C'est exactement ce que ce nombre existe pour dire.
- *
- * LE NOUVEAU NOMBRE : 160 000, soit 3 992 o de marge sur le mesuré, environ
- * vingt-cinq lots au rythme documenté. Ce qu'il COÛTE, chiffré à la vitesse de
- * référence de `poids-ecrans` : 4 000 o de plus à 400 kb/s font 80 ms sur un
- * premier chargement qui en prend déjà 3 120. C'est le prix qu'on paie, et il
- * est dit plutôt que caché derrière un nombre relevé en silence.
- *
- * CE QUI RESTE LE VRAI CORRECTIF est écrit vingt lignes plus haut et n'a pas
- * bougé : sortir de `app.` les vingt clés qu'un module IMPATIENT emprunte, puis
- * scinder le dictionnaire. Relever le budget ne fait que reculer l'échéance —
- * une quatrième fois n'aura plus d'argument.
- */
-const BUDGET_PREMIER_CHARGEMENT = 160_000
-
-/*
-  GARDE DU GARDE : un budget hors de toute plage plausible ne défend rien.
-
-  À zéro ou en dessous, la porte rougirait sur CHAQUE build, y compris un
-  premier chargement vide — elle cesserait de distinguer un dépassement d'une
-  absence de mesure. Au-delà d'un mégaoctet, elle ne rougirait plus JAMAIS :
-  le premier chargement entier de ce dépôt, vitrine ET application réunies,
-  ne l'atteint pas avant ce lot (176 Ko). La même asymétrie que pour
-  `JEU_MINIMAL` : un seuil trop haut se corrige de lui-même en restant
-  muet, c'est le silence qu'on interdit ici.
-*/
-if (BUDGET_PREMIER_CHARGEMENT <= 0 || BUDGET_PREMIER_CHARGEMENT > 1_000_000) {
-  console.error(
-    `\n✗ mesure-ui : le budget du premier chargement vaut ${BUDGET_PREMIER_CHARGEMENT} o.\n` +
-      "   Hors de [1, 1 000 000], il ne peut plus jouer son rôle de plafond.\n",
-  )
-  process.exit(1)
-}
 
 const adresses = adressesDeLApplication()
 
