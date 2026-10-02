@@ -100,6 +100,7 @@ import {
   NON_OUVRABLES_ATTENDUES,
   plafondDe,
 } from './modales/plafonds.mjs'
+import { attendreQueLaBoiteSePose } from './modales/attente.mjs'
 import { lireLaCouvertureClavier } from './modales/couverture-clavier.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -157,6 +158,11 @@ let colonneANous = true
 /* Combien de modales la sonde des gabarits a lues — voir sa garde du garde. */
 let gabaritsInspectes = 0
 /* Ce que les deux audits de modale ont réellement examiné — leurs gardes. */
+/* Les états dont la boîte n'a jamais cessé de bouger — mesurés quand même, et
+   NOMMÉS dans le rapport. */
+const attentesExpirees = []
+let laPlusLenteMs = 0
+
 let textesDeModaleAudites = 0
 let ciblesDeModaleSondees = 0
 /* Combien d'états ont été confrontés aux clôtures perméables — voir leur garde. */
@@ -349,6 +355,10 @@ try {
             continue
           }
         }
+
+        const assise = await attendreQueLaBoiteSePose(page)
+        if (!assise.posee) attentesExpirees.push(`${nom} (${assise.polices})`)
+        if (assise.ms > laPlusLenteMs) laPlusLenteMs = assise.ms
 
         const m = await page.evaluate(async () => {
           const d = document.querySelector('[role="dialog"],[role="alertdialog"]')
@@ -814,6 +824,15 @@ console.log(
     `  ${ciblesDeModaleSondees} cibles de modale sondées au doigt, plancher ${PLANCHER_CIBLE} px.\n` +
     `  ${cloturesDeModaleSondees} état(s) confronté(s) aux clôtures perméables : une boîte qui borne\n` +
     '  son corps ne doit pas laisser sortir ses absolus.\n' +
+    /* L'ATTENTE SE RAPPORTE AU VERT AUSSI. Une attente dont on ne dit rien ne
+       se distingue pas d'une attente absente : c'est ce qui a permis au délai
+       fixe de 400 ms de passer pour une garantie pendant des mois. */
+    (attentesExpirees.length === 0
+      ? `  Toutes les boîtes se sont POSÉES avant mesure — la plus lente en ` +
+        `${laPlusLenteMs} ms.\n`
+      : `  ⚠ ${attentesExpirees.length} boîte(s) n'ont jamais cessé de bouger et ont été mesurées\n` +
+        `    quand même : ${attentesExpirees.join(', ')}.\n` +
+        `    Leur relevé est donc une PHOTO d'un état mouvant, pas une mesure.\n`) +
     (NON_OUVRABLES.length === 0
       ? '  et AUCUNE que la démonstration ne rende pas — la liste est vide et gardée vide.\n'
       : `  plus ${NON_OUVRABLES.length} que la démonstration ne rend pas : ${NON_OUVRABLES.join(', ')}.\n`) +
