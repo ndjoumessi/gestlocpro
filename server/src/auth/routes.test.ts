@@ -281,6 +281,14 @@ describe('session', () => {
            un défaut inventé côté client rebasculerait sur SMS un parc passé à
            WhatsApp, en silence et sans que personne ne l'ait demandé. */
         reminderChannel: 'sms',
+        /* L'APPEL AUTOMATIQUE, et le SEUL de cette liste dont le défaut soit
+           un refus. `false` n'est pas l'ancien comportement reproduit — c'est
+           l'absence de comportement : aucun parc n'appelait ses loyers tout
+           seul, la route était manuelle. Un défaut inventé côté client ferait
+           afficher « allumé » à un parc que rien n'appelle, donc croire un
+           parc couvert pendant qu'aucune échéance ne naît. */
+        autoRentCall: false,
+        rentCallDayOfMonth: 1,
       },
     ])
   })

@@ -86,12 +86,14 @@ describe('les variables des avis', () => {
     ).toEqual([])
   })
 
-  it('sont lues sur les treize familles, et le compte est écrit', () => {
+  it('sont lues sur les quinze familles, et le compte est écrit', () => {
     /* GARDE DU GARDE. Si la lecture du bloc `msg` cassait — un changement
        d'indentation suffirait —, la règle ci-dessus comparerait une liste vide
        à une autre et se déclarerait verte. */
     const libelles = variablesDesLibelles()
-    expect(libelles.size, 'la lecture de `fr.ts` ne trouve plus les familles').toBe(14)
+    /* QUINZE depuis `leaseMoveOut` — le jumeau de `leaseRenewal` pour l'autre
+       date du bail, écrit par le cron des avis d'échéance. */
+    expect(libelles.size, 'la lecture de `fr.ts` ne trouve plus les familles').toBe(15)
     expect(
       [...libelles.values()].flat().length,
       'aucune variable lue : le bloc `msg` a changé de forme',

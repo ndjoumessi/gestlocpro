@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "858954fa",
- "empreinteDesSources": "fca36a4c48dc945ee31a2458b14f368616f9ed63d2b0e4dec45765588a3c3fd2",
+ "course": "d3e968e8",
+ "empreinteDesSources": "032bebc094a7713fc4df374f6aa7a32c96f43bf54c64074ae4bd9e67d1678fbb",
  "mesures": {
   "/@360": {
-   "octets": 575104,
-   "octetsFil": 187175,
+   "octets": 576222,
+   "octetsFil": 187465,
    "requetes": 4,
    "releve": {
-    "de": 575059,
+    "de": 575813,
     "requetesDe": 4,
-    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
-    "course": "858954fa"
+    "motif": "deux lots d'automatisme PLUS le decoupage de la modale du parc que le registre des modales exigeait. Cumul depuis le debut du lot : / passe de 575104 a 576222 o bruts (+1118, soit +290 sur le fil) et /demo de 438528 a 440669 (+2141, soit +393 sur le fil) ; +2 a +4 ms a 400 kb/s. CE QUE PORTE CE SECOND RELEVEMENT (+81 et +184 sur le fil par rapport au premier) : la boite ParkAutomationModal et son bloc i18n de chrome — titre, intitule de menu, description, trois messages — plus la seconde entree de menu sur l'ecran du parc. Le corps des sept reglages n'est pas duplique : il a DEMENAGE, ses libelles n'ont pas bouge d'un mot et gardent leurs cles sous parkSettings. CE QUE CES OCTETS ACHETENT : une modale de correction du parc qui retombe de 721 a 48 px de defilement a 360 px, et la plus longue boite du registre de 875 a 480 — sans qu'une seule phrase ait ete raccourcie. Le registre avait ecrit que le prochain reglage ajoute devrait payer ce decoupage plutot qu'un plafond de plus ; ces octets sont ce paiement. L'ecart ne touche que / et /demo, les deux points qui chargent le dictionnaire complet.",
+    "course": "d3e968e8"
    }
   },
   "/demo@360": {
-   "octets": 438528,
-   "octetsFil": 124365,
+   "octets": 440669,
+   "octetsFil": 124758,
    "requetes": 2,
    "releve": {
-    "de": 438482,
+    "de": 439522,
     "requetesDe": 2,
-    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
-    "course": "858954fa"
+    "motif": "deux lots d'automatisme PLUS le decoupage de la modale du parc que le registre des modales exigeait. Cumul depuis le debut du lot : / passe de 575104 a 576222 o bruts (+1118, soit +290 sur le fil) et /demo de 438528 a 440669 (+2141, soit +393 sur le fil) ; +2 a +4 ms a 400 kb/s. CE QUE PORTE CE SECOND RELEVEMENT (+81 et +184 sur le fil par rapport au premier) : la boite ParkAutomationModal et son bloc i18n de chrome — titre, intitule de menu, description, trois messages — plus la seconde entree de menu sur l'ecran du parc. Le corps des sept reglages n'est pas duplique : il a DEMENAGE, ses libelles n'ont pas bouge d'un mot et gardent leurs cles sous parkSettings. CE QUE CES OCTETS ACHETENT : une modale de correction du parc qui retombe de 721 a 48 px de defilement a 360 px, et la plus longue boite du registre de 875 a 480 — sans qu'une seule phrase ait ete raccourcie. Le registre avait ecrit que le prochain reglage ajoute devrait payer ce decoupage plutot qu'un plafond de plus ; ces octets sont ce paiement. L'ecart ne touche que / et /demo, les deux points qui chargent le dictionnaire complet.",
+    "course": "d3e968e8"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64611,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 575104,
-   "octetsFil": 187175,
+   "octets": 576222,
+   "octetsFil": 187465,
    "requetes": 4,
    "releve": {
-    "de": 575059,
+    "de": 575813,
     "requetesDe": 4,
-    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
-    "course": "858954fa"
+    "motif": "deux lots d'automatisme PLUS le decoupage de la modale du parc que le registre des modales exigeait. Cumul depuis le debut du lot : / passe de 575104 a 576222 o bruts (+1118, soit +290 sur le fil) et /demo de 438528 a 440669 (+2141, soit +393 sur le fil) ; +2 a +4 ms a 400 kb/s. CE QUE PORTE CE SECOND RELEVEMENT (+81 et +184 sur le fil par rapport au premier) : la boite ParkAutomationModal et son bloc i18n de chrome — titre, intitule de menu, description, trois messages — plus la seconde entree de menu sur l'ecran du parc. Le corps des sept reglages n'est pas duplique : il a DEMENAGE, ses libelles n'ont pas bouge d'un mot et gardent leurs cles sous parkSettings. CE QUE CES OCTETS ACHETENT : une modale de correction du parc qui retombe de 721 a 48 px de defilement a 360 px, et la plus longue boite du registre de 875 a 480 — sans qu'une seule phrase ait ete raccourcie. Le registre avait ecrit que le prochain reglage ajoute devrait payer ce decoupage plutot qu'un plafond de plus ; ces octets sont ce paiement. L'ecart ne touche que / et /demo, les deux points qui chargent le dictionnaire complet.",
+    "course": "d3e968e8"
    }
   },
   "/demo@1280": {
-   "octets": 438528,
-   "octetsFil": 124365,
+   "octets": 440669,
+   "octetsFil": 124758,
    "requetes": 2,
    "releve": {
-    "de": 438482,
+    "de": 439522,
     "requetesDe": 2,
-    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
-    "course": "858954fa"
+    "motif": "deux lots d'automatisme PLUS le decoupage de la modale du parc que le registre des modales exigeait. Cumul depuis le debut du lot : / passe de 575104 a 576222 o bruts (+1118, soit +290 sur le fil) et /demo de 438528 a 440669 (+2141, soit +393 sur le fil) ; +2 a +4 ms a 400 kb/s. CE QUE PORTE CE SECOND RELEVEMENT (+81 et +184 sur le fil par rapport au premier) : la boite ParkAutomationModal et son bloc i18n de chrome — titre, intitule de menu, description, trois messages — plus la seconde entree de menu sur l'ecran du parc. Le corps des sept reglages n'est pas duplique : il a DEMENAGE, ses libelles n'ont pas bouge d'un mot et gardent leurs cles sous parkSettings. CE QUE CES OCTETS ACHETENT : une modale de correction du parc qui retombe de 721 a 48 px de defilement a 360 px, et la plus longue boite du registre de 875 a 480 — sans qu'une seule phrase ait ete raccourcie. Le registre avait ecrit que le prochain reglage ajoute devrait payer ce decoupage plutot qu'un plafond de plus ; ces octets sont ce paiement. L'ecart ne touche que / et /demo, les deux points qui chargent le dictionnaire complet.",
+    "course": "d3e968e8"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64611,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,

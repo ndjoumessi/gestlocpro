@@ -3,7 +3,6 @@ import { Modal } from '@/components/primitives/Modal'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input, Select } from '@/components/primitives/Input'
-import { Checkbox } from '@/components/primitives/Choice'
 import { Combobox } from '@/components/primitives/Combobox'
 import { Notice } from '@/components/primitives/Notice'
 import { useToast } from '@/components/primitives/Toast'
@@ -89,27 +88,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
     () => ({
       name: adhesionActive?.parkName ?? (estDemo ? t('common.demoPark') : ''),
       countryCode: adhesionActive?.countryCode ?? '',
-      /* Un serveur antérieur au champ ne le rend pas : le supposer ÉTEINT
-         proposerait de « rallumer » une relance qui n'a jamais cessé. */
-      autoReminders: adhesionActive?.autoReminders ?? true,
-      reminderMilestoneDays: adhesionActive?.reminderMilestoneDays ?? 7,
-      /* `6` et `UTC` : le couple exact de l'ancien cron quotidien. Un serveur
-         antérieur aux champs ne les rend pas, et supposer autre chose ferait
-         proposer un changement d'heure que personne n'a demandé. */
-      reminderHour: adhesionActive?.reminderHour ?? 6,
-      reminderTimeZone: adhesionActive?.reminderTimeZone ?? 'UTC',
-      /* `sms` : exactement ce que la route écrivait EN DUR avant que le canal
-         soit réglable. Supposer autre chose ferait proposer un changement de
-         canal que personne n'a demandé — et proposer `whatsapp` à un parc qui
-         n'a pas de modèle approuvé éteindrait ses relances en silence.
-
-         `in_app` ET `email` NE SONT PAS RÉGLABLES, mais le serveur peut les
-         rendre : on retombe alors sur `sms`, le seul des deux membres réglables
-         qui soit aussi l'ancien comportement. */
-      reminderChannel:
-        adhesionActive?.reminderChannel === 'whatsapp'
-          ? ('whatsapp' as const)
-          : ('sms' as const),
       currency: (adhesionActive?.currency ?? (estDemo ? deviseDeDemo : '')) as DeviseDuParc | '',
       /* `?? 'delegate'` : un serveur antérieur au champ ne le rend pas, et le
          supposer `solo` proposerait de « rétablir » une délégation que le parc
@@ -121,13 +99,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
       adhesionActive?.countryCode,
       adhesionActive?.currency,
       adhesionActive?.delegation,
-      /* Les cinq réglages de relance : sans eux, la modale rouverte après une
-         correction reproposerait l'état du PREMIER rendu. */
-      adhesionActive?.autoReminders,
-      adhesionActive?.reminderMilestoneDays,
-      adhesionActive?.reminderHour,
-      adhesionActive?.reminderTimeZone,
-      adhesionActive?.reminderChannel,
       // Les trois de la démonstration : sans elles, le repli se figerait sur la
       // langue et la devise du premier rendu, et changer l'une des deux dans
       // l'en-tête laisserait la modale sur l'ancienne.
@@ -152,65 +123,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
    * pourtant `required`, comme les autres modales de saisie du dossier.
    */
   const [erreurNom, setErreurNom] = useState<string | undefined>(undefined)
-  const [relances, setRelances] = useState(origine.autoReminders)
-  const [jalon, setJalon] = useState(String(origine.reminderMilestoneDays))
-  const [heure, setHeure] = useState(String(origine.reminderHour))
-  const [fuseau, setFuseau] = useState(origine.reminderTimeZone)
-  const [canal, setCanal] = useState<'sms' | 'whatsapp'>(origine.reminderChannel)
-
-  /**
-   * LES FUSEAUX VIENNENT D'`Intl`, jamais d'une liste écrite ici.
-   *
-   * Une liste recopiée vieillit — les fuseaux naissent et meurent par décision
-   * politique — et elle divergerait de l'autorité que le serveur interroge pour
-   * accepter la valeur. `UTC` est ajouté en tête parce que tous les moteurs ne
-   * le rendent pas, et que c'est le défaut de tout parc existant : il doit
-   * pouvoir se relire.
-   */
-  /**
-   * L'HEURE DE RELANCE, RELUE DANS LE FUSEAU DU NAVIGATEUR.
-   *
-   * `null` quand les deux fuseaux donnent la même heure — il n'y a alors rien à
-   * dire —, et `null` aussi si `Intl` refuse la valeur : un fuseau saisi à la
-   * main, une heure hors de 0–23 le temps d'une frappe. Une aide qui explose
-   * pendant qu'on tape serait pire que l'aide absente.
-   */
-  const heureLocale = useMemo(() => {
-    const valeur = Number(heure)
-    if (!Number.isInteger(valeur) || valeur < 0 || valeur > 23) return null
-    try {
-      const aujourdhui = new Date()
-      /* On construit l'instant qui vaut `heure` DANS le fuseau du parc : on
-         part d'une heure UTC, on lit ce qu'elle donne là-bas, et on corrige de
-         l'écart. Deux lectures suffisent — aucun décalage n'est fractionnaire
-         au point de demander mieux. */
-      const sonde = Date.UTC(
-        aujourdhui.getUTCFullYear(),
-        aujourdhui.getUTCMonth(),
-        aujourdhui.getUTCDate(),
-        valeur,
-      )
-      const lecture = (zone: string, instant: number) =>
-        Number(
-          new Intl.DateTimeFormat('en-GB', {
-            timeZone: zone,
-            hour: '2-digit',
-            hour12: false,
-          }).format(new Date(instant)),
-        )
-      const ecart = lecture(fuseau, sonde) - valeur
-      const instant = sonde - ecart * 3_600_000
-      const ici = lecture(Intl.DateTimeFormat().resolvedOptions().timeZone, instant)
-      return ici === valeur ? null : `${String(ici).padStart(2, '0')}:00`
-    } catch {
-      return null
-    }
-  }, [heure, fuseau])
-
-  const optionsDeFuseau = useMemo(
-    () => ['UTC', ...Intl.supportedValuesOf('timeZone')].map((z) => ({ value: z, label: z })),
-    [],
-  )
 
   const optionsDePays = useMemo(() => countryOptions(locale), [locale])
 
@@ -218,11 +130,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
 
   /** Ce qui a changé, et rien d'autre. Vide quand la saisie est celle d'origine. */
   const correction: {
-    autoReminders?: boolean
-    reminderMilestoneDays?: number
-    reminderHour?: number
-    reminderTimeZone?: string
-    reminderChannel?: 'sms' | 'whatsapp'
     name?: string
     countryCode?: string
     currency?: DeviseDuParc
@@ -232,34 +139,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
   if (pays && pays !== origine.countryCode) correction.countryCode = pays
   if (deviseChange) correction.currency = devise as DeviseDuParc
   if (delegation !== origine.delegation) correction.delegation = delegation
-  if (relances !== origine.autoReminders) correction.autoReminders = relances
-  /* Le jalon ne part QUE s'il est un nombre dans les bornes : un champ vidé en
-     cours de frappe ne doit pas écrire zéro. */
-  const jalonLu = Number(jalon)
-  if (
-    Number.isInteger(jalonLu) &&
-    jalonLu >= 1 &&
-    jalonLu <= 90 &&
-    jalonLu !== origine.reminderMilestoneDays
-  ) {
-    correction.reminderMilestoneDays = jalonLu
-  }
-  /* MÊME PRUDENCE POUR L'HEURE, avec une borne qui commence à ZÉRO : minuit est
-     une heure d'envoi valide, et l'exclure priverait un parc d'un choix qu'il
-     pourrait vouloir. Un champ vidé en cours de frappe ne part pas. */
-  const heureLue = Number(heure)
-  if (
-    heure.trim() !== '' &&
-    Number.isInteger(heureLue) &&
-    heureLue >= 0 &&
-    heureLue <= 23 &&
-    heureLue !== origine.reminderHour
-  ) {
-    correction.reminderHour = heureLue
-  }
-  if (fuseau && fuseau !== origine.reminderTimeZone) correction.reminderTimeZone = fuseau
-  if (canal !== origine.reminderChannel) correction.reminderChannel = canal
-
   const enregistrer = (event: FormEvent) => {
     event.preventDefault()
     /**
@@ -495,173 +374,6 @@ export function ParkSettingsModal({ open, onClose }: { open: boolean; onClose: (
           )}
         </Field>
 
-        {/*
-          LES RELANCES AUTOMATIQUES, ET POURQUOI ELLES SE RÈGLENT ICI.
-
-          Le CRON est bête : il passe tous les jours à heure fixe. La POLITIQUE
-          vit dans le produit — faut-il relancer, et au bout de combien de jours.
-          Laisser le jalon dans la planification obligerait un propriétaire à
-          ouvrir un tableau de bord d'hébergeur pour changer d'avis sur ses
-          propres locataires.
-
-          L'INTERRUPTEUR VIENT EN PREMIER : cette relance n'avait jamais tourné,
-          faute de lanceur. Elle se met à partir pour de bon, et le premier geste
-          qu'on doit pouvoir faire est de l'ARRÊTER — avant d'avoir à comprendre
-          le reste.
-        */}
-        {/* Une case ne passe PAS par `Field` : elle porte son propre libellé, et
-            l'imbriquer donnerait deux étiquettes pour une commande. */}
-        <Checkbox
-          label={t('app.parkSettings.autoRemindersOn')}
-          hint={t('app.parkSettings.autoRemindersHint')}
-          checked={relances}
-          onChange={(e) => setRelances(e.target.checked)}
-        />
-
-        {relances && (
-          <Field
-            label={t('app.parkSettings.reminderDay')}
-            hint={t('app.parkSettings.reminderDayHint')}
-          >
-            {(props) => (
-              <Input
-                id={props.id}
-                aria-describedby={props['aria-describedby']}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={90}
-                value={jalon}
-                onChange={(e) => setJalon(e.target.value)}
-              />
-            )}
-          </Field>
-        )}
-
-        {/*
-          L'HEURE, ET SON FUSEAU — INSÉPARABLES.
-
-          Le cron passe désormais toutes les heures et ne fait rien pour un parc
-          dont ce n'est pas l'heure : la planification ne sait plus QUAND
-          envoyer, seulement quand REGARDER. C'est ce qui permet à ce champ
-          d'exister.
-
-          « 7 h » ne veut rien dire sans le fuseau, et le PAYS ne le donne pas :
-          ce produit a en production un parc qui porte `FR` et loue à Yaoundé.
-          C'est l'heure de qui REÇOIT qui compte, jamais celle de qui administre.
-        */}
-        {relances && (
-          <Field
-            label={t('app.parkSettings.reminderHour')}
-            /*
-              L'HEURE QUE ÇA FAIT CHEZ CELUI QUI RÈGLE.
-
-              Le couple par défaut est 6 h / UTC. Un propriétaire à Douala règle
-              « 6 » en croyant six heures du matin chez lui, et la relance part
-              à sept. L'aide disait « dans le fuseau choisi ci-dessous » : la
-              règle, jamais sa conséquence — et c'est l'écran dont l'en-tête
-              rappelle qu'« un parc porte FR et loue à Yaoundé ».
-
-              `Intl` fait la conversion, sans rien demander à personne : on prend
-              aujourd'hui à l'heure saisie DANS le fuseau choisi, et on la relit
-              dans le fuseau du navigateur. Rien n'est ajouté quand les deux
-              coïncident — redire « 6 h, soit 6 h » serait du bruit.
-            */
-            hint={
-              heureLocale
-                ? t('app.parkSettings.reminderHourHintLocal', { heure: heureLocale })
-                : t('app.parkSettings.reminderHourHint')
-            }
-          >
-            {(props) => (
-              <Input
-                id={props.id}
-                aria-describedby={props['aria-describedby']}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={23}
-                value={heure}
-                onChange={(e) => setHeure(e.target.value)}
-              />
-            )}
-          </Field>
-        )}
-
-        {relances && (
-          <Field
-            label={t('app.parkSettings.reminderZone')}
-            hint={t('app.parkSettings.reminderZoneHint')}
-          >
-            {(props) => (
-              <Combobox
-                id={props.id}
-                aria-describedby={props['aria-describedby']}
-                name="reminderTimeZone"
-                placeholder={t('app.parkSettings.notSet')}
-                autoComplete="off"
-                options={optionsDeFuseau}
-                value={fuseau}
-                onChange={setFuseau}
-              />
-            )}
-          </Field>
-        )}
-
-        {/**
-         * PAR QUEL CANAL LA RELANCE PART — et ce que le produit ne peut pas
-         * promettre.
-         *
-         * DEUX CHOIX SEULEMENT, sur les quatre que l'énumération porte.
-         * `in_app` est ce que le produit ÉCRIT quand rien n'est parti : un
-         * constat, pas une intention, et le proposer ici reviendrait à faire
-         * choisir « ne rien envoyer » sous le nom d'un canal. `email` n'a pas
-         * de rédaction de relance.
-         *
-         * L'AVERTISSEMENT N'EST PAS UNE PRÉCAUTION DE STYLE. Meta n'autorise un
-         * message WhatsApp SORTANT hors d'une fenêtre de 24 h après le dernier
-         * message du destinataire que s'il suit un MODÈLE qu'elle a approuvé ;
-         * une relance de loyer est par nature non sollicitée. Sans ce modèle,
-         * Twilio refuse, la couture rend `false`, et la relance reste dans le
-         * produit — visible, mais pas partie.
-         *
-         * LE DIRE ICI, C'EST-À-DIRE AVANT. La découverte naturelle de cette
-         * règle est un parc qui bascule sur WhatsApp et dont plus aucune
-         * relance ne part, sans que rien à l'écran explique pourquoi. C'est
-         * exactement la forme de panne que ce dépôt refuse ailleurs : un
-         * réglage qui a l'air de marcher et n'envoie rien.
-         */}
-        {relances && (
-          <Field
-            label={t('app.parkSettings.reminderChannel')}
-            hint={t('app.parkSettings.reminderChannelHint')}
-          >
-            {/* `Select` ET NON `Combobox` : deux options fixes, connues à
-                l'avance et qui ne se cherchent pas. Le `Combobox` du dépôt sert
-                les listes longues — pays, fuseaux — et pose son `name` sur un
-                champ CACHÉ, ce qui rend le choix inatteignable à une garde de
-                navigateur autrement qu'en déroulant un panneau. */}
-            {(props) => (
-              <Select
-                {...props}
-                name="reminderChannel"
-                value={canal}
-                onChange={(e) => setCanal(e.target.value as 'sms' | 'whatsapp')}
-              >
-                <option value="sms">{t('app.parkSettings.reminderChannelSms')}</option>
-                <option value="whatsapp">
-                  {t('app.parkSettings.reminderChannelWhatsApp')}
-                </option>
-              </Select>
-            )}
-          </Field>
-        )}
-
-        {relances && canal === 'whatsapp' && (
-          <Notice tone="warn" icon="info">
-            {t('app.parkSettings.reminderChannelWhatsAppWarning')}
-          </Notice>
-        )}
 
         {/**
          * L'AVERTISSEMENT, et il ne paraît que si la devise change.

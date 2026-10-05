@@ -145,8 +145,19 @@ export const LANGUES = ['fr', 'en']
   leurs noms accessibles portent désormais leur cible. Le script ouvrait déjà
   les menus ; il cherchait les anciens noms, et refusait plutôt que d'écrire
   « sans défaut » sur ce qu'il n'avait pas ouvert.
+
+  140 → 144 (2026-10-05) : `ParkAutomation`, et son état WhatsApp QUI CHANGE DE
+  BOÎTE. Quatre états de plus, pas huit : l'état du canal existait déjà sous le
+  nom `ParkSettings·whatsapp` — il a suivi le réglage qui le produit. Les quatre
+  neufs sont l'ouverture de la boîte née du découpage.
+
+  C'EST LA PREMIÈRE FOIS QUE CE NOMBRE MONTE SANS GESTE NEUF. Les douze paliers
+  d'au-dessus accompagnent tous une fonction qui n'existait pas ; celui-ci
+  accompagne un DÉCOUPAGE que ce registre a lui-même exigé, deux entrées plus
+  haut, en écrivant « le prochain réglage qu'on y ajoute devrait payer ce
+  découpage plutôt qu'un plafond de plus ».
 */
-export const ATTENDUS = 140
+export const ATTENDUS = 144
 export const NON_OUVRABLES_ATTENDUES = 0
 
 /**

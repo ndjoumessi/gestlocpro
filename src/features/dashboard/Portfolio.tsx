@@ -37,6 +37,7 @@ import { chargerParc } from '@/data/apiPortfolio'
 import { useSession } from '@/api/SessionProvider'
 import { AddBuildingModal } from './AddBuildingModal'
 import { ParkSettingsModal } from './ParkSettingsModal'
+import { ParkAutomationModal } from './ParkAutomationModal'
 import { AddUnitModal } from './AddUnitModal'
 import { EditBuildingModal } from './EditBuildingModal'
 import { EditUnitModal } from './EditUnitModal'
@@ -114,6 +115,7 @@ export function Portfolio() {
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [logementOuvert, setLogementOuvert] = useState(false)
   const [correctionOuverte, setCorrectionOuverte] = useState(false)
+  const [automatismesOuverts, setAutomatismesOuverts] = useState(false)
   /* DEUX CORRECTIONS DE PLUS, et elles ferment le dernier trou du parc :
      jusqu'ici un immeuble ne se corrigeait pas et un logement ne se touchait
      pas du tout. Voir `EditBuildingModal` et `EditUnitModal`. */
@@ -1211,6 +1213,18 @@ export function Portfolio() {
                 {t('app.parkSettings.open')}
               </MenuElement>
             )}
+            {/* LES AUTOMATISMES, SOUS LA MÊME RÈGLE DE RÔLE ET JUSTE APRÈS.
+                Ce sont les sept réglages qui vivaient DANS la correction du
+                parc, sortis le 2026-10-05 : le registre des modales exigeait
+                que le prochain réglage ajouté paie ce découpage plutôt qu'un
+                plafond de plus. L'entrée voisine la correction parce qu'on les
+                cherche au même endroit — « mon parc » — et s'en distingue par
+                son titre : ce que le parc EST, ce que le parc FAIT. */}
+            {peutCorrigerLeParc && (
+              <MenuElement icone="bell" onClick={() => setAutomatismesOuverts(true)}>
+                {t('app.parkAutomation.open')}
+              </MenuElement>
+            )}
             <MenuElement icone="download" onClick={exporterLeParc}>
               {t('app.portfolio.exportPark')}
             </MenuElement>
@@ -1222,6 +1236,10 @@ export function Portfolio() {
 
       {correctionOuverte && (
         <ParkSettingsModal open onClose={() => setCorrectionOuverte(false)} />
+      )}
+
+      {automatismesOuverts && (
+        <ParkAutomationModal open onClose={() => setAutomatismesOuverts(false)} />
       )}
 
       {/* Une confirmation AVANT une suppression définitive : c'est le seul

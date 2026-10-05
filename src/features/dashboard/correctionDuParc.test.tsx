@@ -82,6 +82,30 @@ async function ouvrirLaCorrection() {
   return screen.findByRole('dialog')
 }
 
+/**
+ * Monte l'écran du parc et ouvre la modale des AUTOMATISMES.
+ *
+ * ═══ POURQUOI DEUX OUVREURS DANS CE FICHIER ═══
+ *
+ * Les sept réglages d'automatisme ont quitté la correction du parc le
+ * 2026-10-05 : le registre des modales l'exigeait — « le prochain réglage qu'on
+ * y ajoute devrait payer ce découpage plutôt qu'un plafond de plus » —, et
+ * l'appel automatique des loyers était ce prochain réglage.
+ *
+ * DEUX CAS DE CE FICHIER PORTENT SUR LE CANAL DE LA RELANCE, qui a déménagé
+ * avec les autres. Ils restent ici plutôt que de partir vers
+ * `relancesReglables.test.tsx` : ils sont écrits contre le harnais de ce
+ * fichier — son `serveur`, son `PORTEFEUILLE`, son `correctionsEnvoyees` — et
+ * les déplacer serait un second sujet dans un lot qui en a déjà deux. Ce qu'ils
+ * gardent ne change pas d'un mot ; seule la porte par laquelle on entre change.
+ */
+async function ouvrirLesAutomatismes() {
+  await renderApp('/app/parc', { session: sessionDuRole('owner') })
+  await attendreLeChargement()
+  await cliquerAction('Automatismes du parc')
+  return screen.findByRole('dialog')
+}
+
 /** Les appels de correction reçus par le serveur, dans l'ordre. */
 function correctionsEnvoyees() {
   return serveur.appels.filter((a) => a.methode === 'PATCH' && a.chemin === `/parks/${PARC}`)
@@ -158,7 +182,7 @@ describe('corriger le parc', () => {
   })
 
   it('AVERTIT AVANT LE CHOIX que WhatsApp exige un modèle approuvé', async () => {
-    const dialogue = await ouvrirLaCorrection()
+    const dialogue = await ouvrirLesAutomatismes()
     const user = userEvent.setup()
 
     /* RIEN TANT QU'ON N'A PAS CHOISI. Un avertissement permanent sous un canal
@@ -190,7 +214,7 @@ describe('corriger le parc', () => {
   })
 
   it('n’envoie le canal que s’il a changé', async () => {
-    const dialogue = await ouvrirLaCorrection()
+    const dialogue = await ouvrirLesAutomatismes()
     serveur.quand('PATCH', `/parks/${PARC}`, {
       status: 200,
       body: { park: { id: PARC, name: 'Parc Bastos', countryCode: 'FR', currency: 'EUR' } },

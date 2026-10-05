@@ -3235,6 +3235,21 @@ const schemaCorrectionDuParc = z
         ou rien, sans que l'écran puisse le dire. Prisma ne sait pas restreindre
         un enum à deux membres ; zod, si. */
     reminderChannel: z.enum(['sms', 'whatsapp']).optional(),
+    /**
+     * L'APPEL AUTOMATIQUE DES LOYERS, et le jour du mois où il part.
+     *
+     * BORNÉ À [1, 28], ET LA BORNE HAUTE EST LE SUJET. Un réglage au 29, 30 ou
+     * 31 n'a pas de sens stable : février ne les atteint pas, et quatre autres
+     * mois n'atteignent pas 31. Le cron borne défensivement au dernier jour du
+     * mois — mais laisser ENTRER la valeur ferait afficher à l'écran un jour
+     * qui n'est pas celui où l'appel part, cinq mois sur douze. 28 est le plus
+     * grand jour que tout mois possède.
+     *
+     * Zéro est exclu pour la même raison que chez la relance : il ne désigne
+     * aucun jour.
+     */
+    autoRentCall: z.boolean().optional(),
+    rentCallDayOfMonth: z.number().int().min(1).max(28).optional(),
   })
   .refine(
     (v) =>
@@ -3247,7 +3262,9 @@ const schemaCorrectionDuParc = z
       v.reminderMilestoneDays !== undefined ||
       v.reminderHour !== undefined ||
       v.reminderTimeZone !== undefined ||
-      v.reminderChannel !== undefined,
+      v.reminderChannel !== undefined ||
+      v.autoRentCall !== undefined ||
+      v.rentCallDayOfMonth !== undefined,
     { message: 'Rien à corriger' },
   )
 
@@ -3838,6 +3855,10 @@ parksRouter.patch(
         ...(corps.reminderChannel !== undefined
           ? { reminderChannel: corps.reminderChannel }
           : {}),
+        ...(corps.autoRentCall !== undefined ? { autoRentCall: corps.autoRentCall } : {}),
+        ...(corps.rentCallDayOfMonth !== undefined
+          ? { rentCallDayOfMonth: corps.rentCallDayOfMonth }
+          : {}),
       },
       select: { id: true, name: true, countryCode: true, currency: true, delegation: true },
     })
@@ -4215,6 +4236,39 @@ parksRouter.delete(
 )
 
 /**
+ * UN ACTE DU REGISTRE A-T-IL ÉTÉ POSÉ PAR LE PASSAGE AUTOMATIQUE ?
+ *
+ * ═══ POURQUOI LA RÉPONSE EST DANS LA CHARGE ET NON DANS UNE COLONNE ═══
+ *
+ * `AuditEvent` sait déjà dire deux choses sur son auteur : un compte (`actorId`),
+ * et un nom conservé après effacement (`actorName`). Il n'en existait pas de
+ * troisième, et il en faut une depuis que le cron appelle les loyers : un acte
+ * sans compte n'est plus forcément un acte dont le compte est parti.
+ *
+ * Une colonne de plus a été écartée. Ce qu'on cherche à savoir est une
+ * propriété de L'ACTE — il a été déclenché par un réglage, pas par un clic — et
+ * la charge est déjà l'endroit où l'acte se décrit (`periodStart`, `count`).
+ * Une colonne `actorKind` aurait en outre dû être renseignée aux cinquante-huit
+ * autres écritures d'`AuditEvent` de ce fichier pour valoir quelque chose,
+ * c'est-à-dire cinquante-huit occasions d'oublier.
+ *
+ * ═══ CE QUE CETTE LECTURE NE PROMET PAS ═══
+ *
+ * `payload` est du JSON libre : rien dans la base n'empêche d'y écrire
+ * `source: 'auto'` à la main. La fonction ne vérifie donc pas une AUTORITÉ,
+ * elle lit une DÉCLARATION — et la seule chose qui la rende fiable est que
+ * `emettreLesAppelsDeLoyer` soit le seul endroit qui l'écrive, ce qu'un cas
+ * tient. La garde est l'unicité de l'écrivain, pas la forme du champ.
+ */
+function estUnActeAutomatique(charge: Prisma.JsonValue | null): boolean {
+  /* `typeof === 'object'` ET non-nul ET non-tableau : un `JsonValue` peut être
+     un nombre, une chaîne, `null` ou un tableau, et `'source' in x` jette sur
+     les trois premiers. */
+  if (charge === null || typeof charge !== 'object' || Array.isArray(charge)) return false
+  return (charge as Record<string, unknown>).source === 'auto'
+}
+
+/**
  * ─── LE REGISTRE DES DÉCISIONS ───────────────────────────────────────────────
  *
  * CE QUI EXISTAIT, ET QUI NE SERVAIT À PERSONNE. `AuditEvent` est écrit à seize
@@ -4296,6 +4350,13 @@ parksRouter.get(
            compte effacé — et il doit le dire, sans quoi on écrirait à quelqu'un
            qui n'a plus de boîte. */
         actorGone: e.actor === null && e.actorName !== null,
+        /* UN ACTE QUE PERSONNE N'A CLIQUÉ, ET QUI A POURTANT UN AUTEUR.
+           Depuis que le cron appelle les loyers, le registre reçoit des lignes
+           sans compte — et un acteur nul y rendait jusqu'ici « Compte
+           supprimé », c'est-à-dire un compte qui a existé puis disparu. C'est
+           faux : il n'en a jamais existé, le parc a un réglage allumé.
+           Trois états distincts, donc trois réponses, et non deux. */
+        actorSystem: estUnActeAutomatique(e.payload),
       })),
       suivant,
     })
@@ -7801,154 +7862,231 @@ parksRouter.delete(
  *
  * Le vocabulaire n'est pas inventé — le tableau de bord nomme déjà « le reste à
  * percevoir de l'appel de loyers courant ».
+ *
+ * ═══ POURQUOI C'EST UNE FONCTION, ET PLUS SEULEMENT UN CORPS DE ROUTE ═══
+ *
+ * Le cron horaire l'appelle depuis le 2026-10-05. Il aurait pu refaire la
+ * requête de son côté — et c'est précisément ce que ce dépôt a déjà refusé une
+ * fois, pour les relances : le cron appelle `calculerRetard` et
+ * `tenterRelanceEmailMilestone`, « EXACTEMENT les fonctions que la route
+ * manuelle appelle déjà », pour qu'un déclenchement manuel et un déclenchement
+ * automatique « ne puissent pas diverger sur CE QUI compte comme un envoi
+ * valide ».
+ *
+ * La même règle vaut ici, et l'enjeu est plus lourd : ce qui est en cause n'est
+ * pas un courriel, c'est une dette. Deux rédactions de ce calcul finiraient par
+ * appeler deux montants différents pour le même mois, et la seule trace
+ * disponible pour les départager serait le solde du locataire.
  */
+export async function emettreLesAppelsDeLoyer(entree: {
+  parkId: string
+  /** Le premier jour du mois appelé, à minuit UTC. */
+  debut: Date
+  /**
+   * LA CLAUSE DE PÉRIMÈTRE DU DEMANDEUR, posée en requête et jamais après
+   * lecture : un gestionnaire à qui l'on a confié un immeuble sur trois ne doit
+   * pas pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite.
+   *
+   * Le cron passe `{}` — il n'agit au nom de personne, donc sans restriction.
+   * C'est le seul appelant qui en a le droit, et il l'a parce qu'aucune requête
+   * ne le porte : il n'y a pas d'adhésion dont il pourrait outrepasser la portée.
+   */
+  perimetreUnite: Prisma.UnitWhereInput
+  /**
+   * QUI A DÉCLENCHÉ, pour le registre.
+   *
+   * `null` quand c'est le passage automatique. L'écran ne doit pas pour autant
+   * lire « Compte supprimé », qui est ce que rend un acteur nul : le registre
+   * reçoit alors `source: 'auto'` dans sa charge, et la route de lecture en
+   * dérive un acteur SYSTÈME distinct de l'acteur absent.
+   */
+  acteurId: string | null
+  /**
+   * À BLANC : le même parcours, les mêmes lectures, et RIEN qui s'écrive.
+   *
+   * Il existe pour le cron, qui crée de l'argent dû : brancher un automatisme
+   * sans pouvoir lire d'abord ce qu'il émettrait serait espérer, pas décider.
+   *
+   * IL SORT APRÈS `dejaAppeles` ET AVANT `createMany`, et cet endroit est le
+   * sujet. `skipDuplicates` ne rend qu'un COMPTE, si bien que le nombre
+   * d'échéances neuves est déjà calculé ici, par la MÊME lecture qui servira à
+   * écrire. Un comptage séparé — « les baux sans échéance pour ce mois » —
+   * aurait été une seconde rédaction de la même question, libre de répondre
+   * autrement le jour où la première change.
+   */
+  aBlanc?: boolean
+}): Promise<{ issued: number; leases: number }> {
+  const { parkId, debut, perimetreUnite, acteurId } = entree
+
+  const baux = await prisma.lease.findMany({
+    where: {
+      unit: { building: { parkId }, ...perimetreUnite },
+      status: { in: ['active', 'pending'] },
+      // Un bail qui commence APRÈS la période ne doit rien pour elle.
+      startsOn: { lte: debut },
+    },
+    /* `unitId` EN PLUS : c'est par le logement que la consommation se
+       rattache — un compteur appartient aux murs, pas au bail. */
+    select: { id: true, unitId: true, rentMinor: true, dueDayOfMonth: true },
+  })
+
+  /**
+   * L'EAU ET LE COURANT ENTRENT DANS L'APPEL, et c'est ce qui rend vrai le
+   * mot « Refacturé » de l'écran des relevés.
+   *
+   * `RentCharge.waterMinor` et `powerMinor` existaient au schéma, la quittance
+   * les servait déjà et les additionnait au loyer pour son `dueMinor` : le
+   * tuyau d'aval était posé, et RIEN ne l'alimentait. Aucune route n'écrivait
+   * ces deux colonnes ; seul le semis de démonstration le faisait.
+   *
+   * DEUX REQUÊTES POUR TOUT LE PARC, et non deux par bail : les relevés
+   * jusqu'à la période et les tarifs se lisent en bloc, puis se répartissent
+   * en mémoire. Un parc de cent logements ferait sinon deux cents allers.
+   */
+  const [releves, tarifs, appelsExistants] = await Promise.all([
+    prisma.meterReading.findMany({
+      where: { unitId: { in: baux.map((b) => b.unitId) }, periodStart: { lte: debut } },
+      select: { unitId: true, utility: true, periodStart: true, indexValue: true },
+    }),
+    prisma.utilityTariff.findMany({
+      where: { parkId },
+      orderBy: { effectiveFrom: 'desc' },
+      select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
+    }),
+    /* QUI ÉTAIT DÉJÀ APPELÉ POUR CE MOIS, lu AVANT d'écrire. `skipDuplicates`
+       rend un compte, pas une liste : il dit combien d'échéances sont nées,
+       jamais lesquelles. Cette lecture est la seule façon de distinguer
+       ensuite une échéance neuve d'une échéance rappelée — voir le gel des
+       lignes libres plus bas, qui en dépend entièrement. */
+    prisma.rentCharge.findMany({
+      where: { leaseId: { in: baux.map((b) => b.id) }, periodStart: debut },
+      select: { leaseId: true },
+    }),
+  ])
+  const dejaAppeles = new Set(appelsExistants.map((c) => c.leaseId))
+  const relevesParLogement = new Map<string, typeof releves>()
+  for (const r of releves) {
+    const liste = relevesParLogement.get(r.unitId) ?? []
+    liste.push(r)
+    relevesParLogement.set(r.unitId, liste)
+  }
+
+  const neufs = baux.filter((b) => !dejaAppeles.has(b.id)).map((b) => b.id)
+
+  /* LA SORTIE À BLANC, ici et pas ailleurs : tout ce qui précède est une
+     lecture, tout ce qui suit écrit. `neufs.length` est exactement le `count`
+     que `createMany` rendrait, puisque `skipDuplicates` écarte précisément les
+     baux de `dejaAppeles`. */
+  if (entree.aBlanc) return { issued: neufs.length, leases: baux.length }
+
+  /**
+   * `skipDuplicates` plutôt qu'une lecture préalable : l'unicité
+   * `(leaseId, periodStart)` vit dans la base, et deux appels simultanés
+   * liraient tous deux « rien pour ce mois » avant que l'un n'écrive.
+   *
+   * Appeler deux fois le même mois est donc SANS EFFET, et c'est voulu : on
+   * relance l'appel après avoir ajouté un locataire en cours de mois, sans
+   * craindre de doubler la dette des autres. C'est aussi ce qui autorise le
+   * passage HORAIRE du cron à repasser sans borne d'heure.
+   */
+  const { count } = await prisma.rentCharge.createMany({
+    data: baux.map((bail) => ({
+      leaseId: bail.id,
+      periodStart: debut,
+      // Le loyer du BAIL, figé à l'émission : le revaloriser plus tard ne
+      // doit pas réécrire un mois déjà appelé.
+      rentMinor: bail.rentMinor,
+      /* FIGÉS À L'ÉMISSION eux aussi, et pour la même raison : corriger un
+         tarif plus tard ne doit pas réécrire un mois déjà appelé. C'est
+         l'exact inverse de ce que l'écran des relevés montre, qui recalcule à
+         chaque lecture — et c'est voulu : l'écran EXPLORE, l'échéance ENGAGE. */
+      ...montantsDeConsommation(relevesParLogement.get(bail.unitId) ?? [], debut, tarifs),
+      dueOn: new Date(
+        Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), bail.dueDayOfMonth),
+      ),
+    })),
+    skipDuplicates: true,
+  })
+
+  /**
+   * LES LIGNES LIBRES SE FIGENT ICI, ET SEULEMENT SUR CE QUI VIENT DE NAÎTRE.
+   *
+   * `createMany` ne sait pas créer de relations imbriquées, et il ne rend pas
+   * les identifiants créés — d'où la relecture. Le filtre sur `dejaAppeles`
+   * est ce qui compte : sans lui, rappeler un mois déjà appelé poserait sur
+   * SES échéances les lignes telles qu'elles sont AUJOURD'HUI. Une ligne
+   * ajoutée au bail en décembre apparaîtrait sur la quittance de mars, et le
+   * gel à l'émission serait un gel pour rien.
+   *
+   * DEUX REQUÊTES POUR TOUT LE PARC, comme les relevés plus haut, et non deux
+   * par bail.
+   */
+  if (neufs.length > 0) {
+    const [echeances, definitions] = await Promise.all([
+      prisma.rentCharge.findMany({
+        where: { leaseId: { in: neufs }, periodStart: debut },
+        select: { id: true, leaseId: true },
+      }),
+      prisma.leaseChargeLine.findMany({
+        where: { leaseId: { in: neufs } },
+        select: { leaseId: true, label: true, amountMinor: true, kind: true },
+      }),
+    ])
+    const echeanceParBail = new Map(echeances.map((e) => [e.leaseId, e.id]))
+    const aFiger = definitions.flatMap((d) => {
+      const chargeId = echeanceParBail.get(d.leaseId)
+      return chargeId
+        ? [{ chargeId, label: d.label, amountMinor: d.amountMinor, kind: d.kind }]
+        : []
+    })
+    if (aFiger.length > 0) {
+      await prisma.rentChargeLine.createMany({ data: aFiger, skipDuplicates: true })
+    }
+  }
+
+  if (count > 0) {
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: acteurId,
+        action: 'rent.call',
+        entity: 'Park',
+        entityId: parkId,
+        /* `source` DANS LA CHARGE, et seulement quand c'est le passage
+           automatique. Le registre en a besoin pour ne pas afficher « Compte
+           supprimé » devant un acte que personne n'a cliqué ; l'omettre pour
+           un appel manuel garde les charges d'avant ce lot lisibles à
+           l'identique — une clé absente et une clé à `'user'` diraient la même
+           chose, et la seconde ferait croire à une information. */
+        payload: {
+          periodStart: debut.toISOString().slice(0, 10),
+          count,
+          ...(acteurId === null ? { source: 'auto' } : {}),
+        },
+      },
+    })
+  }
+
+  // `issued` et non `created` : le nombre d'échéances RÉELLEMENT ajoutées.
+  // Un second appel rend zéro, ce qui est un fait et non une erreur.
+  return { issued: count, leases: baux.length }
+}
+
 parksRouter.post(
   '/:parkId/charges',
   exigerAppartenance,
   exigerRole('owner', 'manager'),
   async (req: Request, res: Response) => {
     const { parkId } = req.adhesion!
-    /* LE PÉRIMÈTRE DU DEMANDEUR, en clause de requête et jamais après lecture :
-       un gestionnaire à qui l'on a confié un immeuble sur trois ne doit pas
-       pouvoir RAMENER les deux autres, fût-ce pour les filtrer ensuite. */
-    const perimetreUnite = porteeDesUnites(req.adhesion!)
     const corps = schemaQuittance.omit({ unitId: true }).parse(req.body)
-    const debut = new Date(`${corps.periodStart}T00:00:00Z`)
-
-    const baux = await prisma.lease.findMany({
-      where: {
-        unit: { building: { parkId }, ...perimetreUnite },
-        status: { in: ['active', 'pending'] },
-        // Un bail qui commence APRÈS la période ne doit rien pour elle.
-        startsOn: { lte: debut },
-      },
-      /* `unitId` EN PLUS : c'est par le logement que la consommation se
-         rattache — un compteur appartient aux murs, pas au bail. */
-      select: { id: true, unitId: true, rentMinor: true, dueDayOfMonth: true },
-    })
-
-    /**
-     * L'EAU ET LE COURANT ENTRENT DANS L'APPEL, et c'est ce qui rend vrai le
-     * mot « Refacturé » de l'écran des relevés.
-     *
-     * `RentCharge.waterMinor` et `powerMinor` existaient au schéma, la quittance
-     * les servait déjà et les additionnait au loyer pour son `dueMinor` : le
-     * tuyau d'aval était posé, et RIEN ne l'alimentait. Aucune route n'écrivait
-     * ces deux colonnes ; seul le semis de démonstration le faisait.
-     *
-     * DEUX REQUÊTES POUR TOUT LE PARC, et non deux par bail : les relevés
-     * jusqu'à la période et les tarifs se lisent en bloc, puis se répartissent
-     * en mémoire. Un parc de cent logements ferait sinon deux cents allers.
-     */
-    const [releves, tarifs, appelsExistants] = await Promise.all([
-      prisma.meterReading.findMany({
-        where: { unitId: { in: baux.map((b) => b.unitId) }, periodStart: { lte: debut } },
-        select: { unitId: true, utility: true, periodStart: true, indexValue: true },
+    res.status(200).json(
+      await emettreLesAppelsDeLoyer({
+        parkId,
+        debut: new Date(`${corps.periodStart}T00:00:00Z`),
+        perimetreUnite: porteeDesUnites(req.adhesion!),
+        acteurId: req.compteId!,
       }),
-      prisma.utilityTariff.findMany({
-        where: { parkId },
-        orderBy: { effectiveFrom: 'desc' },
-        select: { utility: true, unitPriceMinor: true, effectiveFrom: true },
-      }),
-      /* QUI ÉTAIT DÉJÀ APPELÉ POUR CE MOIS, lu AVANT d'écrire. `skipDuplicates`
-         rend un compte, pas une liste : il dit combien d'échéances sont nées,
-         jamais lesquelles. Cette lecture est la seule façon de distinguer
-         ensuite une échéance neuve d'une échéance rappelée — voir le gel des
-         lignes libres plus bas, qui en dépend entièrement. */
-      prisma.rentCharge.findMany({
-        where: { leaseId: { in: baux.map((b) => b.id) }, periodStart: debut },
-        select: { leaseId: true },
-      }),
-    ])
-    const dejaAppeles = new Set(appelsExistants.map((c) => c.leaseId))
-    const relevesParLogement = new Map<string, typeof releves>()
-    for (const r of releves) {
-      const liste = relevesParLogement.get(r.unitId) ?? []
-      liste.push(r)
-      relevesParLogement.set(r.unitId, liste)
-    }
-
-    /**
-     * `skipDuplicates` plutôt qu'une lecture préalable : l'unicité
-     * `(leaseId, periodStart)` vit dans la base, et deux appels simultanés
-     * liraient tous deux « rien pour ce mois » avant que l'un n'écrive.
-     *
-     * Appeler deux fois le même mois est donc SANS EFFET, et c'est voulu : on
-     * relance l'appel après avoir ajouté un locataire en cours de mois, sans
-     * craindre de doubler la dette des autres.
-     */
-    const { count } = await prisma.rentCharge.createMany({
-      data: baux.map((bail) => ({
-        leaseId: bail.id,
-        periodStart: debut,
-        // Le loyer du BAIL, figé à l'émission : le revaloriser plus tard ne
-        // doit pas réécrire un mois déjà appelé.
-        rentMinor: bail.rentMinor,
-        /* FIGÉS À L'ÉMISSION eux aussi, et pour la même raison : corriger un
-           tarif plus tard ne doit pas réécrire un mois déjà appelé. C'est
-           l'exact inverse de ce que l'écran des relevés montre, qui recalcule à
-           chaque lecture — et c'est voulu : l'écran EXPLORE, l'échéance ENGAGE. */
-        ...montantsDeConsommation(relevesParLogement.get(bail.unitId) ?? [], debut, tarifs),
-        dueOn: new Date(
-          Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth(), bail.dueDayOfMonth),
-        ),
-      })),
-      skipDuplicates: true,
-    })
-
-    /**
-     * LES LIGNES LIBRES SE FIGENT ICI, ET SEULEMENT SUR CE QUI VIENT DE NAÎTRE.
-     *
-     * `createMany` ne sait pas créer de relations imbriquées, et il ne rend pas
-     * les identifiants créés — d'où la relecture. Le filtre sur `dejaAppeles`
-     * est ce qui compte : sans lui, rappeler un mois déjà appelé poserait sur
-     * SES échéances les lignes telles qu'elles sont AUJOURD'HUI. Une ligne
-     * ajoutée au bail en décembre apparaîtrait sur la quittance de mars, et le
-     * gel à l'émission serait un gel pour rien.
-     *
-     * DEUX REQUÊTES POUR TOUT LE PARC, comme les relevés plus haut, et non deux
-     * par bail.
-     */
-    const neufs = baux.filter((b) => !dejaAppeles.has(b.id)).map((b) => b.id)
-    if (neufs.length > 0) {
-      const [echeances, definitions] = await Promise.all([
-        prisma.rentCharge.findMany({
-          where: { leaseId: { in: neufs }, periodStart: debut },
-          select: { id: true, leaseId: true },
-        }),
-        prisma.leaseChargeLine.findMany({
-          where: { leaseId: { in: neufs } },
-          select: { leaseId: true, label: true, amountMinor: true, kind: true },
-        }),
-      ])
-      const echeanceParBail = new Map(echeances.map((e) => [e.leaseId, e.id]))
-      const aFiger = definitions.flatMap((d) => {
-        const chargeId = echeanceParBail.get(d.leaseId)
-        return chargeId
-          ? [{ chargeId, label: d.label, amountMinor: d.amountMinor, kind: d.kind }]
-          : []
-      })
-      if (aFiger.length > 0) {
-        await prisma.rentChargeLine.createMany({ data: aFiger, skipDuplicates: true })
-      }
-    }
-
-    if (count > 0) {
-      await prisma.auditEvent.create({
-        data: {
-          parkId,
-          actorId: req.compteId!,
-          action: 'rent.call',
-          entity: 'Park',
-          entityId: parkId,
-          payload: { periodStart: corps.periodStart, count },
-        },
-      })
-    }
-
-    // `issued` et non `created` : le nombre d'échéances RÉELLEMENT ajoutées.
-    // Un second appel rend zéro, ce qui est un fait et non une erreur.
-    res.status(200).json({ issued: count, leases: baux.length })
+    )
   },
 )
 

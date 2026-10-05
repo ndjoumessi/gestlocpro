@@ -1121,10 +1121,26 @@ export const en: Dictionary = {
         'WhatsApp requires a message template approved by Meta for any unsolicited message. Without that template, this park’s reminders will stay in the app without going out.',
       reminderZone: 'Time zone',
       reminderZoneHint: 'Your tenants’, which is not necessarily your own.',
+      autoRentCallOn: 'Call rents automatically',
+      autoRentCallHint:
+        'The month’s charges are issued without anyone clicking, on the chosen day. A month already called is never called twice.',
+      rentCallDay: 'Which day of the month',
+      rentCallDayHint:
+        'From 1 to 28 — the largest day every month has. This is not the due day, which stays on the lease.',
       currencyWarning:
         'Amounts already entered will not be converted: 180,000 will read as 180,000 in the new currency. Only do this on a park whose amounts will be re-entered.',
       unchanged: 'Nothing changed.',
       saved: 'Park corrected',
+    },
+    parkAutomation: {
+      open: 'Park automation',
+      title: 'Park automation',
+      description: 'What this park does on its own: chase a late rent, call the month’s rents.',
+      submit: 'Save',
+      unchanged: 'Nothing changed.',
+      saved: 'Automation saved',
+      demoNoSave:
+        'The demo saves nothing: this park only exists for the length of the visit, and no reminder or rent call goes out from it.',
     },
     fees: {
       open: 'Fees and statement',
@@ -1714,6 +1730,8 @@ export const en: Dictionary = {
       actorGone: 'Account since deleted',
       singleActor: 'Every decision shown was written by {name}.',
       singleActorUnknown: 'Every decision shown was written by a deleted account.',
+      systemActor: 'Automatic rent call',
+      singleActorSystem: 'Every decision shown was issued by the automatic rent call, with no click.',
       more: 'Show older decisions',
       /*
         LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
@@ -2157,6 +2175,11 @@ export const en: Dictionary = {
           title: 'Lease {unit} up for renewal in {count} days',
           title_one: 'Lease {unit} up for renewal in {count} day',
           detail: '{tenant} · expires on {date}',
+        },
+        leaseMoveOut: {
+          title: 'Move-out from {unit} in {count} days',
+          title_one: 'Move-out from {unit} in {count} day',
+          detail: '{tenant} · leaving on {date} · inspection and deposit to settle',
         },
         partialPayment: {
           title: 'Partial payment recorded on {unit}',

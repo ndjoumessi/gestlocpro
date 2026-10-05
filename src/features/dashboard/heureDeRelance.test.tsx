@@ -81,7 +81,14 @@ async function ouvrirLesReglages() {
   await attendreLeChargement()
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: /Autres actions/ }))
-  await user.click(screen.getByRole('menuitem', { name: /Corriger le parc/ }))
+  /* LES SEPT RÉGLAGES D'AUTOMATISME ONT DÉMÉNAGÉ le 2026-10-05, dans leur
+     propre boîte. Le registre des modales l'exigeait : « le prochain réglage
+     qu'on y ajoute devrait payer ce découpage plutôt qu'un plafond de plus »,
+     et l'appel automatique des loyers était ce prochain réglage.
+
+     L'entrée de menu voisine « Corriger le parc » et s'en distingue par ce
+     qu'elle nomme : ce que le parc EST d'un côté, ce qu'il FAIT de l'autre. */
+  await user.click(screen.getByRole('menuitem', { name: /Automatismes du parc/ }))
   return user
 }
 

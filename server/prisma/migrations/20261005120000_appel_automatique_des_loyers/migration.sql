@@ -1,0 +1,43 @@
+-- L'APPEL DES LOYERS ÉTAIT UN GESTE À LA MAIN, ET RIEN NE LE RATTRAPAIT.
+--
+-- `POST /:parkId/charges` émet les échéances d'un mois. C'est la route qui
+-- fabrique la dette : sans elle, aucun `RentCharge` n'existe, donc aucun solde,
+-- aucun retard, et AUCUNE RELANCE n'a de quoi mordre. Le cron horaire des
+-- relances tournait donc au-dessus d'un mois que personne n'avait appelé, et
+-- rendait « 0 bail au jalon » — un zéro qui se lit comme un mois sain.
+--
+-- Le mois où le propriétaire n'ouvre pas le produit, le produit ne réclame rien
+-- et ne le dit pas. C'est le seul automatisme du produit dont l'absence est
+-- SILENCIEUSE.
+--
+-- ═══ DEUX COLONNES, ET LA PREMIÈRE EST À `false` ═══
+--
+-- `autoRentCall` est le SEUL interrupteur du parc qui naisse ÉTEINT, et l'écart
+-- avec `autoReminders` (à `true` depuis l'origine) est voulu. Une relance
+-- RAPPELLE une dette que quelqu'un a décidé d'appeler ; un appel de loyer la
+-- CRÉE. Allumer à la migration ferait naître, à l'heure suivante, des échéances
+-- sur tous les baux actifs de tous les parcs existants — de l'argent réclamé
+-- par un lot que personne n'a demandé. Un réglage qui engage de l'argent se
+-- choisit ; il ne s'hérite pas.
+--
+-- `rentCallDayOfMonth` à 1 : un loyer s'appelle au premier du mois qu'il couvre.
+-- Le jour d'échéance, lui, reste sur le BAIL (`Lease.dueDayOfMonth`) — appeler
+-- et devoir sont deux dates, et les confondre ferait d'un bail payable le 5 un
+-- bail appelé le 5, donc quatre jours de retard offerts à tout le parc.
+--
+-- ═══ PAS DE TROISIÈME COLONNE POUR L'HEURE, ET PAS DE FUSEAU À SOI ═══
+--
+-- `reminderTimeZone` sert aussi ici. Un parc est un lieu : lui donner deux
+-- fuseaux les laisserait diverger sans qu'aucun fait ne le justifie, et c'est
+-- exactement la faute que le schéma refuse ailleurs sous le nom de « deux
+-- vérités ». Le nom de la colonne vieillit mal — il dira « relance » en servant
+-- l'appel — et c'est le prix retenu contre une colonne de plus.
+--
+-- AUCUNE HEURE, en revanche, et c'est une propriété de l'appel et non une
+-- économie. `RentCharge` porte `@@unique([leaseId, periodStart])` et la route
+-- écrit en `skipDuplicates` : rappeler un mois déjà appelé est SANS EFFET.
+-- Le passage horaire peut donc repasser vingt-quatre fois sans rien doubler, et
+-- cette absence de borne est ce qui rattrape un bail créé le 14 — il reçoit son
+-- échéance à l'heure suivante au lieu d'attendre le mois prochain.
+ALTER TABLE "Park" ADD COLUMN "autoRentCall" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Park" ADD COLUMN "rentCallDayOfMonth" INTEGER NOT NULL DEFAULT 1;

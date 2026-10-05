@@ -300,6 +300,26 @@ model Park {
   /// énumération à deux de ses membres : la garde est en zod à l'entrée, et un
   /// cas la tient.
   reminderChannel NotificationChannel @default(sms)
+
+  /// ÉMET-ON LES ÉCHÉANCES DU MOIS SANS QUE PERSONNE NE CLIQUE ?
+  ///
+  /// À `false`, et c'est le SEUL interrupteur de parc qui naisse éteint. Une
+  /// relance rappelle une dette appelée ; un appel de loyer la CRÉE. Hériter
+  /// celui-ci ferait réclamer de l'argent sur tous les parcs existants à l'heure
+  /// suivant la migration — voir le commentaire de
+  /// `20261005120000_appel_automatique_des_loyers`.
+  autoRentCall Boolean @default(false)
+  /// Le jour du mois où l'appel part, dans `reminderTimeZone`.
+  ///
+  /// CE N'EST PAS LE JOUR D'ÉCHÉANCE, qui vit sur le bail
+  /// (`Lease.dueDayOfMonth`) : appeler et devoir sont deux dates. Les confondre
+  /// offrirait au parc entier autant de jours de retard que le bail en accorde.
+  ///
+  /// Aucune HEURE ne l'accompagne, et c'est une propriété et non un oubli :
+  /// l'unicité `(leaseId, periodStart)` rend tout rappel sans effet, si bien que
+  /// le passage horaire peut repasser sans rien doubler. C'est ce qui rattrape
+  /// un bail créé le 14 du mois.
+  rentCallDayOfMonth Int @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -736,6 +756,7 @@ model Lease {
   plans       SettlementPlan[]
   chargeLines LeaseChargeLine[]
   settlements ChargeSettlement[]
+  deadlineNotices LeaseDeadlineNotice[]
 
   @@index([unitId, status])
   @@index([tenantId])
@@ -1626,6 +1647,46 @@ model WorkThreadEmail {
   /// perdu sans migration ; la première migration écrite ensuite proposait donc
   /// de le SUPPRIMER, en le glissant dans un lot qui parlait d'autre chose.
   @@index([notificationId])
+}
+
+/// UN AVIS D'ÉCHÉANCE DE BAIL DÉJÀ DONNÉ — la garde d'idempotence du cron.
+///
+/// Le passage est HORAIRE : sans elle, un bail à soixante jours de son terme
+/// produirait vingt-quatre avis par jour pendant soixante jours.
+///
+/// `dueOn` EST DANS L'UNIQUE, ET C'EST LE POINT. Ce n'est pas la date de
+/// l'avis, c'est celle de l'ÉCHÉANCE dont il parle. Un congé retiré puis
+/// redonné à une autre date est une échéance NEUVE : elle doit pouvoir se dire,
+/// et une colonne `renewalNoticedAt` sur le bail l'aurait tue en gardant la
+/// trace de l'ancienne.
+///
+/// Même forme que [RentReminderEmail], dont le `sentOn` tient une idempotence
+/// quotidienne — la borne diffère parce que la question diffère : un avis
+/// « dans soixante jours » ne doit pas se répéter le lendemain en disant
+/// « dans cinquante-neuf ».
+model LeaseDeadlineNotice {
+  id      String @id @default(uuid()) @db.Uuid
+  leaseId String @db.Uuid
+  lease   Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  kind    LeaseDeadlineKind
+  /// Le jour de l'échéance annoncée, et non celui de l'annonce.
+  dueOn   DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  @@unique([leaseId, kind, dueOn])
+}
+
+/// LAQUELLE DES DEUX ÉCHÉANCES D'UN BAIL.
+///
+/// `term` est la fin prévue au contrat (`Lease.endsOn`) : elle appelle une
+/// décision de renouvellement. `moveOut` est le départ effectif
+/// (`Lease.moveOutOn`), posé par un congé : il appelle un état des lieux de
+/// sortie et l'arbitrage d'une caution. Deux faits, deux gestes, deux avis —
+/// les confondre ferait annoncer « à renouveler » un bail dont le locataire
+/// part.
+enum LeaseDeadlineKind {
+  term
+  moveOut
 }
 
 model RentReminderEmail {

@@ -193,6 +193,26 @@ const AFFIRMATIONS: Record<string, string> = {
     'restera « Compte supprimé » pour toujours, parce que son nom n’existe plus ' +
     'nulle part. Aucun remplissage n’est donc possible, et en inventer un ' +
     'écrirait un nom que personne n’a mesuré.',
+  /**
+   * L'APPEL AUTOMATIQUE DES LOYERS — et le seul défaut du schéma qui REFUSE au
+   * lieu d'hériter.
+   */
+  'Park.autoRentCall':
+    '`false` POUR TOUT PARC ANTÉRIEUR, et c’est le contraire de ce que font ' +
+    'les autres réglages de ce modèle : `autoReminders` naît à `true` parce ' +
+    'que c’est ce que le cron faisait déjà. Ici le défaut affirme « ce parc ' +
+    'n’appelle pas ses loyers tout seul », ce qui est VRAI de chaque parc ' +
+    'existant — aucun ne le faisait, la route était manuelle. Hériter `true` ' +
+    'aurait fait naître, à l’heure suivant cette migration, des échéances sur ' +
+    'tous les baux actifs de tous les parcs : de l’argent réclamé par un lot ' +
+    'que personne n’a demandé. Un réglage qui engage de l’argent se choisit.',
+  'Park.rentCallDayOfMonth':
+    '`1` affirme « au premier du mois », ce qui ne ment sur rien : la colonne ' +
+    'ne gouverne QUE l’appel automatique, et il est éteint partout. Elle ' +
+    'commence donc à parler le jour où quelqu’un allume `autoRentCall`, et ' +
+    'c’est le même écran qui pose les deux. CE N’EST PAS LE JOUR D’ÉCHÉANCE, ' +
+    'qui reste sur le bail (`Lease.dueDayOfMonth`, défaut 5) : les confondre ' +
+    'offrirait au parc entier autant de jours de retard que le bail en accorde.',
 }
 
 /** Les colonnes qu'une migration ajoute à une table existante. */
@@ -251,7 +271,7 @@ describe('les colonnes ajoutées', () => {
     ).toEqual([])
   })
 
-  it('sont VINGT-SEPT, et le compte est écrit à la main', () => {
+  it('sont VINGT-NEUF, et le compte est écrit à la main', () => {
     /* GARDE DU GARDE. Si la lecture des migrations cassait, les deux règles
        ci-dessus compareraient des listes vides et se déclareraient vertes sur un
        schéma dont personne n’aurait relu les affirmations.
@@ -264,6 +284,6 @@ describe('les colonnes ajoutées', () => {
     expect(
       colonnesAjoutees().length,
       'la lecture des migrations ne trouve plus les `ADD COLUMN`',
-    ).toBe(27)
+    ).toBe(29)
   })
 })

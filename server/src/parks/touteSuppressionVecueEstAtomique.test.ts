@@ -99,6 +99,13 @@ const MODELES_SANS_ENJEU = [
   'Notification',
   'NotificationRecipient',
   'PasswordReset',
+  /* L'avis d'échéance DÉJÀ DONNÉ : une garde d'idempotence, et rien d'autre.
+     Sa disparition ne retire aucun fait vécu — elle rouvre seulement le droit
+     de redire une échéance, ce qui est le comportement voulu quand la date
+     bouge. C'est le même rôle que `RentReminderEmail` juste en dessous, et le
+     même classement. L'AVIS LUI-MÊME, lui, est une `Notification` : il raconte
+     un fait daté, et il est rangé plus haut pour cette raison. */
+  'LeaseDeadlineNotice',
   'RentReminderEmail',
   'Session',
   'WorkReferenceCounter',

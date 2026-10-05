@@ -215,7 +215,33 @@ export const MODALES = [
      1280. Elle avait gardé les 581 et 294 d'avant le canal de la relance, et la
      porte publique l'a refusé sur-le-champ — quatre états rouges. `complet` ne
      tourne QU'EN POLICE LARGE, donc cette machine ne fait jamais autorité ici. */
-  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 721, 1280: 408 }, defilLarge: { 360: 699, 1280: 408 }, avant: { 360: 35, 1280: 0 } },
+  /*
+    ELLE A MAIGRI, ET C'EST CE FICHIER QUI L'A EXIGÉ.
+
+    Le lot du canal de relance avait écrit ici : « CETTE BOÎTE EST DÉSORMAIS LA
+    PLUS LONGUE DU REGISTRE […] le prochain réglage qu'on y ajoute devrait payer
+    ce découpage plutôt qu'un plafond de plus. »
+
+    Le 2026-10-05, l'appel automatique des loyers a été ce prochain réglage : la
+    boîte est passée de 721 à 878 px à 360 en français, et cette porte l'a
+    refusé sur ses douze états. Le découpage a donc été payé — les sept réglages
+    d'automatisme sont partis dans `ParkAutomationModal`, et il ne reste ici que
+    les quatre valeurs d'identité du parc : nom, pays, devise, délégation.
+
+    LES DEUX COLONNES SONT MESURÉES, et non reproduites comme les nombres
+    qu'elles remplacent. MAIS LA LARGE EST UN RELEVÉ *LOCAL* :
+    `MESURER_EN_POLICE_LARGE=1` impose `Verdana, sans-serif`, que ce Mac possède
+    et que l'exécuteur n'a pas — il retombe sur DejaVu. Mesuré ici sur une modale
+    que ce lot ne touche pas, `Lease@1280` rend 268 px en local contre un plafond
+    de 242 relevé là-bas : 26 px d'écart sur du code identique. Les `defilLarge`
+    de ce lot peuvent donc être refusés par la porte publique, qui fait autorité —
+    corriger alors depuis SON rapport, comme l'a fait le lot du canal de relance.
+  */
+  /* RELEVÉ : 48 px à 360 en français, 6 en anglais ; 0 aux deux langues à 1280.
+     La colonne large rend 48 DANS LES DEUX LANGUES — Verdana amène l'anglais au
+     niveau du français sans dépasser. 48 px de défilement sur une boîte de
+     718 px est un corps normal, et le pied reste tenu aux quatre états. */
+  { nom: 'ParkSettings', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$|^Correct the park$/, defil: { 360: 48, 1280: 0 }, defilLarge: { 360: 48, 1280: 0 }, avant: { 360: 721, 1280: 408 } },
   /*
     LA MÊME MODALE, DEVISE CHANGÉE — un second état, et une note que personne
     n'atteignait.
@@ -262,11 +288,20 @@ export const MODALES = [
        px à 360, 111 à 1280 —, inchangé depuis le relevé précédent : le champ
        neuf coûte la même hauteur dans les deux états, il n'interagit pas avec
        la note. */
-    defil: { 360: 875, 1280: 519 },
-    /* MÊME RELEVÉ DE L'EXÉCUTEUR : 832 à 360 en français, 724 en anglais ; 519
-       et 477 à 1280. */
-    defilLarge: { 360: 832, 1280: 519 },
-    avant: { 360: 35, 1280: 0 },
+    /*
+      875 → 203 À 360, 519 → 0 À 1280 (2026-10-05), après le départ des sept
+      réglages d'automatisme. Les deux colonnes viennent du MÊME relevé, sur
+      cette machine, à la même heure — et non d'une reproduction à la main comme
+      les nombres qu'elles remplacent.
+
+      LE NOMBRE EST EXACTEMENT CELUI DU 2026-09-02, avant que les relances
+      n'entrent dans cette boîte : « 48 → 203 px à 360 en français, 138 en
+      anglais ». Le découpage ne l'a pas amélioré, il l'a RENDU — c'est la
+      géométrie de la note de devise seule, sur les quatre champs d'identité.
+    */
+    defil: { 360: 203, 1280: 0 },
+    defilLarge: { 360: 203, 1280: 0 },
+    avant: { 360: 875, 1280: 519 },
   },
   /*
     LE CANAL DE LA RELANCE, TROISIÈME ÉTAT DE LA MÊME BOÎTE — et il naît d'une
@@ -286,9 +321,9 @@ export const MODALES = [
     et n'aurait pas été atteignable ainsi.
   */
   {
-    nom: 'ParkSettings·whatsapp', fichier: 'features/dashboard/ParkSettingsModal.tsx',
+    nom: 'ParkAutomation·whatsapp', fichier: 'features/dashboard/ParkAutomationModal.tsx',
     adresse: '/demo/parc',
-    bouton: /^Corriger le parc$|^Correct the park$/,
+    bouton: /^Automatismes du parc$|^Park automation$/,
     apres: (page) =>
       page.locator('select[name="reminderChannel"]').selectOption('whatsapp'),
     note: /modèle de message approuvé|message template approved/,
@@ -298,13 +333,52 @@ export const MODALES = [
        revanche, divergent : 875 contre 789, la phrase française portant
        « modèle de message approuvé par Meta » là où l'anglaise tient en moins.
        Le plafond retient la plus longue, comme partout dans ce fichier. */
-    defil: { 360: 875, 1280: 519 },
-    /* 854 ET NON 875 EN POLICE LARGE : l'exécuteur rend 854 et 746 à 360, 519 et
-       477 à 1280. Les 875 recopiés de la colonne étroite laissaient 21 px de
-       MOU, et un plafond au-dessus de sa mesure cesse de refuser quoi que ce
-       soit — `modales` ne le dit pas, mais la règle est la même que pour les
-       hauteurs, qui la disent. */
-    defilLarge: { 360: 854, 1280: 519 },
+    /*
+      L'ÉTAT A CHANGÉ DE BOÎTE le 2026-10-05 : le canal de la relance est parti
+      avec les six autres automatismes. Les deux colonnes sont remesurées — elles
+      décrivent une boîte de sept réglages et non de onze.
+
+      875 → 480 à 360, 519 → 181 à 1280. C'EST L'ÉTAT LE PLUS LONG DU REGISTRE,
+      et il l'était déjà avant : la note de WhatsApp fait quatre lignes en
+      français sous cinq réglages de relance. 480 px au lieu de 875, sans qu'une
+      seule phrase ait été raccourcie.
+
+      EN POLICE LARGE, L'ANGLAIS DÉPASSE LE FRANÇAIS À 1280 — 224 contre 181 —
+      alors que l'inverse vaut à 360 et dans la colonne étroite. Verdana élargit
+      « message template approved by Meta » plus que sa traduction, et à 1280 la
+      boîte est assez large pour que la différence se joue sur le nombre de
+      lignes. Le plafond retient la plus longue des deux langues, comme partout
+      dans ce fichier : 501 à 360, 224 à 1280.
+    */
+    defil: { 360: 480, 1280: 181 },
+    defilLarge: { 360: 501, 1280: 224 },
+    avant: { 360: 875, 1280: 519 },
+  },
+  /*
+    LES AUTOMATISMES DU PARC, À L'OUVERTURE — la boîte née du découpage.
+
+    Elle porte les sept réglages qui faisaient de la correction du parc la plus
+    longue boîte du registre : l'interrupteur des relances et ses quatre
+    réglages, puis l'interrupteur de l'appel des loyers et son jour du mois.
+
+    SON ÉTAT D'OUVERTURE N'EST PAS CELUI D'UNE BOÎTE VIDE : les deux
+    interrupteurs décident de ce qui s'affiche sous eux. `autoReminders` naît à
+    `true` — c'est l'ancien comportement du cron —, donc les quatre réglages de
+    relance sont là. `autoRentCall` naît à `false`, donc le jour du mois ne l'est
+    PAS, et c'est mesuré ainsi parce que c'est ce qu'un parc existant montre.
+  */
+  {
+    nom: 'ParkAutomation', fichier: 'features/dashboard/ParkAutomationModal.tsx',
+    adresse: '/demo/parc',
+    bouton: /^Automatismes du parc$|^Park automation$/,
+    /* RELEVÉ : 325 px à 360 en français, 260 en anglais ; 70 et 27 à 1280. En
+       police large, 346 et 325 à 360, 70 et 113 à 1280 — et l'anglais y dépasse
+       le français à 1280, pour la raison écrite à l'état WhatsApp ci-dessus. */
+    defil: { 360: 325, 1280: 70 },
+    defilLarge: { 360: 346, 1280: 113 },
+    /* `avant` PORTE LES 721 DE LA CORRECTION DU PARC, et non un zéro : cette
+       boîte ne naît pas de rien, elle naît d'un découpage. Le nombre dit d'où
+       l'on vient — une seule boîte à 878 px — et non « ce lot a coûté ». */
     avant: { 360: 721, 1280: 408 },
   },
   { nom: 'AddBuilding', fichier: 'features/dashboard/AddBuildingModal.tsx', adresse: '/demo/parc', bouton: /^Ajouter un immeuble$|^Add a building$/, defil: { 360: 0, 1280: 0 }, defilLarge: { 360: 0, 1280: 0 }, avant: { 360: 0, 1280: 0 } },

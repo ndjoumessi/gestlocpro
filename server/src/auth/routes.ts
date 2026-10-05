@@ -615,6 +615,11 @@ authRouter.get('/me', async (req: Request, res: Response) => {
           reminderHour: true,
           reminderChannel: true,
           reminderTimeZone: true,
+          /* L'appel automatique se règle dans la même modale, et pour la même
+             raison : la proposer sur un défaut inventé ferait afficher
+             « éteint » à un parc allumé. */
+          autoRentCall: true,
+          rentCallDayOfMonth: true,
         },
       },
     },
@@ -644,6 +649,8 @@ authRouter.get('/me', async (req: Request, res: Response) => {
       reminderHour: m.park.reminderHour,
       reminderChannel: m.park.reminderChannel,
       reminderTimeZone: m.park.reminderTimeZone,
+      autoRentCall: m.park.autoRentCall,
+      rentCallDayOfMonth: m.park.rentCallDayOfMonth,
     })),
   })
 })

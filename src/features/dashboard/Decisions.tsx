@@ -440,6 +440,34 @@ interface DecisionApi {
    * tait alors plutôt que d'affirmer une présence qu'il ne sait pas.
    */
   actorGone?: boolean
+  /**
+   * L'ACTE A ÉTÉ POSÉ PAR LE PASSAGE AUTOMATIQUE, et personne ne l'a cliqué.
+   *
+   * TROISIÈME NATURE D'AUTEUR, et c'est le point. Il n'y en avait que deux —
+   * un compte, ou un compte parti — et un acteur nul se lisait donc « Compte
+   * supprimé ». Depuis que le cron appelle les loyers, c'est faux : aucun
+   * compte n'a jamais existé derrière cette ligne, le parc a un réglage allumé.
+   *
+   * Facultatif, comme `actorGone` : un serveur antérieur ne le rend pas, et
+   * l'écran retombe alors sur les deux natures qu'il connaissait.
+   */
+  actorSystem?: boolean
+}
+
+/**
+ * LA CLÉ D'IDENTITÉ D'UN AUTEUR — trois natures, et non deux.
+ *
+ * Elle existe pour la phrase « toutes les décisions affichées ont été écrites
+ * par X », qui comptait les auteurs sur `actor` seul. Un parc dont tous les
+ * actes viennent de l'appel automatique porte un `actor` nul partout : la
+ * phrase passait donc à « écrites par un compte supprimé », et la colonne
+ * « qui » disparaissait — une affirmation fausse ET la perte de la colonne qui
+ * l'aurait contredite.
+ */
+function cleDAuteur(decision: DecisionApi): string {
+  if (decision.actorSystem) return 'system'
+  if (decision.actor === null) return 'gone'
+  return `named:${decision.actor}`
 }
 
 interface RegistreApi {
@@ -673,8 +701,12 @@ export function Decisions() {
     charge par pages ; un second auteur peut apparaître à « Voir plus », et la
     colonne revient alors. D'où « les décisions affichées » et non « toutes ».
   */
-  const auteurs = new Set((registre ?? []).map((decision) => decision.actor))
-  const auteurUnique = auteurs.size === 1 ? { nom: [...auteurs][0] } : null
+  const auteurs = new Set((registre ?? []).map(cleDAuteur))
+  /* LA PREMIÈRE LIGNE PLUTÔT QUE LA CLÉ : la clé sait COMPTER les auteurs, elle
+     ne sait pas les NOMMER — « named:Diane Fotso » n'est pas un nom, et le
+     découper reviendrait à ré-analyser ce qu'on vient d'assembler. Quand il n'y
+     en a qu'un, n'importe quelle ligne le porte ; on prend la première. */
+  const auteurUnique = auteurs.size === 1 ? ((registre ?? [])[0] ?? null) : null
   const toutesLesColonnes: Column<DecisionApi>[] = [
     {
       key: 'when',
@@ -732,7 +764,12 @@ export function Decisions() {
          masquer effacerait l'histoire pour protéger un nom qui
          n'existe plus. */
       render: (decision) =>
-        decision.actor === null ? (
+        /* LE SYSTÈME D'ABORD, et l'ordre est le sujet : un acte automatique a
+           lui aussi un `actor` nul, et tester la nullité en premier le ferait
+           tomber dans « Compte supprimé ». */
+        decision.actorSystem ? (
+          <span className="text-muted">{t('app.decisions.systemActor')}</span>
+        ) : decision.actor === null ? (
           /* AUCUN NOM DU TOUT : les décisions prises avant que ce registre ne
              conserve le nom, par des comptes déjà effacés. Il n'existe plus
              nulle part et aucune migration ne peut le retrouver. */
@@ -778,9 +815,11 @@ export function Decisions() {
         <>
           {auteurUnique && (
             <p className="mb-3 text-body text-muted">
-              {auteurUnique.nom
-                ? t('app.decisions.singleActor', { name: auteurUnique.nom })
-                : t('app.decisions.singleActorUnknown')}
+              {auteurUnique.actorSystem
+                ? t('app.decisions.singleActorSystem')
+                : auteurUnique.actor
+                  ? t('app.decisions.singleActor', { name: auteurUnique.actor })
+                  : t('app.decisions.singleActorUnknown')}
             </p>
           )}
           <DataTable<DecisionApi>

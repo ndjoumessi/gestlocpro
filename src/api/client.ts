@@ -264,6 +264,13 @@ export interface AdhesionApi {
       relance — mais le TYPE porte les quatre, parce qu'un serveur peut rendre
       un parc dont la colonne a été posée autrement. */
   reminderChannel?: 'in_app' | 'email' | 'sms' | 'whatsapp'
+  /** L'APPEL AUTOMATIQUE des échéances du mois, et le jour où il part.
+      Absents d'un serveur antérieur : `false` et `1` sont alors les défauts du
+      schéma. Le repli à `false` est le seul de cette liste qui soit un refus
+      plutôt qu'un héritage — un appel de loyer CRÉE de la dette, et un écran
+      qui le dirait allumé sans l'avoir lu ferait croire le parc couvert. */
+  autoRentCall?: boolean
+  rentCallDayOfMonth?: number
 }
 
 export interface SessionApi {
@@ -1228,6 +1235,27 @@ export const api = {
    * place : le réglage annoncerait qu'aucun tiers n'opère le parc pendant qu'un
    * tiers l'opère.
    */
+  /**
+   * CORRIGE UN PARC — ses quatre valeurs d'identité, ses sept automatismes.
+   *
+   * ═══ LES SEPT AUTOMATISMES N'ÉTAIENT PAS DANS CE TYPE, ET PARTAIENT QUAND MÊME ═══
+   *
+   * `autoReminders`, le jalon, l'heure, le fuseau et le canal sont réglés
+   * depuis le produit depuis plusieurs lots, et ce type n'en portait AUCUN. Ils
+   * arrivaient pourtant au serveur : la modale construit son corps dans une
+   * VARIABLE, pas dans un littéral, et le contrôle des propriétés excédentaires
+   * de TypeScript ne regarde que les littéraux. Il ne restait donc à vérifier
+   * que « au moins une propriété en commun », ce que `name?` satisfaisait seul.
+   *
+   * Trouvé en découpant la modale : la nouvelle n'envoie QUE des automatismes,
+   * donc plus rien en commun, et le compilateur a refusé — « has no properties
+   * in common ». Le trou était là depuis le lot qui a rendu les relances
+   * réglables ; il a fallu une modale sans champ d'identité pour le révéler.
+   *
+   * CE QUE CE TYPE GARDE MAINTENANT : un nom de champ mal orthographié côté
+   * client est refusé à la compilation au lieu d'être silencieusement ignoré
+   * par un serveur qui n'écrit que ce qu'il reconnaît.
+   */
   updatePark: <T>(
     parkId: string,
     corps: {
@@ -1235,6 +1263,13 @@ export const api = {
       countryCode?: string
       currency?: DeviseDuParc
       delegation?: 'solo' | 'delegate'
+      autoReminders?: boolean
+      reminderMilestoneDays?: number
+      reminderHour?: number
+      reminderTimeZone?: string
+      reminderChannel?: 'sms' | 'whatsapp'
+      autoRentCall?: boolean
+      rentCallDayOfMonth?: number
     },
   ) => requete<T>(`/parks/${parkId}`, { method: 'PATCH', body: JSON.stringify(corps) }),
 

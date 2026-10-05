@@ -123,13 +123,28 @@ async function choisirLeProfil(page, nom) {
  * écoute. Le `Combobox` du dépôt aurait demandé d'ouvrir un panneau.
  */
 async function ouvrirLeCanalWhatsApp(page) {
-  /* DERRIÈRE LE MENU DE DÉBORDEMENT, comme le bail : « Corriger le parc » n'est
-     pas une action primaire de l'écran du parc, et le chercher au premier
-     niveau expire au bout de trente secondes sans rien dire de plus. */
+  /*
+    DERRIÈRE LE MENU DE DÉBORDEMENT, comme le bail : ce n'est pas une action
+    primaire de l'écran du parc, et la chercher au premier niveau expire au bout
+    de trente secondes sans rien dire de plus.
+
+    LE GESTE OUVRAIT « CORRIGER LE PARC », ET LE CANAL N'Y EST PLUS. Les sept
+    réglages d'automatisme sont partis dans leur propre boîte le 2026-10-05 —
+    `scripts/modales/registre.mjs` l'exigeait du lot qui y ajouterait un
+    réglage. La modale s'ouvrait donc bien, le `select[name="reminderChannel"]`
+    n'y existait plus, et ce script a expiré sur son attente : « le geste a
+    échoué — TimeoutError ».
+
+    C'EST LA BONNE FAÇON D'ÉCHOUER, et il faut le dire. Cette porte n'a pas
+    conclu « la note ne paraît pas » ni, pire, « aucune note à vérifier » : elle
+    a refusé en nommant le geste qui n'a pas abouti. Un script qui aurait cherché
+    la note sans vérifier son geste serait passé au vert sur une note devenue
+    inatteignable.
+  */
   await page.getByRole('button', { name: /^Autres actions$|^More actions$/ }).first().click()
   await page.waitForTimeout(250)
   await page
-    .getByRole('menuitem', { name: /^Corriger le parc$|^Correct the park$/ })
+    .getByRole('menuitem', { name: /^Automatismes du parc$|^Park automation$/ })
     .first()
     .click()
   await page.waitForTimeout(250)

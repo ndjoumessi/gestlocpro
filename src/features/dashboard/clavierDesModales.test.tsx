@@ -252,6 +252,15 @@ const MODALES: Modale[] = [
     rôle ACTIF, qui est connu en démonstration comme sur un vrai compte.
   */
   { nom: 'Corriger le parc', fichier: 'features/dashboard/ParkSettingsModal.tsx', adresse: '/demo/parc', bouton: /^Corriger le parc$/, forme: 'saisie' },
+  /*
+    LES AUTOMATISMES DU PARC — née le 2026-10-05 du découpage de la précédente.
+    
+    Elle entre dans ce registre LE JOUR DE SA NAISSANCE, et c'est le point : la
+    correction du parc, elle, a passé des lots hors de toute mesure parce que sa
+    garde la rendait inatteignable en démonstration. Une modale née dans le même
+    écran, sous la même règle de rôle, n'a aucune excuse pour attendre.
+  */
+  { nom: 'Automatismes du parc', fichier: 'features/dashboard/ParkAutomationModal.tsx', adresse: '/demo/parc', bouton: /^Automatismes du parc$/, forme: 'saisie' },
   /* Sixième, et dernière des deux qui étaient inatteignables — même garde, même
      confusion, même remède. Voir l'en-tête de `scripts/modales.mjs`. */
   { nom: 'Prix de refacturation', fichier: 'features/dashboard/TariffsModal.tsx', adresse: '/demo/releves', bouton: /^Prix de refacturation$/, forme: 'saisie' },
@@ -689,7 +698,7 @@ describe('le clavier des modales', () => {
     expect(creuses, 's’inscrire est un geste ; le motif est ce qui le rend relisible').toEqual([])
   })
 
-  it('a bien joué les trente-deux modales déclarées', () => {
+  it('a bien joué les trente-trois modales déclarées', () => {
     /* 24 → 26 (2026-09-06) : les deux retraits du Parc, qui étaient dispensés
        faute de cible dans la démonstration. Leur `prealable` la crée.
        26 → 27 (2026-09-07) : la relance d'un seul locataire, née avec les
@@ -705,9 +714,16 @@ describe('le clavier des modales', () => {
        la précédente, qui passait déjà les 800 lignes.
        31 → 32 (2026-09-30) : l'ouverture d'une annonce, sur l'écran de la
        vacance — la première modale de ce registre dont l'écran hôte est né le
-       même jour qu'elle. */
-    expect(MODALES.length).toBe(32)
-    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(32)
+       même jour qu'elle.
+       32 → 33 (2026-10-05) : les automatismes du parc. LA PREMIÈRE DE CE
+       REGISTRE QUI NE SOIT PAS UN GESTE NEUF : c'est un DÉCOUPAGE, exigé par
+       `scripts/modales/registre.mjs` — « le prochain réglage qu'on y ajoute
+       devrait payer ce découpage plutôt qu'un plafond de plus ». Les sept
+       réglages qu'elle porte étaient déjà joués au clavier, dans la boîte
+       d'à côté ; ce qui est neuf est la boîte, donc son piège de focus, sa
+       sortie par Échap et le retour du focus à son déclencheur. */
+    expect(MODALES.length).toBe(33)
+    expect(new Set(MODALES.map((m) => m.nom)).size).toBe(33)
     /* LES `lecture` SONT NOMMÉES, et l'écrire ici les protège : passer une
        modale de saisie en `lecture` pour faire taire un champ mal libellé est
        le contournement le plus facile de ce fichier. Il ferait rougir.

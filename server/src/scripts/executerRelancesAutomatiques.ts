@@ -1,4 +1,6 @@
 import { prisma } from '../db.js'
+import { compteRenduDesAppels, executerAppelDesLoyers } from './executerAppelDesLoyers.js'
+import { compteRenduDesAvis, executerAvisDEcheance } from './executerAvisDEcheance.js'
 import { compteRenduDEffacement, effacerLesComptesFermes } from '../auth/effacementDesComptes.js'
 import { calculerRetard, tenterRelanceEmailMilestone } from '../parks/routes.js'
 import { envoyerLesResumesDuFil } from '../parks/resumeDuFil.js'
@@ -271,8 +273,46 @@ export async function executerRelancesAutomatiques(
 if (import.meta.url === `file://${process.argv[1]}`) {
   /* `--a-blanc` : le même parcours, et rien qui parte. `npm run relances:blanc`. */
   const aBlanc = process.argv.includes('--a-blanc')
+
+  /*
+    L'APPEL DES LOYERS PASSE EN PREMIER, ET L'ORDRE EST LE SUJET.
+
+    Une relance se calcule sur une échéance : `calculerRetard` lit les
+    `RentCharge` du bail. Reléguer l'appel après les relances ferait, le jour du
+    mois où les deux tombent ensemble, relancer sur un mois pas encore appelé —
+    donc rendre « 0 bail au jalon » puis créer la dette une seconde plus tard.
+    Le parc attendrait l'heure suivante pour être relancé sur une échéance qui
+    existait déjà.
+
+    C'est l'inverse de la raison qui place les résumés APRÈS : eux sont une
+    commodité, et un passage interrompu doit perdre la commodité. Ici, les deux
+    sont des échéances, et l'une alimente l'autre.
+  */
+  const appels = await executerAppelDesLoyers({ aBlanc })
+  console.log(compteRenduDesAppels(appels, aBlanc))
+
   const resultat = await executerRelancesAutomatiques({ aBlanc })
   console.log(compteRenduDesRelances(resultat, aBlanc))
+
+  /*
+    LES AVIS D'ÉCHÉANCE DE BAIL — APRÈS les relances, AVANT les résumés.
+
+    Après les relances, parce qu'une relance porte sur de l'argent dû
+    aujourd'hui et un avis d'échéance sur une décision à prendre dans un à deux
+    mois : si le passage est interrompu, c'est le plus lointain qu'on perd.
+
+    Avant les résumés, parce qu'un terme de bail n'est pas une commodité. Il
+    appelle une décision, et un départ appelle une liste de gestes datés — état
+    des lieux de sortie, arbitrage de caution.
+
+    AUCUN INTERRUPTEUR DE PARC NE LES GOUVERNE, contrairement aux relances et à
+    l'appel des loyers. Ces deux-là PARLENT AU LOCATAIRE et engagent de
+    l'argent ; celui-ci écrit un avis dans le produit, à destination de qui
+    administre le parc. Un réglage pour éteindre une information qu'on s'adresse
+    à soi-même serait un réglage pour se cacher une échéance.
+  */
+  const avis = await executerAvisDEcheance({ aBlanc })
+  console.log(compteRenduDesAvis(avis, aBlanc))
 
   /*
     LES RÉSUMÉS DU FIL PARTENT AU MÊME PASSAGE, et non dans un second lanceur.

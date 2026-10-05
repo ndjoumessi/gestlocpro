@@ -1659,10 +1659,44 @@ export const fr = {
         'WhatsApp exige un modèle de message approuvé par Meta pour tout envoi non sollicité. Sans ce modèle, les relances de ce parc resteront dans le produit sans partir.',
       reminderZone: 'Fuseau horaire',
       reminderZoneHint: 'Celui de vos locataires, qui n’est pas forcément le vôtre.',
+      /* L'AIDE DIT CE QUI VA SE PASSER, PUIS CE QUI NE PEUT PAS SE PASSER.
+         « Émet les échéances du mois » décrit le geste ; « les rappeler ne
+         double rien » est ce qui autorise à essayer, et sans cette seconde
+         moitié la case ne se coche pas — on ne branche pas à l'aveugle un
+         réglage qui crée de l'argent dû. */
+      autoRentCallOn: 'Appeler les loyers automatiquement',
+      autoRentCallHint:
+        'Les échéances du mois sont émises sans que personne ne clique, au jour choisi. Un mois déjà appelé n’est jamais appelé deux fois.',
+      rentCallDay: 'Quel jour du mois',
+      rentCallDayHint:
+        'Du 1 au 28 — le plus grand jour que tout mois possède. Ce n’est pas le jour d’échéance, qui reste celui du bail.',
       currencyWarning:
         'Les montants déjà saisis ne seront pas convertis : 180 000 se relira 180 000 dans la nouvelle devise. À ne faire que sur un parc dont les montants seront resaisis.',
       unchanged: 'Rien n’a changé.',
       saved: 'Parc corrigé',
+    },
+    /*
+      LES AUTOMATISMES DU PARC — la boîte née du découpage.
+      
+      Ses CHAMPS gardent leurs clés sous `parkSettings`, et ce n'est pas une
+      négligence : ce sont bien des réglages de parc, les libellés n'ont pas
+      changé d'un mot, et les renommer aurait fait un diff de deux cents lignes
+      où rien de lisible ne bouge. Seule la CHROME de la boîte — son titre, son
+      intitulé de menu, ses trois messages — est à elle, parce que c'est la
+      seule chose que le découpage a créée.
+    */
+    parkAutomation: {
+      open: 'Automatismes du parc',
+      title: 'Automatismes du parc',
+      /* LA DESCRIPTION DIT LA FRONTIÈRE, parce que deux entrées de menu
+         voisines doivent se distinguer avant qu'on clique. */
+      description:
+        'Ce que ce parc fait tout seul : relancer un retard, appeler les loyers du mois.',
+      submit: 'Enregistrer',
+      unchanged: 'Rien n’a changé.',
+      saved: 'Automatismes enregistrés',
+      demoNoSave:
+        'La démonstration n’enregistre rien : ce parc n’existe que le temps de la visite, et aucune relance ni aucun appel de loyer n’en part.',
     },
     /* LES DÉPENSES — l'écran. La modale de saisie vit sous `expenseEntry`,
        comme `readings` vit à côté de `meters` : deux branches, parce qu'une
@@ -2499,6 +2533,14 @@ export const fr = {
       actorGone: 'Compte supprimé depuis',
       singleActor: 'Toutes les décisions affichées ont été écrites par {name}.',
       singleActorUnknown: 'Toutes les décisions affichées ont été écrites par un compte supprimé.',
+      /* UN ACTE SANS COMPTE N'EST PLUS FORCÉMENT UN ACTE DONT LE COMPTE EST
+         PARTI. Depuis que le produit appelle les loyers seul, le registre porte
+         des lignes que personne n'a cliquées — et « compte supprimé » en
+         parlerait comme d'un départ. Le libellé nomme le réglage, pas une
+         machine : c'est le propriétaire qui l'a allumé. */
+      systemActor: 'Appel automatique',
+      singleActorSystem:
+        'Toutes les décisions affichées ont été posées par l’appel automatique, sans clic.',
       more: 'Voir les décisions plus anciennes',
       /*
         LE DICTIONNAIRE ÉPOUSE L'ESPACE DE NOMS DES ACTIONS, et ce n'est pas
@@ -3160,6 +3202,22 @@ export const fr = {
           title: 'Bail {unit} à renouveler dans {count} jours',
           title_one: 'Bail {unit} à renouveler dans {count} jour',
           detail: '{tenant} · échéance au {date}',
+        },
+        /**
+         * LE DÉPART ANNONCÉ, et ce que son libellé ne dit PAS.
+         *
+         * Il ne dit pas « bail terminé » : un congé n'est pas une fin, le bail
+         * reste actif jusqu'au départ — c'est la règle écrite par le lot
+         * « congé, révision, garant ». Il nomme donc la DATE DE SORTIE.
+         *
+         * Le détail nomme les deux gestes que ce départ ouvre, parce que le
+         * produit les possède tous les deux et qu'un avis qui ne dit pas quoi
+         * faire se lit une fois puis s'ignore.
+         */
+        leaseMoveOut: {
+          title: 'Départ de {unit} dans {count} jours',
+          title_one: 'Départ de {unit} dans {count} jour',
+          detail: '{tenant} · sortie le {date} · état des lieux et caution à solder',
         },
         partialPayment: {
           title: 'Règlement partiel enregistré sur {unit}',

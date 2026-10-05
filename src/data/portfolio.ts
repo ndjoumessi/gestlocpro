@@ -1455,6 +1455,16 @@ export type AlertMessage =
    */
   | 'rentReminder'
   | 'formalNotice'
+  /**
+   * LE DÉPART ANNONCÉ, écrit par le cron des avis d'échéance.
+   *
+   * `leaseRenewal` existait ici et dans les deux dictionnaires sans que rien ne
+   * l'écrive — le libellé, son pluriel et ses quatre variables attendaient
+   * depuis des lots. Celui-ci est son jumeau pour l'autre date du bail, et il
+   * n'apparaît pas davantage en démonstration : le jeu de données ne porte
+   * aucun congé.
+   */
+  | 'leaseMoveOut'
 
 /**
  * Valeurs d'une alerte, en données brutes.
