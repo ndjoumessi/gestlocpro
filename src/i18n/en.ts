@@ -2258,6 +2258,7 @@ export const en: Dictionary = {
       videoTryIt: 'Open the demonstration',
       videoFallback:
         'Your browser cannot play this video. The demonstration, however, opens anywhere.',
+      videoPlayerLabel: 'Filmed product tour',
 
       mineTitle: 'Your gestures',
       mineSubtitle: 'What your role does in the product, from the first unit to re-letting it.',

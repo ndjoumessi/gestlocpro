@@ -68,6 +68,18 @@
     La liste est ÉCRITE et non déduite : déduire « ce qui répond au clic » du
     DOM rendrait le décompte dépendant des écouteurs posés, donc silencieux dès
     qu'un composant délègue son geste à un parent.
+
+    ET C'EST LE DÉFAUT DE CETTE FORME, PAYÉ LE 2026-10-05. Une liste écrite ne
+    connaît que ce qu'on y a écrit. Le lecteur vidéo du manuel — posé le
+    2026-10-04, `<video controls>` — est une commande native à part entière :
+    lecture, pause, barre de progression, volume, plein écran, tout au clavier.
+    Il n'était dans AUCUNE entrée. La porte rendait donc « 20 186 commandes,
+    aucune anonyme » en disant vrai, et un lecteur sans nom accessible est passé
+    en production derrière ce vert. Le compte ne mentait pas, son périmètre
+    était incomplet — exactement comme le plafond de lignes qui n'existait pas.
+
+    Un `media[controls]` sans `controls` ne porte aucun geste et reste donc
+    dehors : ce n'est pas une commande, c'est une image qui bouge.
   */
   const COMMANDES = [
     'button',
@@ -76,6 +88,8 @@
     'select',
     'textarea',
     'summary',
+    'video[controls]',
+    'audio[controls]',
     '[role="button"]',
     '[role="link"]',
     '[role="menuitem"]',
@@ -109,6 +123,23 @@
     'combobox',
     'listbox',
     'progressbar',
+    /*
+      UN LECTEUR MÉDIA NE PREND PAS SON NOM DE SON CONTENU, et l'omettre a
+      produit un FAUX VERT mesuré le 2026-10-05. Le contenu d'un `<video>` est
+      son REPLI : « Votre navigateur ne sait pas lire cette vidéo. » Un
+      navigateur qui sait la lire ne l'expose jamais — vérifié dans l'arbre
+      d'accessibilité de Chrome, qui rend `rôle=Video, nom="", ignoré=false` et
+      ne liste que trois sources possibles (`aria-labelledby`, `aria-label`,
+      `title`), toutes nulles. La sonde, elle, lisait le texte du DOM et
+      déclarait le lecteur nommé.
+
+      C'est la même faute que le rognage invisible : le DOM porte la chaîne
+      entière, l'utilisateur ne la reçoit pas. Ajouter `video[controls]` aux
+      commandes SANS cette entrée aurait donc posé une garde née verte sur le
+      défaut qu'elle devait attraper.
+    */
+    'video',
+    'audio',
   ])
 
   /** Table courte des rôles implicites — assez pour ce produit, pas HTML-AAM. */
@@ -120,6 +151,7 @@
     if (balise === 'a') return 'link'
     if (balise === 'textarea') return 'textbox'
     if (balise === 'select') return el.hasAttribute('multiple') ? 'listbox' : 'combobox'
+    if (balise === 'video' || balise === 'audio') return balise
     if (balise === 'input') {
       const type = (el.getAttribute('type') || 'text').toLowerCase()
       if (type === 'button' || type === 'submit' || type === 'reset' || type === 'image')
@@ -428,6 +460,20 @@
     if (!visible(el)) continue
     const label = netto(el.getAttribute('aria-label'))
     if (!label) continue
+    /*
+      UN RÔLE QUI NE SE NOMME PAS PAR SON CONTENU N'A PAS DE LIBELLÉ VISIBLE,
+      et 2.5.3 ne lui applique donc rien. Le critère parle d'un composant « dont
+      le libellé contient du texte » — un libellé VU. Le contenu d'un `<video>`
+      est son repli, qu'un navigateur capable de lire la vidéo n'expose jamais ;
+      la valeur d'un `textarea` est une saisie, pas un libellé.
+
+      Sans cette ligne, nommer correctement le lecteur du manuel faisait rougir
+      2.5.3 : la plainte exigeait que « Visite filmée du produit » contienne
+      « Votre navigateur ne sait pas lire cette vidéo. » Mesuré le 2026-10-05,
+      dans les deux langues — c'est-à-dire que la sonde refusait le correctif
+      de la faute qu'elle venait elle-même de signaler.
+    */
+    if (SANS_NOM_PAR_CONTENU.has(roleDe(el))) continue
     const visibleTexte = texteVisibleAuxOutils(el)
     /* Pas de texte visible : rien à contenir. Un bouton d'icône nommé par son
        seul `aria-label` est le cas normal, et c'est la première règle qui le

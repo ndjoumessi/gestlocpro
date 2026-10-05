@@ -53,8 +53,8 @@
   "src/features/dashboard/Tenants.tsx": 1928,
   "src/features/dashboard/Works.tsx": 1208,
   "src/features/dashboard/documentsPdf.ts": 1053,
-  "src/i18n/en.ts": 2897,
-  "src/i18n/fr.ts": 4036,
+  "src/i18n/en.ts": 2898,
+  "src/i18n/fr.ts": 4042,
   "src/routes/SignUp.tsx": 1341
  }
 }

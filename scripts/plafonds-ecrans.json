@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "e4900d99",
- "empreinteDesSources": "c370268ef3f94282b89cc57e9365ddd06f9283bfa5f2aa7345ff31cec1ff70f7",
+ "course": "858954fa",
+ "empreinteDesSources": "fca36a4c48dc945ee31a2458b14f368616f9ed63d2b0e4dec45765588a3c3fd2",
  "mesures": {
   "/@360": {
-   "octets": 575059,
-   "octetsFil": 187164,
+   "octets": 575104,
+   "octetsFil": 187175,
    "requetes": 4,
    "releve": {
-    "de": 575050,
+    "de": 575059,
     "requetesDe": 4,
-    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
-    "course": "e4900d99"
+    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
+    "course": "858954fa"
    }
   },
   "/demo@360": {
-   "octets": 438482,
-   "octetsFil": 124356,
+   "octets": 438528,
+   "octetsFil": 124365,
    "requetes": 2,
    "releve": {
-    "de": 438291,
+    "de": 438482,
     "requetesDe": 2,
-    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
-    "course": "e4900d99"
+    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
+    "course": "858954fa"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64611,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 575059,
-   "octetsFil": 187164,
+   "octets": 575104,
+   "octetsFil": 187175,
    "requetes": 4,
    "releve": {
-    "de": 575050,
+    "de": 575059,
     "requetesDe": 4,
-    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
-    "course": "e4900d99"
+    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
+    "course": "858954fa"
    }
   },
   "/demo@1280": {
-   "octets": 438482,
-   "octetsFil": 124356,
+   "octets": 438528,
+   "octetsFil": 124365,
    "requetes": 2,
    "releve": {
-    "de": 438291,
+    "de": 438482,
     "requetesDe": 2,
-    "motif": "la visite suit la langue : un registre par langue remplace une constante unique, et l'écran du manuel sert le film de sa langue",
-    "course": "e4900d99"
+    "motif": "45 o pour nommer le lecteur vidéo du manuel (WCAG 4.1.2) : deux clés d'i18n, qui voyagent dans le paquet partagé, et un attribut. Avant ce lot l'arbre d'accessibilité de Chrome rendait rôle=Video nom=\"\" exposé.",
+    "course": "858954fa"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64611,
    "requetes": 3,
    "releve": {
     "de": 65639,

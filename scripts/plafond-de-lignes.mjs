@@ -15,8 +15,19 @@
  *   1. UN NOUVEAU FAUTIF. Un fichier passe 800 lignes sans être au relevé. C'est
  *      le refus principal : il rend impossible de livrer un `mesures-navigateur`
  *      de 1 191 lignes sans qu'une porte le dise.
- *   2. UN FAUTIF QUI GROSSIT. Un fichier du relevé gagne des lignes. La dette
- *      inscrite est un plafond, pas un droit de tirage.
+ *   2. UN FAUTIF QUI GROSSIT SANS QUE LE RELEVÉ SUIVE. Noter : la croissance
+ *      n'est pas interdite, elle doit être ÉCRITE. `--inscrire` la grave sans
+ *      exiger de phrase, et c'est le nombre dans le diff qui porte le signal.
+ *
+ *      LA PREMIÈRE RÉDACTION EXIGEAIT UN MOTIF ÉCRIT ICI, et un jour d'usage
+ *      l'a réfutée. Mesuré le 2026-10-05 sur trois fichiers de natures
+ *      différentes : `src/i18n/fr.ts` a grossi dans 14 des 15 derniers lots qui
+ *      le touchent (3 470 → 4 036), `routes.test.ts` dans 6 des 8 derniers
+ *      (6 884 → 7 102), `AppShell.tsx` dans 6 des 8 (2 705 → 2 865). Un motif
+ *      réclamé à chaque lot devient une formule en une semaine, et une formule
+ *      est PIRE que rien : elle apprend au relecteur à sauter la ligne, ce qui
+ *      détruit le mécanisme là où il compte. Le motif est donc réservé au seul
+ *      geste qui mérite une phrase — franchir 800 pour la première fois.
  *   3. UN FAUTIF QUI MAIGRIT SANS QUE LE RELEVÉ SUIVE. C'est le refus qui
  *      distingue cette porte de `poids-ecrans`, et il est écrit contre une
  *      faute mesurée : `poids-ecrans` RAPPORTE une hausse sans l'arrêter, et
@@ -112,7 +123,6 @@ const sourcesDuDepot = () =>
  */
 const confronter = (longueurs, releve) => {
   const refus = []
-  const aInscrire = {}
   for (const [fichier, lignes] of Object.entries(longueurs).sort()) {
     const inscrit = releve[fichier]
     if (lignes > PLAFOND && inscrit === undefined) {
@@ -126,7 +136,7 @@ const confronter = (longueurs, releve) => {
     if (lignes > inscrit) {
       refus.push({
         genre: 'grossit', fichier, lignes,
-        dire: `${fichier} : ${inscrit} → ${lignes} lignes (+${lignes - inscrit}), le relevé est un plafond.`,
+        dire: `${fichier} : ${inscrit} → ${lignes} lignes (+${lignes - inscrit}), croissance non inscrite.`,
       })
     } else if (lignes <= PLAFOND) {
       refus.push({
@@ -134,7 +144,6 @@ const confronter = (longueurs, releve) => {
         dire: `${fichier} : ${lignes} lignes, repassé sous ${PLAFOND} — à RETIRER du relevé.`,
       })
     } else if (lignes < inscrit) {
-      aInscrire[fichier] = lignes
       refus.push({
         genre: 'maigrit', fichier, lignes,
         dire: `${fichier} : ${inscrit} → ${lignes} lignes (${lignes - inscrit}), gain non inscrit.`,
@@ -149,7 +158,7 @@ const confronter = (longueurs, releve) => {
       })
     }
   }
-  return { refus, aInscrire }
+  return { refus }
 }
 
 /* ═══ LE TÉMOIN ═══
@@ -181,10 +190,6 @@ if (JSON.stringify(obtenu) !== JSON.stringify(TEMOIN_ATTENDU)) {
   console.error('  attendu: ' + JSON.stringify(TEMOIN_ATTENDU))
   exit(1)
 }
-if (JSON.stringify(temoin.aInscrire) !== JSON.stringify({ 'a/maigrit.ts': 900 })) {
-  console.error('✗ TÉMOIN : le gain à inscrire n’est plus celui attendu.')
-  exit(1)
-}
 
 const longueurs = {}
 for (const fichier of sourcesDuDepot()) {
@@ -195,7 +200,7 @@ const brut = existsSync(RELEVE) ? JSON.parse(readFileSync(RELEVE, 'utf8')) : {}
 const releve = Object.fromEntries(
   Object.entries(brut.plafonds ?? {}).map(([f, v]) => [f, typeof v === 'number' ? v : v.lignes]),
 )
-const { refus, aInscrire } = confronter(longueurs, releve)
+const { refus } = confronter(longueurs, releve)
 
 const iRelever = argv.indexOf('--relever')
 if (argv.includes('--inscrire') || iRelever !== -1) {
@@ -207,9 +212,11 @@ if (argv.includes('--inscrire') || iRelever !== -1) {
   const plafonds = { ...brut.plafonds }
   const faits = []
   for (const r of refus) {
-    if (r.genre === 'maigrit') {
+    if (r.genre === 'maigrit' || r.genre === 'grossit') {
+      const avant = releve[r.fichier]
       plafonds[r.fichier] = r.lignes
-      faits.push(`resserré ${r.fichier} à ${r.lignes}`)
+      const sens = r.genre === 'maigrit' ? 'resserré' : 'inscrit'
+      faits.push(`${sens} ${r.fichier} : ${avant} → ${r.lignes}`)
     } else if (r.genre === 'retombe' || r.genre === 'orpheline') {
       delete plafonds[r.fichier]
       faits.push(`retiré ${r.fichier}`)
@@ -238,12 +245,13 @@ if (refus.length) {
   console.error(`✗ plafond de lignes : ${refus.length} refus — ` +
     Object.entries(parGenre).map(([g, n]) => `${n} ${g}`).join(', ') + '\n')
   for (const r of refus) console.error('  ▸ ' + r.dire)
-  if (Object.keys(aInscrire).length) {
-    console.error('\n  Les gains se resserrent par `node scripts/plafond-de-lignes.mjs --inscrire`.')
+  if (refus.some((r) => r.genre === 'grossit')) {
+    console.error('\n  Une croissance se grave par `node scripts/plafond-de-lignes.mjs --inscrire` :\n' +
+      "  elle n'est pas interdite, elle doit être ÉCRITE, et le nombre du diff suffit.")
   }
-  if (refus.some((r) => r.genre === 'nouveau' || r.genre === 'grossit')) {
-    console.error('  Un fichier qui DOIT dépasser se déclare par ' +
-      '`--relever "motif"`, et le motif reste dans le diff.')
+  if (refus.some((r) => r.genre === 'nouveau')) {
+    console.error('\n  FRANCHIR 800 POUR LA PREMIÈRE FOIS est le seul geste qui exige une phrase :\n' +
+      '  `--relever "motif"`, et le motif reste dans le diff.')
   }
   exit(1)
 }

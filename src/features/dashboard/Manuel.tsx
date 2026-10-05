@@ -244,6 +244,7 @@ export function Manuel() {
           qui rend ce manque supportable, et non acceptable.
         */}
         <video
+          aria-label={t('app.manual.videoPlayerLabel')}
           className="mt-4 w-full rounded-lg bg-ink/5"
           key={visite.video}
           src={visite.video}

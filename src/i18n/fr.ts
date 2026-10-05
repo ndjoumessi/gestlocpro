@@ -3293,6 +3293,12 @@ export const fr = {
       videoTryIt: 'Ouvrir la démonstration',
       videoFallback:
         'Votre navigateur ne sait pas lire cette vidéo. La démonstration, elle, s’ouvre partout.',
+      /* LE NOM DU LECTEUR, et non le titre de la section. Un lecteur média ne
+         prend pas son nom de son contenu : le contenu d'un `<video>` est son
+         repli, qu'un navigateur capable de lire la vidéo n'expose jamais.
+         Mesuré le 2026-10-05 dans l'arbre d'accessibilité de Chrome : le
+         lecteur y était `nom=""`, exposé et anonyme. */
+      videoPlayerLabel: 'Visite filmée du produit',
 
       /* ── LES GESTES ── */
       mineTitle: 'Vos gestes',
