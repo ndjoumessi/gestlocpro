@@ -228,14 +228,16 @@ export const MODALES = [
     d'automatisme sont partis dans `ParkAutomationModal`, et il ne reste ici que
     les quatre valeurs d'identité du parc : nom, pays, devise, délégation.
 
-    LES DEUX COLONNES SONT MESURÉES, et non reproduites comme les nombres
-    qu'elles remplacent. MAIS LA LARGE EST UN RELEVÉ *LOCAL* :
-    `MESURER_EN_POLICE_LARGE=1` impose `Verdana, sans-serif`, que ce Mac possède
-    et que l'exécuteur n'a pas — il retombe sur DejaVu. Mesuré ici sur une modale
-    que ce lot ne touche pas, `Lease@1280` rend 268 px en local contre un plafond
-    de 242 relevé là-bas : 26 px d'écart sur du code identique. Les `defilLarge`
-    de ce lot peuvent donc être refusés par la porte publique, qui fait autorité —
-    corriger alors depuis SON rapport, comme l'a fait le lot du canal de relance.
+    LA COLONNE ÉTROITE EST MESURÉE ICI, LA LARGE VIENT DE L'EXÉCUTEUR — payé en
+    deux fois. `MESURER_EN_POLICE_LARGE=1` impose Verdana, que ce Mac possède et
+    que l'exécuteur n'a pas : il retombe sur DejaVu. Les premiers `defilLarge` de
+    ce lot venaient d'un relevé LOCAL, et la porte publique les a tous ACCEPTÉS
+    sans rien garder — six des huit portaient 22 à 64 px de mou.
+
+    UN PLAFOND AU-DESSUS DE SA MESURE NE ROUGIT PAS, IL CESSE DE GARDER : le
+    reproche que le lot du canal de relance s'était déjà fait sur 21 px, douze
+    entrées plus bas. Ceux d'ici viennent du travail `complet` du passage
+    37389387280, à l'unité près.
   */
   /* RELEVÉ : 48 px à 360 en français, 6 en anglais ; 0 aux deux langues à 1280.
      La colonne large rend 48 DANS LES DEUX LANGUES — Verdana amène l'anglais au
@@ -300,7 +302,8 @@ export const MODALES = [
       géométrie de la note de devise seule, sur les quatre champs d'identité.
     */
     defil: { 360: 203, 1280: 0 },
-    defilLarge: { 360: 203, 1280: 0 },
+    /* 181 ET NON 203 : la mesure de l'exécuteur. 22 px de mou retirés. */
+    defilLarge: { 360: 181, 1280: 0 },
     avant: { 360: 875, 1280: 519 },
   },
   /*
@@ -351,7 +354,10 @@ export const MODALES = [
       dans ce fichier : 501 à 360, 224 à 1280.
     */
     defil: { 360: 480, 1280: 181 },
-    defilLarge: { 360: 501, 1280: 224 },
+    /* 458 et 160, mesurés par l'exécuteur : 43 et 64 px de mou retirés. L'écart
+       de 1280 est le plus gros du lot — à cette largeur la boîte a la place de
+       reflouer, donc le dessin de la police décide du nombre de lignes. */
+    defilLarge: { 360: 458, 1280: 160 },
     avant: { 360: 875, 1280: 519 },
   },
   /*
@@ -371,11 +377,11 @@ export const MODALES = [
     nom: 'ParkAutomation', fichier: 'features/dashboard/ParkAutomationModal.tsx',
     adresse: '/demo/parc',
     bouton: /^Automatismes du parc$|^Park automation$/,
-    /* RELEVÉ : 325 px à 360 en français, 260 en anglais ; 70 et 27 à 1280. En
-       police large, 346 et 325 à 360, 70 et 113 à 1280 — et l'anglais y dépasse
-       le français à 1280, pour la raison écrite à l'état WhatsApp ci-dessus. */
+    /* RELEVÉ ICI : 325 px à 360 en français, 260 en anglais ; 70 et 27 à 1280.
+       LA COLONNE LARGE VIENT DE L'EXÉCUTEUR : 304 et 238 à 360, 49 et 27 à
+       1280 — 42 et 64 px de moins que ce que Verdana rendait ici. */
     defil: { 360: 325, 1280: 70 },
-    defilLarge: { 360: 346, 1280: 113 },
+    defilLarge: { 360: 304, 1280: 49 },
     /* `avant` PORTE LES 721 DE LA CORRECTION DU PARC, et non un zéro : cette
        boîte ne naît pas de rien, elle naît d'un découpage. Le nombre dit d'où
        l'on vient — une seule boîte à 878 px — et non « ce lot a coûté ». */
