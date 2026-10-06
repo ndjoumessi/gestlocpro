@@ -301,3 +301,92 @@ describe('le parc sur un écran large', () => {
     expect(screen.queryByRole('group', { name: /Immeuble/i })).not.toBeInTheDocument()
   })
 })
+
+/**
+ * UN EN-TÊTE DE GROUPE DÉCRIT CE QU'IL COIFFE, ET RIEN D'AUTRE.
+ *
+ * ═══ LE DÉFAUT ÉTAIT DÉJÀ ÉCRIT DANS LE FICHIER QUI LE PORTE ═══
+ *
+ * Le filtre d'immeuble est parti pour cette raison exacte, et `Portfolio` le dit
+ * en toutes lettres : « `ordre` déclare TOUS les immeubles […] Un filtre actif
+ * ne retirait donc pas les autres immeubles, il les VIDAIT : deux en-têtes
+ * suivis de rien, au milieu de la liste. »
+ *
+ * La RECHERCHE est restée, et elle refait exactement cela. Mesuré au navigateur
+ * à 375 px, « Charles » dans le champ : une fiche affichée, et trois en-têtes —
+ * « Résidence Bonamoussadi 5/5 », « Immeuble Akwa Nord 3/4 », « Villa Deïdo
+ * 2/3 » — dont les deux derniers coiffent une liste vide.
+ *
+ * ═══ ET LE PREMIER MENT SUR CE QU'IL COIFFE ═══
+ *
+ * « 5/5 » au-dessus d'UNE fiche. `occupancyOf` et `loyerDe` lisent le parc
+ * d'AVANT la recherche quand le corps montre ce qu'elle a laissé. C'est la même
+ * faute que celle du pied de colonne, d'un étage plus haut : un nombre qui
+ * décrit un ensemble qu'on ne voit plus.
+ *
+ * `DataTable` passe pourtant les lignes du groupe à `enTete` — l'écran les
+ * ignorait, sous un `_lignes`.
+ *
+ * ═══ LES DEUX FORMES NE RÉPONDAIENT PAS PAREIL ═══
+ *
+ * La grille de cartes écartait les groupes vides (`if (query && lignes.length
+ * === 0) return null`) ; les fiches, non. Le contrat de la primitive exige
+ * pourtant que les deux rendent les mêmes groupes. Le cas interroge donc LES
+ * DEUX LARGEURS, et c'est ce qui l'empêche de se satisfaire d'une moitié.
+ */
+describe('l’en-tête de groupe sous la recherche', () => {
+  const enTetes = () =>
+    Array.from(document.querySelectorAll('[data-groupe]')).map(
+      (e) => (e as HTMLElement).textContent ?? '',
+    )
+
+  for (const largeur of [375, 1280]) {
+    it(`ne coiffe que les immeubles où la recherche a laissé quelque chose — à ${largeur} px`, async () => {
+      const vue = await renderApp('/demo/parc', { largeur })
+      await attendreLeChargement()
+      expect(enTetes().length, 'la démonstration n’a plus trois immeubles').toBe(3)
+
+      const main = within(screen.getByRole('main'))
+      await userEvent.type(main.getByRole('searchbox'), 'Charles')
+
+      /* UN SEUL LOCATAIRE PORTE CE NOM, dans un seul immeuble : les deux autres
+         en-têtes n'ont plus rien à annoncer. */
+      expect(
+        enTetes().length,
+        'un en-tête survit à une recherche qui a vidé son immeuble',
+      ).toBe(1)
+
+      /* ET CELUI QUI RESTE COMPTE CE QU'IL MONTRE. « 5/5 » au-dessus d'une seule
+         fiche est le rapport de l'immeuble, pas celui de la liste. Le nombre
+         n'est pas écrit en dur : on exige qu'il soit tombé. */
+      const rapport = /(\d+)\s*\/\s*(\d+)/.exec(enTetes()[0] ?? '')
+      expect(rapport, 'l’en-tête ne porte plus de rapport d’occupation').not.toBeNull()
+      expect(
+        Number(rapport![2]),
+        'l’en-tête compte les logements que la recherche a écartés',
+      ).toBe(1)
+
+      vue.unmount()
+    })
+
+    it(`ne laisse aucun en-tête derrière une recherche sans résultat — à ${largeur} px`, async () => {
+      const vue = await renderApp('/demo/parc', { largeur })
+      await attendreLeChargement()
+
+      const main = within(screen.getByRole('main'))
+      await userEvent.type(main.getByRole('searchbox'), 'zzzzzz')
+
+      /* TROIS EN-TÊTES SUIVIS DE RIEN, et aucun message : l'écran se lisait
+         comme un parc dont les immeubles auraient perdu leurs logements. L'état
+         vide de la recherche existe pourtant, et il porte le bouton qui
+         l'efface. */
+      expect(enTetes(), 'des en-têtes coiffent une recherche sans résultat').toEqual([])
+      expect(
+        screen.getByText(/zzzzzz/),
+        'la recherche sans résultat ne le dit pas',
+      ).toBeInTheDocument()
+
+      vue.unmount()
+    })
+  }
+})

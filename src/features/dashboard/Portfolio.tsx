@@ -471,10 +471,8 @@ export function Portfolio() {
    * ferait lire un revenu qui n'existe pas. Ce qu'il coûte de ne pas le louer se
    * lit sur SA ligne, où la colonne Loyer dit « attendu ».
    */
-  const loyerDe = (buildingId: string) =>
-    unitesAffichees
-      .filter((u) => u.buildingId === buildingId && u.status !== 'vacant')
-      .reduce((somme, u) => somme + u.rent, 0)
+  const loyerDesLignes = (lignes: Unit[]) =>
+    lignes.filter((u) => u.status !== 'vacant').reduce((somme, u) => somme + u.rent, 0)
 
   /**
    * LE TAUX, BORNÉ UNE FOIS POUR LES QUATRE TUILES.
@@ -524,7 +522,32 @@ export function Portfolio() {
   const ordreDesImmeubles = [
     ...BUILDINGS.filter((b) => occupancyOf(b.id).total > 0),
     ...BUILDINGS.filter((b) => occupancyOf(b.id).total === 0),
-  ].map((b) => b.id)
+  ]
+    .map((b) => b.id)
+    /*
+      UNE RECHERCHE RETIRE L'IMMEUBLE QU'ELLE A VIDÉ, elle ne le laisse pas
+      ouvert sur rien.
+
+      Le filtre d'immeuble est parti pour ce défaut exact, et le commentaire qui
+      l'enterre le décrit mot pour mot : « Un filtre actif ne retirait donc pas
+      les autres immeubles, il les VIDAIT : deux en-têtes suivis de rien, au
+      milieu de la liste. » La recherche, elle, est restée — et le refaisait.
+
+      MESURÉ À 375 px, « Charles » dans le champ : une fiche, et trois en-têtes.
+      Les deux derniers coiffaient une liste vide portant leur propre
+      `aria-label` : « liste, Immeuble Akwa Nord, 0 élément ».
+
+      ICI ET NON DANS CHAQUE FORME. La grille de cartes écartait déjà les groupes
+      vides pour son compte ; les fiches, non. Deux réponses à la même question,
+      et c'est la forme du téléphone qui avait la mauvaise. L'ordre étant la
+      SEULE liste que les deux formes lisent, la régler ici les accorde par
+      construction.
+
+      ET L'IMMEUBLE SANS LOGEMENT RESTE, hors recherche : c'est le seul endroit
+      d'où on peut encore le corriger ou le retirer, `modales` l'a refusé avant
+      moi. La condition porte sur la RECHERCHE, pas sur le vide.
+    */
+    .filter((id) => !query.trim() || rows.some((u) => u.buildingId === id))
 
   /**
    * Placé après les crochets — ils doivent tourner à chaque rendu — et avant le
@@ -543,9 +566,27 @@ export function Portfolio() {
     bureau, la carte d'immeuble le rend au-dessus de sa grille. Deux copies
     auraient dérivé — c'est le même nom, la même occupation, le même menu.
   */
-  const enTeteDImmeuble = (id: string, forme: 'fiches' | 'tableau') => {
+  const enTeteDImmeuble = (id: string, forme: 'fiches' | 'tableau', lignes: Unit[]) => {
             const b = buildingById(id)
-            const { occupied: occ, total } = occupancyOf(id)
+            /*
+              IL COMPTE CE QU'IL COIFFE, et non le parc d'avant la recherche.
+
+              `occupancyOf(id)` lisait `unitesAffichees` quand le corps rend
+              `rows` : sur « Charles », l'en-tête annonçait « 5/5 · 952,81 € » et
+              la liste dessous portait UNE fiche à 221,05 €. C'est la faute que le
+              pied de colonne a corrigée un étage plus bas — un nombre qui décrit
+              un ensemble qu'on ne voit plus — remontée dans l'en-tête.
+
+              `DataTable` PASSAIT DÉJÀ CES LIGNES. Son contrat les donne à
+              `enTete` ; l'écran les jetait sous un `_lignes`, et recalculait à
+              côté ce qu'on venait de lui tendre.
+
+              `occupancyOf` RESTE, et il le faut : c'est lui qui dit si un
+              immeuble a des logements — la question du classement en fin de
+              liste, qu'une recherche ne doit pas changer.
+            */
+            const occ = lignes.filter((u) => u.status !== 'vacant').length
+            const total = lignes.length
             const auTableau = forme === 'tableau'
             const vide = total === 0
             return (
@@ -711,7 +752,7 @@ export function Portfolio() {
                       <>
                         <span className="numeric hidden text-body text-muted sm:inline">
                           {t('app.portfolio.buildingRent', {
-                            amount: money(loyerDe(id), { compact: true }),
+                            amount: money(loyerDesLignes(lignes), { compact: true }),
                           })}
                         </span>
                         <span className="numeric font-medium">{`${occ}/${total}`}</span>
@@ -814,8 +855,10 @@ export function Portfolio() {
     <div className="flex flex-col gap-4">
       {ordreDesImmeubles.map((id) => {
         const lignes = rows.filter((u) => u.buildingId === id)
-        // Une recherche qui ne touche pas cet immeuble ne le montre pas.
-        if (query && lignes.length === 0) return null
+        /* LA RECHERCHE EST TRANCHÉE DANS `ordreDesImmeubles`, et plus ici. Ce
+           retour anticipé était la MOITIÉ du correctif : il réglait la grille de
+           cartes et laissait les fiches ouvrir des en-têtes sur rien. Les deux
+           formes lisent le même ordre ; une seule règle les tient. */
         const b = buildingById(id)
         return (
           /* PAS d'`overflow-hidden` sur la carte : le menu de l'immeuble est un
@@ -824,7 +867,7 @@ export function Portfolio() {
              clic tombait sur la carte du dessus — `modales.mjs` l'a mesuré :
              « le bouton a été cliqué et aucune boîte n'est apparue ». */
           <Card key={id} as="section" flush aria-labelledby={`immeuble-${id}`}>
-            {enTeteDImmeuble(id, 'tableau')}
+            {enTeteDImmeuble(id, 'tableau', lignes)}
             {lignes.length > 0 && (
               <RailDeLogements id={idDuGroupe(id)} libelle={b?.name}>
                 {lignes.map((unit) => (
@@ -1611,7 +1654,7 @@ export function Portfolio() {
              les cartes parties. `modales` l'a refusé avant moi. */
           ordre: ordreDesImmeubles,
           nom: (id) => buildingById(id)?.name ?? '',
-          enTete: (id, _lignes, forme) => enTeteDImmeuble(id, forme),
+          enTete: (id, lignes, forme) => enTeteDImmeuble(id, forme, lignes),
         }}
         empty={
           /* Deux absences, deux messages. Un parc sans aucun logement n'a pas
