@@ -42,6 +42,55 @@ import { TenantScopeNote } from './TenantDashboard'
 
 const FILTERS: (PaymentStatus | 'all')[] = ['all', 'paid', 'partial', 'overdue']
 
+
+/**
+ * LA FENÊTRE QUE L'AXE MONTRE, nommée UNE FOIS plutôt que six.
+ *
+ * ═══ LE DÉFAUT ÉTAIT L'INVERSE DE L'HABITUEL ═══
+ *
+ * Les six en-têtes disent « mai · juin · juil · août · sept · oct », et rien sur
+ * cet écran ne portait d'année : il n'a pas de sélecteur de période. Chaque
+ * CELLULE, elle, annonce déjà « Mai 2026 · … » dans son nom accessible. Un
+ * lecteur d'écran recevait l'année ; l'œil ne la recevait nulle part.
+ *
+ * Et la fenêtre vaut « les six dernières périodes CONNUES » : une fois sur deux
+ * elle enjambe un 31 décembre.
+ *
+ * ═══ PREMIÈRE RÉDACTION, ÉCRITE PUIS RETIRÉE SUR MESURE ═══
+ *
+ * L'année était marquée SUR LES COLONNES — au départ de l'axe, puis à chaque
+ * franchissement. `plafond-hauteurs` l'a refusée, et la capture a dit pourquoi :
+ * dans la fiche, la grille donne 2,75rem par période, « mai 26 » s'y replie, et
+ * les pastilles de mai tombent alors sur une TROISIÈME rangée, à gauche, sous
+ * leur propre en-tête. 155 px de plus sur l'écran, et surtout la suite
+ * chronologique rompue — « c'est précisément ce qu'on regarde d'un coup d'œil
+ * pour voir OÙ le paiement a lâché ».
+ *
+ * ═══ CE QU'ON FAIT À LA PLACE ═══
+ *
+ * Les deux BORNES, une fois, au-dessus de la grille : « mai 2026 – octobre
+ * 2026 ». L'axe est monotone, donc deux bornes datent les six colonnes sans
+ * ambiguïté, y compris quand elles enjambent une année. Une ligne sur l'écran
+ * au lieu de quinze pixels sur chacune des dix fiches, et la même phrase sert
+ * les deux formes.
+ *
+ * ═══ CE QU'ELLE NE DIT PAS ═══
+ *
+ * RIEN DES TROUS. Les périodes sont celles qui EXISTENT : un parc sans échéance
+ * en juillet rend « juin » et « août » côte à côte, lus comme une suite, et deux
+ * bornes ne signalent pas cette discontinuité. NOMMÉ, pas corrigé.
+ */
+export function bornesDesPeriodes(
+  periodes: { year: number; month: number }[],
+): { debut: { year: number; month: number }; fin: { year: number; month: number } } | null {
+  const debut = periodes[0]
+  const fin = periodes[periodes.length - 1]
+  /* UNE SEULE PÉRIODE N'EST PAS UNE FENÊTRE : « mai 2026 – mai 2026 » dit deux
+     fois la même borne. On rend quand même la paire — c'est l'écran qui choisit
+     sa phrase, et il en a une pour ce cas. */
+  return debut && fin ? { debut, fin } : null
+}
+
 export function Payments() {
   const [quittanceDe, setQuittanceDe] = useState<string | null>(null)
   const t = useT()
@@ -179,6 +228,8 @@ export function Payments() {
       .sort((a, b) => a.year - b.year || a.month - b.month)
       .slice(-6)
   }, [leases, receiptsForUnit])
+
+  const bornes = bornesDesPeriodes(periodes)
 
   /**
    * Le solde CUMULÉ du bail : ce qui reste dû sur toutes ses périodes.
@@ -523,6 +574,26 @@ export function Payments() {
         Elle ne s'affiche qu'avec la grille : sans période, il n'y a pas de
         pastille à expliquer.
       */}
+      {/*
+        LA FENÊTRE QUE LA GRILLE MONTRE, en toutes lettres — voir
+        `bornesDesPeriodes`. Six en-têtes au mois seul sur un écran qui n'a aucun
+        sélecteur de période : l'année n'était écrite nulle part pour l'œil, alors
+        que chaque cellule l'annonce déjà à la synthèse vocale.
+
+        AVEC LA LÉGENDE, et non ailleurs : les deux disent comment lire la grille
+        qui suit, et les séparer aurait donné deux notices à deux endroits pour
+        une même chose.
+      */}
+      {bornes && (
+        <p className="text-body text-muted mb-2">
+          {bornes.debut.year === bornes.fin.year && bornes.debut.month === bornes.fin.month
+            ? t('app.payments.windowOne', { month: d.monthYearInline(bornes.debut) })
+            : t('app.payments.window', {
+                from: d.monthYearInline(bornes.debut),
+                to: d.monthYearInline(bornes.fin),
+              })}
+        </p>
+      )}
       {periodes.length > 0 && (
         <LegendeDesPostes
           intitule={t('app.payments.legendPosts')}
@@ -741,6 +812,13 @@ export function Payments() {
             ? periodes.map((periode) => ({
                 key: `p-${periode.year}-${periode.month}`,
                 role: 'serie' as const,
+                /* LE MOIS SEUL, et l'année est nommée UNE FOIS au-dessus de la
+                   grille — voir `fenetreDesPeriodes`. La porter ici a été essayé
+                   et MESURÉ : « mai 26 » ne tient pas dans une colonne de
+                   2,75rem, il se replie, et les pastilles de mai tombent sur une
+                   troisième rangée sous leur propre en-tête. C'est exactement ce
+                   que le rôle `serie` existe pour empêcher — « une suite
+                   chronologique lue verticalement cesse d'être une suite ». */
                 header: d.monthShort(periode),
                 hideOnMobile: true,
                 render: (unit: Unit) => (

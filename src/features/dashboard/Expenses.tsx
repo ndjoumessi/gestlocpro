@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useRole } from '@/components/layout/AppShell'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable } from '@/components/primitives/DataTable'
@@ -63,6 +63,9 @@ export function Expenses() {
   const { adhesionActive, estDemo } = useSession()
   const parkId = adhesionActive?.parkId ?? null
 
+  /* L'IDENTIFIANT DU VERROU DE DÉMONSTRATION, pour `aria-describedby` — même
+     idiome que le parc, dont on reprend la forme. */
+  const idDuVerrouDemo = useId()
   const [mois, setMois] = useState(MOIS_DEMO)
   const [depenses, setDepenses] = useState<DepenseApi[]>(DEPENSES_DEMO)
   /** Ce que le SERVEUR a rendu pour les chantiers. `null` hors session. */
@@ -250,22 +253,42 @@ export function Expenses() {
         {t('app.expenses.worksApartHint')}
       </Notice>
 
-      {/* VERROUILLÉ EN DÉMONSTRATION, comme le sélecteur du parc l'est déjà : la
-          démonstration ne peut pas relire le serveur, et son total de chantiers
-          ne se filtre par aucune date. Un sélecteur qui ne déplacerait rien se
-          lirait comme une panne. */}
-      {parkId && (
-        <div className="mb-4 flex items-center gap-2">
-          <div className="min-w-0 flex-1 sm:min-w-36 sm:flex-none">
-            <MonthPicker
-              aria-label={t('app.expenses.periodShown')}
-              name="mois"
-              value={mois}
-              onChange={setMois}
-            />
-          </div>
+      {/*
+        LE SÉLECTEUR S'AFFICHE PARTOUT, ET C'EST LA DÉMONSTRATION QUI L'EXIGEAIT.
+
+        Il était SUPPRIMÉ hors session — « un sélecteur qui ne déplacerait rien se
+        lirait comme une panne ». L'argument se retourne : sans lui, l'écran
+        n'annonçait AUCUNE période, et ses dates au jour-mois n'avaient plus rien
+        pour les situer. « 4 août » ne se rattachait à aucune année, sur la seule
+        surface que le public voit.
+
+        LE PARC A DÉJÀ TRANCHÉ CE CAS, et dans l'autre sens : « la première forme
+        lui laissait un libellé passif ; Nelson l'a pris pour un sélecteur en
+        panne, et il avait raison de le prendre pour un sélecteur. Il s'ouvre donc
+        partout ; en démo, `min` et `max` sont le mois courant, et tout autre mois
+        se voit FERMÉ ». On reprend sa forme, mot pour mot, bornée sur le seul
+        mois que la démonstration porte.
+
+        LA RAISON D'ORIGINE RESTE VRAIE — la démonstration ne relit pas le serveur
+        — et c'est `min`/`max` qui la disent, plutôt que l'absence.
+      */}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="min-w-0 flex-1 sm:min-w-36 sm:flex-none">
+          <MonthPicker
+            aria-label={t('app.expenses.periodShown')}
+            aria-describedby={parkId ? undefined : idDuVerrouDemo}
+            name="mois"
+            value={mois}
+            onChange={setMois}
+            {...(parkId ? {} : { min: MOIS_DEMO, max: MOIS_DEMO })}
+          />
+          {!parkId && (
+            <span id={idDuVerrouDemo} className="sr-only">
+              {t('app.expenses.periodLockedInDemo')}
+            </span>
+          )}
         </div>
-      )}
+      </div>
 
       {chargement ? (
         <SkeletonTable fiches />
@@ -308,6 +331,11 @@ export function Expenses() {
               key: 'incurredOn',
               header: t('app.expenses.incurredOn'),
               role: 'contexte',
+              /* AU JOUR-MOIS, ET C'EST LÉGITIME ICI : la lecture est BORNÉE sur
+                 cette colonne — `where: { incurredOn: { gte, lte } }` — donc le
+                 sélecteur au-dessus nomme son mois ET son année. Ce qui la rend
+                 lisible est le sélecteur ; c'est pourquoi il s'affiche désormais
+                 aussi en démonstration. */
               render: (dep) => d.dayMonth(partiesDeDateISO(dep.incurredOn)),
             },
             {
@@ -317,9 +345,24 @@ export function Expenses() {
               /* PAS DE COULEUR SEULE : « Non réglée » est un MOT, pas une
                  teinte. Un point orange aurait demandé une légende, et
                  `couleur-non-seule` l'aurait refusé. */
+              /*
+                LA DATE ENTIÈRE, PARCE QUE RIEN NE BORNE CETTE COLONNE-CI.
+
+                Le serveur filtre sur `incurredOn` et sur lui seul. Une facture
+                engagée en mars peut être réglée en avril, en décembre, ou en
+                janvier de l'année suivante — et « 12 janv. » sous un mois de
+                mars se lit alors comme un règlement ANTÉRIEUR à la dépense qu'il
+                solde. C'est la seule date de l'écran que le sélecteur ne situe
+                pas.
+
+                TOUJOURS, ET NON « QUAND L'ANNÉE DIFFÈRE ». Une année affichée
+                par intermittence oblige le lecteur à connaître la règle pour
+                interpréter son absence ; une date qui porte toujours la sienne
+                ne demande rien.
+              */
               render: (dep) =>
                 dep.paidOn ? (
-                  d.dayMonth(partiesDeDateISO(dep.paidOn))
+                  d.fullDate(partiesDeDateISO(dep.paidOn))
                 ) : (
                   <span className="text-muted">{t('app.expenses.unpaid')}</span>
                 ),

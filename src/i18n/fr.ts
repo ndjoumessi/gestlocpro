@@ -1418,6 +1418,10 @@ export const fr = {
        */
       carried: 'reliquat',
       outOfLease: 'hors bail',
+      /* LA FENÊTRE DE LA GRILLE, parce que cet écran n'a aucun sélecteur de
+         période et que six en-têtes au mois seul ne datent rien. */
+      window: 'Périodes affichées : {from} à {to}',
+      windowOne: 'Période affichée : {month}',
       legendPosts: 'Par cellule : loyer · eau · électricité',
       state: {
         paid: 'soldé',
@@ -2033,6 +2037,9 @@ export const fr = {
       worksApartHint:
         'Un chantier porte déjà son montant approuvé dans l’écran Travaux. Le recopier ici en ferait une seconde vérité, libre de diverger.',
       periodShown: 'Mois affiché',
+      /* Le même verrou que celui du parc, dit dans les mêmes termes : ce n'est
+         pas une panne du sélecteur, c'est la démonstration qui n'a qu'un mois. */
+      periodLockedInDemo: 'Changer de mois — la démonstration ne porte qu’un mois',
       label: 'Libellé',
       amount: 'Montant',
       incurredOn: 'Engagée le',

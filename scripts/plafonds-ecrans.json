@@ -7,29 +7,29 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "386f3d0f",
- "empreinteDesSources": "397062a8085c6dc2df74125b14ed197c9bbdf735a96cc43f37311d607d23f4d5",
+ "course": "feb9040c",
+ "empreinteDesSources": "8198fbc59b69ce884ed10485b865fa4385b8d114305c82921761edbfdd105c31",
  "mesures": {
   "/@360": {
-   "octets": 578416,
-   "octetsFil": 188056,
+   "octets": 578748,
+   "octetsFil": 188113,
    "requetes": 4,
    "releve": {
-    "de": 578319,
+    "de": 578660,
     "requetesDe": 4,
-    "motif": "quatre sommes qui manquaient : le pied de totaux rendu aux grilles de cartes du parc et des locataires, l'écart des cautions rendues au pied des cautions, la somme des loyers demandés sur la vacance, et les deux clés qui nomment le premier. 134 o sur le fil pour des nombres qu'aucun écran ne donnait au-dessus de 1024 px.",
-    "course": "386f3d0f"
+    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
+    "course": "feb9040c"
    }
   },
   "/demo@360": {
-   "octets": 442696,
-   "octetsFil": 125306,
+   "octets": 443216,
+   "octetsFil": 125467,
    "requetes": 2,
    "releve": {
-    "de": 442179,
+    "de": 442966,
     "requetesDe": 2,
-    "motif": "quatre sommes qui manquaient : le pied de totaux rendu aux grilles de cartes du parc et des locataires, l'écart des cautions rendues au pied des cautions, la somme des loyers demandés sur la vacance, et les deux clés qui nomment le premier. 134 o sur le fil pour des nombres qu'aucun écran ne donnait au-dessus de 1024 px.",
-    "course": "386f3d0f"
+    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
+    "course": "feb9040c"
    }
   },
   "/demo/paiements@360": {
@@ -66,25 +66,25 @@
    }
   },
   "/@1280": {
-   "octets": 578416,
-   "octetsFil": 188056,
+   "octets": 578748,
+   "octetsFil": 188113,
    "requetes": 4,
    "releve": {
-    "de": 578319,
+    "de": 578660,
     "requetesDe": 4,
-    "motif": "quatre sommes qui manquaient : le pied de totaux rendu aux grilles de cartes du parc et des locataires, l'écart des cautions rendues au pied des cautions, la somme des loyers demandés sur la vacance, et les deux clés qui nomment le premier. 134 o sur le fil pour des nombres qu'aucun écran ne donnait au-dessus de 1024 px.",
-    "course": "386f3d0f"
+    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
+    "course": "feb9040c"
    }
   },
   "/demo@1280": {
-   "octets": 442696,
-   "octetsFil": 125306,
+   "octets": 443216,
+   "octetsFil": 125467,
    "requetes": 2,
    "releve": {
-    "de": 442179,
+    "de": 442966,
     "requetesDe": 2,
-    "motif": "quatre sommes qui manquaient : le pied de totaux rendu aux grilles de cartes du parc et des locataires, l'écart des cautions rendues au pied des cautions, la somme des loyers demandés sur la vacance, et les deux clés qui nomment le premier. 134 o sur le fil pour des nombres qu'aucun écran ne donnait au-dessus de 1024 px.",
-    "course": "386f3d0f"
+    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
+    "course": "feb9040c"
    }
   },
   "/demo/paiements@1280": {

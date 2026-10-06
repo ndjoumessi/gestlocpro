@@ -474,6 +474,36 @@ const HORS_PORTEE = {
   colonnes.
 */
 /*
+  NOMMER LA PÉRIODE QU'UN ÉCRAN MONTRE — lot du 2026-10-07.
+
+  Deux écrans ne disaient pas de QUAND ils parlaient. Les paiements titrent six
+  colonnes au mois seul et n'ont aucun sélecteur ; les dépenses supprimaient le
+  leur hors session, donc n'annonçaient aucune période du tout.
+
+    /demo/paiements@360   3672 → 3701   +29   la fenêtre, nommée une fois
+    /demo/paiements@1280  1792 → 1822   +30
+    /demo/depenses@360    1650 → 1714   +64   le sélecteur, rouvert en démo
+    /demo/depenses@1280    900 →  900     0   déjà au plancher
+
+  LES +29 SONT UN CORRECTIF DE SECONDE RÉDACTION, et c'est cette porte qui l'a
+  obtenu. L'année était d'abord portée PAR LES COLONNES — « mai 26 » au départ de
+  l'axe. Refus à 3828 px, soit +156 : dans la fiche, la grille donne 2,75rem par
+  période, le libellé s'y replie, et les pastilles de mai tombent sur une
+  TROISIÈME rangée sous leur propre en-tête. La capture l'a montré ; la suite
+  chronologique que le rôle `serie` protège était rompue.
+
+  Les deux bornes nommées UNE fois au-dessus de la grille coûtent 29 px au lieu
+  de 156, sur une seule ligne au lieu de quinze pixels sur chacune des dix
+  fiches, et laissent l'axe intact. On ne relève pas un plafond quand c'est le
+  dessin qui est en cause.
+
+  LA COLONNE LARGE VIENT D'ICI ET SERA RESSERRÉE SUR L'EXÉCUTEUR, comme la
+  veille : cette machine possède Verdana, le CI retombe sur DejaVu Sans et rend
+  moins. L'écart le plus large est /demo/paiements@360 — 3888 ici contre 3701 en
+  police normale — et c'est précisément celui qu'il faudra reprendre sur le
+  journal de `polices`.
+*/
+/*
   LE PIED REVIENT SUR LES FORMES QUI L'AVAIENT PERDU — lot du 2026-10-06.
 
   Suite directe du bloc ci-dessus. Deux écrans ne rendent plus de table au-dessus
@@ -673,7 +703,7 @@ const PLAFONDS = [
      distinguent la relance de la mise en demeure. Sur un téléphone, c'est la
      SEULE carte rendue : ses deux voisines partent sous `lg`. Trente pixels
      pour la réponse qu'on descendait chercher. */
-  { adresse: '/demo/paiements', largeur: 360, plafond: 3672, plafondLarge: 3672 },
+  { adresse: '/demo/paiements', largeur: 360, plafond: 3701, plafondLarge: 3888 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
@@ -716,7 +746,7 @@ const PLAFONDS = [
      cette garde appelle du mou, et elle le refuse au même titre qu'un
      dépassement. Les deux colonnes coïncident désormais — la police large ne
      rallonge pas cet écran sur cette machine-là. */
-  { adresse: '/demo/depenses', largeur: 360, plafond: 1650, plafondLarge: 1650 },
+  { adresse: '/demo/depenses', largeur: 360, plafond: 1714, plafondLarge: 1735 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
@@ -796,7 +826,7 @@ const PLAFONDS = [
   { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
   { adresse: '/demo', largeur: 1280, plafond: 1855, plafondLarge: 1856 },
-  { adresse: '/demo/paiements', largeur: 1280, plafond: 1792, plafondLarge: 1792 },
+  { adresse: '/demo/paiements', largeur: 1280, plafond: 1822, plafondLarge: 1843 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
   /*
     +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE
@@ -871,7 +901,7 @@ const PLAFONDS = [
   /* 900 px aux deux polices, et c'est la HAUTEUR DE VUE : à 1280 l'écran tient
      dans la fenêtre, il ne défile pas. Les deux colonnes coïncident donc sans
      que ce soit une coïncidence — il n'y a rien à dépasser. */
-  { adresse: '/demo/depenses', largeur: 1280, plafond: 900, plafondLarge: 900 },
+  { adresse: '/demo/depenses', largeur: 1280, plafond: 900, plafondLarge: 907 },
   /*
     −86 px AU BUREAU ET +16 AU TÉLÉPHONE, LE 2026-09-26 : LES DEUX FAITS QUI
     PORTAIENT UN TIRET SONT DEVENUS DES PASTILLES CONDITIONNELLES.

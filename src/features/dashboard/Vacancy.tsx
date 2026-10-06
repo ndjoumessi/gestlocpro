@@ -215,7 +215,21 @@ export function Vacancy() {
             key: 'availableFrom',
             header: t('app.vacancy.colFrom'),
             role: 'contexte',
-            render: (a) => d.dayMonth(partiesDeDateISO(a.availableFrom)),
+            /*
+              LA DATE ENTIÈRE, PARCE QUE CE TABLEAU GARDE LES ANNONCES FERMÉES.
+
+              `dayMonth` rendait « 1 août ». C'est juste tant qu'on ne regarde
+              que ce qui vient — mais cet écran montre aussi les annonces
+              FERMÉES, et il le fait exprès : « l'annonce RESTE en base, c'est
+              elle qui dit à quel prix on avait demandé ». Un logement reloué
+              l'an dernier portait donc une disponibilité indiscernable du 1er
+              août qui arrive.
+
+              L'ANNÉE NE SE DEVINE NULLE PART AILLEURS SUR CET ÉCRAN : pas de
+              sélecteur de période, pas de mois affiché. Ici, elle est la
+              donnée.
+            */
+            render: (a) => d.fullDate(partiesDeDateISO(a.availableFrom)),
           },
           {
             key: 'applicants',

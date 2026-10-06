@@ -62,6 +62,23 @@ export function formatFullDate(year: number, month: number, day: number, tag: st
   }).format(new Date(year, month, day))
 }
 
+/**
+ * Abréviation d'axe DATÉE : « août 26 » / « Aug 26 ».
+ *
+ * L'année sur DEUX chiffres, et c'est une mesure : un axe de six colonnes ne
+ * peut pas s'allonger de quatre caractères par en-tête sur un téléphone, où les
+ * six périodes sont rendues côte à côte dans la fiche. Deux chiffres suffisent à
+ * lever l'ambiguïté qu'on corrige — celle de deux millésimes voisins.
+ *
+ * Le point d'abréviation est retiré comme sur `formatMonthShort` : il collerait
+ * à l'année — « août. 26 ».
+ */
+export function formatMonthShortYear(year: number, month: number, tag: string): string {
+  return new Intl.DateTimeFormat(tag, { month: 'short', year: '2-digit' })
+    .format(new Date(year, month, 1))
+    .replace('.', '')
+}
+
 /** Abréviation d'axe de graphe : « août » / « Aug ». */
 export function formatMonthShort(year: number, month: number, tag: string): string {
   return new Intl.DateTimeFormat(tag, { month: 'short' })

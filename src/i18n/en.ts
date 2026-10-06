@@ -950,6 +950,8 @@ export const en: Dictionary = {
       statusMonth: 'Status this month',
       carried: 'arrears',
       outOfLease: 'outside lease',
+      window: 'Periods shown: {from} to {to}',
+      windowOne: 'Period shown: {month}',
       legendPosts: 'Per cell: rent · water · electricity',
       state: {
         paid: 'settled',
@@ -1401,6 +1403,7 @@ export const en: Dictionary = {
       worksApartHint:
         'A work order already carries its approved amount on the Works screen. Copying it here would create a second truth, free to drift.',
       periodShown: 'Month shown',
+      periodLockedInDemo: 'Change month — the demo holds a single month',
       label: 'Description',
       amount: 'Amount',
       incurredOn: 'Incurred on',
