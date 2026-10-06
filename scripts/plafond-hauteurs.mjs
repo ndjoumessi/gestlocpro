@@ -722,6 +722,23 @@ const PLAFONDS = [
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
+  /*
+    L'ANNONCE PUBLIQUE, et 900 N'EST PAS SA HAUTEUR : c'est le PLANCHER que cette
+    porte applique, le même que les quatre écrans d'authentification. La page
+    mesure moins — sous les portes, aucun serveur d'API ne répond, et ce qu'elles
+    voient est l'état « cette annonce n'est plus disponible » : un en-tête et une
+    note.
+
+    L'ÉTAT CHARGÉ N'A DONC AUCUN PLAFOND, et c'est déclaré dans
+    `scripts/inventaire/routes.mjs` à côté de l'adresse. La même limite que
+    `mesure-ui`, qui ne voit que `/demo`.
+
+    LA COLONNE LARGE EST À 900 AUSSI, et pour une raison et non par recopie : une
+    police plus large ne raccourcit rien, et le contenu reste loin sous le
+    plancher. C'est le seul cas de ce tableau où les deux colonnes coïncident
+    sans qu'une mesure de l'exécuteur soit nécessaire.
+  */
+  { adresse: '/annonce/00000000-0000-4000-8000-000000000000', largeur: 360, plafond: 900, plafondLarge: 900 },
   /* 1280 px — 23 écrans */
   { adresse: '/inscription', largeur: 1280, plafond: 900, plafondLarge: 900 },
   { adresse: '/connexion', largeur: 1280, plafond: 900, plafondLarge: 900 },
@@ -857,6 +874,7 @@ const PLAFONDS = [
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
   { adresse: '/demo/portail', largeur: 1280, plafond: 1029, plafondLarge: 1029 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 1280, plafond: 900, plafondLarge: 900 },
+  { adresse: '/annonce/00000000-0000-4000-8000-000000000000', largeur: 1280, plafond: 900, plafondLarge: 900 },
 ]
 
 /**
@@ -942,7 +960,9 @@ const ADRESSES = routes.map((r) => r.adresse)
        le second écran du même jour, et le dernier des huit lots.
   56 → 58 LE 2026-10-01 : `/demo/manuel`, le manuel d'utilisation.
 */
-const ATTENDUS = 58
+/* 58 → 60 (2026-10-06) : l'annonce publique, aux deux largeurs. Premier écran
+   de ce tableau qu'un inconnu peut ouvrir sans compte. */
+const ATTENDUS = 60
 const HORS_PORTEE_ATTENDUS = 4
 /*
   LES HUIT ÉCRANS QUI N'ANNONCENT AUCUNE ATTENTE — et la garde est ASYMÉTRIQUE.

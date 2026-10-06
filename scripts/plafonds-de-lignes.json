@@ -23,7 +23,7 @@
   "scripts/inventaire/lecture-sources.mjs": 1729,
   "scripts/inventaire/mesure-navigateur.mjs": 1542,
   "scripts/mesure-ui.mjs": 3883,
-  "scripts/plafond-hauteurs.mjs": 1358,
+  "scripts/plafond-hauteurs.mjs": 1378,
   "scripts/plafond-vitrine.mjs": 1071,
   "scripts/poids-ecrans.mjs": 841,
   "scripts/sondes-de-rendu.mjs": 997,
@@ -31,7 +31,7 @@
   "server/src/auth/routes.ts": 958,
   "server/src/parks/routes.test.ts": 7102,
   "server/src/parks/routes.ts": 12354,
-  "src/api/client.ts": 1605,
+  "src/api/client.ts": 1619,
   "src/api/gestures.test.tsx": 914,
   "src/components/layout/AppShell.tsx": 2865,
   "src/components/primitives/Charts.tsx": 2217,
@@ -53,8 +53,8 @@
   "src/features/dashboard/Tenants.tsx": 1928,
   "src/features/dashboard/Works.tsx": 1208,
   "src/features/dashboard/documentsPdf.ts": 1053,
-  "src/i18n/en.ts": 2934,
-  "src/i18n/fr.ts": 4132,
+  "src/i18n/en.ts": 2954,
+  "src/i18n/fr.ts": 4171,
   "src/routes/SignUp.tsx": 1341
  }
 }

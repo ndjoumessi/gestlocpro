@@ -1069,6 +1069,20 @@ export const api = {
    *     entre un avoir, un second relevé et une annulation tracée, et
    *     l'écrasement silencieux serait la pire des trois.
    */
+  /**
+   * UNE ANNONCE PUBLIÉE, LUE SANS COMPTE.
+   *
+   * La seule lecture de ce fichier qui ne suppose aucune session. Le serveur ne
+   * sert qu'une annonce au statut `published`, et rend le MÊME 404 pour une
+   * absente, un brouillon, une fermée et un identifiant mal formé — distinguer
+   * ces cas ferait de la route un détecteur de brouillons, donc un détecteur de
+   * logements qui se libèrent.
+   *
+   * AUCUNE ÉCRITURE NE L'ACCOMPAGNE : la candidature attend un limiteur de
+   * cadence, que ce serveur n'a nulle part.
+   */
+  annoncePublique: <T>(listingId: string) => requete<T>(`/annonces/${listingId}`),
+
   issueStatement: <T>(parkId: string, membershipId: string, from: string, to: string) =>
     requete<T>(`/parks/${parkId}/memberships/${membershipId}/statement`, {
       method: 'POST',

@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "e714d508",
- "empreinteDesSources": "cf7f1f50da8006feedc8c801665b349cc00ce2ea4786f46fe30b5af8dc71f789",
+ "course": "8693cc51",
+ "empreinteDesSources": "262c6d293324d9dd179514d9b851bbf09d3e529bd3920c95203d238448242c03",
  "mesures": {
   "/@360": {
-   "octets": 577041,
-   "octetsFil": 187686,
+   "octets": 578319,
+   "octetsFil": 188027,
    "requetes": 4,
    "releve": {
-    "de": 576222,
+    "de": 578261,
     "requetesDe": 4,
-    "motif": "le compte-rendu de gestion emis : le figeage d'un document remis au mandant, et son barème figé avec lui. +221 o sur le fil sur / et +284 sur /demo, soit 4 a 6 ms a 400 kb/s. CE QUE PORTENT CES OCTETS, et c'est presque entierement du DICTIONNAIRE : huit libelles de la boite des honoraires — le geste d'emettre et son aide qui dit l'irreversibilite, la ligne « emis le … », le taux de l'emission, la ligne « calcule a l'instant », et les deux refus nommes (deja emis, aucun bareme) — plus un libelle d'action au registre des decisions, sans lequel il aurait rendu « Decision enregistree » sur un acte qui arrete un compte. Le code d'ecran ajoute est une ligne d'etat et un bouton conditionnels, tous deux DANS le bloc du releve, que la demonstration ne rend pas : /demo ne paie donc que ses chaines. CE QUE CES OCTETS ACHETENT : un mandataire peut opposer le releve qu'on lui a remis au lieu du recalcul du jour, et l'historique du bareme devient lisible — chaque mois emis dit sous quel taux il a ete facture, ce que ManagementFee ne savait pas garder.",
-    "course": "e714d508"
+    "motif": "le geste qui rend la page publique atteignable : copier le lien d'une annonce publiee, depuis sa boite. +26 o sur le fil sur / et +130 sur /demo, soit 1 a 3 ms a 400 kb/s. CE QUE PORTENT CES OCTETS : deux libelles (le bouton et sa confirmation) et le bloc conditionnel qui les rend — bouton plus adresse affichee en select-all. L'ecart est plus gros sur /demo que sur / parce que c'est la que le code d'ecran vit : la boite des annonces appartient a l'espace applicatif, pas a la vitrine, qui ne paie que le dictionnaire. POURQUOI CE GESTE N'EST PAS UN CONFORT : l'identifiant d'une annonce n'etait affiche NULLE PART dans le produit. Sans lui, le bailleur devait composer /annonce/<uuid> a la main depuis un uuid qu'il ne voyait pas — la page publique livree par ce meme lot aurait ete inatteignable par celui a qui elle sert. L'ADRESSE EST AFFICHEE EN PLUS DU BOUTON parce que navigator.clipboard peut etre refuse (navigation privee, permission absente) et qu'un bouton dont l'echec est muet ne laisse aucune issue : meme parade que le code d'invitation, qui a eu le probleme avant.",
+    "course": "8693cc51"
    }
   },
   "/demo@360": {
-   "octets": 441741,
-   "octetsFil": 125042,
+   "octets": 442179,
+   "octetsFil": 125172,
    "requetes": 2,
    "releve": {
-    "de": 440669,
+    "de": 441741,
     "requetesDe": 2,
-    "motif": "le compte-rendu de gestion emis : le figeage d'un document remis au mandant, et son barème figé avec lui. +221 o sur le fil sur / et +284 sur /demo, soit 4 a 6 ms a 400 kb/s. CE QUE PORTENT CES OCTETS, et c'est presque entierement du DICTIONNAIRE : huit libelles de la boite des honoraires — le geste d'emettre et son aide qui dit l'irreversibilite, la ligne « emis le … », le taux de l'emission, la ligne « calcule a l'instant », et les deux refus nommes (deja emis, aucun bareme) — plus un libelle d'action au registre des decisions, sans lequel il aurait rendu « Decision enregistree » sur un acte qui arrete un compte. Le code d'ecran ajoute est une ligne d'etat et un bouton conditionnels, tous deux DANS le bloc du releve, que la demonstration ne rend pas : /demo ne paie donc que ses chaines. CE QUE CES OCTETS ACHETENT : un mandataire peut opposer le releve qu'on lui a remis au lieu du recalcul du jour, et l'historique du bareme devient lisible — chaque mois emis dit sous quel taux il a ete facture, ce que ManagementFee ne savait pas garder.",
-    "course": "e714d508"
+    "motif": "le geste qui rend la page publique atteignable : copier le lien d'une annonce publiee, depuis sa boite. +26 o sur le fil sur / et +130 sur /demo, soit 1 a 3 ms a 400 kb/s. CE QUE PORTENT CES OCTETS : deux libelles (le bouton et sa confirmation) et le bloc conditionnel qui les rend — bouton plus adresse affichee en select-all. L'ecart est plus gros sur /demo que sur / parce que c'est la que le code d'ecran vit : la boite des annonces appartient a l'espace applicatif, pas a la vitrine, qui ne paie que le dictionnaire. POURQUOI CE GESTE N'EST PAS UN CONFORT : l'identifiant d'une annonce n'etait affiche NULLE PART dans le produit. Sans lui, le bailleur devait composer /annonce/<uuid> a la main depuis un uuid qu'il ne voyait pas — la page publique livree par ce meme lot aurait ete inatteignable par celui a qui elle sert. L'ADRESSE EST AFFICHEE EN PLUS DU BOUTON parce que navigator.clipboard peut etre refuse (navigation privee, permission absente) et qu'un bouton dont l'echec est muet ne laisse aucune issue : meme parade que le code d'invitation, qui a eu le probleme avant.",
+    "course": "8693cc51"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 577041,
-   "octetsFil": 187686,
+   "octets": 578319,
+   "octetsFil": 188027,
    "requetes": 4,
    "releve": {
-    "de": 576222,
+    "de": 578261,
     "requetesDe": 4,
-    "motif": "le compte-rendu de gestion emis : le figeage d'un document remis au mandant, et son barème figé avec lui. +221 o sur le fil sur / et +284 sur /demo, soit 4 a 6 ms a 400 kb/s. CE QUE PORTENT CES OCTETS, et c'est presque entierement du DICTIONNAIRE : huit libelles de la boite des honoraires — le geste d'emettre et son aide qui dit l'irreversibilite, la ligne « emis le … », le taux de l'emission, la ligne « calcule a l'instant », et les deux refus nommes (deja emis, aucun bareme) — plus un libelle d'action au registre des decisions, sans lequel il aurait rendu « Decision enregistree » sur un acte qui arrete un compte. Le code d'ecran ajoute est une ligne d'etat et un bouton conditionnels, tous deux DANS le bloc du releve, que la demonstration ne rend pas : /demo ne paie donc que ses chaines. CE QUE CES OCTETS ACHETENT : un mandataire peut opposer le releve qu'on lui a remis au lieu du recalcul du jour, et l'historique du bareme devient lisible — chaque mois emis dit sous quel taux il a ete facture, ce que ManagementFee ne savait pas garder.",
-    "course": "e714d508"
+    "motif": "le geste qui rend la page publique atteignable : copier le lien d'une annonce publiee, depuis sa boite. +26 o sur le fil sur / et +130 sur /demo, soit 1 a 3 ms a 400 kb/s. CE QUE PORTENT CES OCTETS : deux libelles (le bouton et sa confirmation) et le bloc conditionnel qui les rend — bouton plus adresse affichee en select-all. L'ecart est plus gros sur /demo que sur / parce que c'est la que le code d'ecran vit : la boite des annonces appartient a l'espace applicatif, pas a la vitrine, qui ne paie que le dictionnaire. POURQUOI CE GESTE N'EST PAS UN CONFORT : l'identifiant d'une annonce n'etait affiche NULLE PART dans le produit. Sans lui, le bailleur devait composer /annonce/<uuid> a la main depuis un uuid qu'il ne voyait pas — la page publique livree par ce meme lot aurait ete inatteignable par celui a qui elle sert. L'ADRESSE EST AFFICHEE EN PLUS DU BOUTON parce que navigator.clipboard peut etre refuse (navigation privee, permission absente) et qu'un bouton dont l'echec est muet ne laisse aucune issue : meme parade que le code d'invitation, qui a eu le probleme avant.",
+    "course": "8693cc51"
    }
   },
   "/demo@1280": {
-   "octets": 441741,
-   "octetsFil": 125042,
+   "octets": 442179,
+   "octetsFil": 125172,
    "requetes": 2,
    "releve": {
-    "de": 440669,
+    "de": 441741,
     "requetesDe": 2,
-    "motif": "le compte-rendu de gestion emis : le figeage d'un document remis au mandant, et son barème figé avec lui. +221 o sur le fil sur / et +284 sur /demo, soit 4 a 6 ms a 400 kb/s. CE QUE PORTENT CES OCTETS, et c'est presque entierement du DICTIONNAIRE : huit libelles de la boite des honoraires — le geste d'emettre et son aide qui dit l'irreversibilite, la ligne « emis le … », le taux de l'emission, la ligne « calcule a l'instant », et les deux refus nommes (deja emis, aucun bareme) — plus un libelle d'action au registre des decisions, sans lequel il aurait rendu « Decision enregistree » sur un acte qui arrete un compte. Le code d'ecran ajoute est une ligne d'etat et un bouton conditionnels, tous deux DANS le bloc du releve, que la demonstration ne rend pas : /demo ne paie donc que ses chaines. CE QUE CES OCTETS ACHETENT : un mandataire peut opposer le releve qu'on lui a remis au lieu du recalcul du jour, et l'historique du bareme devient lisible — chaque mois emis dit sous quel taux il a ete facture, ce que ManagementFee ne savait pas garder.",
-    "course": "e714d508"
+    "motif": "le geste qui rend la page publique atteignable : copier le lien d'une annonce publiee, depuis sa boite. +26 o sur le fil sur / et +130 sur /demo, soit 1 a 3 ms a 400 kb/s. CE QUE PORTENT CES OCTETS : deux libelles (le bouton et sa confirmation) et le bloc conditionnel qui les rend — bouton plus adresse affichee en select-all. L'ecart est plus gros sur /demo que sur / parce que c'est la que le code d'ecran vit : la boite des annonces appartient a l'espace applicatif, pas a la vitrine, qui ne paie que le dictionnaire. POURQUOI CE GESTE N'EST PAS UN CONFORT : l'identifiant d'une annonce n'etait affiche NULLE PART dans le produit. Sans lui, le bailleur devait composer /annonce/<uuid> a la main depuis un uuid qu'il ne voyait pas — la page publique livree par ce meme lot aurait ete inatteignable par celui a qui elle sert. L'ADRESSE EST AFFICHEE EN PLUS DU BOUTON parce que navigator.clipboard peut etre refuse (navigation privee, permission absente) et qu'un bouton dont l'echec est muet ne laisse aucune issue : meme parade que le code d'invitation, qui a eu le probleme avant.",
+    "course": "8693cc51"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,

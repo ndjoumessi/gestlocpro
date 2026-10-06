@@ -316,8 +316,13 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
   C'est le premier écran de ce produit qui n'opère rien : il EXPLIQUE, et il est
   ouvert aux trois rôles — un locataire bloqué a autant besoin d'un manuel qu'un
   propriétaire.
+
+  ET DE 90 À 93 (2026-10-06) avec l'annonce publique, aux trois largeurs. C'est
+  le PREMIER écran de ce produit qu'un inconnu peut ouvrir sans compte, et son
+  entrée ici a payé tout de suite : son en-tête rendait 77 px pour un plafond de
+  69, parce que j'avais écrit `py-4` au lieu de reprendre la forme du 404.
 */
-const ATTENDUS = 90
+const ATTENDUS = 93
 const SAUTEES_ATTENDUES = 3
 
 /* LE PAQUET AVANT TOUT LE RESTE : ce script mesure `dist/`, jamais les

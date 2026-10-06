@@ -14,6 +14,7 @@ import { politiqueDeSecurite } from './politiqueDeSecurite.js'
 import { env } from './env.js'
 import { authRouter } from './auth/routes.js'
 import { demandesDAccesRouter, parksRouter, rejoindreRouter } from './parks/routes.js'
+import { annoncePubliqueRouter } from './parks/annoncePublique.js'
 import { SourceBCE, creerServiceDeTaux, type SourceDeTaux } from './taux/taux.js'
 
 /**
@@ -358,6 +359,11 @@ export function createApp(options: { taux?: SourceDeTaux } = {}) {
      Voisine de `/api/join` et distincte d'elle : l'une consomme un droit
      déjà accordé, l'autre en réclame un qui ne l'est pas. */
   app.use('/api/access-requests', demandesDAccesRouter)
+  /* L'ANNONCE PUBLIQUE — la seule route de lecture SANS authentification du
+     produit, et elle ne sert qu'une annonce PUBLIÉE. Montée avant
+     `/api/parks` pour que son chemin ne puisse pas être confondu avec celui
+     d'un parc, et son en-tête dit ce qui en sort et ce qui n'en sort pas. */
+  app.use('/api/annonces', annoncePubliqueRouter)
   app.use('/api/parks', parksRouter)
 
   // 404 en JSON pour l'API : le client parse toutes ses réponses, et une page

@@ -1834,6 +1834,11 @@ export const fr = {
       availableFrom: 'Disponible à partir du',
       availableFromHint: 'Une annonce publiée avant un départ est ce qui évite la vacance.',
       description: 'Texte de l’annonce',
+      /* LE LIEN PUBLIC D'UNE ANNONCE. « Copier le lien » et non « Partager » :
+         le produit ne partage rien, il met une adresse dans le presse-papiers,
+         et c'est le bailleur qui l'envoie où il veut. */
+      copyLink: 'Copier le lien public',
+      linkCopied: 'Lien copié',
       askingLine: 'Demandé : {rent} de loyer, {deposit} de caution.',
       applicantsTitle: 'Candidats',
       applicantsNone: 'Aucun candidat pour l’instant.',
@@ -3625,6 +3630,40 @@ export const fr = {
    * LES MENTIONS LÉGALES. Les LIBELLÉS seulement : les valeurs sont des faits du
    * registre, qui ne se traduisent pas — voir `src/legal/editeur.ts`.
    */
+  /*
+    L'ANNONCE PUBLIQUE — la page qu'un prospect lit sans compte.
+
+    SON PROPRE BLOC DE PREMIER NIVEAU, et non une branche d'`app` : `app` est
+    l'espace connecté, et ces libellés sont les seuls du produit qui s'adressent
+    à quelqu'un qui n'est ni bailleur, ni gestionnaire, ni locataire.
+  */
+  listing: {
+    title: 'Logement à louer',
+    /* LE TITRE DE L'ONGLET PORTE LE LOGEMENT ET LE QUARTIER : c'est ce qu'on
+       lit dans une liste d'onglets, et c'est aussi ce qui s'affiche quand on
+       partage le lien dans une conversation. */
+    titleFor: '{unit} · {district} — à louer',
+    heading: '{type} à louer · {district}',
+    whereLine: '{building}, logement {unit}',
+    rent: 'Loyer mensuel',
+    deposit: 'Caution',
+    surface: 'Surface',
+    surfaceValue: '{n} m²',
+    availableFrom: 'Disponible à partir du',
+    /* CE QUE LA PAGE NE SAIT PAS FAIRE, dit à l'endroit où on le cherche. Elle
+       renvoie vers qui a envoyé le lien, parce que c'est la vérité du produit :
+       aucun formulaire de candidature, faute de limiteur de cadence. */
+    howToApply:
+      'Pour visiter ou postuler, répondez à la personne qui vous a transmis ce lien. Cette page ne reçoit pas de candidature.',
+    /* « ABSENTE OU PLUS PUBLIÉE », et les deux sont dans la même phrase parce
+       que le serveur rend le même 404 pour les deux — à dessein : distinguer
+       ferait de la route un détecteur de logements qui se libèrent. */
+    goneTitle: 'Cette annonce n’est plus disponible',
+    goneBody:
+      'Elle a peut-être été retirée, ou le logement est reloué. Demandez un lien à jour à la personne qui vous a transmis celui-ci.',
+    failedTitle: 'L’annonce n’a pas pu être chargée',
+    failedBody: 'Ce n’est pas un logement reloué : le service n’a pas répondu. Réessayez dans un instant.',
+  },
   legal: {
     title: 'Mentions légales',
     intro:

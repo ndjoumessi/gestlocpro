@@ -1235,6 +1235,8 @@ export const en: Dictionary = {
       availableFrom: 'Available from',
       availableFromHint: 'A listing published before a move-out is what avoids vacancy.',
       description: 'Listing text',
+      copyLink: 'Copy public link',
+      linkCopied: 'Link copied',
       askingLine: 'Asking: {rent} rent, {deposit} deposit.',
       applicantsTitle: 'Applicants',
       applicantsNone: 'No applicant yet.',
@@ -2491,6 +2493,24 @@ export const en: Dictionary = {
     },
   },
 
+  listing: {
+    title: 'Home to let',
+    titleFor: '{unit} · {district} — to let',
+    heading: '{type} to let · {district}',
+    whereLine: '{building}, unit {unit}',
+    rent: 'Monthly rent',
+    deposit: 'Deposit',
+    surface: 'Floor area',
+    surfaceValue: '{n} m²',
+    availableFrom: 'Available from',
+    howToApply:
+      'To arrange a viewing or apply, reply to the person who sent you this link. This page does not take applications.',
+    goneTitle: 'This listing is no longer available',
+    goneBody:
+      'It may have been withdrawn, or the home re-let. Ask the person who sent you this link for an up-to-date one.',
+    failedTitle: 'The listing could not be loaded',
+    failedBody: 'This is not a re-let home: the service did not respond. Try again in a moment.',
+  },
   legal: {
     title: 'Legal notice',
     intro:

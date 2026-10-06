@@ -89,6 +89,40 @@ export function chargerEspaceApplicatif() {
 
 const EspaceApplicatif = lazy(chargerEspaceApplicatif)
 
+/**
+ * L'ANNONCE PUBLIQUE EST DÉTACHÉE, ET C'EST LE BUDGET QUI L'A DÉCIDÉ.
+ *
+ * ═══ CE QUI S'EST PASSÉ ═══
+ *
+ * Importée normalement, elle a fait passer le premier chargement de la vitrine
+ * à 160 205 o compressés pour un budget de 160 000. Et ce budget NE SE RELÈVE
+ * PAS : son propre en-tête, après trois relèvements, écrit que « relever le
+ * budget ne fait que reculer l'échéance — une quatrième fois n'aura plus
+ * d'argument ».
+ *
+ * ═══ POURQUOI UNE SECONDE FRONTIÈRE NE CONTREDIT PAS LA PREMIÈRE ═══
+ *
+ * Le commentaire de la frontière applicative dit « UNE frontière, pas vingt »,
+ * et son motif est qu'un gestionnaire qui passe d'un écran de gestion à l'autre
+ * ne doit pas payer un aller-retour par clic. Celle-ci n'est pas un écran de
+ * plus dans une barre latérale : c'est une DESTINATION, qu'on atteint par un
+ * lien partagé et qu'on ne quitte pas pour une autre.
+ *
+ * CE QUE ÇA COÛTE, ET À QUI. Le visiteur de la vitrine ne télécharge plus ces
+ * octets — il ne les ouvrait jamais. Celui qui ouvre une annonce paie UNE
+ * requête de plus. C'est le même échange que la frontière applicative, et il est
+ * accepté pour la même raison : la personne qui traverse attend déjà un
+ * chargement de page.
+ *
+ * MESURÉ, PAS SUPPOSÉ — ce dépôt a déjà REFUSÉ trois `lazy()` qui coûtaient plus
+ * qu'ils ne rendaient, dont `Hero` à +1 161 o compressés sur l'accueil. Le
+ * nombre qui décide ici est celui du budget, relevé par `mesure-ui` après la
+ * bascule, et il est écrit dans le message du lot.
+ */
+const AnnoncePublique = lazy(() =>
+  import('./routes/AnnoncePublique').then((m) => ({ default: m.AnnoncePublique })),
+)
+
 
 /**
  * Le repli du temps de téléchargement, PAS un squelette de données.
@@ -110,6 +144,24 @@ const EspaceApplicatif = lazy(chargerEspaceApplicatif)
  * pour attendre la résolution du découpage avant de rendre la main à un
  * test — un texte traduit se retraduit, un rôle ARIA se réutilise ailleurs.
  */
+/**
+ * L'ATTENTE DU PAQUET DE L'ANNONCE PUBLIQUE — et pourquoi elle n'est pas celle
+ * de l'espace applicatif.
+ *
+ * `ChargementEspaceApplicatif` dessine l'attente d'un tableau de bord. La
+ * montrer à un prospect qui ouvre une annonce lui promettrait une application
+ * qu'il n'a pas demandée.
+ *
+ * PAS D'`aria-live` ICI, contrairement à sa voisine : deux attentes se suivent
+ * sur cette adresse — celle du paquet, puis celle de l'annonce, qui porte son
+ * propre `role="status"` dans `AnnoncePublique`. Deux régions vivantes
+ * annonceraient la même nouvelle deux fois.
+ */
+function ChargementAnnonce() {
+  const t = useT()
+  return <p className="p-8 text-body text-muted">{t('common.loading')}</p>
+}
+
 function ChargementEspaceApplicatif() {
   const t = useT()
   return (
@@ -149,6 +201,40 @@ export function App() {
         <Route path="/connexion" element={<Login />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
         <Route path="/reinitialiser" element={<ResetPassword />} />
+        {/*
+          L'ANNONCE PUBLIQUE — la seule page du produit qui serve une donnée de
+          parc à quelqu'un qui n'a pas de compte.
+
+          HORS DE `/app`, donc hors de `RequireAuth` : c'est tout son objet. Le
+          serveur ne rend qu'une annonce PUBLIÉE, et son en-tête
+          (`annoncePublique.ts`) énumère ce qui en sort et ce qui n'en sort
+          surtout pas — ni candidat, ni locataire en place, ni identifiant
+          interne.
+        */}
+        <Route
+          path="/annonce/:listingId"
+          element={
+            /*
+              SA PROPRE FRONTIÈRE D'ATTENTE, et son repli n'est PAS celui de
+              l'espace applicatif.
+
+              `ChargementEspaceApplicatif` dessine la coquille d'un tableau de
+              bord — barre latérale, en-tête, squelettes de cartes. La montrer à
+              un prospect qui ouvre une annonce lui promettrait une application
+              qu'il n'a pas demandée et dans laquelle il n'entrera pas.
+
+              DEUX ATTENTES DISTINCTES SE SUIVENT ICI, et il faut le savoir en
+              lisant la page : celle-ci attend le PAQUET, celle de
+              `AnnoncePublique` attend l'ANNONCE. La seconde a son propre
+              `role="status"` ; celle-ci n'en met pas, parce qu'elle précède le
+              montage du composant qui l'annoncerait et qu'un lecteur d'écran
+              entendrait sinon deux fois la même nouvelle.
+            */
+            <Suspense fallback={<ChargementAnnonce />}>
+              <AnnoncePublique />
+            </Suspense>
+          }
+        />
         {/* La première page juridique du produit — voir `MentionsLegales.tsx`. */}
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         {/* La deuxième — voir `Confidentialite.tsx`. */}

@@ -303,6 +303,46 @@ export function ListingModal({
             })}
           </p>
 
+          {/*
+            LE LIEN PUBLIC, ET SANS LUI LA PAGE N'EXISTE POUR PERSONNE.
+
+            `/annonce/:listingId` est servie depuis ce lot, mais l'identifiant
+            d'une annonce n'est affiché NULLE PART dans le produit : le bailleur
+            devait composer l'adresse à la main depuis un uuid qu'il ne voyait
+            pas. Une page publique inatteignable par celui qui la diffuse n'est
+            pas une page, c'est une route.
+
+            SEULEMENT SI L'ANNONCE EST PUBLIÉE. Un brouillon et une annonce
+            fermée rendent 404 : proposer leur lien donnerait un lien mort à
+            envoyer, et c'est le genre de geste qui fait douter du produit plutôt
+            que de l'annonce.
+
+            `navigator.clipboard` PEUT ÊTRE REFUSÉ — navigation privée,
+            permission absente — et l'adresse reste donc AFFICHÉE à côté, en
+            `select-all` : même parade que le code d'invitation, qui a eu le même
+            problème avant. Un bouton dont l'échec est muet est pire qu'un texte
+            qu'on sélectionne.
+          */}
+          {annonce.status === 'published' && (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="secondary"
+                icon="clipboard"
+                onClick={() => {
+                  void navigator.clipboard
+                    ?.writeText(`${window.location.origin}/annonce/${annonce.id}`)
+                    .then(() => notify(t('app.vacancy.linkCopied'), { tone: 'ok' }))
+                    .catch(() => {})
+                }}
+              >
+                {t('app.vacancy.copyLink')}
+              </Button>
+              <code className="text-caption text-muted select-all break-all">
+                {`/annonce/${annonce.id}`}
+              </code>
+            </div>
+          )}
+
           <h3 className="title-m">{t('app.vacancy.applicantsTitle')}</h3>
           {annonce.applicants.length === 0 && (
             <p className="text-body text-muted">{t('app.vacancy.applicantsNone')}</p>

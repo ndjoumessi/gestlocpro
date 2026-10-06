@@ -222,6 +222,37 @@ const HORS_PRODUIT = ['/kitchen-sink']
 const ADRESSE_404 = '/adresse-qui-n-existe-pas'
 
 /**
+ * L'ANNONCE PUBLIQUE : une adresse à PARAMÈTRE qu'un navigateur visite pourtant.
+ *
+ * ═══ POURQUOI ELLE EST DÉCLARÉE À LA MAIN ═══
+ *
+ * `routesPubliques()` écarte tout chemin contenant `:`, et son motif est juste
+ * pour `/inscription/:role` — un gabarit, dont le frère sans paramètre
+ * (`/inscription`) est déjà au champ. `/annonce/:listingId` n'a PAS de frère :
+ * sans cette ligne, la seule page du produit qu'un inconnu peut ouvrir reste
+ * hors de toute mesure — contraste, cibles tactiles, débordement. C'est
+ * exactement ce que le plancher ci-dessous interdit : « un écran sorti du champ
+ * de la mesure se lit "aucun défaut" alors qu'il veut dire "pas regardé" ».
+ *
+ * Même remède que `ADRESSE_404` juste au-dessus, pour la même raison.
+ *
+ * ═══ CE QUE LES PORTES MESURERONT, ET CE QU'ELLES NE VERRONT PAS ═══
+ *
+ * L'identifiant est un uuid qui n'existe nulle part, et DÉLIBÉRÉMENT : les
+ * portes tournent sur le paquet construit, sans serveur d'API. Ce qu'elles
+ * mesurent est donc l'état « cette annonce n'est plus disponible », qui est un
+ * vrai état public — celui qu'on atteint par un lien périmé partagé dans une
+ * conversation.
+ *
+ * L'ÉTAT CHARGÉ N'EST MESURÉ PAR PERSONNE, et il faut le dire : ses montants,
+ * sa mention de conversion et sa description n'ont pas de plafond de hauteur ni
+ * de verdict de contraste. C'est la même limite que celle de `mesure-ui`, qui ne
+ * voit que `/demo` — et elle se lèvera le jour où une annonce de démonstration
+ * existera, pas avant.
+ */
+const ADRESSE_ANNONCE = '/annonce/00000000-0000-4000-8000-000000000000'
+
+/**
  * LE PLANCHER, et il colle au réel plutôt que de flotter loin dessous.
  *
  * Asymétrique par construction : ajouter une route fait monter le compte et ne
@@ -267,7 +298,11 @@ const ADRESSE_404 = '/adresse-qui-n-existe-pas'
  * tous » : un locataire bloqué a autant besoin d'un manuel qu'un propriétaire, et
  * c'est le contenu de l'écran qui se borne à son rôle, pas son accès.
  */
-export const ROUTES_ATTENDUES = 31
+/* 31 → 32 (2026-10-06) : `/annonce/:listingId`, la page publique d'une
+   annonce. Montée EN MÊME TEMPS que la route, pour ne pas reproduire le
+   flottement du 2026-09-03 — ce plancher est resté un cran sous le réel pendant
+   des semaines, et rien n'en avertit. */
+export const ROUTES_ATTENDUES = 32
 
 /**
  * @returns {{adresse: string, roles: string[], origine: string, vitrine: boolean}[]}
@@ -300,6 +335,7 @@ export function inventaireDesRoutes() {
   }
 
   ajouter(ADRESSE_404, [...tousLesRoles], 'src/App.tsx (route `*`)')
+  ajouter(ADRESSE_ANNONCE, [...tousLesRoles], 'src/App.tsx (`/annonce/:listingId`)')
 
   return [...table.values()]
 }

@@ -96,4 +96,49 @@ describe('la vacance du parc', () => {
       within(boite).getByLabelText(/Suite donnée à Chantal Ekwalla/),
     ).toBeInTheDocument()
   })
+
+  it('DONNE LE LIEN PUBLIC D’UNE ANNONCE PUBLIÉE, et affiche l’adresse à côté', async () => {
+    /*
+      SANS CE GESTE, LA PAGE PUBLIQUE N'EXISTE POUR PERSONNE. `/annonce/:id` est
+      servie depuis ce lot, mais l'identifiant d'une annonce n'était affiché
+      nulle part : le bailleur aurait dû composer l'adresse à la main depuis un
+      uuid qu'il ne voyait pas.
+
+      L'ADRESSE EST AFFICHÉE EN PLUS DU BOUTON, et c'est la moitié qu'on oublie :
+      `navigator.clipboard` peut être refusé — navigation privée, permission
+      absente — et un bouton dont l'échec est muet ne laisse aucune issue. Même
+      parade que le code d'invitation, qui a eu le même problème avant.
+    */
+    const { user } = await ouvrirLaVacance()
+
+    await user.click(screen.getByRole('button', { name: /Immeuble Akwa Nord — B4/ }))
+    const boite = await screen.findByRole('dialog')
+
+    expect(
+      within(boite).getByRole('button', { name: /Copier le lien public/ }),
+    ).toBeInTheDocument()
+    expect(
+      within(boite).getByText('/annonce/ann-demo-1'),
+      'l’adresse reste sélectionnable quand le presse-papiers est refusé',
+    ).toBeInTheDocument()
+  })
+
+  it('NE DONNE AUCUN LIEN pour une annonce FERMÉE', async () => {
+    /*
+      LE CAS QUI REND LA RÈGLE FALSIFIABLE. Un brouillon et une annonce fermée
+      rendent 404 sur la route publique : proposer leur lien donnerait un lien
+      MORT à envoyer, et c'est le genre de geste qui fait douter du produit
+      plutôt que de l'annonce.
+
+      Sans ce cas, le précédent passerait sur un bouton affiché partout.
+    */
+    const { user } = await ouvrirLaVacance()
+
+    await user.click(screen.getByRole('button', { name: /Villa Deïdo — C2/ }))
+    const boite = await screen.findByRole('dialog')
+
+    expect(
+      within(boite).queryByRole('button', { name: /Copier le lien public/ }),
+    ).not.toBeInTheDocument()
+  })
 })

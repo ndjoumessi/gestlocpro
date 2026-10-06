@@ -522,6 +522,33 @@ const REGISTRE = {
       'd’envoyer une annonce à chaque passage de porte, donc d’écrire dans la ' +
       'démonstration à seule fin de la mesurer.',
   },
+  /*
+    MESURABLE SANS GESTE, et c'est le serveur des portes qui le décide — mesuré,
+    non supposé : `vite preview` ne connaît pas `/api` et rend **500** sur
+    `/api/annonces/<uuid>` (relevé le 2026-10-06). Le code lit tout ce qui n'est
+    pas 404 comme une panne de transport, donc cette note-ci.
+
+    MA PREMIÈRE RÉDACTION DÉCLARAIT L'INVERSE, en supposant un 404 : la porte l'a
+    refusée sur-le-champ — « déclarée mesurable […] absente de l'écran ». C'est
+    pourquoi une déclaration porte une ADRESSE et non une intention.
+  */
+  'listing.failedTitle': {
+    adresse: '/annonce/00000000-0000-4000-8000-000000000000',
+  },
+  'listing.goneTitle': {
+    nonMesurable:
+      'Elle suit un 404 du serveur d’API — annonce absente, brouillon, ou ' +
+      'fermée —, et les portes n’en ont pas : `vite preview` rend 500 sur `/api` ' +
+      '(mesuré le 2026-10-06), donc toujours la branche « panne ». ' +
+      'LA DISTINCTION N’EST PAS COSMÉTIQUE, et c’est pourquoi les deux notes ' +
+      'existent : « le logement est reloué » et « le service n’a pas répondu » ' +
+      'appellent deux gestes opposés du lecteur — demander un lien à jour, ou ' +
+      'réessayer. Les replier sur un message ferait lire une panne de réseau ' +
+      'comme un logement perdu. ' +
+      'LA RENDRE MESURABLE demanderait une porte tenant un vrai serveur d’API ET ' +
+      'un parc : `espace-connecte` est la seule dans ce cas, et son sujet est ' +
+      'l’espace CONNECTÉ — cette page est publique.',
+  },
   'app.parkSettings.reminderChannelWhatsAppWarning': {
     adresse: '/demo/parc',
     geste: ouvrirLeCanalWhatsApp,
