@@ -497,11 +497,20 @@ const HORS_PORTEE = {
   fiches, et laissent l'axe intact. On ne relève pas un plafond quand c'est le
   dessin qui est en cause.
 
-  LA COLONNE LARGE VIENT D'ICI ET SERA RESSERRÉE SUR L'EXÉCUTEUR, comme la
-  veille : cette machine possède Verdana, le CI retombe sur DejaVu Sans et rend
-  moins. L'écart le plus large est /demo/paiements@360 — 3888 ici contre 3701 en
-  police normale — et c'est précisément celui qu'il faudra reprendre sur le
-  journal de `polices`.
+  LA COLONNE LARGE VIENT DE L'EXÉCUTEUR, et son journal dit quelque chose de plus
+  net qu'hier : en police imposée, il rend EXACTEMENT ce que cette machine mesure
+  en police NORMALE — 3701, 1714, 1822, 900, aux quatre points. Le mou de la
+  mesure locale était donc de 187 px sur /demo/paiements@360.
+
+    écrit ici   exécuteur   mou
+    3888        3701        187   /demo/paiements@360
+    1735        1714         21   /demo/depenses@360
+    1843        1822         21   /demo/paiements@1280
+     907         900          7   /demo/depenses@1280
+
+  Autrement dit, la DejaVu Sans du CI ne coûte rien de plus que la police système
+  d'ici, quand la Verdana d'ici coûte jusqu'à 5 %. C'est la cinquième instance de
+  cette divergence, et la troisième où la régler paie.
 */
 /*
   LE PIED REVIENT SUR LES FORMES QUI L'AVAIENT PERDU — lot du 2026-10-06.
@@ -703,7 +712,7 @@ const PLAFONDS = [
      distinguent la relance de la mise en demeure. Sur un téléphone, c'est la
      SEULE carte rendue : ses deux voisines partent sous `lg`. Trente pixels
      pour la réponse qu'on descendait chercher. */
-  { adresse: '/demo/paiements', largeur: 360, plafond: 3701, plafondLarge: 3888 },
+  { adresse: '/demo/paiements', largeur: 360, plafond: 3701, plafondLarge: 3701 },
   { adresse: '/demo/etats-des-lieux', largeur: 360, plafond: 2746, plafondLarge: 2746 },
   { adresse: '/demo/travaux', largeur: 360, plafond: 3119, plafondLarge: 3097 },
   { adresse: '/demo/signalements', largeur: 360, plafond: 2961, plafondLarge: 2982 },
@@ -746,7 +755,7 @@ const PLAFONDS = [
      cette garde appelle du mou, et elle le refuse au même titre qu'un
      dépassement. Les deux colonnes coïncident désormais — la police large ne
      rallonge pas cet écran sur cette machine-là. */
-  { adresse: '/demo/depenses', largeur: 360, plafond: 1714, plafondLarge: 1735 },
+  { adresse: '/demo/depenses', largeur: 360, plafond: 1714, plafondLarge: 1714 },
   /* +16 px EN POLICE LARGE, LE 2026-09-26 — voir le point à 1280 pour le lot :
      la caution et les chantiers deviennent des pastilles conditionnelles. En
      pile, les deux tirets valaient deux lignes de valeur ; les pastilles en
@@ -826,7 +835,7 @@ const PLAFONDS = [
   { adresse: '/confidentialite', largeur: 1280, plafond: 2749, plafondLarge: 2706 },
   { adresse: '/conditions-generales', largeur: 1280, plafond: 3759, plafondLarge: 3673 },
   { adresse: '/demo', largeur: 1280, plafond: 1855, plafondLarge: 1856 },
-  { adresse: '/demo/paiements', largeur: 1280, plafond: 1822, plafondLarge: 1843 },
+  { adresse: '/demo/paiements', largeur: 1280, plafond: 1822, plafondLarge: 1822 },
   { adresse: '/demo/etats-des-lieux', largeur: 1280, plafond: 1552, plafondLarge: 1531 },
   /*
     +56 px SUR `/demo/travaux@1280`, LE 2026-09-26 : LES DEUX AXES DE FILTRE SE
@@ -901,7 +910,7 @@ const PLAFONDS = [
   /* 900 px aux deux polices, et c'est la HAUTEUR DE VUE : à 1280 l'écran tient
      dans la fenêtre, il ne défile pas. Les deux colonnes coïncident donc sans
      que ce soit une coïncidence — il n'y a rien à dépasser. */
-  { adresse: '/demo/depenses', largeur: 1280, plafond: 900, plafondLarge: 907 },
+  { adresse: '/demo/depenses', largeur: 1280, plafond: 900, plafondLarge: 900 },
   /*
     −86 px AU BUREAU ET +16 AU TÉLÉPHONE, LE 2026-09-26 : LES DEUX FAITS QUI
     PORTAIENT UN TIRET SONT DEVENUS DES PASTILLES CONDITIONNELLES.
