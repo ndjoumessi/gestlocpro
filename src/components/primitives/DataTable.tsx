@@ -140,6 +140,45 @@ export interface DataTableProps<T> {
    */
   fiches?: boolean
   /**
+   * LE CORPS QUE L'ÉCRAN REND LUI-MÊME — et le pied qui reste à la primitive.
+   *
+   * ═══ UNE TROISIÈME FORME EST APPARUE, ET ELLE A PERDU LE PIED ═══
+   *
+   * Deux écrans — le parc et les locataires — ne rendent plus de table au-dessus
+   * de `lg` : ils montrent une grille de cartes bâtie à la main, et n'appelaient
+   * `DataTable` qu'en dessous du seuil. Le pied de totaux vivant ici, il a suivi
+   * les fiches et quitté le bureau.
+   *
+   * C'EST L'INVERSE DE L'ARGUMENT QUI L'A FAIT NAÎTRE, écrit sur `PiedDeTotaux` :
+   * « n'écrire le total que dans le `<tfoot>` l'aurait donné aux postes de bureau
+   * et retiré au téléphone ». Mesuré sur `/demo/locataires?etat=overdue` : « Total
+   * · 3 lignes sur 10 — Loyer 412 000 FCFA » à 375 px, et RIEN à 1280, où la seule
+   * carte visible annonce les dix baux.
+   *
+   * La dette était déclarée : le cas du parc, dans `sommeAuPiedDesColonnes`,
+   * disait « la grille de cartes, qui est un autre lot ».
+   *
+   * ═══ POURQUOI LE CORPS MONTE ICI PLUTÔT QUE LE PIED NE DESCENDE ═══
+   *
+   * L'autre issue était d'exporter `PiedDeTotaux` et de l'appeler depuis les deux
+   * écrans. Elle oblige chacun à lui retendre SES colonnes, donc à les hisser hors
+   * de leur JSX — et surtout elle laisse ouverte la seule faute qui compte : un
+   * écran qui passerait au pied une liste de colonnes qui n'est plus celle de sa
+   * table. « Une colonne totalisée d'un côté et pas de l'autre serait un nombre
+   * qui apparaît en tournant son téléphone » : la primitive le dit d'elle-même, et
+   * c'est donc à elle de le garantir.
+   *
+   * Ici, les trois formes lisent le MÊME `columns` et les MÊMES `rows`, par
+   * construction. L'écran ne fournit qu'un corps.
+   *
+   * ═══ IL NE SERT QUE S'IL Y A QUELQUE CHOSE À MONTRER ═══
+   *
+   * À zéro ligne, on retombe sur le chemin ordinaire — `empty`, ou les groupes
+   * déclarés. Un corps fourni ne doit pas court-circuiter l'état vide, qui est la
+   * seule chose que l'écran ait à dire à ce moment-là.
+   */
+  corpsRendu?: ReactNode
+  /**
    * COMBIEN DE LIGNES LA TABLE AURAIT SANS FILTRE — pour l'intitulé du pied.
    *
    * ═══ LE SEUL CHIFFRE QUE LA PRIMITIVE NE PEUT PAS CONNAÎTRE ═══
@@ -450,6 +489,7 @@ export function DataTable<T>({
   rowKey,
   empty,
   fiches,
+  corpsRendu,
   lignesEnTout,
   groupePar,
 }: DataTableProps<T>) {
@@ -538,6 +578,27 @@ export function DataTable<T>({
     return <>{empty}</>
   }
 
+
+  /*
+    LE CORPS DE L'ÉCRAN, ET LE PIED QUAND MÊME — voir `corpsRendu`.
+
+    AVANT LA BASCULE EN FICHES, parce que l'écran qui fournit un corps l'a déjà
+    conditionné à sa propre largeur : la primitive n'a pas à redécider par où il
+    passe. Et APRÈS la sortie d'état vide, qui doit rester la dernière chose dite
+    sur une liste sans ligne.
+
+    `flex flex-col` ET NON UN FRAGMENT : les deux appelants posent ce rendu dans
+    une mise en page réglée pour UN enfant. C'est la leçon déjà payée par la forme
+    plate de `ListeDeFiches`, écrite dans son corps.
+  */
+  if (corpsRendu && rows.length > 0) {
+    return (
+      <div className="flex flex-col">
+        {corpsRendu}
+        <PiedDeTotaux columns={columns} rows={rows} lignesEnTout={lignesEnTout} />
+      </div>
+    )
+  }
 
   if (fiches && !enTableau) {
     return (

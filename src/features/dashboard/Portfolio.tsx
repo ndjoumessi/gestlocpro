@@ -1621,12 +1621,23 @@ export function Portfolio() {
           l'écoute sans rien déplacer pour qui la regarde. C'est le compromis, et
           il est assumé : ce que l'œil voit reste d'un instant en retard. */}
       <div aria-busy={lectureDuMois || undefined}>
-      {enTableau && unitesAffichees.length > 0 && rows.length > 0 ? (
-        parcEnCartes
-      ) : (
       <DataTable<Unit>
         caption={t('app.portfolio.title')}
         rows={rows}
+        /*
+          LA GRILLE DE CARTES PASSE PAR LA PRIMITIVE, au lieu de la remplacer.
+
+          Rendue À LA PLACE du `DataTable`, elle emportait le pied de totaux :
+          cet écran n'avait aucune somme au-dessus de 1024 px, et sa recherche
+          libre est précisément le filtre dont la carte du haut ne tient pas
+          compte. Le cas qui garde ce pied le disait déjà — « la grille de cartes,
+          qui est un autre lot ».
+
+          `unitesAffichees.length > 0` RESTE DANS LA CONDITION : à parc vide,
+          c'est l'état vide qui doit parler, et la primitive n'emprunte ce chemin
+          qu'à partir d'une ligne. Voir le contrat de la prop.
+        */
+        corpsRendu={enTableau && unitesAffichees.length > 0 ? parcEnCartes : undefined}
         /* `unitesAffichees` est ce que la RECHERCHE découpe — le parc du mois
            consulté, qui n'est pas forcément le parc d'aujourd'hui. Prendre
            `units` ferait annoncer un dénominateur que cet écran ne montre pas. */
@@ -2006,7 +2017,6 @@ export function Portfolio() {
           },
         ]}
       />
-      )}
       </div>
     </>
   )

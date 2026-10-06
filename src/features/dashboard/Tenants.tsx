@@ -845,8 +845,6 @@ export function Tenants() {
             </Button>
           }
         />
-      ) : enTableau && visibles.length > 0 ? (
-        fichesDesLocataires
       ) : (
       <DataTable<Unit>
         caption={t('app.tenants.title')}
@@ -855,6 +853,20 @@ export function Tenants() {
         lignesEnTout={leases.length}
         rowKey={(unit) => unit.id}
         fiches
+        /*
+          LA GRILLE DE BUREAU PASSE PAR LA PRIMITIVE, au lieu de la remplacer.
+
+          Elle était rendue À LA PLACE du `DataTable`, et emportait donc le pied
+          de totaux avec elle : filtré sur les retards, l'écran montrait trois
+          locataires sous une carte qui annonce le loyer des dix baux, et plus
+          aucun nombre ne décrivait ce qu'on regardait. Mesuré : « Total · 3 lignes
+          sur 10 — Loyer 412 000 FCFA » à 375 px, rien à 1280.
+
+          En la passant en `corpsRendu`, les trois formes de cet écran lisent les
+          mêmes colonnes et les mêmes lignes : le pied ne peut plus diverger de ce
+          qu'il somme. Voir le contrat de la prop.
+        */
+        corpsRendu={enTableau ? fichesDesLocataires : undefined}
         columns={[
           {
             key: 'tenant',

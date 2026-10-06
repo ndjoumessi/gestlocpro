@@ -473,6 +473,43 @@ const HORS_PORTEE = {
   n'est pas interprétable ici, puisque cette machine ne juge aucune des deux
   colonnes.
 */
+/*
+  LE PIED REVIENT SUR LES FORMES QUI L'AVAIENT PERDU — lot du 2026-10-06.
+
+  Suite directe du bloc ci-dessus. Deux écrans ne rendent plus de table au-dessus
+  de `lg` mais une grille de cartes bâtie à la main : rendue À LA PLACE du
+  `DataTable`, elle emportait le pied avec elle, et ces deux écrans n'avaient donc
+  aucune somme au large. La vacance, elle, n'en avait sur aucune largeur — sixième
+  colonne d'argent du produit, et la seule dont le total n'était écrit nulle part.
+
+  CE QUI GRANDIT, MESURÉ SUR CETTE MACHINE :
+
+    colonne normale                     police large
+    /demo/cautions@360   2270 → 2309    2270 → 2330    +39   l'écart des rendues
+    /demo/vacance@360    1343 → 1436    1321 → 1479    +93   la carte de total
+    /demo/parc@1280      1785 → 1878    1785 → 1900    +93   la carte de total
+    /demo/cautions@1280   946 →  968     926 →  968    +22   l'écart des rendues
+    /demo/locataires@1280 2386 → 2479   2364 → 2479    +93   la carte de total
+
+  LES 93 px SONT LA MÊME CARTE QU'EN 2026-09-27, à l'unité près : intitulé, puis
+  une ligne par colonne sommée, et ces trois écrans n'en somment qu'une. Les +39
+  et +22 ne sont pas une carte mais une LIGNE de plus dans celle qui existait —
+  le terme que les cautions rendues retirent à la soustraction du pied, replié sur
+  deux lignes à 360 px et sur une seule à 1280.
+
+  CE QU'ILS ACHÈTENT : à 1280, trois écrans passaient d'aucun total à un total.
+  Mesuré sur `/demo/locataires?etat=overdue` — « Total · 3 lignes sur 10 — Loyer
+  412 000 FCFA » à 375 px, et RIEN à 1280, où la seule carte visible annonce les
+  dix baux.
+
+  LA COLONNE LARGE PORTE DU MOU, ET C'EST DÉCLARÉ. Elle est mesurée ici, sur une
+  machine qui POSSÈDE Verdana, quand l'exécuteur du CI retombe sur DejaVu Sans et
+  rend systématiquement moins — la divergence est écrite ailleurs dans ce dépôt et
+  a déjà valu un resserrage. Ces cinq valeurs sont donc sûres pour `complet` et
+  trop larges de ce que son journal dira ; elles se resserrent sur ses nombres,
+  pas sur ceux-ci. À 1280, deux des trois mesures sont IDENTIQUES dans les deux
+  polices : à cette largeur, rien ne se replie.
+*/
 /**
  * ═══ LA COLONNE NORMALE RELEVÉE LE 2026-09-28 — HUIT CROISSANCES, TROIS MOUS ═══
  *
@@ -655,7 +692,7 @@ const PLAFONDS = [
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
   { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4350 },
   { adresse: '/demo/releves', largeur: 360, plafond: 3902, plafondLarge: 3902 },
-  { adresse: '/demo/cautions', largeur: 360, plafond: 2270, plafondLarge: 2270 },
+  { adresse: '/demo/cautions', largeur: 360, plafond: 2309, plafondLarge: 2330 },
   /* LES DÉPENSES — mesuré le 2026-09-30, avec le lot qui crée l'écran.
      1650 px en police système sur cette machine ; 1671 en police large, MESURÉ
      LOCALEMENT et non sur l'exécuteur. L'en-tête de ce fichier dit pourquoi
@@ -695,7 +732,7 @@ const PLAFONDS = [
      qu'ici (1343), comme `/demo/acces`. La dissymétrie de largeur de texte
      entre les deux machines va dans les deux sens, et recopier la colonne
      étroite aurait laissé 22 px de mou sur la porte publique. */
-  { adresse: '/demo/vacance', largeur: 360, plafond: 1343, plafondLarge: 1321 },
+  { adresse: '/demo/vacance', largeur: 360, plafond: 1436, plafondLarge: 1479 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   /*
@@ -817,9 +854,9 @@ const PLAFONDS = [
     gros gain de hauteur de ce fichier, et il vient d'un changement de forme,
     pas d'un retrait de contenu : aucune fiche n'a perdu une ligne.
   */
-  { adresse: '/demo/parc', largeur: 1280, plafond: 1785, plafondLarge: 1785 },
+  { adresse: '/demo/parc', largeur: 1280, plafond: 1878, plafondLarge: 1900 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1450, plafondLarge: 1450 },
-  { adresse: '/demo/cautions', largeur: 1280, plafond: 946, plafondLarge: 926 },
+  { adresse: '/demo/cautions', largeur: 1280, plafond: 968, plafondLarge: 968 },
   /* 900 px aux deux polices, et c'est la HAUTEUR DE VUE : à 1280 l'écran tient
      dans la fenêtre, il ne défile pas. Les deux colonnes coïncident donc sans
      que ce soit une coïncidence — il n'y a rien à dépasser. */
@@ -852,7 +889,7 @@ const PLAFONDS = [
     elles deux sur les fiches qui les portent. Le gain du bureau vient de la
     grille à deux colonnes, où deux faits occupent une rangée au lieu de deux.
   */
-  { adresse: '/demo/locataires', largeur: 1280, plafond: 2386, plafondLarge: 2364 },
+  { adresse: '/demo/locataires', largeur: 1280, plafond: 2479, plafondLarge: 2479 },
   { adresse: '/demo/mes-donnees', largeur: 1280, plafond: 900, plafondLarge: 900 },
   /* −21 px, même cause qu'à 360 : la phrase de périmètre passe de quatre
      lignes à deux sur la fiche du gestionnaire, qui est la plus haute de sa

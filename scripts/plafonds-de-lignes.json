@@ -23,7 +23,7 @@
   "scripts/inventaire/lecture-sources.mjs": 1729,
   "scripts/inventaire/mesure-navigateur.mjs": 1542,
   "scripts/mesure-ui.mjs": 3883,
-  "scripts/plafond-hauteurs.mjs": 1378,
+  "scripts/plafond-hauteurs.mjs": 1415,
   "scripts/plafond-vitrine.mjs": 1071,
   "scripts/poids-ecrans.mjs": 841,
   "scripts/sondes-de-rendu.mjs": 997,
@@ -35,7 +35,7 @@
   "src/api/gestures.test.tsx": 914,
   "src/components/layout/AppShell.tsx": 2865,
   "src/components/primitives/Charts.tsx": 2217,
-  "src/components/primitives/DataTable.tsx": 1530,
+  "src/components/primitives/DataTable.tsx": 1591,
   "src/components/primitives/DatePicker.tsx": 1218,
   "src/data/PortfolioProvider.tsx": 2362,
   "src/data/portfolio.ts": 2045,
@@ -47,14 +47,19 @@
   "src/features/dashboard/LeaseModal.tsx": 847,
   "src/features/dashboard/Meters.tsx": 1015,
   "src/features/dashboard/Payments.tsx": 1152,
-  "src/features/dashboard/Portfolio.tsx": 2086,
+  "src/features/dashboard/Portfolio.tsx": 2139,
   "src/features/dashboard/ReceiptModal.tsx": 909,
   "src/features/dashboard/TenantDashboard.tsx": 1189,
-  "src/features/dashboard/Tenants.tsx": 1928,
+  "src/features/dashboard/Tenants.tsx": 1940,
   "src/features/dashboard/Works.tsx": 1208,
   "src/features/dashboard/documentsPdf.ts": 1053,
-  "src/i18n/en.ts": 2954,
-  "src/i18n/fr.ts": 4171,
-  "src/routes/SignUp.tsx": 1341
+  "src/i18n/en.ts": 2956,
+  "src/i18n/fr.ts": 4176,
+  "src/routes/SignUp.tsx": 1341,
+  "src/features/dashboard/Deposits.tsx": {
+   "lignes": 833,
+   "motif": "l'écran des cautions était à dix lignes du plafond : le quatrième terme du pied — ce que les cautions rendues retirent à la soustraction — ne tenait pas dans ce qui restait. Le fichier porte un tableau, trois indicateurs, un arbitrage, deux exports et leurs motifs ; c'est un découpage qu'il doit, pas un commentaire de trop.",
+   "le": "2026-10-06"
+  }
  }
 }

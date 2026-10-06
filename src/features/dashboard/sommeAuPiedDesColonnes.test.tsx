@@ -344,4 +344,48 @@ describe('le pied qui somme la colonne qu’il somme', () => {
     const termes = within(pied as HTMLElement).getAllByRole('term').map((dt) => dt.textContent)
     expect(termes, 'les sommes du pied ne sont pas nommées').toContain('À restituer')
   })
+
+  it('donne le même total des deux côtés du seuil, sur les écrans qui changent de forme', async () => {
+    /*
+      LE PARC ET LES LOCATAIRES NE RENDENT PLUS DE TABLEAU AU LARGE.
+
+      Au-dessus de 1024 px, les deux écrans montrent une grille de cartes bâtie à
+      la main ; en dessous, `DataTable` et ses fiches. Le pied de totaux vit dans
+      la primitive : il a donc suivi les fiches et quitté le bureau.
+
+      C'EST L'INVERSE DE L'ARGUMENT QUI L'A FAIT NAÎTRE — « n'écrire le total que
+      dans le `<tfoot>` l'aurait donné aux postes de bureau et retiré au
+      téléphone ». Le cas d'à côté, « écarte du total les lots que le parc ne
+      facture pas », le disait déjà en toutes lettres : « le pied de colonne
+      n'existe sur cet écran que dans la forme en fiches […] la grille de cartes,
+      qui est un autre lot ». C'est ce lot.
+
+      LE CAS NE COMPARE AUCUN MONTANT ÉCRIT EN DUR : il rend la MÊME vue filtrée
+      de part et d'autre du seuil et exige le même texte. C'est exactement la
+      propriété que la primitive s'est donnée — « une colonne totalisée d'un côté
+      et pas de l'autre serait un nombre qui apparaît en tournant son téléphone ».
+    */
+    const piedDe = async (route: string, largeur: number) => {
+      const vue = await renderApp(route, { largeur })
+      await attendreLeChargement()
+      const texte = document.querySelector('[data-total]')?.textContent ?? ''
+      vue.unmount()
+      return texte
+    }
+
+    /* FILTRÉ SUR LES RETARDS, parce que c'est là que la carte du haut et le pied
+       divergent : elle parle des dix baux, il parle des trois qu'on regarde. */
+    const locatairesAuTelephone = await piedDe('/demo/locataires?etat=overdue', 375)
+    expect(
+      locatairesAuTelephone,
+      'la forme en fiches des locataires n’a plus de pied',
+    ).toMatch(/^Total · \d+ lignes? sur \d+/)
+    expect(await piedDe('/demo/locataires?etat=overdue', 1280)).toBe(locatairesAuTelephone)
+
+    const parcAuTelephone = await piedDe('/demo/parc', 375)
+    expect(parcAuTelephone, 'la forme en fiches du parc n’a plus de pied').toMatch(
+      /^Total · \d+ lignes?/,
+    )
+    expect(await piedDe('/demo/parc', 1280)).toBe(parcAuTelephone)
+  })
 })
