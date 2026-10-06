@@ -230,6 +230,28 @@ export function Vacancy() {
             role: 'valeur',
             numeric: true,
             render: (a) => money(a.rentMinor),
+            /*
+              CE QUE LE PARC DEMANDE EN CE MOMENT, et c'était le seul montant de
+              cet écran que personne n'additionnait.
+
+              Les trois cartes du haut comptent des logements, des annonces et
+              des candidats : pas un franc. La colonne portait donc le seul
+              argent de l'écran, ligne à ligne, et la question qu'on vient y
+              poser — « combien de loyer est en attente de preneur » — n'avait de
+              réponse nulle part.
+
+              CE N'EST PAS LE COÛT DE LA VACANCE, et la note de l'écran continue
+              de le dire : le produit ne sait pas ce qu'un logement AURAIT
+              rapporté. Il sait ce qu'on en demande, parce que c'est le bailleur
+              qui l'a écrit dans l'annonce.
+
+              LA SOMME MÊLE LES TROIS ÉTATS parce que le tableau les montre tous
+              les trois — un brouillon, une publiée, une fermée. Le pied somme ce
+              qu'il montre, c'est son contrat ; séparer les états demanderait un
+              filtre, que cet écran n'a pas encore.
+            */
+            total: (annonces) =>
+              money(annonces.reduce((somme, a) => somme + a.rentMinor, 0)),
           },
         ]}
       />

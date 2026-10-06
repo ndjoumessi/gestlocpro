@@ -141,4 +141,43 @@ describe('la vacance du parc', () => {
       within(boite).queryByRole('button', { name: /Copier le lien public/ }),
     ).not.toBeInTheDocument()
   })
+
+  it('SOMME LE LOYER DEMANDÉ, qui n’est chiffré nulle part ailleurs sur l’écran', async () => {
+    /*
+      LA SIXIÈME COLONNE D'ARGENT DU PRODUIT, ET LA SEULE SANS SOMME.
+
+      Les cinq autres offraient au moins leur total en carte d'indicateur — c'est
+      le défaut que le pied de colonne est venu corriger. Ici les trois cartes
+      comptent des logements, des annonces et des candidats : pas un montant.
+      « Combien de loyer ce parc demande-t-il en ce moment » n'était écrit nulle
+      part, sur l'écran dont c'est la question.
+
+      LA NOTE DE L'ÉCRAN DIT AUTRE CHOSE, et elle reste vraie : le produit ne sait
+      pas ce que la vacance COÛTE — ce qu'un logement aurait rapporté. Le loyer
+      DEMANDÉ, lui, est connu, et l'écran l'affiche déjà ligne à ligne.
+
+      LA SOMME EST CELLE DES CELLULES LUES, jamais un montant recopié.
+    */
+    await ouvrirLaVacance()
+
+    const table = document.querySelector('table')
+    expect(table, 'l’écran de la vacance ne rend plus de tableau').not.toBeNull()
+    const entetes = Array.from(table!.querySelectorAll('thead th'))
+    const rang = entetes.findIndex((th) => /loyer/i.test(th.textContent ?? ''))
+    expect(rang, 'aucune colonne de loyer').toBeGreaterThanOrEqual(0)
+
+    const chiffres = (texte: string) => Number(texte.replace(/[^\d]/g, '')) || 0
+    const cellules = Array.from(table!.querySelectorAll('tbody tr'))
+      .filter((tr) => tr.children.length > 1)
+      .map((tr) => tr.children[rang]?.textContent ?? '')
+    expect(cellules.length, 'une somme d’un seul terme est ce terme').toBeGreaterThan(1)
+
+    const rangee = table!.querySelector('tfoot [data-total]')
+    expect(rangee, 'la colonne du loyer demandé n’a pas de somme').not.toBeNull()
+    const portee = Number(rangee!.children[0]?.getAttribute('colspan') ?? 1)
+    expect(
+      chiffres(rangee!.children[rang - portee + 1]?.textContent ?? ''),
+      'le pied ne fait pas la somme de ses cellules',
+    ).toBe(cellules.reduce((somme, c) => somme + chiffres(c), 0))
+  })
 })
