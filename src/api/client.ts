@@ -1044,6 +1044,38 @@ export const api = {
     }),
 
   /**
+   * ÉMET LE COMPTE-RENDU D'UNE PÉRIODE — et arrête le temps dessus.
+   *
+   * ═══ CE QUE CE GESTE CHANGE POUR TOUJOURS ═══
+   *
+   * La lecture ci-dessus CALCULE sur les lignes vivantes, et c'est le bon
+   * comportement tant que personne n'a rien remis. Celui-ci en prend un
+   * instantané : les cinq sommes ET les termes du barème sont figés, et la
+   * lecture servira désormais le document au lieu du calcul.
+   *
+   * La réponse gagne `issuedAt` (la date du document) et `issuedFee` (les
+   * termes figés, qui expliquent `feeMinor`). `fee` reste le barème COURANT :
+   * c'est lui que le formulaire de la modale peuple, et les confondre ferait
+   * éditer le barème en vigueur depuis un document passé.
+   *
+   * ═══ TROIS REFUS, ET AUCUN N'EST UNE PANNE ═══
+   *
+   *   · `403` — le gestionnaire ne peut pas arrêter le compte qu'il se doit à
+   *     lui-même. C'est le mandant qui l'arrête.
+   *   · `409 no_fee` — aucun barème convenu. Émettre « honoraires : 0 »
+   *     attesterait d'un accord qui n'existe pas.
+   *   · `409 already_issued` — la période est déjà émise, et le corps porte sa
+   *     date. RIEN NE RÉÉMET : corriger un document remis demanderait de choisir
+   *     entre un avoir, un second relevé et une annulation tracée, et
+   *     l'écrasement silencieux serait la pire des trois.
+   */
+  issueStatement: <T>(parkId: string, membershipId: string, from: string, to: string) =>
+    requete<T>(`/parks/${parkId}/memberships/${membershipId}/statement`, {
+      method: 'POST',
+      body: JSON.stringify({ from, to }),
+    }),
+
+  /**
    * CE QUE LE PARC A DÉPENSÉ sur un intervalle, en deux moitiés séparées.
    *
    * L'intervalle est OBLIGATOIRE, contrairement aux autres lectures de ce

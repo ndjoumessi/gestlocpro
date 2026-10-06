@@ -9,6 +9,8 @@ import { Notice } from '@/components/primitives/Notice'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useT } from '@/i18n/I18nProvider'
 import { useSession } from '@/api/SessionProvider'
+import { useDates } from '@/lib/useDates'
+import { partiesDeDateISO } from '@/lib/dates'
 import { useToast } from '@/components/primitives/Toast'
 import { api, ApiError } from '@/api/client'
 import { MOIS_DEMO } from '@/data/portfolio'
@@ -27,13 +29,34 @@ interface BaremeApi {
 }
 
 interface ReleveApi {
+  /** Le barème COURANT — celui que le formulaire ci-dessous peuple. */
   fee: BaremeApi | null
+  /**
+   * LES TERMES DU BARÈME AU JOUR DE L'ÉMISSION, absents tant que rien n'est
+   * émis.
+   *
+   * Distincts de `fee`, et c'est le sujet du lot : ce sont eux qui expliquent
+   * `feeMinor`. Afficher le taux COURANT au-dessus d'un montant FIGÉ donnerait
+   * deux chiffres dont aucun n'explique l'autre.
+   *
+   * Ils ne portent PAS `startsOn` / `endsOn` : ce sont les bornes de validité du
+   * barème, pas ses termes de calcul, et l'instantané ne les fige pas.
+   */
+  issuedFee?: Pick<BaremeApi, 'basis' | 'rateBasisPoints' | 'fixedMinor' | 'currency'>
   collectedMinor: number
   expensesMinor: number
   worksMinor: number
   feeMinor: number
   netMinor: number
   managedUnits: number
+  /**
+   * LA DATE DU DOCUMENT, ou `null` quand les chiffres suivent encore les lignes.
+   *
+   * C'est la seule chose qui permette à cet écran de ne pas présenter un calcul
+   * vivant comme un compte arrêté. Facultatif : un serveur antérieur à ce lot ne
+   * le rend pas, et l'écran se comporte alors comme avant — tout est calculé.
+   */
+  issuedAt?: string | null
 }
 
 /**
@@ -73,6 +96,7 @@ export function FeesModal({
   const t = useT()
   const { money, definition, parseAmount, enDeviseAffichee } = useCurrency()
   const { adhesionActive } = useSession()
+  const d = useDates()
   const { notify } = useToast()
   const parkId = adhesionActive?.parkId ?? null
 
@@ -89,7 +113,46 @@ export function FeesModal({
      proprement, et `clavierDesModales` exige d'ouvrir, tenir, fermer et RENDRE
      le focus à chaque niveau. */
   const [confirmeRetrait, setConfirmeRetrait] = useState(false)
+  const [emission, setEmission] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+
+  /**
+   * ÉMET LE COMPTE-RENDU DU MOIS AFFICHÉ.
+   *
+   * ═══ IL RELIT, IL NE DEVINE PAS ═══
+   *
+   * La réponse du serveur remplace le relevé à l'écran : elle porte `issuedAt`,
+   * `issuedFee` et les cinq sommes FIGÉES. Poser `issuedAt` à la main depuis
+   * l'horloge du navigateur aurait affiché une date que le document ne porte
+   * pas — et elles diffèrent dès que les deux machines divergent.
+   *
+   * ═══ LES DEUX REFUS SE DISENT ═══
+   *
+   * `already_issued` arrive quand deux onglets émettent le même mois : le
+   * second doit apprendre que le document existe, pas lire « l'action a
+   * échoué ». `no_fee` nomme le geste qui débloque — poser un barème.
+   */
+  const emettreLeCompteRendu = async () => {
+    if (!parkId) return
+    const { from, to } = bornesDuMois(mois)
+    setEmission(true)
+    try {
+      setReleve(await api.issueStatement<ReleveApi>(parkId, membershipId, from, to))
+      notify(t('app.fees.issued'), { tone: 'ok' })
+    } catch (cause: unknown) {
+      const code = cause instanceof ApiError ? cause.code : ''
+      notify(
+        code === 'already_issued'
+          ? t('app.fees.alreadyIssued')
+          : code === 'no_fee'
+            ? t('app.fees.noFeeToIssue')
+            : t('common.actionFailed'),
+        { tone: 'danger' },
+      )
+    } finally {
+      setEmission(false)
+    }
+  }
 
   const bornesDuMois = useCallback((moisChoisi: string) => {
     const [an, m] = moisChoisi.split('-').map(Number) as [number, number]
@@ -393,6 +456,72 @@ export function FeesModal({
               <p className="text-body-s text-muted mt-3">
                 {t('app.fees.managedUnits')} · {releve.managedUnits}
               </p>
+            )}
+
+            {/*
+              ÉMIS OU CALCULÉ — ET L'ÉCRAN LE DIT TOUJOURS.
+              
+              C'est la moitié de ce lot qui vit à l'écran. Un compte-rendu qui ne
+              dirait pas lequel des deux il montre serait pire que l'ancien, qui
+              calculait toujours : on lirait des chiffres sans savoir s'ils
+              suivent encore les lignes du parc ou s'ils sont arrêtés.
+              
+              LA LIGNE « ÉMIS LE … » PORTE AUSSI LE TAUX FIGÉ quand il diffère du
+              barème courant. Sans cela, un mandant qui a changé de taux lirait
+              un montant d'honoraires que le taux affiché au-dessus n'explique
+              pas — la contradiction exacte que ce lot ferme.
+            */}
+            {releve.issuedAt ? (
+              <p className="text-body-s text-muted mt-3">
+                {t('app.fees.issuedOn', { date: d.fullDate(partiesDeDateISO(releve.issuedAt)) })}
+                {releve.issuedFee?.rateBasisPoints !== undefined &&
+                  releve.issuedFee.rateBasisPoints !== null &&
+                  releve.issuedFee.rateBasisPoints !== releve.fee?.rateBasisPoints && (
+                    <>
+                      {' · '}
+                      {t('app.fees.issuedRate', {
+                        taux: String(releve.issuedFee.rateBasisPoints / 100),
+                      })}
+                    </>
+                  )}
+              </p>
+            ) : (
+              <p className="text-body-s text-muted mt-3">{t('app.fees.notIssued')}</p>
+            )}
+
+            {/*
+              L'ÉMISSION EST AU PROPRIÉTAIRE SEUL — et ce n'est PAS testé ici,
+              parce que ce n'est pas d'ici que ça se tient.
+
+              Le déclencheur de cette boîte, sur l'écran des accès, est gardé par
+              `m.role === 'manager' && estProprietaire` : un gestionnaire n'a
+              AUCUNE porte vers elle. Une première rédaction ajoutait pourtant
+              `role === 'owner'` sur ce bouton — une seconde garde pour la même
+              règle, que rien ne peut mettre en défaut puisque le cas ne se
+              construit pas. C'est la faute que ce dépôt nomme ailleurs : « deux
+              gardes pour une même règle ne valent pas mieux qu'une : elles se
+              couvrent l'une l'autre, et AUCUNE des deux ne peut alors être mise
+              en défaut ». Trouvée en écrivant le cas, qui n'a pas su ouvrir la
+              boîte en gestionnaire.
+
+              LA VRAIE GARDE EST AU SERVEUR, qui rend 403 — éprouvée dans
+              `compteRenduEmis.test.ts`. Elle tient même si cette boîte s'ouvre
+              un jour depuis un autre écran.
+
+              SANS BARÈME, LE GESTE NE PARAÎT PAS : émettre « honoraires : 0 »
+              attesterait d'un accord qui n'existe pas.
+            */}
+            {!releve.issuedAt && releve.fee !== null && (
+              <div className="mt-4">
+                <Button
+                  variant="secondary"
+                  loading={emission}
+                  onClick={() => void emettreLeCompteRendu()}
+                >
+                  {t('app.fees.issue')}
+                </Button>
+                <p className="text-body-s text-muted mt-2">{t('app.fees.issueHint')}</p>
+              </div>
             )}
           </>
         )}

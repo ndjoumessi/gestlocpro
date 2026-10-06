@@ -28,11 +28,19 @@ import { NOM_COOKIE } from '../auth/session.js'
  *
  * ═══ CE QUE CES CAS NE COUVRENT PAS ═══
  *
- * Le FIGEAGE d'un relevé émis. Il n'existe pas : le compte-rendu se calcule à
- * chaque lecture, et l'en-tête de la route dit pourquoi — quatre sommes stockées
- * seraient quatre compteurs. Rien ici ne garde donc qu'un relevé de l'an dernier
- * rende le même chiffre aujourd'hui, parce que ce n'est PAS vrai et que ce n'est
- * pas encore promis.
+ * Le FIGEAGE d'un relevé émis — il vit depuis le 2026-10-06 dans
+ * `compteRenduEmis.test.ts`, avec la route qui l'émet.
+ *
+ * CE PARAGRAPHE DISAIT LE CONTRAIRE, et il avait raison le jour où il a été
+ * écrit : « le figeage n'existe pas […] rien ici ne garde qu'un relevé de l'an
+ * dernier rende le même chiffre aujourd'hui, parce que ce n'est PAS vrai et que
+ * ce n'est pas encore promis ». C'est promis et tenu depuis, et une prose qui
+ * déclare une absence comblée envoie chercher ailleurs une garde qui existe.
+ *
+ * CE QUI RESTE VRAI ICI : ces cas éprouvent le CALCUL, sur les lignes vivantes,
+ * avant toute émission. Les deux fichiers se partagent la même fonction —
+ * `calculerLeReleve` — et c'est elle qui empêche le document figé de porter
+ * d'autres nombres que l'écran qui l'a montré.
  */
 const app = createApp()
 const serveur = app.listen(0)

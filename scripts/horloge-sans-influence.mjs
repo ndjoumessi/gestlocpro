@@ -90,7 +90,13 @@ const APRES_LA_BASCULE_EN_MINUTES = 1
   porte se déclarerait verte en ayant cessé de regarder. Ajouter un cas daté
   oblige donc à toucher ce nombre, et le diff le montre.
 */
-const FICHIERS_DATES_ATTENDUS = 62
+/* 62 → 63 (2026-10-06) : `compteRenduEmis.test.tsx`, né avec le figeage du
+   compte-rendu de gestion. Il porte un `issuedAt` en clair — la date du
+   document émis —, et c'est précisément le genre d'horodatage que cette porte
+   existe pour rejouer : « Émis le … » se rend par `d.fullDate`, une date
+   ABSOLUE, mais rien dans l'assertion ne le dit, et la prochaine rédaction
+   pourrait la passer en relatif sans que personne ne le voie. */
+const FICHIERS_DATES_ATTENDUS = 63
 
 function fichiersDeCas(dossier) {
   const trouves = []

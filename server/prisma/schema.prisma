@@ -169,6 +169,9 @@ model UserAccount {
   recordedExpenses Expense[]   @relation("ExpenseRecorder")
   decidedRevisions RentRevision[] @relation("RevisionDecider")
   createdPlans SettlementPlan[] @relation("PlanCreator")
+  /// Les comptes-rendus de gestion qu'il a ÉMIS. En `SetNull` : le document
+  /// survit à la fermeture du compte qui l'a émis.
+  issuedStatements OwnerStatement[] @relation("StatementIssuer")
 
   @@index([disabledAt])
   @@index([closureRequestedAt])
@@ -366,6 +369,8 @@ model Membership {
   units MembershipUnit[]
   /// Le barème d'honoraires de CE mandat, quand il y en a un convenu.
   fee   ManagementFee?
+  /// Les comptes-rendus de gestion ÉMIS sur ce mandat. Voir [OwnerStatement].
+  statements OwnerStatement[]
   createdAt DateTime @default(now())
 
   /// Une personne n'a qu'un rôle par parc : être à la fois propriétaire et
@@ -1687,6 +1692,71 @@ model LeaseDeadlineNotice {
 enum LeaseDeadlineKind {
   term
   moveOut
+}
+
+/// UN COMPTE-RENDU DE GESTION ÉMIS — l'instantané qui arrête le temps.
+///
+/// ═══ CE N'EST PAS LE COMPTEUR QUE LE SCHÉMA REFUSE ═══
+///
+/// L'en-tête de ce schéma interdit les compteurs stockés : « `Building.occupied`
+/// se contredisait déjà avec l'écran Parc. Aucun compteur ici. » Un compteur
+/// prétend résumer l'état COURANT et peut mentir à son sujet.
+///
+/// Celui-ci déclare un état PASSÉ, daté, et son immobilité est ce qu'on lui
+/// demande : un mandataire oppose le relevé qu'on lui a remis, pas le recalcul
+/// du jour. Même statut que [RentCharge]`.rentMinor`, qui fige le loyer à
+/// l'appel. La divergence d'avec les lignes vivantes est la PROPRIÉTÉ du
+/// document.
+///
+/// ET IL N'EXISTE QUE SUR UN GESTE. La route de lecture CALCULE tant que rien
+/// n'est émis, et le dit par `issuedAt: null`.
+///
+/// ═══ LE BARÈME EST FIGÉ ICI, ET C'EST TOUT SON HISTORIQUE ═══
+///
+/// [ManagementFee] n'a qu'un barème par mandat (`membershipId` unique), et sa
+/// migration l'assumait : « l'historique viendra avec le figeage des relevés,
+/// pas avant ». Les trois colonnes `fee*` ci-dessous sont ce figeage. La suite
+/// des comptes-rendus émis EST l'historique du barème — pas une table d'audit à
+/// côté, qui aurait pu diverger de ce qui a réellement été facturé.
+///
+/// ═══ LE NET N'EST PAS STOCKÉ ═══
+///
+/// Il vaut `collected − expenses − works − fee`, et les quatre sont figés
+/// ensemble, du même calcul : ils ne peuvent pas se contredire. Le stocker
+/// serait la cinquième somme que le refus d'origine visait, pour aucune
+/// information de plus. Il peut être NÉGATIF, et il sort négatif.
+model OwnerStatement {
+  id           String     @id @default(uuid()) @db.Uuid
+  membershipId String     @db.Uuid
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  periodStart DateTime @db.Date
+  /// La borne de FIN n'entre pas dans la clé d'unicité, mais elle est stockée et
+  /// comparée à la lecture : sans elle, demander le 1er au 15 mars quand le 1er
+  /// au 31 est émis rendrait le relevé du mois entier sous d'autres bornes.
+  periodEnd   DateTime @db.Date
+  currency    Currency
+
+  collectedMinor Int
+  expensesMinor  Int
+  /// Les chantiers, SÉPARÉS des dépenses — la décision du lot des dépenses :
+  /// « un chantier EST déjà une dépense », et le calcul lit les DEUX tables.
+  worksMinor     Int
+  feeMinor       Int
+  /// Les logements gérés au jour de l'émission, pour un forfait à l'unité.
+  /// L'approximation du périmètre non historisé est figée telle qu'elle était ;
+  /// cela ne la rend pas juste, cela l'empêche de bouger sous un document remis.
+  managedUnits   Int
+
+  feeBasis           FeeBasis
+  feeRateBasisPoints Int?
+  feeFixedMinor      Int?
+
+  issuedAt   DateTime     @default(now())
+  issuedById String?      @db.Uuid
+  issuedBy   UserAccount? @relation("StatementIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+
+  @@unique([membershipId, periodStart])
 }
 
 model RentReminderEmail {

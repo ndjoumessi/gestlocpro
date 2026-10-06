@@ -1753,6 +1753,30 @@ export const fr = {
       noFeeHint:
         'Le mandat existe sans honoraires : le relevé reste juste, il ne retient rien. Posez un barème pour que les honoraires soient calculés.',
       managedUnits: 'Logements gérés',
+      /*
+        ÉMETTRE, ET CE QUE LE MOT ENGAGE.
+        
+        « Arrêter le compte » serait plus juste en comptabilité, et moins clair
+        pour qui ouvre cette boîte une fois par mois. « Émettre le compte-rendu »
+        nomme le DOCUMENT qu'on produit, qui est ce qu'on remet.
+        
+        L'AIDE DIT L'IRRÉVERSIBILITÉ AVANT LE CLIC, parce que c'est la seule
+        chose qu'on ne peut pas défaire dans cette boîte : rien ne réémet.
+      */
+      issue: 'Émettre le compte-rendu',
+      issueHint:
+        'Les montants et le taux de ce mois seront figés : le document ne suivra plus les lignes du parc. Un mois émis ne se réémet pas.',
+      issued: 'Compte-rendu émis',
+      /* « ÉMIS LE … » ET NON « FIGÉ LE … » : c'est une date de document, pas un
+         détail technique, et c'est elle qu'un mandant cite. */
+      issuedOn: 'Émis le {date} — les montants ne bougent plus.',
+      issuedRate: 'taux de l’émission : {taux} %',
+      /* LE CALCUL SE DIT AUSSI, et c'est la moitié qu'on oublie : sans cette
+         ligne, on lirait des chiffres sans savoir s'ils sont arrêtés. */
+      notIssued: 'Calculé à l’instant : ces montants suivent les lignes du parc jusqu’à l’émission.',
+      alreadyIssued: 'Ce mois est déjà émis. Rouvrez la boîte pour voir le document.',
+      noFeeToIssue:
+        'Aucun barème convenu sur ce mandat : posez-en un avant d’émettre, sinon le document attesterait d’un accord qui n’existe pas.',
       periodShown: 'Période du relevé',
       save: 'Enregistrer le barème',
       saved: 'Barème enregistré',
@@ -2686,6 +2710,14 @@ export const fr = {
         fee: {
           set: 'Barème d’honoraires posé',
           delete: 'Barème d’honoraires retiré',
+        },
+        /* ARRÊTER LE COMPTE D'UNE PÉRIODE. Le libellé nomme le DOCUMENT et sa
+           période, pas le calcul : ce qui se décide ici est qu'un relevé cesse
+           de suivre les lignes du parc. La charge porte le net, que la recette
+           de détail affiche — un compte-rendu dont on ne lit pas le net oblige
+           à rouvrir la boîte pour savoir ce qui a été arrêté. */
+        statement: {
+          issue: 'Compte-rendu de gestion émis',
         },
         guarantor: {
           add: 'Garant ajouté',

@@ -10153,6 +10153,208 @@ parksRouter.delete(
  * DEVOIR de l'argent à son mandataire. Rendre `0` « parce qu'on ne reverse pas
  * une dette » serait le premier chiffre faux de ce produit.
  */
+/**
+ * LES CHAMPS D'UN COMPTE-RENDU ÉMIS, en un seul endroit.
+ *
+ * Deux lecteurs — la route de lecture et celle d'émission, qui rend ce qu'elle
+ * vient d'écrire. Deux `select` recopiés divergeraient au premier champ ajouté,
+ * et c'est la faute que `CHAMPS_ANNONCE` et `CHAMPS_DU_FIL` évitent déjà ici.
+ */
+const CHAMPS_DU_COMPTE_RENDU = {
+  periodStart: true,
+  periodEnd: true,
+  currency: true,
+  collectedMinor: true,
+  expensesMinor: true,
+  worksMinor: true,
+  feeMinor: true,
+  managedUnits: true,
+  feeBasis: true,
+  feeRateBasisPoints: true,
+  feeFixedMinor: true,
+  issuedAt: true,
+} as const
+
+/**
+ * UN COMPTE-RENDU ÉMIS, SOUS LA MÊME FORME QUE LE CALCUL.
+ *
+ * ═══ LA FORME SUIT CELLE DU CALCUL, À DEUX CHAMPS PRÈS ═══
+ *
+ * L'écran ne doit pas avoir DEUX lectures à écrire selon que la période est
+ * émise ou non — il en aurait fait deux rendus, puis deux mises en forme, et le
+ * jour où l'une change l'autre suit mal.
+ *
+ * DEUX ÉCARTS, ET LES DEUX SONT DÉCLARÉS. `issuedAt` porte une date quand le
+ * temps est arrêté et `null` quand les chiffres suivent encore les lignes.
+ * Et `fee.startsOn` / `fee.endsOn` sont ABSENTS ici — voir plus bas. La
+ * première rédaction de ce commentaire disait « seul `issuedAt` les
+ * distingue » ; c'était faux, et un commentaire qui promet une forme que le
+ * code ne rend pas est pire qu'aucun commentaire.
+ *
+ * `netMinor` SE DÉRIVE ICI, des quatre sommes figées. Il n'est pas en base — les
+ * quatre viennent du même calcul et ne peuvent pas se contredire, et le stocker
+ * aurait été la cinquième somme que le schéma refuse.
+ *
+ * ═══ DEUX BARÈMES DANS LA RÉPONSE, ET CE N'EST PAS UNE REDONDANCE ═══
+ *
+ * `issuedFee` porte les termes FIGÉS, qui expliquent `feeMinor` : c'est tout le
+ * sujet du lot. Relire le barème courant sous un montant figé afficherait un
+ * taux qui n'explique pas le chiffre d'à côté.
+ *
+ * `fee` reste le barème COURANT, et il le faut : la modale des honoraires
+ * PEUPLE SON FORMULAIRE avec lui — `setStartsOn(lu.fee.startsOn)`. Servir les
+ * termes figés sous cette clé ferait éditer le barème en vigueur depuis un
+ * document passé, et sans ses bornes de validité, que l'instantané ne porte
+ * pas. Trouvé en lisant l'écran, pas en relisant le serveur.
+ *
+ * `startsOn` ET `endsOn` NE SONT DONC PAS FIGÉS. Ce sont les bornes de validité
+ * du barème, pas ses termes de calcul : les figer n'apprendrait rien sur ce
+ * mois-là.
+ */
+function enCompteRenduServi(
+  r: {
+    periodStart: Date
+    periodEnd: Date
+    currency: string
+    collectedMinor: number
+    expensesMinor: number
+    worksMinor: number
+    feeMinor: number
+    managedUnits: number
+    feeBasis: string
+    feeRateBasisPoints: number | null
+    feeFixedMinor: number | null
+    issuedAt: Date
+  },
+  /** Le barème COURANT, pour le formulaire — `null` s'il a été retiré depuis. */
+  baremeCourant: Parameters<typeof enBaremeServi>[0] | null,
+) {
+  return {
+    fee: baremeCourant ? enBaremeServi(baremeCourant) : null,
+    issuedFee: {
+      basis: r.feeBasis,
+      rateBasisPoints: r.feeRateBasisPoints,
+      fixedMinor: r.feeFixedMinor,
+      currency: r.currency,
+    },
+    collectedMinor: r.collectedMinor,
+    expensesMinor: r.expensesMinor,
+    worksMinor: r.worksMinor,
+    feeMinor: r.feeMinor,
+    netMinor: r.collectedMinor - r.expensesMinor - r.worksMinor - r.feeMinor,
+    managedUnits: r.managedUnits,
+    issuedAt: r.issuedAt.toISOString(),
+  }
+}
+
+/**
+ * CE QUE LE RELEVÉ DIT, CALCULÉ SUR LES LIGNES VIVANTES.
+ *
+ * ═══ POURQUOI C'EST UNE FONCTION DEPUIS LE 2026-10-06 ═══
+ *
+ * Deux appelants : la lecture, qui rend l'état du moment, et l'ÉMISSION, qui en
+ * prend un instantané. Si l'émission refaisait les cinq requêtes de son côté,
+ * le document remis au mandant pourrait porter d'autres nombres que l'écran qui
+ * l'a montré une seconde plus tôt — et personne ne saurait lequel des deux a
+ * tort.
+ *
+ * C'est la règle que ce dépôt applique déjà deux fois : le cron des relances
+ * appelle `calculerRetard`, celui de l'appel des loyers appelle
+ * `emettreLesAppelsDeLoyer`. Ici l'enjeu est un document opposable à un
+ * mandataire.
+ */
+export async function calculerLeReleve(entree: {
+  parkId: string
+  membershipId: string
+  debut: Date
+  fin: Date
+  /** Le périmètre du GESTIONNAIRE VISÉ, déjà résolu par l'appelant. */
+  perimetre: { immeubles: string[] | null; unites: string[] | null; exclues?: string[] | null }
+  /** Les deux bornes en ISO, pour compter les mois d'un forfait mensuel. */
+  bornes: { from: string; to: string }
+}): Promise<{
+  fee: ReturnType<typeof enBaremeServi> | null
+  collectedMinor: number
+  expensesMinor: number
+  worksMinor: number
+  feeMinor: number
+  netMinor: number
+  managedUnits: number
+}> {
+  const { parkId, membershipId, debut, fin, perimetre, bornes } = entree
+  const porteeUnite = porteeDesUnites(perimetre)
+
+  const [encaisse, depenses, chantiers, logementsGeres, bareme] = await Promise.all([
+    /* L'ENCAISSÉ, ET NON L'APPELÉ : un gestionnaire n'est pas payé sur un
+       loyer impayé. Le périmètre descend jusqu'au paiement par le bail et
+       l'unité — sans quoi un mandataire borné facturerait sur le parc. */
+    prisma.payment.aggregate({
+      where: {
+        paidOn: { gte: debut, lte: fin },
+        charge: { lease: { unit: { building: { parkId }, ...porteeUnite } } },
+      },
+      _sum: { amountMinor: true },
+    }),
+    prisma.expense.aggregate({
+      where: {
+        parkId,
+        incurredOn: { gte: debut, lte: fin },
+        ...porteeDesDepenses(perimetre),
+      },
+      _sum: { amountMinor: true },
+    }),
+    prisma.workOrder.aggregate({
+      where: {
+        parkId,
+        approvedAmountMinor: { not: null },
+        completedOn: { gte: debut, lte: fin },
+        unit: porteeUnite,
+      },
+      _sum: { approvedAmountMinor: true },
+    }),
+    /* LES LOGEMENTS GÉRÉS, pour un forfait à l'unité : ceux du périmètre, et
+       non ceux du parc. Comptés sur l'état actuel du mandat — un logement
+       confié hier compte ce mois-ci, et le produit n'historise pas le
+       périmètre. C'est une approximation, et elle est avouée.
+
+       L'ÉMISSION LA FIGE, ce qui ne la rend pas juste : elle fige
+       l'approximation telle qu'elle était le jour de l'émission. C'est
+       néanmoins mieux que de la laisser bouger sous un document remis. */
+    prisma.unit.count({ where: { building: { parkId }, ...porteeUnite } }),
+    prisma.managementFee.findUnique({
+      where: { membershipId },
+      select: {
+        basis: true,
+        rateBasisPoints: true,
+        fixedMinor: true,
+        currency: true,
+        startsOn: true,
+        endsOn: true,
+      },
+    }),
+  ])
+
+  const collectedMinor = encaisse._sum.amountMinor ?? 0
+  const expensesMinor = depenses._sum.amountMinor ?? 0
+  const worksMinor = chantiers._sum.approvedAmountMinor ?? 0
+  const feeMinor = honorairesDus(bareme, {
+    collectedMinor,
+    logementsGeres,
+    moisCouverts: moisEntre(bornes.from, bornes.to),
+  })
+
+  return {
+    fee: bareme ? enBaremeServi(bareme) : null,
+    collectedMinor,
+    expensesMinor,
+    worksMinor,
+    feeMinor,
+    /* LE NET, ET IL PEUT ÊTRE NÉGATIF. Voir l'en-tête de la route. */
+    netMinor: collectedMinor - expensesMinor - worksMinor - feeMinor,
+    managedUnits: logementsGeres,
+  }
+}
+
 parksRouter.get(
   '/:parkId/memberships/:membershipId/statement',
   exigerAppartenance,
@@ -10176,87 +10378,215 @@ parksRouter.get(
     }
 
     /**
-     * LE PÉRIMÈTRE DU RELEVÉ EST CELUI DU GESTIONNAIRE VISÉ, pas celui du
-     * demandeur — et c'est la seule lecture du fichier où les deux diffèrent.
+     * UN RELEVÉ DÉJÀ ÉMIS POUR CETTE PÉRIODE PREND LA MAIN SUR LE CALCUL.
      *
-     * Un propriétaire sans périmètre demandant le relevé d'un mandataire borné à
-     * deux immeubles doit obtenir l'encaissé de CES deux immeubles : c'est ce
-     * que ce mandataire a perçu, et la base de ce qu'il facture. Prendre le
-     * périmètre du demandeur rendrait ici l'encaissé du parc entier, donc des
-     * honoraires calculés sur des loyers que personne ne lui a confiés.
+     * C'est le sujet du lot. Tant que rien n'était émis, le compte-rendu se
+     * recalculait à chaque lecture — ce qui était le bon choix, et l'en-tête de
+     * cette route l'explique. Mais un relevé REMIS à un mandant ne doit plus
+     * bouger : un paiement corrigé le mois suivant changerait un document qu'on
+     * a signé, et c'est exactement ce qu'un mandataire opposerait.
+     *
+     * LA DIVERGENCE D'AVEC LES LIGNES VIVANTES DEVIENT DONC LA PROPRIÉTÉ DU
+     * DOCUMENT, et non son défaut. C'est ce qui distingue cet instantané des
+     * « compteurs stockés » que l'en-tête du schéma refuse : un compteur
+     * prétend résumer l'état courant et peut mentir à son sujet ; celui-ci
+     * déclare un état PASSÉ, daté, et c'est son immobilité qu'on lui demande.
+     *
+     * L'ÉCRAN SAIT LEQUEL DES DEUX IL MONTRE, par `issuedAt`. Servir un gelé
+     * sans le dire referait le défaut d'origine par l'autre bout : un chiffre
+     * qu'on ne peut pas expliquer en relisant les lignes.
      */
+    const emis = await prisma.ownerStatement.findUnique({
+      where: { membershipId_periodStart: { membershipId, periodStart: debut } },
+      select: CHAMPS_DU_COMPTE_RENDU,
+    })
+    if (emis) {
+      /* LA PÉRIODE DOIT COÏNCIDER AUX DEUX BORNES. L'unicité ne porte que sur
+         le début : demander le 1er au 15 mars quand le 1er au 31 est émis
+         rendrait le relevé du mois entier sous les bornes de la quinzaine. */
+      if (+emis.periodEnd === +fin) {
+        /* LE BARÈME COURANT EN PLUS, pour le formulaire de la modale. Une
+           requête de plus sur un chemin rare, contre un écran qui éditerait
+           sinon le barème en vigueur depuis un document passé. */
+        const baremeCourant = await prisma.managementFee.findUnique({
+          where: { membershipId },
+          select: {
+            basis: true,
+            rateBasisPoints: true,
+            fixedMinor: true,
+            currency: true,
+            startsOn: true,
+            endsOn: true,
+          },
+        })
+        res.json(enCompteRenduServi(emis, baremeCourant))
+        return
+      }
+    }
+
     const perimetre = {
       immeubles: visee.immeubles,
       unites: visee.unites,
       exclues: visee.exclues,
     }
-    const porteeUnite = porteeDesUnites(perimetre)
-
-    const [encaisse, depenses, chantiers, logementsGeres, bareme] = await Promise.all([
-      /* L'ENCAISSÉ, ET NON L'APPELÉ : un gestionnaire n'est pas payé sur un
-         loyer impayé. Le périmètre descend jusqu'au paiement par le bail et
-         l'unité — sans quoi un mandataire borné facturerait sur le parc. */
-      prisma.payment.aggregate({
-        where: {
-          paidOn: { gte: debut, lte: fin },
-          charge: { lease: { unit: { building: { parkId }, ...porteeUnite } } },
-        },
-        _sum: { amountMinor: true },
-      }),
-      prisma.expense.aggregate({
-        where: {
-          parkId,
-          incurredOn: { gte: debut, lte: fin },
-          ...porteeDesDepenses(perimetre),
-        },
-        _sum: { amountMinor: true },
-      }),
-      prisma.workOrder.aggregate({
-        where: {
-          parkId,
-          approvedAmountMinor: { not: null },
-          completedOn: { gte: debut, lte: fin },
-          unit: porteeUnite,
-        },
-        _sum: { approvedAmountMinor: true },
-      }),
-      /* LES LOGEMENTS GÉRÉS, pour un forfait à l'unité : ceux du périmètre, et
-         non ceux du parc. Comptés sur l'état actuel du mandat — un logement
-         confié hier compte ce mois-ci, et le produit n'historise pas le
-         périmètre. C'est une approximation, et elle est avouée. */
-      prisma.unit.count({ where: { building: { parkId }, ...porteeUnite } }),
-      prisma.managementFee.findUnique({
-        where: { membershipId },
-        select: {
-          basis: true,
-          rateBasisPoints: true,
-          fixedMinor: true,
-          currency: true,
-          startsOn: true,
-          endsOn: true,
-        },
-      }),
-    ])
-
-    const collectedMinor = encaisse._sum.amountMinor ?? 0
-    const expensesMinor = depenses._sum.amountMinor ?? 0
-    const worksMinor = chantiers._sum.approvedAmountMinor ?? 0
-    const feeMinor = honorairesDus(bareme, {
-      collectedMinor,
-      logementsGeres,
-      moisCouverts: moisEntre(bornes.from, bornes.to),
-    })
 
     res.json({
-      fee: bareme ? enBaremeServi(bareme) : null,
-      collectedMinor,
-      expensesMinor,
-      worksMinor,
-      feeMinor,
-      /* LE NET, ET IL PEUT ÊTRE NÉGATIF. Voir l'en-tête de la route. */
-      netMinor: collectedMinor - expensesMinor - worksMinor - feeMinor,
-      managedUnits: logementsGeres,
+      ...(await calculerLeReleve({ parkId, membershipId, debut, fin, perimetre, bornes })),
+      /* `null` DIT « CALCULÉ À L'INSTANT », et c'est une information : le
+         mandant voit que ce qu'il lit suivra ses lignes jusqu'à l'émission.
+         `issuedFee` est ABSENT sur ce chemin : il n'y a pas de termes figés à
+         expliquer, c'est `fee` qui explique tout. */
+      issuedAt: null,
     })
+  },
+)
+
+/**
+ * ÉMET LE COMPTE-RENDU D'UNE PÉRIODE — et arrête le temps dessus.
+ *
+ * ═══ LE PROPRIÉTAIRE SEUL ═══
+ *
+ * La lecture est ouverte au gestionnaire : c'est son mandat, il doit pouvoir
+ * voir ce qu'il facture. L'ÉMISSION ne l'est pas. Un document qui fige ce qu'un
+ * mandataire se doit à lui-même, signé par lui, n'a aucune valeur — c'est le
+ * mandant qui arrête le compte. Même partage que la validation d'un devis ou
+ * l'arbitrage d'une caution.
+ *
+ * ═══ ELLE REFUSE SANS BARÈME, ET CE REFUS EST LE SUJET ═══
+ *
+ * `honorairesDus` rend 0 quand aucun barème n'est convenu, et c'est juste pour
+ * une LECTURE — on montre un parc dont rien n'est encore facturé. Émettre un
+ * document qui atteste « honoraires : 0 » sous un mandat dont le barème n'a
+ * jamais été posé serait attester d'un accord qui n'existe pas. 409, et l'écran
+ * nomme le geste qui débloque.
+ *
+ * ═══ ÉMETTRE DEUX FOIS LA MÊME PÉRIODE EST REFUSÉ, JAMAIS SILENCIEUX ═══
+ *
+ * L'unicité `(membershipId, periodStart)` le garantit en base. La route la lit
+ * d'abord pour rendre 409 plutôt qu'une violation de contrainte, et la base
+ * tranche la course : deux onglets qui émettent en même temps ne produisent pas
+ * deux documents.
+ *
+ * RIEN NE RÉÉMET, et c'est délibéré. Corriger un relevé émis demanderait de
+ * décider ce qu'on fait du document déjà remis — un avoir, un second relevé,
+ * une annulation tracée — et aucune de ces trois réponses n'est évidente.
+ * Laisser une route l'écraser en silence serait choisir la pire.
+ */
+parksRouter.post(
+  '/:parkId/memberships/:membershipId/statement',
+  exigerAppartenance,
+  exigerRole('owner'),
+  async (req: Request, res: Response) => {
+    const { parkId } = req.adhesion!
+    const membershipId = z.string().uuid().parse(req.params.membershipId)
+    const bornes = z
+      .object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      })
+      .parse(req.body)
+    const debut = new Date(`${bornes.from}T00:00:00.000Z`)
+    const fin = new Date(`${bornes.to}T00:00:00.000Z`)
+    if (+fin < +debut) {
+      res.status(422).json({ error: 'period_reversed' })
+      return
+    }
+
+    const visee = await adhesionDeGestionVisee(req, membershipId)
+    if (!visee) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+
+    const deja = await prisma.ownerStatement.findUnique({
+      where: { membershipId_periodStart: { membershipId, periodStart: debut } },
+      select: { issuedAt: true },
+    })
+    if (deja) {
+      res.status(409).json({ error: 'already_issued', issuedAt: deja.issuedAt.toISOString() })
+      return
+    }
+
+    /* LE MÊME CALCUL QUE LA LECTURE, par la même fonction. C'est la seule chose
+       qui garantisse que le document porte les nombres que l'écran a montrés. */
+    const calcul = await calculerLeReleve({
+      parkId,
+      membershipId,
+      debut,
+      fin,
+      perimetre: { immeubles: visee.immeubles, unites: visee.unites, exclues: visee.exclues },
+      bornes,
+    })
+
+    if (!calcul.fee) {
+      res.status(409).json({ error: 'no_fee' })
+      return
+    }
+
+    /*
+      LE DOCUMENT D'ABORD, SA TRACE ENSUITE — ET J'AVAIS ÉCRIT LE CONTRAIRE.
+
+      La première rédaction mettait les deux écritures dans un `$transaction`, et
+      plaidait sa cause : « un compte-rendu est un document qu'on remet ; s'il
+      existe sans trace de qui l'a émis, le mandant ne peut plus opposer à
+      personne la décision d'arrêter le compte ; mieux vaut qu'il ne naisse
+      pas ».
+
+      `leJournalNeFaitPasEchouerLActe.test.ts` l'a refusé, et il a raison contre
+      moi. Le dépôt a tranché dans l'autre sens, en connaissance : « l'acte
+      passe, la trace suit », et cette porte existe EXACTEMENT pour empêcher
+      qu'on renverse la politique par argument — son en-tête raconte qu'elle a
+      déjà failli l'être une fois, par la même main.
+
+      Elle dit aussi où le prix est le plus élevé, et ce n'est pas ici : les
+      SUPPRESSIONS, `payment.delete` et `tenant.delete`, ont été sorties de leur
+      transaction alors que leur commentaire plaidait mieux que le mien. Un
+      compte-rendu émis sans ligne de registre reste un document daté, signé par
+      `issuedById`, et relisible : il porte sa propre trace. Le prix accepté est
+      qu'une panne entre les deux écritures le laisse hors du registre des
+      décisions.
+    */
+    const emis = await prisma.ownerStatement.create({
+      data: {
+        membershipId,
+        periodStart: debut,
+        periodEnd: fin,
+        currency: calcul.fee!.currency as Currency,
+        collectedMinor: calcul.collectedMinor,
+        expensesMinor: calcul.expensesMinor,
+        worksMinor: calcul.worksMinor,
+        feeMinor: calcul.feeMinor,
+        managedUnits: calcul.managedUnits,
+        /* LES TERMES DU BARÈME, FIGÉS AVEC LES MONTANTS. C'est ce qui rend la
+           suite des relevés émis lisible comme l'historique du barème — voir
+           l'en-tête du modèle. */
+        feeBasis: calcul.fee!.basis as 'percentOfCollected' | 'fixedPerUnit' | 'fixedPerMonth',
+        feeRateBasisPoints: calcul.fee!.rateBasisPoints,
+        feeFixedMinor: calcul.fee!.fixedMinor,
+        issuedById: req.compteId!,
+      },
+      select: CHAMPS_DU_COMPTE_RENDU,
+    })
+
+    await prisma.auditEvent.create({
+      data: {
+        parkId,
+        actorId: req.compteId!,
+        action: 'statement.issue',
+        entity: 'ManagementFee',
+        entityId: membershipId,
+        payload: {
+          periodStart: bornes.from,
+          periodEnd: bornes.to,
+          feeMinor: calcul.feeMinor,
+          netMinor: calcul.netMinor,
+        },
+      },
+    })
+
+    /* `calcul.fee` EST le barème courant, déjà lu et déjà servi par
+       `enBaremeServi` : on ne le relit pas pour le rendre. */
+    res.status(201).json({ ...enCompteRenduServi(emis, null), fee: calcul.fee })
   },
 )
 

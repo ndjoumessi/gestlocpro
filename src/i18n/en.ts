@@ -1177,6 +1177,16 @@ export const en: Dictionary = {
       noFeeHint:
         'The mandate exists without fees: the statement stays correct, it withholds nothing. Set a basis for fees to be calculated.',
       managedUnits: 'Managed units',
+      issue: 'Issue the statement',
+      issueHint:
+        'This month’s amounts and rate will be frozen: the document will no longer follow the park’s records. An issued month cannot be reissued.',
+      issued: 'Statement issued',
+      issuedOn: 'Issued on {date} — the amounts no longer move.',
+      issuedRate: 'rate at issue: {taux}%',
+      notIssued: 'Computed just now: these amounts follow the park’s records until issued.',
+      alreadyIssued: 'This month is already issued. Reopen the box to see the document.',
+      noFeeToIssue:
+        'No fee agreed on this mandate: set one before issuing, or the document would attest to an agreement that does not exist.',
       periodShown: 'Statement period',
       save: 'Save basis',
       saved: 'Basis saved',
@@ -1827,6 +1837,9 @@ export const en: Dictionary = {
         fee: {
           set: 'Fee basis set',
           delete: 'Fee basis removed',
+        },
+        statement: {
+          issue: 'Management statement issued',
         },
         guarantor: {
           add: 'Guarantor added',

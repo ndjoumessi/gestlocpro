@@ -71,6 +71,11 @@ const MODELES_VECUS = [
   'Listing',
   'ManagementFee',
   'Membership',
+  /* LE COMPTE-RENDU ÉMIS : un document REMIS à un mandant. Sa disparition
+     retire une pièce que quelqu'un peut opposer — c'est le cas le plus net de
+     ce côté-ci de la liste. Il n'est d'ailleurs supprimé par aucune route :
+     rien ne réémet, et rien n'annule. Seule la cascade du mandat l'emporte. */
+  'OwnerStatement',
   'MeterReading',
   'Park',
   'Payment',
