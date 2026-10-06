@@ -485,11 +485,11 @@ const HORS_PORTEE = {
   CE QUI GRANDIT, MESURÉ SUR CETTE MACHINE :
 
     colonne normale                     police large
-    /demo/cautions@360   2270 → 2309    2270 → 2330    +39   l'écart des rendues
-    /demo/vacance@360    1343 → 1436    1321 → 1479    +93   la carte de total
-    /demo/parc@1280      1785 → 1878    1785 → 1900    +93   la carte de total
+    /demo/cautions@360   2270 → 2309    2270 → 2309    +39   l'écart des rendues
+    /demo/vacance@360    1343 → 1436    1321 → 1414    +93   la carte de total
+    /demo/parc@1280      1785 → 1878    1785 → 1878    +93   la carte de total
     /demo/cautions@1280   946 →  968     926 →  968    +22   l'écart des rendues
-    /demo/locataires@1280 2386 → 2479   2364 → 2479    +93   la carte de total
+    /demo/locataires@1280 2386 → 2479   2364 → 2457    +93   la carte de total
 
   LES 93 px SONT LA MÊME CARTE QU'EN 2026-09-27, à l'unité près : intitulé, puis
   une ligne par colonne sommée, et ces trois écrans n'en somment qu'une. Les +39
@@ -502,13 +502,24 @@ const HORS_PORTEE = {
   412 000 FCFA » à 375 px, et RIEN à 1280, où la seule carte visible annonce les
   dix baux.
 
-  LA COLONNE LARGE PORTE DU MOU, ET C'EST DÉCLARÉ. Elle est mesurée ici, sur une
-  machine qui POSSÈDE Verdana, quand l'exécuteur du CI retombe sur DejaVu Sans et
-  rend systématiquement moins — la divergence est écrite ailleurs dans ce dépôt et
-  a déjà valu un resserrage. Ces cinq valeurs sont donc sûres pour `complet` et
-  trop larges de ce que son journal dira ; elles se resserrent sur ses nombres,
-  pas sur ceux-ci. À 1280, deux des trois mesures sont IDENTIQUES dans les deux
-  polices : à cette largeur, rien ne se replie.
+  LA COLONNE LARGE VIENT DE L'EXÉCUTEUR, PAS DE CETTE MACHINE — et il a fallu la
+  mesurer deux fois pour l'écrire. Première rédaction : les nombres relevés ici,
+  sous Verdana, que cette machine possède ; le travail `polices` du passage CI
+  37528794331 a rendu les siens, sous DejaVu Sans, et ils sont tous PLUS BAS :
+
+    /demo/vacance@360     1479 ici → 1414 là-bas     65 px de mou
+    /demo/parc@1280       1900 ici → 1878 là-bas     22 px
+    /demo/locataires@1280 2479 ici → 2457 là-bas     22 px
+    /demo/cautions@360    2330 ici → 2309 là-bas     21 px
+    /demo/cautions@1280    968 ici →  968 là-bas      0
+
+  Ce sont les SIENS qui sont inscrits : un plafond qui porte 65 px de mou ne
+  refuse pas ce qu'il prétend refuser, et c'est l'exécuteur qui garde cette
+  colonne à chaque poussée. La divergence des deux machines est écrite ailleurs
+  dans ce dépôt ; c'est sa quatrième instance, et la deuxième où elle paie.
+
+  À 1280, les mesures normale et large sont IDENTIQUES sur deux des trois points :
+  à cette largeur, rien ne se replie.
 */
 /**
  * ═══ LA COLONNE NORMALE RELEVÉE LE 2026-09-28 — HUIT CROISSANCES, TROIS MOUS ═══
@@ -692,7 +703,7 @@ const PLAFONDS = [
   { adresse: '/demo/signaler', largeur: 360, plafond: 1227, plafondLarge: 1205 },
   { adresse: '/demo/parc', largeur: 360, plafond: 4350, plafondLarge: 4350 },
   { adresse: '/demo/releves', largeur: 360, plafond: 3902, plafondLarge: 3902 },
-  { adresse: '/demo/cautions', largeur: 360, plafond: 2309, plafondLarge: 2330 },
+  { adresse: '/demo/cautions', largeur: 360, plafond: 2309, plafondLarge: 2309 },
   /* LES DÉPENSES — mesuré le 2026-09-30, avec le lot qui crée l'écran.
      1650 px en police système sur cette machine ; 1671 en police large, MESURÉ
      LOCALEMENT et non sur l'exécuteur. L'en-tête de ce fichier dit pourquoi
@@ -732,7 +743,7 @@ const PLAFONDS = [
      qu'ici (1343), comme `/demo/acces`. La dissymétrie de largeur de texte
      entre les deux machines va dans les deux sens, et recopier la colonne
      étroite aurait laissé 22 px de mou sur la porte publique. */
-  { adresse: '/demo/vacance', largeur: 360, plafond: 1436, plafondLarge: 1479 },
+  { adresse: '/demo/vacance', largeur: 360, plafond: 1436, plafondLarge: 1414 },
   { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   /*
@@ -854,7 +865,7 @@ const PLAFONDS = [
     gros gain de hauteur de ce fichier, et il vient d'un changement de forme,
     pas d'un retrait de contenu : aucune fiche n'a perdu une ligne.
   */
-  { adresse: '/demo/parc', largeur: 1280, plafond: 1878, plafondLarge: 1900 },
+  { adresse: '/demo/parc', largeur: 1280, plafond: 1878, plafondLarge: 1878 },
   { adresse: '/demo/releves', largeur: 1280, plafond: 1450, plafondLarge: 1450 },
   { adresse: '/demo/cautions', largeur: 1280, plafond: 968, plafondLarge: 968 },
   /* 900 px aux deux polices, et c'est la HAUTEUR DE VUE : à 1280 l'écran tient
@@ -889,7 +900,7 @@ const PLAFONDS = [
     elles deux sur les fiches qui les portent. Le gain du bureau vient de la
     grille à deux colonnes, où deux faits occupent une rangée au lieu de deux.
   */
-  { adresse: '/demo/locataires', largeur: 1280, plafond: 2479, plafondLarge: 2479 },
+  { adresse: '/demo/locataires', largeur: 1280, plafond: 2479, plafondLarge: 2457 },
   { adresse: '/demo/mes-donnees', largeur: 1280, plafond: 900, plafondLarge: 900 },
   /* −21 px, même cause qu'à 360 : la phrase de périmètre passe de quatre
      lignes à deux sur la fiche du gestionnaire, qui est la plus haute de sa
