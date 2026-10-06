@@ -1704,6 +1704,8 @@ export const en: Dictionary = {
       kpiHeldNote_one: 'across {count} deposit',
       kpiWithheldNote: '{count} being settled',
       kpiWithheldNote_one: '{count} being settled',
+      footReturned: '− {amount} already returned',
+      footReturned_one: '− {amount} already returned',
       kpiBalanceNote: '{count} already returned · {amount}',
       kpiBalanceNote_one: '{count} already returned · {amount}',
       settle: 'Settle',

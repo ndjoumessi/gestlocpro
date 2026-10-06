@@ -2520,6 +2520,11 @@ export const fr = {
       kpiHeldNote_one: 'sur {count} caution',
       kpiWithheldNote: '{count} en cours d’arbitrage',
       kpiWithheldNote_one: '{count} en cours d’arbitrage',
+      /* LE TERME QUI MANQUE À LA SOUSTRACTION DU PIED, et le signe en fait
+         partie : « 250 000 FCFA déjà restituée » se lirait comme une part du
+         total au-dessus, alors qu'il en a été retiré. */
+      footReturned: '− {amount} déjà restituées',
+      footReturned_one: '− {amount} déjà restituée',
       kpiBalanceNote: '{count} déjà restituées · {amount}',
       kpiBalanceNote_one: '{count} déjà restituée · {amount}',
       settle: 'Arbitrer',

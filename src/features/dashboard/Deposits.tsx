@@ -472,12 +472,55 @@ export function Deposits() {
                  total par la porte du pied, et l'écran annoncerait de nouveau
                  devoir un argent déjà reparti — le défaut que la carte du haut a
                  mis un lot à corriger. */
-              total: (ds) => money(
-                ds
+              /*
+                LE QUATRIÈME TERME, PARCE QUE LES TROIS NE SE RECOUPENT PAS.
+
+                Le pied aligne « Consigné », « Retenu » et « À restituer » sous
+                trois en-têtes qui se lisent comme une soustraction. Elle ne tombe
+                pas juste : l'écart est exactement la caution déjà rendue — entrée
+                dans le consigné parce qu'elle a été versée, sortie de la dette
+                parce qu'elle a été remboursée.
+
+                LE PDF A DÉJÀ PAYÉ CE DÉFAUT et s'est donné ce terme-ci, dans ces
+                mots : « un filet au-dessus d'un total en gras est une PROMESSE DE
+                CALCUL ». Le pied fait la même promesse, sans filet.
+
+                RESSERRER « CONSIGNÉ » LA FERMERAIT AUSSI, et c'est l'autre monde :
+                le PDF a tranché pour celui-ci — consigné = ce qui a été versé. Deux
+                surfaces donnant deux « Total consigné » sur le même parc seraient
+                le défaut qu'on prétend corriger.
+
+                IL SE CALCULE SUR LES LIGNES AFFICHÉES : filtré sur « consignée »,
+                l'écart est nul et la mention disparaît. Même condition que le PDF.
+              */
+              total: (ds) => {
+                const du = ds
                   .filter((d) => d.status !== 'returned')
-                  .reduce((somme, d) => somme + soldeDeCaution(d), 0),
-                { compact: true },
-              ),
+                  .reduce((somme, d) => somme + soldeDeCaution(d), 0)
+                const rendues = ds.filter((d) => d.status === 'returned')
+                const rendu = rendues.reduce((somme, d) => somme + soldeDeCaution(d), 0)
+                return (
+                  <>
+                    {money(du, { compact: true })}
+                    {rendu > 0 && (
+                      /* NOMMÉE : la cellule voisine porte DÉJÀ un `<span>` sur sa
+                         valeur, et la garde qui lisait « le seul enfant de la
+                         cellule » prenait la retenue entière pour une mention.
+                         `font-normal` parce que le terme qui MANQUE ne doit pas
+                         peser autant que le total qu'il explique. */
+                      <span
+                        data-ecart=""
+                        className="block text-caption font-normal text-muted"
+                      >
+                        {t('app.deposits.footReturned', {
+                          count: rendues.length,
+                          amount: money(rendu, { compact: true }),
+                        })}
+                      </span>
+                    )}
+                  </>
+                )
+              },
             },
             {
               key: 'status',

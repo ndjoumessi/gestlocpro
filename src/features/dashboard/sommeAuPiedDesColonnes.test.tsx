@@ -96,7 +96,14 @@ function celluleDuPied(table: HTMLTableElement, rang: number): string {
   if (!pied) throw new Error('le tableau n’a pas de pied de totaux')
   const portee = Number(pied.children[0]?.getAttribute('colspan') ?? 1)
   if (rang < portee) throw new Error(`la colonne ${rang} est coiffée par l’intitulé`)
-  return pied.children[rang - portee + 1]?.textContent ?? ''
+  const cellule = pied.children[rang - portee + 1]
+  /* LA MENTION D'ÉCART N'EST PAS UN TERME DE LA SOMME. La colonne « À restituer »
+     des cautions porte, sous son total, ce que les cautions rendues en ont
+     retiré — sans quoi les trois nombres du pied ne se recoupent pas. Elle est
+     gardée pour elle-même dans `cautionsRendues` ; ici, la lire reviendrait à
+     coller deux montants bout à bout et à comparer 813 000 250 000 à 813 000. */
+  const ecart = cellule?.querySelector('[data-ecart]')?.textContent ?? ''
+  return (cellule?.textContent ?? '').replace(ecart, '')
 }
 
 describe('le pied qui somme la colonne qu’il somme', () => {
