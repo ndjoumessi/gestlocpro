@@ -41,6 +41,39 @@ import { RecordReadingModal } from './RecordReadingModal'
  * et un relevé manquant bloque la facturation du mois — ce qui mérite d'être
  * visible sans avoir à faire défiler un autre écran.
  */
+
+/**
+ * CE QU'UNE NOTE PEUT ÉNUMÉRER, ET CE QU'ELLE DOIT COMPTER FAUTE DE NOM.
+ *
+ * ═══ CE QUE LA PRODUCTION RENDAIT, MESURÉ LE 2026-10-07 ═══
+ *
+ *     « La facturation du mois restera incomplète tant qu'ils ne sont pas
+ *       saisis. —  et »
+ *
+ * Deux relevés manquants, deux libellés vides, et une conjonction suspendue
+ * dans le vide. La note énumérait des noms qu'elle n'avait pas.
+ *
+ * ═══ POURQUOI COMPTER PLUTÔT QUE TAIRE ═══
+ *
+ * Retirer les sans-nom aurait rendu « — A5 » là où deux relevés manquent : une
+ * tournée sur un logement, quand il y en a deux à faire. Le compte garde le
+ * nombre JUSTE et avoue ce qu'il ne sait pas nommer — c'est la même règle que
+ * le pied des colonnes, « une somme de sous-ensemble doit dire qu'elle en est
+ * une ».
+ *
+ * PURE, ET ÉPROUVÉE DIRECTEMENT : la démonstration ne porte que des relevés
+ * dont l'unité est connue, donc aucun cas passant par l'écran ne pourrait voir
+ * ce défaut.
+ */
+export function enumerationDesLogements(
+  libelles: string[],
+): { nommes: string[]; anonymes: number } {
+  /* L'ESPACE COMPTE POUR DU VIDE : le repli d'origine rendait la chaîne vide,
+     et un libellé blanc se lirait pareil dans une énumération. */
+  const nommes = libelles.filter((l) => l.trim() !== '')
+  return { nommes, anonymes: libelles.length - nommes.length }
+}
+
 export function Meters() {
   const t = useT()
   const d = useDates()
@@ -197,12 +230,46 @@ export function Meters() {
    * données viendront du serveur : tout ce qui va sous les yeux — colonne,
    * export, alerte — passe donc par le `label`.
    *
-   * Aucun repli sur l'identifiant : une unité introuvable laisse la cellule
-   * vide, et le manque se voit. Se replier dessus réintroduirait exactement
-   * l'uuid que ce détour supprime, au seul endroit où personne ne le
-   * chercherait.
+   * AUCUN REPLI SUR L'IDENTIFIANT, et cette moitié-là reste : s'y replier
+   * réintroduirait exactement l'uuid que ce détour supprime, au seul endroit où
+   * personne ne le chercherait.
+   *
+   * L'AUTRE MOITIÉ DISAIT « une unité introuvable laisse la cellule vide, ET LE
+   * MANQUE SE VOIT ». Elle est fausse, et la production l'a montré le
+   * 2026-10-07 : dix lignes, les deux premières cellules de chacune à la chaîne
+   * vide. Un vide se voit parmi des noms ; il ne se voit pas parmi des vides.
+   * Dix cellules vides se lisent comme une colonne qui n'existe pas, sur
+   * l'écran dont le geste est « aller relever le compteur du logement X ».
+   *
+   * LE MANQUE PORTE DONC UN NOM. Il ne dit pas lequel — on l'ignore — il dit
+   * qu'il y en a un et qu'on ne le connaît pas. C'est ce que l'export CSV du
+   * même écran faisait déjà sur la même donnée, trente lignes plus bas.
    */
   const unitLabel = (unitId: string) => unitById(unitId)?.label ?? ''
+
+  /** Le même libellé, mais destiné à l'ŒIL : le manque y est nommé. */
+  const unitLabelAffiche = (unitId: string) =>
+    unitById(unitId)?.label ?? t('app.meters.unknownUnit')
+
+  /** Le locataire, ou le fait qu'il n'y en a pas — jamais une cellule muette. */
+  const tenantAffiche = (unitId: string) =>
+    unitById(unitId)?.tenant ?? t('app.portfolio.noTenant')
+
+  /**
+   * L'ÉNUMÉRATION D'UNE NOTE, et le compte de ce qu'elle ne sait pas nommer.
+   *
+   * Les deux notes envoient une TOURNÉE — relever un compteur, vérifier une
+   * installation — et le nombre de logements à visiter doit rester juste même
+   * quand leurs noms manquent. Voir `enumerationDesLogements`.
+   */
+  const enumerer = (libelles: string[]) => {
+    const { nommes, anonymes } = enumerationDesLogements(libelles)
+    return n.list(
+      anonymes === 0
+        ? nommes
+        : [...nommes, t('app.meters.unknownUnits', { count: anonymes })],
+    )
+  }
 
   /**
    * DEUX INDEX FONT UNE CONSOMMATION, UN SEUL N'EN FAIT PAS.
@@ -646,7 +713,7 @@ export function Meters() {
       >
         {missing.length > 0 && (
           <>
-            {t('app.meters.missingHint')} — {n.list(missing.map((r) => unitLabel(r.unitId)))}
+            {t('app.meters.missingHint')} — {enumerer(missing.map((r) => unitLabel(r.unitId)))}
           </>
         )}
       </Notice>
@@ -666,7 +733,7 @@ export function Meters() {
       */}
       {aVerifier.length > 0 && (
         <Notice tone="warn" titre={t('app.meters.gapCount', { count: aVerifier.length })} className="mb-4">
-          {t('app.meters.gapHint')} — {n.list(aVerifier.map((r) => unitLabel(r.unitId)))}
+          {t('app.meters.gapHint')} — {enumerer(aVerifier.map((r) => unitLabel(r.unitId)))}
         </Notice>
       )}
 
@@ -738,12 +805,12 @@ export function Meters() {
             width: '5.5rem',
             render: (r) => (
               <div>
-                <span className="numeric font-medium">{unitLabel(r.unitId)}</span>
+                <span className="numeric font-medium">{unitLabelAffiche(r.unitId)}</span>
                 {/* `data-donnee` : un nom de locataire est saisi, sa longueur
                     n'est bornée par rien — la coupe est assumée, contrairement
                     au vocabulaire du produit. Voir `MESURER_TRONCATURES`. */}
                 <span data-donnee className="block truncate text-body text-muted sm:hidden">
-                  {unitById(r.unitId)?.tenant}
+                  {tenantAffiche(r.unitId)}
                 </span>
               </div>
             ),
@@ -752,7 +819,11 @@ export function Meters() {
             key: 'tenant',
             header: t('app.portfolio.tenant'),
             hideOnMobile: true,
-            render: (r) => <span className="text-muted">{unitById(r.unitId)?.tenant}</span>,
+            /* JAMAIS MUETTE : la colonne rendait `undefined` sur un logement que le
+               parc ne connaît pas, quand l'export du même écran écrivait déjà
+               « Aucun locataire » sur la même donnée. Deux surfaces, une seule
+               honnête — et c'était celle qu'on ne regarde pas. */
+            render: (r) => <span className="text-muted">{tenantAffiche(r.unitId)}</span>,
           },
           {
             key: 'water',

@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "feb9040c",
- "empreinteDesSources": "8198fbc59b69ce884ed10485b865fa4385b8d114305c82921761edbfdd105c31",
+ "course": "454b887a",
+ "empreinteDesSources": "b10707ae430bd9c3771dc0864da61bc9ba291aaa126e2ddadebc473a0824e2c1",
  "mesures": {
   "/@360": {
-   "octets": 578748,
-   "octetsFil": 188113,
+   "octets": 578904,
+   "octetsFil": 188147,
    "requetes": 4,
    "releve": {
-    "de": 578660,
+    "de": 578748,
     "requetesDe": 4,
-    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
-    "course": "feb9040c"
+    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
+    "course": "454b887a"
    }
   },
   "/demo@360": {
-   "octets": 443216,
-   "octetsFil": 125467,
+   "octets": 443481,
+   "octetsFil": 125592,
    "requetes": 2,
    "releve": {
-    "de": 442966,
+    "de": 443216,
     "requetesDe": 2,
-    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
-    "course": "feb9040c"
+    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
+    "course": "454b887a"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64614,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 578748,
-   "octetsFil": 188113,
+   "octets": 578904,
+   "octetsFil": 188147,
    "requetes": 4,
    "releve": {
-    "de": 578660,
+    "de": 578748,
     "requetesDe": 4,
-    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
-    "course": "feb9040c"
+    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
+    "course": "454b887a"
    }
   },
   "/demo@1280": {
-   "octets": 443216,
-   "octetsFil": 125467,
+   "octets": 443481,
+   "octetsFil": 125592,
    "requetes": 2,
    "releve": {
-    "de": 442966,
+    "de": 443216,
     "requetesDe": 2,
-    "motif": "l'année là où elle décide : disponibilité d'annonce et règlement de dépense datés en entier, la fenêtre des paiements nommée une fois au-dessus de sa grille, et le sélecteur de mois des dépenses rouvert en démonstration. La première rédaction portait l'année sur les colonnes : refusée par plafond-hauteurs, elle repliait l'axe.",
-    "course": "feb9040c"
+    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
+    "course": "454b887a"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64614,
    "requetes": 3,
    "releve": {
     "de": 65639,

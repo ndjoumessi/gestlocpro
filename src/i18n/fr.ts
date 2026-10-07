@@ -2124,6 +2124,11 @@ export const fr = {
       noPrice: 'Tarif non fixé',
       missingCount: '{count} relevés manquants pour la période',
       missingCount_one: '{count} relevé manquant pour la période',
+      /* LE MANQUE PORTE UN NOM plutôt qu'une cellule vide : il ne dit pas
+         QUEL logement, on l'ignore — il dit qu'il y en a un. */
+      unknownUnit: 'Logement inconnu',
+      unknownUnits: '{count} logements que ce parc ne connaît pas',
+      unknownUnits_one: '{count} logement que ce parc ne connaît pas',
       missingHint: 'La facturation du mois restera incomplète tant qu’ils ne sont pas saisis.',
       /* DEUX TOURNÉES DIFFÉRENTES, DEUX NOTES. L'une envoie RELEVER un compteur
          qu'on n'a pas lu ; celle-ci envoie VÉRIFIER une installation qu'on a lue.
