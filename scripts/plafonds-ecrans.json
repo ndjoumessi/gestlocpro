@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "061be760",
- "empreinteDesSources": "2703da7442a5973443a28de6777040340940c692079d9f8c900d7ad98529d410",
+ "course": "517d5c5d",
+ "empreinteDesSources": "fa398c038fcf1aecf2b53330b81041fc9eb25c7a94be7fda9498d34c40c6b1ec",
  "mesures": {
   "/@360": {
    "octets": 579000,
-   "octetsFil": 188173,
+   "octetsFil": 188177,
    "requetes": 4,
    "releve": {
     "de": 578904,
@@ -22,19 +22,19 @@
    }
   },
   "/demo@360": {
-   "octets": 443818,
-   "octetsFil": 125675,
+   "octets": 443926,
+   "octetsFil": 125691,
    "requetes": 2,
    "releve": {
-    "de": 443650,
+    "de": 443758,
     "requetesDe": 2,
-    "motif": "168 o sur /demo pour les deux lots des relevés orphelins, mesurés sur la base de main : la garde d'enregistrement lit la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui ferme une fuite de noms et de téléphones vers la clé de la démonstration ; et l'écran des relevés retient les UNITÉS de sa lecture datée à côté de ses relevés, pour cesser d'avouer « Logement inconnu » sur un logement que la réponse datée nomme. /@360 et /@1280 ne bougent pas : le poids est celui de l'espace applicatif.",
-    "course": "061be760"
+    "motif": "168 o sur /demo pour les deux lots des relevés orphelins, mesurés sur la base de main : la garde d'enregistrement lit la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui ferme une fuite de noms et de telephones vers la cle de la demonstration ; et l'ecran des releves retient les UNITES de sa lecture datee a cote de ses releves, pour cesser d'avouer « Logement inconnu » sur un logement que la reponse datee nomme. /@360 et /@1280 ne bougent pas : le poids est celui de l'espace applicatif.",
+    "course": "517d5c5d"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64611,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 579000,
-   "octetsFil": 188173,
+   "octetsFil": 188177,
    "requetes": 4,
    "releve": {
     "de": 578904,
@@ -77,19 +77,19 @@
    }
   },
   "/demo@1280": {
-   "octets": 443818,
-   "octetsFil": 125675,
+   "octets": 443926,
+   "octetsFil": 125691,
    "requetes": 2,
    "releve": {
-    "de": 443650,
+    "de": 443758,
     "requetesDe": 2,
-    "motif": "168 o sur /demo pour les deux lots des relevés orphelins, mesurés sur la base de main : la garde d'enregistrement lit la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui ferme une fuite de noms et de téléphones vers la clé de la démonstration ; et l'écran des relevés retient les UNITÉS de sa lecture datée à côté de ses relevés, pour cesser d'avouer « Logement inconnu » sur un logement que la réponse datée nomme. /@360 et /@1280 ne bougent pas : le poids est celui de l'espace applicatif.",
-    "course": "061be760"
+    "motif": "168 o sur /demo pour les deux lots des relevés orphelins, mesurés sur la base de main : la garde d'enregistrement lit la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui ferme une fuite de noms et de telephones vers la cle de la demonstration ; et l'ecran des releves retient les UNITES de sa lecture datee a cote de ses releves, pour cesser d'avouer « Logement inconnu » sur un logement que la reponse datee nomme. /@360 et /@1280 ne bougent pas : le poids est celui de l'espace applicatif.",
+    "course": "517d5c5d"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28377,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64611,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,
