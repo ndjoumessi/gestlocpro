@@ -1096,6 +1096,39 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
   }, [parkId, fromApi, units, works, deposits])
 
   /**
+   * RELIRE LE PARC, ET MARQUER SA PROVENANCE DU MÊME GESTE.
+   *
+   * `setFromApi(true)` ne vivait que dans l'effet de chargement, alors que
+   * QUATRE gestes relisent le parc après avoir écrit — « on relit le parc plutôt
+   * que de deviner l'état résultant », dit leur motif commun. Aucun ne levait le
+   * drapeau, et l'invariant ne tenait que par coïncidence : le chargement
+   * réussit avant qu'aucune mutation ne soit joignable.
+   *
+   * DEUX CHOSES EN DÉPENDENT, et la seconde n'a rien à voir avec la première :
+   * la boucle d'enregistrement ci-dessus, qui garde des noms et des téléphones,
+   * et `tenantUnitIds` plus bas, donc `isMine`, donc le PÉRIMÈTRE DU LOCATAIRE
+   * — drapeau baissé, il retombe sur l'unité de la démonstration et un locataire
+   * ne reconnaît aucun de ses propres logements.
+   *
+   * LE DRAPEAU SUIT DONC LA LECTURE, PAS L'ÉCRITURE. C'est ce qui le rend
+   * difficile à oublier : une cinquième relecture lèvera le drapeau par le seul
+   * fait de passer par ici, sans que son auteur ait à y penser. Poser quatre
+   * `setFromApi(true)` de plus aurait refermé les quatre cas connus en laissant
+   * la faute possible au cinquième.
+   *
+   * L'EFFET DE CHARGEMENT N'EMPRUNTE PAS CE CHEMIN, et c'est volontaire : il
+   * pose son drapeau APRÈS ses collections et seulement en cas de succès. Ici le
+   * drapeau précède les collections de l'appelant, mais dans le MÊME microtâche
+   * — React groupe les deux en un rendu, et aucun rendu intermédiaire ne montre
+   * un drapeau levé au-dessus de collections locales.
+   */
+  const relireLeParc = useCallback(async (id: string) => {
+    const parc = await chargerParc(id)
+    setFromApi(true)
+    return parc
+  }, [])
+
+  /**
    * Les mutations écrivent d'abord au serveur, puis rejouent la réponse.
    *
    * L'inverse — poser l'état localement puis appeler — donnerait une interface
@@ -1833,7 +1866,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
            consommation, le prix applicable et l'échéance recalculée viennent
            tous du serveur, et deux calculs de la même chose finissent toujours
            par diverger. C'est le motif déjà écrit pour la création d'une fiche. */
-        const parc = await chargerParc(parkId)
+        const parc = await relireLeParc(parkId)
         setReadings(parc.readings)
         setUnits(parc.units)
         return { ok: true as const, charge: r.charge }
@@ -1854,7 +1887,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         return { ok: false as const, erreur: 'autre' as const }
       }
     },
-    [parkId, signalerEchec],
+    [parkId, signalerEchec, relireLeParc],
   )
 
   /**
@@ -1870,7 +1903,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const r = await api.updateReading<{
           charges: { periodStart: string; updated: boolean; reason?: string }[]
         }>(parkId, readingId, corps)
-        const parc = await chargerParc(parkId)
+        const parc = await relireLeParc(parkId)
         setReadings(parc.readings)
         return { ok: true as const, charges: r.charges }
       } catch (erreur) {
@@ -1889,7 +1922,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         return { ok: false as const, erreur: 'autre' as const }
       }
     },
-    [parkId, signalerEchec],
+    [parkId, signalerEchec, relireLeParc],
   )
 
   const deleteReading = useCallback(
@@ -1897,7 +1930,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       if (!parkId) return false
       try {
         await api.deleteReading(parkId, readingId)
-        const parc = await chargerParc(parkId)
+        const parc = await relireLeParc(parkId)
         setReadings(parc.readings)
         return true
       } catch (erreur) {
@@ -1905,7 +1938,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         return false
       }
     },
-    [parkId, signalerEchec],
+    [parkId, signalerEchec, relireLeParc],
   )
 
   const remindRent = useCallback(
@@ -2158,7 +2191,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       // On relit le parc plutôt que de deviner l'état résultant : le serveur
       // décide du statut du bail, et deux calculs de la même chose finissent
       // toujours par diverger.
-      const parc = await chargerParc(parkId)
+      const parc = await relireLeParc(parkId)
       setUnits(parc.units)
       setWorks(parc.works)
       setDeposits(parc.deposits)
@@ -2167,7 +2200,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       signalerEchec(erreur)
       return false
     }
-  }, [parkId, signalerEchec])
+  }, [parkId, signalerEchec, relireLeParc])
 
   /**
    * Périmètre du locataire.
