@@ -1,4 +1,4 @@
-import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from './portfolio'
+import { BUILDINGS, DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from './portfolio'
 
 /**
  * Persistance de l'état de démonstration.
@@ -174,6 +174,53 @@ function formeValide(valeur: unknown): valeur is EtatPersiste {
 }
 
 /**
+ * L'ENREGISTREMENT DOIT S'ANCRER DANS LE PARC DE DÉMONSTRATION.
+ *
+ * `CHAMPS_REQUIS` ci-dessus nomme `buildingId` parce qu'une unité sans lien
+ * produisait un écran faux. Son remède vérifie que le champ est PRÉSENT — et
+ * c'est tout ce qu'il vérifie. Un parc RÉEL le porte : ce sont de vrais UUID, et
+ * un tel enregistrement passait `formeValide` sans réserve. La forme était
+ * contrôlée, l'APPARTENANCE jamais.
+ *
+ * CE QUE CELA RENDAIT EN PRODUCTION, mesuré au volet navigateur le 2026-10-07
+ * sur `/demo/parc` à 1440 px, sans aucune session : trois immeubles de
+ * démonstration annonçant chacun « aucun logement », et à leur suite DEUX
+ * groupes SANS NOM portant trois logements d'un parc réel, avec les noms de
+ * leurs locataires. Les unités reviennent de cette clé ; `buildings`, lui, n'y
+ * est pas enregistré et retombe sur la fixture. Aucun `buildingId` ne résolvait,
+ * et `buildingById(id)?.name ?? ''` rendait la chaîne vide.
+ *
+ * DEUX REMÈDES FERMAIENT L'ÉCRAN CONTRADICTOIRE, UN SEUL FERME LA FUITE.
+ * Enregistrer `buildings` en plus rendrait l'écran cohérent — et afficherait
+ * alors le parc réel PROPREMENT, noms d'immeubles compris, sur une adresse
+ * publique dont la raison d'être est de ne montrer personne. C'est le contraire
+ * de ce qu'il faut. Ce qui ne doit pas servir la démonstration, c'est
+ * l'enregistrement lui-même.
+ *
+ * ET POURQUOI PAS LA SEULE PURGE PAR VERSION, qui efface aussi ces dossiers :
+ * la version 11 a été incrémentée pour cela, en écrivant « l'écriture est fermée
+ * là-bas, ce qui suffit pour demain ». L'enregistrement mesuré en production
+ * PORTAIT la version 11 — il a donc été écrit après cette purge, par le code en
+ * cours. Une purge suppose qu'on a trouvé toutes les voies d'écriture ; ce refus
+ * est vrai quelle qu'en soit la voie, y compris celle qu'on n'a pas trouvée. Les
+ * deux se complètent plutôt qu'ils ne se remplacent : la purge vide hier, ce
+ * garde refuse ce qui reviendrait demain.
+ *
+ * LE PRIX, ET IL EST RÉEL : `addBuilding` crée en démonstration un immeuble
+ * `local-N` que cette clé n'enregistre pas. Un parcours qui déclare un immeuble
+ * puis y ajoute un logement perd donc les deux au rechargement, au lieu de
+ * rendre ce logement dans un groupe anonyme. C'est le même arbitrage que la
+ * version 11 a déjà posé — « un jeu fictif qu'un clic reconstitue, contre des
+ * données personnelles qui restent sinon sur l'appareil » — et il penche du même
+ * côté : l'état hybride n'était pas un parcours sauvé, c'était un écran faux.
+ */
+const IMMEUBLES_DE_DEMONSTRATION = new Set(BUILDINGS.map((immeuble) => immeuble.id))
+
+function ancreDansLaDemonstration(etat: EtatPersiste): boolean {
+  return etat.units.every((unite) => IMMEUBLES_DE_DEMONSTRATION.has(unite.buildingId))
+}
+
+/**
  * Signature de la forme enregistrée : les clés effectivement présentes.
  *
  * Exportée pour un seul usage — le test qui la compare à une valeur figée à
@@ -218,6 +265,14 @@ export function loadState(): EtatPersiste {
       return ETAT_INITIAL
     }
     if (!formeValide(enveloppe.etat)) {
+      window.localStorage.removeItem(CLE)
+      return ETAT_INITIAL
+    }
+    /* On SUPPRIME plutôt que d'ignorer, comme pour une version périmée : laisser
+       la clé en place ferait disparaître les noms de l'écran en laissant les
+       données personnelles sur l'appareil, et le chargement suivant les
+       relirait. */
+    if (!ancreDansLaDemonstration(enveloppe.etat)) {
       window.localStorage.removeItem(CLE)
       return ETAT_INITIAL
     }
