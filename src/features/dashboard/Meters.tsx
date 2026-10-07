@@ -26,7 +26,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
 import { useNumbers } from '@/lib/numbers'
-import { type MeterReading } from '@/data/portfolio'
+import { type MeterReading, type Unit } from '@/data/portfolio'
 import { ecartNotable, referenceDuMoisPrecedent } from './ecartDeConsommation'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { useSession } from '@/api/SessionProvider'
@@ -196,30 +196,70 @@ export function Meters() {
     `annule` : deux changements rapides lancent deux lectures, et la plus lente
     pourrait écraser la plus récente. Même garde que le mois du parc.
   */
-  const [relevesDUnAutreMois, setRelevesDUnAutreMois] = useState<MeterReading[] | null>(null)
+  /**
+   * LA LECTURE DATÉE GARDE SES UNITÉS, et c'est le défaut qu'elle ferme.
+   *
+   * Elle ne retenait que `parc.readings`. Or `chargerParc` rend un portefeuille
+   * ENTIER : `parc.units` est là, à côté, lu au même instant et sous le même
+   * périmètre. L'écran jetait cette moitié et cherchait ses libellés dans la
+   * réponse que le FOURNISSEUR a lue à son montage — deux réponses, dont une
+   * seule porte les relevés affichés.
+   *
+   * LE SERVEUR NE PEUT PAS RENDRE D'ORPHELIN : dans `GET /portfolio`, unités et
+   * relevés passent les mêmes deux filtres de périmètre, et la borne du mois ne
+   * s'applique qu'aux relevés. Le désalignement naît donc de la rencontre de
+   * deux réponses, et il suffit que le parc ait grandi depuis le montage — que
+   * le fournisseur ne relit pas, changer de mois ne rouvrant pas son attente.
+   */
+  const [moisLu, setMoisLu] = useState<{
+    readings: MeterReading[]
+    /** `null` en démonstration : les deux collections sortent du même module. */
+    unitesDuMois: Map<string, Unit> | null
+  } | null>(null)
   useEffect(() => {
     if (!moisChoisi || moisChoisi === moisDuFournisseur) {
-      setRelevesDUnAutreMois(null)
+      setMoisLu(null)
       return
     }
     if (!parkId) {
-      setRelevesDUnAutreMois(relevesDuMois(moisChoisi))
+      setMoisLu({ readings: relevesDuMois(moisChoisi), unitesDuMois: null })
       return
     }
     let annule = false
     void chargerParc(parkId, moisChoisi)
       .then((parc) => {
-        if (!annule) setRelevesDUnAutreMois(parc.readings)
+        if (!annule) {
+          setMoisLu({
+            readings: parc.readings,
+            unitesDuMois: new Map(parc.units.map((u) => [u.id, u])),
+          })
+        }
       })
       .catch(() => {
-        if (!annule) setRelevesDUnAutreMois(null)
+        if (!annule) setMoisLu(null)
       })
     return () => {
       annule = true
     }
   }, [parkId, moisChoisi, moisDuFournisseur])
 
-  const RELEVES_AFFICHES = relevesDUnAutreMois ?? TOUS
+  const RELEVES_AFFICHES = moisLu?.readings ?? TOUS
+
+  /**
+   * L'unité d'un relevé — le fournisseur D'ABORD, la lecture datée en RENFORT.
+   *
+   * Cet ordre-ci, alors que le principe dit « lire ses unités dans le même mois
+   * que ses relevés » : les deux collections ne divergent que d'une façon qui
+   * compte — l'une connaît un logement que l'autre ignore — et le renfort y
+   * suffit. Partout ailleurs le fournisseur est plus FRAIS, puisqu'il encaisse
+   * les mutations de l'écran, là où la lecture datée est un instantané qu'aucun
+   * geste ne rafraîchit. Préférer l'instantané échangerait une cellule muette
+   * contre une cellule périmée, le plus mauvais des deux : un vide interroge,
+   * un nom faux se croit. Et il n'y a aucune version « de juillet » à préférer
+   * — le serveur ne garde pas d'historique des libellés.
+   */
+  const uniteDuReleve = (unitId: string) =>
+    unitById(unitId) ?? moisLu?.unitesDuMois?.get(unitId) ?? null
   const READINGS = RELEVES_AFFICHES.filter((r) => role !== 'tenant' || isMine(r.unitId))
 
   /**
@@ -245,15 +285,15 @@ export function Meters() {
    * qu'il y en a un et qu'on ne le connaît pas. C'est ce que l'export CSV du
    * même écran faisait déjà sur la même donnée, trente lignes plus bas.
    */
-  const unitLabel = (unitId: string) => unitById(unitId)?.label ?? ''
+  const unitLabel = (unitId: string) => uniteDuReleve(unitId)?.label ?? ''
 
   /** Le même libellé, mais destiné à l'ŒIL : le manque y est nommé. */
   const unitLabelAffiche = (unitId: string) =>
-    unitById(unitId)?.label ?? t('app.meters.unknownUnit')
+    uniteDuReleve(unitId)?.label ?? t('app.meters.unknownUnit')
 
   /** Le locataire, ou le fait qu'il n'y en a pas — jamais une cellule muette. */
   const tenantAffiche = (unitId: string) =>
-    unitById(unitId)?.tenant ?? t('app.portfolio.noTenant')
+    uniteDuReleve(unitId)?.tenant ?? t('app.portfolio.noTenant')
 
   /**
    * L'ÉNUMÉRATION D'UNE NOTE, et le compte de ce qu'elle ne sait pas nommer.
@@ -590,7 +630,7 @@ export function Meters() {
                   // l'œil, et il coupe « 4 120 » en deux colonnes à l'import.
                   return [
                     unitLabel(r.unitId),
-                    unitById(r.unitId)?.tenant ?? t('app.portfolio.noTenant'),
+                    uniteDuReleve(r.unitId)?.tenant ?? t('app.portfolio.noTenant'),
                     r.waterPrevious,
                     r.waterCurrent,
                     c.water,

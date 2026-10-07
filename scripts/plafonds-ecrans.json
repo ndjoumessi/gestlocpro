@@ -7,8 +7,8 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "2c03b15f",
- "empreinteDesSources": "d736cd20eeb7b9a7204190a85b9c315a2764306d4f853fff673664d830761bbb",
+ "course": "0302f4a0",
+ "empreinteDesSources": "e3aacada60f4b75310f204263e4bd3edebf6e3672139186ce0f1597ff244119f",
  "mesures": {
   "/@360": {
    "octets": 578904,
@@ -22,19 +22,19 @@
    }
   },
   "/demo@360": {
-   "octets": 443486,
-   "octetsFil": 125595,
+   "octets": 443641,
+   "octetsFil": 125623,
    "requetes": 2,
    "releve": {
-    "de": 443481,
+    "de": 443486,
     "requetesDe": 2,
-    "motif": "5 o sur /demo : la garde d'enregistrement passe du parkId à la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui purge les parcs réels déjà écrits. Le prix d'une fuite de noms et de téléphones fermée, et des dix relevés orphelins qu'elle produisait.",
-    "course": "2c03b15f"
+    "motif": "155 o sur /demo : l'écran des relevés retient les UNITÉS de la lecture datée à côté de ses relevés (une Map par mois lu) et résout le logement d'un relevé sur les deux collections. Le prix de deux cellules qui cessaient de mentir — « Logement inconnu » et « Aucun locataire » sur un logement que la réponse datée nomme.",
+    "course": "0302f4a0"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28378,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28378,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64612,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -77,19 +77,19 @@
    }
   },
   "/demo@1280": {
-   "octets": 443486,
-   "octetsFil": 125595,
+   "octets": 443641,
+   "octetsFil": 125623,
    "requetes": 2,
    "releve": {
-    "de": 443481,
+    "de": 443486,
     "requetesDe": 2,
-    "motif": "5 o sur /demo : la garde d'enregistrement passe du parkId à la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui purge les parcs réels déjà écrits. Le prix d'une fuite de noms et de téléphones fermée, et des dix relevés orphelins qu'elle produisait.",
-    "course": "2c03b15f"
+    "motif": "155 o sur /demo : l'écran des relevés retient les UNITÉS de la lecture datée à côté de ses relevés (une Map par mois lu) et résout le logement d'un relevé sur les deux collections. Le prix de deux cellules qui cessaient de mentir — « Logement inconnu » et « Aucun locataire » sur un logement que la réponse datée nomme.",
+    "course": "0302f4a0"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28378,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28378,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64612,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,
