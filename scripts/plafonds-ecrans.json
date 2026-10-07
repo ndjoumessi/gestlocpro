@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "2efeaaff",
- "empreinteDesSources": "e969a3af24589787ab45ae8e59eaf2a13514615cb33b1ee2fbdcc87c0de25b6a",
+ "course": "262073d4",
+ "empreinteDesSources": "2aee661477bfa8bc81fda3b0387656f8739fc884f8c142b554394b9411743e75",
  "mesures": {
   "/@360": {
    "octets": 579000,
-   "octetsFil": 188177,
+   "octetsFil": 188176,
    "requetes": 4,
    "releve": {
     "de": 578904,
@@ -22,19 +22,19 @@
    }
   },
   "/demo@360": {
-   "octets": 443650,
-   "octetsFil": 125633,
+   "octets": 443758,
+   "octetsFil": 125651,
    "requetes": 2,
    "releve": {
-    "de": 443481,
+    "de": 443650,
     "requetesDe": 2,
-    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
-    "course": "2efeaaff"
+    "motif": "le refus d'un enregistrement local qui ne s'ancre pas dans le parc de démonstration : /demo rendait trois logements d'un parc réel, noms de locataires et téléphone compris, dans deux groupes sans nom. Un Set des trois identifiants d'immeuble, une fonction de six lignes et deux branches dans loadState.",
+    "course": "262073d4"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 579000,
-   "octetsFil": 188177,
+   "octetsFil": 188176,
    "requetes": 4,
    "releve": {
     "de": 578904,
@@ -77,19 +77,19 @@
    }
   },
   "/demo@1280": {
-   "octets": 443650,
-   "octetsFil": 125633,
+   "octets": 443758,
+   "octetsFil": 125651,
    "requetes": 2,
    "releve": {
-    "de": 443481,
+    "de": 443650,
     "requetesDe": 2,
-    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
-    "course": "2efeaaff"
+    "motif": "le refus d'un enregistrement local qui ne s'ancre pas dans le parc de démonstration : /demo rendait trois logements d'un parc réel, noms de locataires et téléphone compris, dans deux groupes sans nom. Un Set des trois identifiants d'immeuble, une fonction de six lignes et deux branches dans loadState.",
+    "course": "262073d4"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,
