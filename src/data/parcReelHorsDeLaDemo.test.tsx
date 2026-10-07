@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, attendreLeChargement } from '@/test/render'
+import { renderApp, screen, attendreLeChargement, userEvent } from '@/test/render'
 import { COMPTE_FICTIF, installerFauxServeur } from '@/test/api'
 import type { EtatSession } from '@/api/SessionProvider'
 
@@ -141,5 +141,71 @@ describe('le parc réel ne s’enregistre pas dans le stockage de la démonstrat
 
     const main = screen.getByRole('main')
     for (const trace of NOMINATIF) expect(main, trace).not.toHaveTextContent(trace)
+  })
+})
+
+/**
+ * ═══ L'ADHÉSION QUI DISPARAÎT SOUS LE FOURNISSEUR ═══
+ *
+ * Les deux cas ci-dessus éprouvent un parc réel dont le `parkId` ne bouge
+ * jamais : la garde `if (parkId) return` de la boucle d'enregistrement tient,
+ * et rien ne part dans `localStorage`.
+ *
+ * ELLE NE TIENT PLUS DÈS QUE LE `parkId` TOMBE À `null` SOUS LES DONNÉES DÉJÀ
+ * CHARGÉES. Se déconnecter fait exactement cela : `setEtat({ statut:
+ * 'anonyme' })` vide `adhesions`, donc `adhesionActive`, donc `parkId` — mais
+ * AUCUN chemin ne remet `units`, `works` et `deposits` à leur jeu de
+ * démonstration. Le rendu suivant voit donc `parkId === null` et trois
+ * collections qui ne sont pas celles du démarrage : la condition de la boucle
+ * est satisfaite dans les deux sens, et le parc réel s'enregistre.
+ *
+ * Le fournisseur est encore MONTÉ à cet instant : il enveloppe `/app` et
+ * `/demo`, et la barrière d'accès vit à l'intérieur — sa redirection n'a lieu
+ * qu'à l'effet suivant. L'écriture passe avant le démontage.
+ *
+ * CE QUE CELA COÛTE EST LE DÉFAUT DU 2026-10-07 : `loadState()` sème les unités
+ * au premier rendu, `READINGS_DEMO` sème les relevés, et aucun autre chemin ne
+ * repose des relevés de démonstration. Un parc réel dans la clé donne donc
+ * exactement l'écran mesuré en production — dix relevés de démonstration dont
+ * aucun ne trouve son logement.
+ */
+describe('une adhésion qui disparaît n’enregistre pas le parc réel', () => {
+  it('n’écrit aucun nom ni téléphone réel en se déconnectant', async () => {
+    const serveur = serveurAvecParcReel()
+    serveur.quand('POST', '/auth/logout', { status: 204 })
+    const user = userEvent.setup()
+    await renderApp('/app/parc', { session: sessionProprietaire() })
+    await attendreLeChargement()
+
+    // Le parc réel est bien à l'écran : sans cela le cas ne prouverait rien.
+    expect(screen.getByRole('main')).toHaveTextContent(LOCATAIRE_REEL)
+
+    await user.click(screen.getByRole('button', { name: /sarah ngassa/i }))
+    await user.click(screen.getByRole('menuitem', { name: /se déconnecter/i }))
+
+    const enregistre = window.localStorage.getItem('gestlocpro.portfolio') ?? ''
+    for (const trace of NOMINATIF) expect(enregistre, trace).not.toContain(trace)
+  })
+
+  it('ne laisse pas des relevés de démonstration orphelins sur `/demo/releves`', async () => {
+    const serveur = serveurAvecParcReel()
+    serveur.quand('POST', '/auth/logout', { status: 204 })
+    const user = userEvent.setup()
+    const espace = await renderApp('/app/parc', { session: sessionProprietaire() })
+    await attendreLeChargement()
+    expect(screen.getByRole('main')).toHaveTextContent(LOCATAIRE_REEL)
+
+    await user.click(screen.getByRole('button', { name: /sarah ngassa/i }))
+    await user.click(screen.getByRole('menuitem', { name: /se déconnecter/i }))
+    espace.unmount()
+
+    // Le visiteur ouvre l'adresse publique, comme la production le 2026-10-07.
+    await renderApp('/demo/releves')
+    await attendreLeChargement()
+
+    /* « Logement inconnu » est le NOM que le lot du symptôme a donné au manque.
+       Sur la démonstration il ne doit jamais paraître : le jeu de relevés et le
+       jeu d'unités sortent du même module. */
+    expect(screen.queryAllByText('Logement inconnu')).toHaveLength(0)
   })
 })

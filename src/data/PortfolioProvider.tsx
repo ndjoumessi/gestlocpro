@@ -1056,7 +1056,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
      * survivre à un rafraîchissement, comme celui d'un visiteur. Ce qui ne doit
      * pas s'écrire, c'est ce qui vient du SERVEUR.
      */
-    if (parkId) return
+    /**
+     * `fromApi` ET `parkId`, parce que `parkId` seul datait l'écriture du
+     * MAUVAIS instant.
+     *
+     * `parkId` dit « y a-t-il un parc À LIRE maintenant » ; la question de cette
+     * boucle est « ces collections viennent-elles du SERVEUR ». Les deux
+     * réponses divergent à la seconde où l'adhésion tombe : se déconnecter vide
+     * `adhesions`, donc `parkId`, et AUCUN chemin ne remet pour autant les trois
+     * collections à leur jeu de démonstration. Les deux moitiés de la condition
+     * étaient alors vraies ensemble, et le parc réel partait dans la clé de la
+     * démonstration — nom et TÉLÉPHONE du locataire, déclarant, cautionnaire.
+     * Le fournisseur est encore MONTÉ à cet instant : il enveloppe `/app` et
+     * `/demo`, et la redirection de la barrière d'accès n'a lieu qu'à l'effet
+     * suivant.
+     *
+     * CE QUE CELA COÛTAIT, MESURÉ EN PRODUCTION LE 2026-10-07, et sur l'écran
+     * des RELEVÉS : `loadState()` sème les unités, `READINGS_DEMO` sème les
+     * relevés, et aucun chemin ne repose jamais de relevés de démonstration. Un
+     * parc réel dans cette clé rend donc dix relevés de démonstration dont aucun
+     * ne trouve son logement — reproduit, dix fois « Logement inconnu ».
+     *
+     * `fromApi` CONVIENT ICI, là où son propre commentaire le récuse pour
+     * `loading` : ses trois sens faux — pas encore chargé, échec, aucun parc —
+     * tombent du même côté, aucune donnée de serveur n'a atterri. Rien ne le
+     * remet à `false` : un parc réel passé par ici ferme cette clé pour le reste
+     * de la vie du fournisseur, et c'est voulu — l'état est contaminé.
+     */
+    if (parkId || fromApi) return
     if (
       units === intact.current.units &&
       works === intact.current.works &&
@@ -1066,7 +1093,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }
     saveState({ units, works, deposits })
     setStored(true)
-  }, [parkId, units, works, deposits])
+  }, [parkId, fromApi, units, works, deposits])
 
   /**
    * Les mutations écrivent d'abord au serveur, puis rejouent la réponse.

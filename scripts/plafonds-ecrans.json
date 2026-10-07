@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "454b887a",
- "empreinteDesSources": "b10707ae430bd9c3771dc0864da61bc9ba291aaa126e2ddadebc473a0824e2c1",
+ "course": "2c03b15f",
+ "empreinteDesSources": "d736cd20eeb7b9a7204190a85b9c315a2764306d4f853fff673664d830761bbb",
  "mesures": {
   "/@360": {
    "octets": 578904,
-   "octetsFil": 188147,
+   "octetsFil": 188146,
    "requetes": 4,
    "releve": {
     "de": 578748,
@@ -22,19 +22,19 @@
    }
   },
   "/demo@360": {
-   "octets": 443481,
-   "octetsFil": 125592,
+   "octets": 443486,
+   "octetsFil": 125595,
    "requetes": 2,
    "releve": {
-    "de": 443216,
+    "de": 443481,
     "requetesDe": 2,
-    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
-    "course": "454b887a"
+    "motif": "5 o sur /demo : la garde d'enregistrement passe du parkId à la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui purge les parcs réels déjà écrits. Le prix d'une fuite de noms et de téléphones fermée, et des dix relevés orphelins qu'elle produisait.",
+    "course": "2c03b15f"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 578904,
-   "octetsFil": 188147,
+   "octetsFil": 188146,
    "requetes": 4,
    "releve": {
     "de": 578748,
@@ -77,19 +77,19 @@
    }
   },
   "/demo@1280": {
-   "octets": 443481,
-   "octetsFil": 125592,
+   "octets": 443486,
+   "octetsFil": 125595,
    "requetes": 2,
    "releve": {
-    "de": 443216,
+    "de": 443481,
     "requetesDe": 2,
-    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
-    "course": "454b887a"
+    "motif": "5 o sur /demo : la garde d'enregistrement passe du parkId à la PROVENANCE (|| fromApi) et la version du stockage passe à 12, ce qui purge les parcs réels déjà écrits. Le prix d'une fuite de noms et de téléphones fermée, et des dix relevés orphelins qu'elle produisait.",
+    "course": "2c03b15f"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28378,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64612,
    "requetes": 3,
    "releve": {
     "de": 65639,

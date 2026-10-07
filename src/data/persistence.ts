@@ -116,8 +116,24 @@ import { DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from 
  * LE PRIX EST CONNU ET ACCEPTÉ : un parcours de démonstration en cours est
  * effacé au prochain chargement. C'est un jeu fictif qu'un clic reconstitue,
  * contre des données personnelles qui restent sinon sur l'appareil.
+ *
+ * Version 12 : LA FORME N'A PAS CHANGÉ NON PLUS. Elle purge ce que la version
+ * 11 croyait avoir fermé.
+ *
+ * « L'écriture est fermée là-bas, ce qui suffit pour demain », disait l'entrée
+ * ci-dessus. Elle ne l'était pas : la boucle d'enregistrement se gardait par
+ * `if (parkId) return`, et `parkId` tombe à `null` AVANT que les trois
+ * collections cessent de porter le parc réel — se déconnecter suffit. Le parc
+ * réel repartait donc ici, sous la version 11 cette fois, et `loadState()` la
+ * relit comme bonne. La garde est désormais posée sur la PROVENANCE (`fromApi`),
+ * ce qui ferme demain pour de bon ; cet incrément est pour les trois dernières
+ * semaines, où chaque déconnexion a réécrit la clé.
+ *
+ * CE QUE CELA DONNAIT À L'ÉCRAN, mesuré en production le 2026-10-07 : dix
+ * relevés de démonstration — eux, aucun chemin ne les repose jamais — au-dessus
+ * d'unités réelles qu'ils ne connaissent pas. Dix fois « Logement inconnu ».
  */
-const VERSION = 11
+const VERSION = 12
 const CLE = 'gestlocpro.portfolio'
 
 export interface EtatPersiste {
