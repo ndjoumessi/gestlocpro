@@ -1,4 +1,13 @@
-import { BUILDINGS, DEPOSITS, UNITS, WORKS, type Deposit, type Unit, type WorkOrder } from './portfolio'
+import {
+  BUILDINGS,
+  DEPOSITS,
+  READINGS,
+  UNITS,
+  WORKS,
+  type Deposit,
+  type Unit,
+  type WorkOrder,
+} from './portfolio'
 
 /**
  * Persistance de l'état de démonstration.
@@ -237,6 +246,83 @@ function ancreDansLaDemonstration(etat: EtatPersiste): boolean {
 }
 
 /**
+ * L'ENREGISTREMENT DOIT PORTER TOUTES LES UNITÉS QUE LES RELEVÉS RÉFÉRENCENT.
+ *
+ * TROISIÈME VOIE VERS « LOGEMENT INCONNU », et la seule qui n'a besoin d'aucun
+ * parc réel. Les deux précédentes — la PROVENANCE, puis l'ANCRAGE juste
+ * au-dessus — parlaient d'un parc étranger qui s'invitait dans la clé. Celle-ci
+ * s'ouvre toute seule, avec le TEMPS.
+ *
+ * `EtatPersiste` enregistre `units`, `works` et `deposits`. Il n'enregistre pas
+ * `readings` : le fournisseur sème ses relevés depuis `READINGS` en dur à chaque
+ * chargement, et aucun chemin ne les repose depuis la clé. Deux collections qui
+ * se référencent par `unitId`, dont une seule est enregistrée — et un
+ * enregistrement d'hier relu sous les relevés d'aujourd'hui orpheline tout ce
+ * qui a bougé entre les deux.
+ *
+ * RIEN NE L'ARRÊTAIT EN CHEMIN : la provenance est bonne, l'ancrage tient, la
+ * forme est intacte, et `VERSION` n'a aucune raison de bouger puisque c'est le
+ * CONTENU du jeu qui a changé, pas sa forme. `persistenceVersion.test.ts` le dit
+ * d'ailleurs en propres termes — il garde « que la forme ne change jamais EN
+ * SILENCE », ce qui est tout ce qu'on lui demande.
+ *
+ * ET LE DÉCLENCHEUR EST LE PARCOURS NORMAL D'UN VISITEUR QUI REPASSE : sondé au
+ * volet navigateur le 2026-10-07, un clic sur « Valider le devis » depuis
+ * `/demo/travaux` fait passer cette clé d'absente à présente. Il suffit d'avoir
+ * touché à la démonstration un jour, puis d'y revenir après un remaniement du
+ * jeu de démonstration.
+ *
+ * ═══ POURQUOI REFUSER PLUTÔT QU'ENREGISTRER `readings` AVEC LE RESTE ═══
+ *
+ * L'autre remède existe, et il est séduisant : enregistrer les relevés eux aussi,
+ * pour que les deux collections dérivent ENSEMBLE. Il a le mérite de garder le
+ * parcours là où celui-ci l'efface. Trois mesures l'ont écarté.
+ *
+ * 1. IL PAIE AUJOURD'HUI, POUR TOUT LE MONDE, LE PRIX QU'IL PRÉTEND ÉVITER.
+ *    Ajouter une clé à la forme enregistrée fait rougir
+ *    `persistenceVersion.test.ts` — mesuré : ses DEUX cas tombent — et le
+ *    message d'erreur dicte la suite, incrémenter `VERSION`. Or un incrément
+ *    purge TOUS les enregistrements à la relecture suivante. L'option « garder
+ *    le parcours » commence donc par effacer le parcours de chaque visiteur,
+ *    tout de suite. Ce refus-ci n'efface que les enregistrements réellement
+ *    incohérents — à cette heure, aucun : aucun geste de la démonstration ne
+ *    RÉDUIT `units`, `removeUnit` étant hors de portée faute de `deletable`.
+ *
+ * 2. IL GROSSIT LA CLÉ DE 58 %, mesuré : 4 825 o aujourd'hui, 7 614 o avec les
+ *    dix relevés. Ce n'est pas un plafond franchi, c'est un coût sans
+ *    contrepartie — on n'enregistre pas ce que personne ne modifie. Aucun geste
+ *    de la démonstration n'écrit un relevé.
+ *
+ * 3. IL VA CONTRE L'ARBITRAGE DÉJÀ RENDU UN LOT PLUS TÔT, sur exactement la même
+ *    classe de défaut. `buildings` n'est pas enregistré non plus, et l'ancrage
+ *    ci-dessus a tranché en REFUSANT l'enregistrement plutôt qu'en persistant la
+ *    collection manquante — « ce qui ne doit pas servir la démonstration, c'est
+ *    l'enregistrement lui-même ». Deux remèdes opposés pour deux moitiés du même
+ *    défaut laisseraient ce fichier sans règle lisible.
+ *
+ * ET SURTOUT PAS UN FILTRE À L'AFFICHAGE : masquer les relevés orphelins
+ * effacerait une donnée au lieu de la rattacher, et l'écran des relevés vient
+ * justement d'être corrigé pour NOMMER ce qu'il ne sait pas rattacher — « un
+ * vide se voit parmi des noms ; il ne se voit pas parmi des vides ». Le manque
+ * doit rester visible le jour où il est réel ; ce qu'on supprime ici est la
+ * cause, pas le symptôme.
+ *
+ * LE PRIX, ET IL EST RÉEL, le même que celui de l'ancrage : le jour où le jeu de
+ * démonstration gagne un logement relevé, le parcours en cours de chaque
+ * visiteur qui revient est effacé — une fois. C'est le même arbitrage que les
+ * versions 11 et 12 ont déjà posé, « un jeu fictif qu'un clic reconstitue »
+ * contre un écran faux, et il penche du même côté.
+ */
+const UNITES_QUE_LES_RELEVES_REFERENCENT = new Set(READINGS.map((releve) => releve.unitId))
+
+function coherentAvecLesReleves(etat: EtatPersiste): boolean {
+  const unitesEnregistrees = new Set(etat.units.map((unite) => unite.id))
+  return [...UNITES_QUE_LES_RELEVES_REFERENCENT].every((unitId) =>
+    unitesEnregistrees.has(unitId),
+  )
+}
+
+/**
  * Signature de la forme enregistrée : les clés effectivement présentes.
  *
  * Exportée pour un seul usage — le test qui la compare à une valeur figée à
@@ -289,6 +375,13 @@ export function loadState(): EtatPersiste {
        données personnelles sur l'appareil, et le chargement suivant les
        relirait. */
     if (!ancreDansLaDemonstration(enveloppe.etat)) {
+      window.localStorage.removeItem(CLE)
+      return ETAT_INITIAL
+    }
+    /* Même geste, et pour la même raison : un enregistrement en retard sur le
+       jeu de relevés rendrait un écran FAUX — des relevés sans logement — et le
+       laisser en place le ferait relire au chargement suivant. */
+    if (!coherentAvecLesReleves(enveloppe.etat)) {
       window.localStorage.removeItem(CLE)
       return ETAT_INITIAL
     }
