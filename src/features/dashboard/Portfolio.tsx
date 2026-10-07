@@ -317,6 +317,63 @@ export function Portfolio() {
   }, [repere, loading, BUILDINGS.length])
 
   const unitesAffichees = unitesDuMois ?? units
+
+  /**
+   * ═══ LE COMPTE ANNONCÉ DÉCRIT LA POPULATION RENDUE, ET DIT QUAND IL N'EN
+   *     DÉCRIT QU'UNE PART ═══
+   *
+   * CET ÉCRAN TIENT DEUX COLLECTIONS DE LOGEMENTS. `units`, le parc tel que le
+   * fournisseur l'a lu aujourd'hui ; `unitesAffichees`, celui du MOIS AFFICHÉ.
+   * Tout ce qui se rend part de la seconde — les groupes, l'occupation des
+   * en-têtes, les quatre tuiles, et jusqu'à `lignesEnTout` dont le commentaire
+   * dit déjà pourquoi : « prendre `units` ferait annoncer un dénominateur que
+   * cet écran ne montre pas ». Le sous-titre, lui, comptait la PREMIÈRE.
+   *
+   * `??` NE SE REPLIE QUE SUR `null` ET `undefined`. Un mois dont la réponse ne
+   * porte aucun logement rend un TABLEAU VIDE, pris tel quel : les en-têtes
+   * passent à « · aucun logement », leur rapport à `0/0`, le pied de totaux à
+   * zéro ligne — et le sous-titre annonçait trois unités deux centimètres plus
+   * haut.
+   *
+   * CETTE FORME-LÀ A ÉTÉ VUE EN PRODUCTION LE 2026-10-07 — « 3 unités » au-dessus
+   * de trois en-têtes disant « aucun logement » — MAIS PAS PAR CE CHEMIN, et il
+   * faut le dire plutôt que de s'attribuer la capture. Là-bas, aucune session
+   * n'était ouverte (`/api/auth/me` rendait 401), donc `parkId` valait `null` et
+   * `unitesDuMois` ne partait jamais : la contradiction venait d'unités d'un parc
+   * RÉEL restaurées depuis `localStorage` par-dessus les immeubles de la
+   * démonstration, dont aucun `buildingId` ne résolvait. Autre sujet, autre
+   * fichier (`src/data/persistence.ts`).
+   *
+   * CE QUE CE GARDE-CI TIENT EST DONC LE CONTRAT DU CLIENT : il reçoit un tableau
+   * dont rien ne lui garantit la taille, et il doit compter ce qu'il montre. La
+   * route, telle qu'elle est écrite aujourd'hui, borne au mois la seule échéance
+   * retenue et rend le même jeu d'unités partout — ce qui rend la divergence
+   * injoignable par le réseau, non impossible.
+   *
+   * C'EST LA DOCTRINE DE `lignesEnTout`, D'UN ÉTAGE PLUS HAUT : une somme de
+   * sous-ensemble doit dire qu'elle en est une. Le sous-titre était le seul
+   * nombre de l'écran qui ne la suivait pas.
+   *
+   * ON NE REMPLACE PAS LE TOTAL PAR LA PART, on énonce les deux. « aucune sur ce
+   * mois » seul ferait disparaître la taille du parc, que ce sous-titre est le
+   * seul endroit à porter — et un parc de trois logements dont le mois d'avant
+   * n'en appelait aucun n'est pas un parc vide.
+   *
+   * LA RECHERCHE N'ENTRE PAS ICI, et c'est délibéré : elle découpe `rows`, et
+   * son dénominateur est celui du pied de la table, qui le dit sur place. Le
+   * sous-titre parle du parc du mois, pas de la frappe en cours.
+   */
+  const compteDesLogements = (() => {
+    const toutLeParc = t('common.unitCount', { count: units.length })
+    if (unitesAffichees.length === units.length) return toutLeParc
+    if (unitesAffichees.length === 0)
+      return t('app.portfolio.unitsNoneOnMonth', { total: toutLeParc })
+    return t('app.portfolio.unitsOnMonth', {
+      total: toutLeParc,
+      shown: unitesAffichees.length,
+    })
+  })()
+
   const { notify } = useToast()
   /** L'immeuble dont la suppression attend confirmation. */
   const [aSupprimer, setASupprimer] = useState<Immeuble | null>(null)
@@ -1224,7 +1281,7 @@ export function Portfolio() {
         title={t('app.portfolio.title')}
         description={t('app.portfolio.subtitle', {
           buildings: t('common.buildingCount', { count: BUILDINGS.length }),
-          units: t('common.unitCount', { count: units.length }),
+          units: compteDesLogements,
         })}
         // Le seul endroit du produit où l'on constitue son parc. Il n'existait
         // pas : tous les écrans opéraient sur des immeubles qu'aucun geste ne
