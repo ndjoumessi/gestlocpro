@@ -7,8 +7,8 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "bdeadf48",
- "empreinteDesSources": "df878f8d57aca5ca7889f0f219cec96c8ea62d0f79f3504df9cb0db1f3fb577f",
+ "course": "ec3d5649",
+ "empreinteDesSources": "e17e1d5e7ed03123e32f5710a8848284ef18d75ef717e35226a78574b6416631",
  "mesures": {
   "/@360": {
    "octets": 579000,
@@ -22,14 +22,14 @@
    }
   },
   "/demo@360": {
-   "octets": 444005,
-   "octetsFil": 125706,
+   "octets": 444063,
+   "octetsFil": 125725,
    "requetes": 2,
    "releve": {
     "de": 443926,
     "requetesDe": 2,
-    "motif": "79 o sur /demo : les quatre relectures du parc passent par relireLeParc, qui marque la provenance du meme geste. Le drapeau fromApi a DEUX lecteurs — la boucle d'enregistrement, qui garde des noms et des telephones hors de la cle de la demonstration, et tenantUnitIds, donc le perimetre du locataire. Il n'avait qu'un endroit qui le levait pour cinq qui posent du parc servi.",
-    "course": "bdeadf48"
+    "motif": "137 o bruts sur /demo (34 o sur le fil, +1 ms a 400 kb/s) pour la troisieme voie vers des releves orphelins : loadState refuse desormais un enregistrement dont les unites ne portent pas tous les releves que READINGS reference. La base a ete remesuree sur main AVANT ce lot et poids-ecrans y etait vert, donc ces 137 o sont ceux de ce lot seul et d aucun autre. CE QU ILS ACHETENT : un Set des unites relevees et une comparaison a la relecture, qui ferment la derive de la fixture - le jour ou UNITS_DEMO gagne un logement releve, le visiteur qui revient ne lit plus ses anciennes unites sous les nouveaux releves. L option ecartee coutait 58 pour cent de la cle (4825 o vers 7614 o) ET un increment de VERSION, mesure comme obligatoire, qui aurait purge le parcours de tous les visiteurs des aujourd hui.",
+    "course": "ec3d5649"
    }
   },
   "/demo/paiements@360": {
@@ -77,14 +77,14 @@
    }
   },
   "/demo@1280": {
-   "octets": 444005,
-   "octetsFil": 125706,
+   "octets": 444063,
+   "octetsFil": 125725,
    "requetes": 2,
    "releve": {
     "de": 443926,
     "requetesDe": 2,
-    "motif": "79 o sur /demo : les quatre relectures du parc passent par relireLeParc, qui marque la provenance du meme geste. Le drapeau fromApi a DEUX lecteurs — la boucle d'enregistrement, qui garde des noms et des telephones hors de la cle de la demonstration, et tenantUnitIds, donc le perimetre du locataire. Il n'avait qu'un endroit qui le levait pour cinq qui posent du parc servi.",
-    "course": "bdeadf48"
+    "motif": "137 o bruts sur /demo (34 o sur le fil, +1 ms a 400 kb/s) pour la troisieme voie vers des releves orphelins : loadState refuse desormais un enregistrement dont les unites ne portent pas tous les releves que READINGS reference. La base a ete remesuree sur main AVANT ce lot et poids-ecrans y etait vert, donc ces 137 o sont ceux de ce lot seul et d aucun autre. CE QU ILS ACHETENT : un Set des unites relevees et une comparaison a la relecture, qui ferment la derive de la fixture - le jour ou UNITS_DEMO gagne un logement releve, le visiteur qui revient ne lit plus ses anciennes unites sous les nouveaux releves. L option ecartee coutait 58 pour cent de la cle (4825 o vers 7614 o) ET un increment de VERSION, mesure comme obligatoire, qui aurait purge le parcours de tous les visiteurs des aujourd hui.",
+    "course": "ec3d5649"
    }
   },
   "/demo/paiements@1280": {
