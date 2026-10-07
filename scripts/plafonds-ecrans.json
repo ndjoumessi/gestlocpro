@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "454b887a",
- "empreinteDesSources": "b10707ae430bd9c3771dc0864da61bc9ba291aaa126e2ddadebc473a0824e2c1",
+ "course": "2efeaaff",
+ "empreinteDesSources": "e969a3af24589787ab45ae8e59eaf2a13514615cb33b1ee2fbdcc87c0de25b6a",
  "mesures": {
   "/@360": {
-   "octets": 578904,
-   "octetsFil": 188147,
+   "octets": 579000,
+   "octetsFil": 188177,
    "requetes": 4,
    "releve": {
-    "de": 578748,
+    "de": 578904,
     "requetesDe": 4,
-    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
-    "course": "454b887a"
+    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
+    "course": "2efeaaff"
    }
   },
   "/demo@360": {
-   "octets": 443481,
-   "octetsFil": 125592,
+   "octets": 443650,
+   "octetsFil": 125633,
    "requetes": 2,
    "releve": {
-    "de": 443216,
+    "de": 443481,
     "requetesDe": 2,
-    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
-    "course": "454b887a"
+    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
+    "course": "2efeaaff"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 578904,
-   "octetsFil": 188147,
+   "octets": 579000,
+   "octetsFil": 188177,
    "requetes": 4,
    "releve": {
-    "de": 578748,
+    "de": 578904,
     "requetesDe": 4,
-    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
-    "course": "454b887a"
+    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
+    "course": "2efeaaff"
    }
   },
   "/demo@1280": {
-   "octets": 443481,
-   "octetsFil": 125592,
+   "octets": 443650,
+   "octetsFil": 125633,
    "requetes": 2,
    "releve": {
-    "de": 443216,
+    "de": 443481,
     "requetesDe": 2,
-    "motif": "une ligne qu'on ne peut pas nommer le dit : la colonne d'identité des relevés et sa note d'alerte nomment le logement inconnu et comptent ce qu'elles ne savent pas nommer, au lieu de rendre des cellules vides et une conjonction suspendue.",
-    "course": "454b887a"
+    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
+    "course": "2efeaaff"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,

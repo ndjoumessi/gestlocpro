@@ -1168,6 +1168,28 @@ export const fr = {
        * annonçait douze logements qu'il n'a pas.
        */
       subtitle: '{buildings}, {units}. Le statut porte sur le mois affiché.',
+      /**
+       * QUAND LE MOIS AFFICHÉ NE PORTE QU'UNE PART DU PARC, LE COMPTE LE DIT.
+       *
+       * Le sous-titre comptait `units` — le parc d'aujourd'hui — tandis que tout
+       * l'écran rend `unitesAffichees`, borné au mois consulté. Un mois vide
+       * faisait donc annoncer « 3 unités » au-dessus de trois en-têtes disant
+       * « aucun logement ». Pourquoi la capture de production du 2026-10-07 qui
+       * porte cette forme ne vient PAS de ce chemin : voir `Portfolio.tsx`, où
+       * `compteDesLogements` le détaille.
+       *
+       * DEUX CLÉS ET NON UNE, parce que zéro est un ÉNONCÉ, pas une valeur :
+       * `Intl.PluralRules` range 0 sous `one` en français et sous `other` en
+       * anglais, si bien qu'aucune variante `_zero` ne serait jamais choisie — et
+       * « dont 0 sur ce mois » n'est pas ce qu'on dit. Le dépôt sépare déjà le
+       * rien du peu de cette façon, deux lignes plus bas, avec `buildingEmpty`.
+       *
+       * `{total}` EST DU TEXTE DÉJÀ ACCORDÉ, pas un nombre : il porte
+       * « 3 unités » ou « 1 unité », que `common.unitCount` sait fléchir. Passer
+       * le nombre ici demanderait de refaire l'accord dans ces deux chaînes.
+       */
+      unitsOnMonth: '{total}, dont {shown} sur ce mois',
+      unitsNoneOnMonth: '{total}, aucune sur ce mois',
       // Aucun logement du tout : ce n'est pas une recherche infructueuse.
       buildingEmpty: 'aucun logement',
       /* Le nom du DÉCLENCHEUR du menu : trois points ne se prononcent pas, et
