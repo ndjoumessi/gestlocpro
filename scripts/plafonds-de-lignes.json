@@ -37,7 +37,7 @@
   "src/components/primitives/Charts.tsx": 2217,
   "src/components/primitives/DataTable.tsx": 1591,
   "src/components/primitives/DatePicker.tsx": 1218,
-  "src/data/PortfolioProvider.tsx": 2389,
+  "src/data/PortfolioProvider.tsx": 2422,
   "src/data/portfolio.ts": 2045,
   "src/features/dashboard/Access.tsx": 1731,
   "src/features/dashboard/Alerts.tsx": 840,
