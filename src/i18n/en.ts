@@ -821,6 +821,9 @@ export const en: Dictionary = {
       districtInvalid: 'At least 2 characters',
       title: 'Portfolio',
       subtitle: '{buildings}, {units}. Status applies to the month shown.',
+      // Voir `fr.ts` : pourquoi deux clés, et pourquoi `{total}` est du texte.
+      unitsOnMonth: '{total}, {shown} of them in this month',
+      unitsNoneOnMonth: '{total}, none in this month',
       buildingEmpty: 'no units',
       buildingActions: 'Actions for building {name}',
       rentExpected: 'expected',
