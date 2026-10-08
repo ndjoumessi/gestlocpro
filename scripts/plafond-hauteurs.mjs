@@ -805,7 +805,20 @@ const PLAFONDS = [
      l'écran porte désormais un lecteur avec son affiche. +94 px ici, +532 à
      1280 — l'écart tient à la largeur du lecteur, qui suit celle de la carte.
      La colonne LARGE est relevée sur le CI, exécution citée plus bas. */
-  { adresse: '/demo/manuel', largeur: 360, plafond: 6112, plafondLarge: 5960 },
+  /*
+    6 112 → 6 629 LE 2026-10-08 : le sommaire des gestes. Treize entrées en deux
+    colonnes, +517 px relevés à cette largeur — le même ordre de grandeur que
+    les 713 px qu'avait coûtés le sommaire des conditions générales empilé en
+    UNE colonne, et la raison pour laquelle ce composant en rend deux dès 360.
+
+    LA COLONNE LARGE EST TRANSPOSÉE, PAS RELEVÉE, et c'est dit plutôt que caché :
+    5 960 + 517, le delta de CETTE machine appliqué à une colonne qu'elle ne sait
+    pas mesurer. Le travail `polices` du CI tranchera. Le sens de l'erreur est le
+    bon : une police plus large replie plus d'entrées sur deux lignes, donc le
+    vrai delta est probablement PLUS grand — la porte rougira en imprimant le
+    nombre juste, au lieu d'acheter du mou en silence.
+  */
+  { adresse: '/demo/manuel', largeur: 360, plafond: 6629, plafondLarge: 6477 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
@@ -957,6 +970,17 @@ const PLAFONDS = [
      exactement ce qu'avait rendu le relevé d'avant la vidéo — ce n'est donc pas
      un hasard de mesure, mais une propriété de cet écran. Aucune des deux
      colonnes ne se déduit de l'autre. */
+  /*
+    INCHANGÉ LE 2026-10-08, ET C'EST LE RÉSULTAT DU LOT, pas un oubli.
+
+    La page a gagné une navigation et n'a pas grandi d'un pixel : 5 078 mesurés
+    avant comme après. Au-delà de 64 rem elle ne porte pas le sommaire en tête
+    — qui coûtait 423 px, relevés — mais un RAIL COLLANT en colonne latérale,
+    là où rien n'occupait la largeur. Voir `TableDesMatieres.tsx`.
+
+    Les DEUX colonnes sont donc laissées telles quelles, et aucune n'est
+    transposée : rien ne les concerne.
+  */
   { adresse: '/demo/manuel', largeur: 1280, plafond: 5087, plafondLarge: 5134 },
   { adresse: '/demo/systeme', largeur: 1280, plafond: 1199, plafondLarge: 1220 },
   { adresse: '/demo/portail', largeur: 1280, plafond: 1029, plafondLarge: 1029 },

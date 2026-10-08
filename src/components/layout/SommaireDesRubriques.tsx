@@ -62,13 +62,23 @@ export function SommaireDesRubriques({
   libelle,
   prefixe,
   rubriques,
+  indice,
 }: {
   /** Le nom accessible de la navigation — « Sommaire », dans la langue courante. */
   libelle: string
-  /** Le préfixe des identifiants de rubrique : `conditions` ou `confidentialite`. */
+  /** Le préfixe des identifiants de rubrique : `conditions`, `confidentialite` ou `manuel`. */
   prefixe: string
   /** Les rubriques, dans l'ordre de la page : leur ancre et leur titre. */
   rubriques: readonly { readonly ancre: string; readonly titre: string }[]
+  /**
+   * La phrase qui apprend que l'ancre se copie.
+   *
+   * OPTIONNELLE PARCE QU'ELLE PARLE DU CONTENU, pas du sommaire. « Ouvrez-la
+   * pour en citer le lien » dit ce qu'on fait d'une CLAUSE ; le manuel, lui,
+   * n'est pas cité, il est envoyé à quelqu'un qui cherche un geste. Les deux
+   * pages juridiques gardent la phrase par défaut, qui est la leur.
+   */
+  indice?: string
 }) {
   const t = useT()
   const id = `sommaire-${prefixe}`
@@ -104,7 +114,7 @@ export function SommaireDesRubriques({
           phrase est la seule chose qui apprenne qu'elle est faite pour être
           copiée — une réponse à un locataire ou à un gestionnaire cite une
           clause, pas une page. */}
-      <p className="mt-2 text-caption text-muted">{t('legal.anchorHint')}</p>
+      <p className="mt-2 text-caption text-muted">{indice ?? t('legal.anchorHint')}</p>
     </nav>
   )
 }

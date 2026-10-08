@@ -7,29 +7,29 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "907dae36",
- "empreinteDesSources": "bbdd50b60f819ba89c211cf306065b8d089cc3b5ae3f269db21187bb3b2ede7e",
+ "course": "27b57c6f",
+ "empreinteDesSources": "e53a52f52144a75c0e5a03c79786175d4cb64490aead8a238386e8778d7f7317",
  "mesures": {
   "/@360": {
-   "octets": 579000,
-   "octetsFil": 188174,
+   "octets": 579465,
+   "octetsFil": 188295,
    "requetes": 4,
    "releve": {
-    "de": 578904,
+    "de": 579403,
     "requetesDe": 4,
-    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
-    "course": "2efeaaff"
+    "motif": "cibles du rail portées à 46 px et plafond de hauteur de l'aside : +42 o sur le paquet applicatif, +62 sur l'index. Ce que ça achète : la sonde des cibles refusait le rail à 1024 px (cible 45x38), et treize entrées à 46 px font 707 px quand une fenêtre de 1024x768 n'en offre que 696 sous l'en-tête — sans le plafond, la dernière entrée était hors écran et inatteignable",
+    "course": "ed086e5b"
    }
   },
   "/demo@360": {
-   "octets": 444142,
-   "octetsFil": 125741,
+   "octets": 446475,
+   "octetsFil": 126639,
    "requetes": 2,
    "releve": {
-    "de": 444063,
+    "de": 446452,
     "requetesDe": 2,
-    "motif": "79 o sur /demo : les quatre relectures du parc passent par relireLeParc, qui marque la provenance du meme geste. Le drapeau fromApi a DEUX lecteurs — la boucle d'enregistrement, qui garde des noms et des telephones hors de la cle de la demonstration, et tenantUnitIds, donc le perimetre du locataire. Il n'avait qu'un endroit qui le levait pour cinq qui posent du parc servi.",
-    "course": "907dae36"
+    "motif": "min-h-11 sur les entrées du rail : +23 o bruts, +4 o sur le fil, +0 ms à 400 kb/s. Ce que ça achète : la règle de sources des cibles tactiles lit les CLASSES et non le rendu — un rembourrage qui se trouve faire 46 px ne lui dit rien, elle réclame une hauteur écrite. C'est l'idiome que SommaireDesRubriques emploie déjà pour ses entrées",
+    "course": "27b57c6f"
    }
   },
   "/demo/paiements@360": {
@@ -66,25 +66,25 @@
    }
   },
   "/@1280": {
-   "octets": 579000,
-   "octetsFil": 188174,
+   "octets": 579465,
+   "octetsFil": 188295,
    "requetes": 4,
    "releve": {
-    "de": 578904,
+    "de": 579403,
     "requetesDe": 4,
-    "motif": "Le sous-titre du Parc nomme la part du parc que le mois affiché porte, au lieu de compter la collection de base pendant que l’écran rend celle du mois : deux clés par langue et une branche à trois cas. 41 o sur le fil, +169 o bruts sur /demo. La forme du défaut a été vue en production le 2026-10-07 mais PAS par ce chemin — là-bas elle vient d’unités d’un parc RÉEL restaurées depuis localStorage, autre sujet (src/data/persistence.ts).",
-    "course": "2efeaaff"
+    "motif": "cibles du rail portées à 46 px et plafond de hauteur de l'aside : +42 o sur le paquet applicatif, +62 sur l'index. Ce que ça achète : la sonde des cibles refusait le rail à 1024 px (cible 45x38), et treize entrées à 46 px font 707 px quand une fenêtre de 1024x768 n'en offre que 696 sous l'en-tête — sans le plafond, la dernière entrée était hors écran et inatteignable",
+    "course": "ed086e5b"
    }
   },
   "/demo@1280": {
-   "octets": 444142,
-   "octetsFil": 125741,
+   "octets": 446475,
+   "octetsFil": 126639,
    "requetes": 2,
    "releve": {
-    "de": 444063,
+    "de": 446452,
     "requetesDe": 2,
-    "motif": "79 o sur /demo : les quatre relectures du parc passent par relireLeParc, qui marque la provenance du meme geste. Le drapeau fromApi a DEUX lecteurs — la boucle d'enregistrement, qui garde des noms et des telephones hors de la cle de la demonstration, et tenantUnitIds, donc le perimetre du locataire. Il n'avait qu'un endroit qui le levait pour cinq qui posent du parc servi.",
-    "course": "907dae36"
+    "motif": "min-h-11 sur les entrées du rail : +23 o bruts, +4 o sur le fil, +0 ms à 400 kb/s. Ce que ça achète : la règle de sources des cibles tactiles lit les CLASSES et non le rendu — un rembourrage qui se trouve faire 46 px ne lui dit rien, elle réclame une hauteur écrite. C'est l'idiome que SommaireDesRubriques emploie déjà pour ses entrées",
+    "course": "27b57c6f"
    }
   },
   "/demo/paiements@1280": {
