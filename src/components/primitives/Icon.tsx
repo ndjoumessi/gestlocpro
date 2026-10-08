@@ -109,6 +109,10 @@ const PATHS = {
   // un menu au grand écran, il ouvre les trois réglages. Un chevron de
   // hamburger y promettrait une navigation qui vit déjà dans la barre.
   sliders: <path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5" />,
+  /* LA PRÉHENSION — six points sur deux colonnes, la forme que tout le monde
+     lit comme « ceci se porte ». Des traits et non des disques pleins : cette
+     famille d'icônes est tracée au filet, et un aplat y jurerait. */
+  grip: <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />,
   check: <path d="M4.5 12.5l5 5 10-11" />,
   checkCircle: (
     <>

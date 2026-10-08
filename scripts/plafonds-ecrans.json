@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "27b57c6f",
- "empreinteDesSources": "e53a52f52144a75c0e5a03c79786175d4cb64490aead8a238386e8778d7f7317",
+ "course": "8aa8ccad",
+ "empreinteDesSources": "071f056ae448f4f789e201d00550c64fd564c5865dae31e150952eaf97b0730f",
  "mesures": {
   "/@360": {
-   "octets": 579465,
-   "octetsFil": 188295,
+   "octets": 579793,
+   "octetsFil": 188366,
    "requetes": 4,
    "releve": {
-    "de": 579403,
+    "de": 579465,
     "requetesDe": 4,
-    "motif": "cibles du rail portées à 46 px et plafond de hauteur de l'aside : +42 o sur le paquet applicatif, +62 sur l'index. Ce que ça achète : la sonde des cibles refusait le rail à 1024 px (cible 45x38), et treize entrées à 46 px font 707 px quand une fenêtre de 1024x768 n'en offre que 696 sous l'en-tête — sans le plafond, la dernière entrée était hors écran et inatteignable",
-    "course": "ed086e5b"
+    "motif": "les affordances de la fiche de logement : +229 o sur le paquet applicatif (la poignée et son groupe nommé) et +328 sur l'index (l'icône grip, six points, entre dans la famille partagée). Ce que ça achète : le porter-déposer existait depuis le lot du rail réordonnable et RIEN ne l'annonçait — seul « Déplacer ‹ › » au fond du menu de débordement en portait trace. Le soulignement du numéro part dans le même lot, en sens inverse : il désignait une cible de 20 px quand la vraie, étendue par un pseudo-élément, fait la largeur de la fiche",
+    "course": "17598fe9"
    }
   },
   "/demo@360": {
-   "octets": 446475,
-   "octetsFil": 126639,
+   "octets": 447020,
+   "octetsFil": 126804,
    "requetes": 2,
    "releve": {
-    "de": 446452,
+    "de": 446704,
     "requetesDe": 2,
-    "motif": "min-h-11 sur les entrées du rail : +23 o bruts, +4 o sur le fil, +0 ms à 400 kb/s. Ce que ça achète : la règle de sources des cibles tactiles lit les CLASSES et non le rendu — un rembourrage qui se trouve faire 46 px ne lui dit rien, elle réclame une hauteur écrite. C'est l'idiome que SommaireDesRubriques emploie déjà pour ses entrées",
-    "course": "27b57c6f"
+    "motif": "le panneau d'un menu qui échappe suit désormais son déclencheur : +316 o sur le paquet applicatif, une boucle de trames qui ne tourne QUE menu ouvert et ne rend QUE si l'ancre a bougé. Ce que ça achète : « Déplacer ‹ › » réordonne le rail sans émettre ni scroll ni resize, et le panneau restait 320 px en arrière — au-dessus de la fiche voisine, en portant le titre de celle qu'il avait quittée. Mesuré sur /demo/parc avant correctif : panneau 856, déclencheur passé de 876 à 1176",
+    "course": "8aa8ccad"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28376,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28376,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64610,
+   "octetsFil": 64615,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 579465,
-   "octetsFil": 188295,
+   "octets": 579793,
+   "octetsFil": 188366,
    "requetes": 4,
    "releve": {
-    "de": 579403,
+    "de": 579465,
     "requetesDe": 4,
-    "motif": "cibles du rail portées à 46 px et plafond de hauteur de l'aside : +42 o sur le paquet applicatif, +62 sur l'index. Ce que ça achète : la sonde des cibles refusait le rail à 1024 px (cible 45x38), et treize entrées à 46 px font 707 px quand une fenêtre de 1024x768 n'en offre que 696 sous l'en-tête — sans le plafond, la dernière entrée était hors écran et inatteignable",
-    "course": "ed086e5b"
+    "motif": "les affordances de la fiche de logement : +229 o sur le paquet applicatif (la poignée et son groupe nommé) et +328 sur l'index (l'icône grip, six points, entre dans la famille partagée). Ce que ça achète : le porter-déposer existait depuis le lot du rail réordonnable et RIEN ne l'annonçait — seul « Déplacer ‹ › » au fond du menu de débordement en portait trace. Le soulignement du numéro part dans le même lot, en sens inverse : il désignait une cible de 20 px quand la vraie, étendue par un pseudo-élément, fait la largeur de la fiche",
+    "course": "17598fe9"
    }
   },
   "/demo@1280": {
-   "octets": 446475,
-   "octetsFil": 126639,
+   "octets": 447020,
+   "octetsFil": 126804,
    "requetes": 2,
    "releve": {
-    "de": 446452,
+    "de": 446704,
     "requetesDe": 2,
-    "motif": "min-h-11 sur les entrées du rail : +23 o bruts, +4 o sur le fil, +0 ms à 400 kb/s. Ce que ça achète : la règle de sources des cibles tactiles lit les CLASSES et non le rendu — un rembourrage qui se trouve faire 46 px ne lui dit rien, elle réclame une hauteur écrite. C'est l'idiome que SommaireDesRubriques emploie déjà pour ses entrées",
-    "course": "27b57c6f"
+    "motif": "le panneau d'un menu qui échappe suit désormais son déclencheur : +316 o sur le paquet applicatif, une boucle de trames qui ne tourne QUE menu ouvert et ne rend QUE si l'ancre a bougé. Ce que ça achète : « Déplacer ‹ › » réordonne le rail sans émettre ni scroll ni resize, et le panneau restait 320 px en arrière — au-dessus de la fiche voisine, en portant le titre de celle qu'il avait quittée. Mesuré sur /demo/parc avant correctif : panneau 856, déclencheur passé de 876 à 1176",
+    "course": "8aa8ccad"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28376,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28376,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64610,
+   "octetsFil": 64615,
    "requetes": 3,
    "releve": {
     "de": 65639,

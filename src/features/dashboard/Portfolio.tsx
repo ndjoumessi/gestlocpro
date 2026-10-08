@@ -938,7 +938,11 @@ export function Portfolio() {
                          son pseudo-élément remonterait au premier ancêtre
                          positionné — le rail — et une seule fiche couvrirait
                          toutes les autres. */
-                      'relative',
+                      /* `group/fiche` EST NOMMÉ, et pas un `group` anonyme : la
+                         fiche vit dans un rail qui en est déjà un, et deux
+                         groupes sans nom feraient réagir la poignée au survol
+                         du RAIL — donc les douze poignées à la fois. */
+                      'group/fiche relative',
                       /*
                         ═══ LA PRESSION SE PEINT, ELLE NE SE TRANSFORME PAS ═══
 
@@ -986,6 +990,53 @@ export function Portfolio() {
                       'focus-within:border-accent focus-within:shadow-e1',
                     )}
                   >
+                    {/*
+                      LA POIGNÉE — LE GESTE EXISTAIT, RIEN NE LE DISAIT.
+
+                      On peut attraper une fiche et la déplacer parmi les autres
+                      depuis le lot du rail réordonnable ; sept cas le gardent
+                      (`ficheReordonnable.test.tsx`). Mais aucune affordance ne
+                      l'annonçait : la seule trace visible du déplacement était
+                      « Déplacer ‹ › » au fond du menu de débordement.
+
+                      ═══ POURQUOI ELLE EST DÉCORATIVE, ET NON UN BOUTON ═══
+
+                      `aria-hidden` et `pointer-events-none`. La prise se fait
+                      déjà sur TOUTE la fiche, et en faire le seul point de
+                      saisie rétrécirait une cible qui marche. Au clavier, le
+                      geste a sa voie depuis toujours — « Déplacer ‹ › » dans le
+                      menu —, et c'est elle qui est annoncée à l'AT. Une poignée
+                      focalisable en plus annoncerait deux fois le même geste.
+
+                      ═══ POURQUOI PAS `cursor-grab` ═══
+
+                      Le numéro du logement porte un pseudo-élément qui couvre la
+                      fiche entière : partout sur la carte, le curseur est celui
+                      d'un lien, et c'est la vérité — un clic OUVRE le dossier.
+                      Mettre `grab` ferait promettre le déplacement à un geste
+                      qui navigue. La poignée dit le second geste sans mentir sur
+                      le premier.
+
+                      ═══ ABSOLUE, DONC SANS DÉCALAGE AU SURVOL ═══
+
+                      Posée dans la gouttière gauche de la fiche plutôt que dans
+                      le flux : réserver sa place pousserait tous les numéros
+                      vers la droite, et la révéler sans la réserver ferait
+                      bouger la carte sous le curseur — ce que
+                      `stabilite-au-pointage` mesure et refuse.
+                    */}
+                    <span
+                      aria-hidden="true"
+                      /* `left-1` ET DOUZE PIXELS : la fiche a 16 px de
+                         rembourrage et son numéro commence donc à 17. Premier
+                         jet à `left-1.5` et 14 px — la poignée s'étendait
+                         jusqu'à 21 et mordait sur le « A » de « A1 ». Mesuré,
+                         pas estimé : 4 + 12 = 16, elle s'arrête au pixel où le
+                         texte commence. */
+                      className="pointer-events-none absolute top-5 left-1 text-muted opacity-0 transition-opacity duration-150 group-hover/fiche:opacity-100 group-focus-within/fiche:opacity-100"
+                    >
+                      <Icon name="grip" size={12} />
+                    </span>
                     <div data-section="entete" className="flex items-start justify-between gap-2">
                       {/* Le lien EST sa boîte de 48 × 44 — pas un `after:inset-0`
                           étendu sur une zone : la sonde des cibles part du centre
@@ -1002,7 +1053,14 @@ export function Portfolio() {
                            carte. */
                         draggable={false}
                         className={cn(
-                          'numeric title-m inline-flex min-h-11 min-w-12 items-center text-ink underline-offset-4 hover:underline',
+                          /* SANS SOULIGNEMENT AU SURVOL, et c'est un retrait,
+                             pas un oubli. Il promettait une cible de la taille
+                             du numéro alors que la zone de frappe couvre la
+                             fiche ENTIÈRE — voir le pseudo-élément ci-dessous.
+                             La destination est déjà annoncée par la fiche, qui
+                             prend bordure et ombre au survol : souligner en plus
+                             désignait la plus petite des deux cibles. */
+                          'numeric title-m inline-flex min-h-11 min-w-12 items-center text-ink',
                           /*
                             LA FICHE ENTIÈRE OUVRE LE DOSSIER, ET SA BOÎTE NE
                             BOUGE PAS.
