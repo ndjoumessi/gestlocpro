@@ -1872,6 +1872,27 @@ export function Portfolio() {
                   déjà 47 px de haut — donne une cible PLUS grande pour zéro
                   déplacement.
                 */
+                /*
+                  ═══ ICI LE SOULIGNEMENT RESTE, ET LA CARTE L'A PERDU ═══
+
+                  Les deux liens se ressemblent au `grep` — même numéro, même
+                  `after:inset-0` — et se distinguent par ce qui les ENTOURE.
+
+                  Sur la FICHE, la carte entière s'éclaire au survol (bordure et
+                  ombre) et la cible couvre toute la carte : le soulignement y
+                  était redondant, et il mentait sur la taille de la cible — il
+                  en désignait vingt pixels quand la vraie en fait deux cent
+                  quatre-vingts. Il a donc été retiré.
+
+                  ICI, RIEN NE S'ÉCLAIRE : `DataTable` ne porte AUCUN `hover` —
+                  zéro occurrence, vérifié —, et ce fichier explique plus haut
+                  pourquoi la rangée ne doit pas devenir cliquable. Le
+                  soulignement est donc la SEULE affordance de ce lien. Le
+                  retirer par souci d'harmonie rendrait le tableau muet : « A3 »
+                  n'y serait plus distinguable d'un texte ordinaire.
+
+                  Un cas garde les deux sens — voir `poigneeDeLaFiche.test.ts`.
+                */
                 className="numeric font-medium text-ink underline-offset-4 after:absolute after:inset-0 hover:underline"
               >
                 {unit.label}
