@@ -90,17 +90,34 @@ export function RegistreParJournee<T>({
             */}
             <ol aria-labelledby={id} className="mt-2 flex flex-col border-s border-divider">
               {journee.actes.map((acte) => (
-                <li key={cleDeLActe(acte)} className="relative py-2.5 ps-5">
+                <li key={cleDeLActe(acte)} className="py-2.5 ps-4">
                   {/*
-                    `-start-[4.5px]` : la pastille fait 8 px et la bordure 1 px,
-                    donc elle se centre à quatre pixels et demi en arrière. Posée
-                    à `-start-1` elle pendait d'un demi-pixel à gauche du rail —
-                    visible à l'œil sur dix-huit actes alignés.
+                    ═══ PAS DE PASTILLE SUR LE RAIL, ET C'EST LE BUDGET QUI PAIE ═══
+
+                    Le premier jet en posait une par acte, à la manière des
+                    fils d'activité. Elle demandait trois utilitaires que la
+                    feuille PARTAGÉE ne portait pas encore — un décalage négatif,
+                    une position verticale, et une valeur arbitraire pour la
+                    centrer sur la bordure.
+
+                    Or le premier chargement de la vitrine n'avait plus que
+                    QUINZE OCTETS de marge sur son budget, mesurés : 159 985 pour
+                    160 000. Trois règles de plus l'ont fait passer à 160 039, et
+                    la porte a refusé — à juste titre. Le fichier du budget dit
+                    lui-même qu'une quatrième hausse « n'aura plus d'argument » :
+                    le vrai correctif est de scinder le dictionnaire, pas de
+                    reculer la ligne.
+
+                    Le rail seul groupe déjà les actes, et il ne coûte rien :
+                    `border-s` était là. Les pastilles reviendront quand la
+                    marge existera.
+
+                    ET LE COMMENTAIRE COMPTE AUTANT QUE LE CODE : Tailwind v4
+                    balaie les fichiers comme du TEXTE. Écrire la classe
+                    arbitraire en prose, ne serait-ce que pour expliquer qu'on
+                    l'a retirée, la fait entrer dans la feuille. Elle n'est donc
+                    nommée nulle part ici.
                   */}
-                  <span
-                    aria-hidden="true"
-                    className="absolute -start-[4.5px] top-4 size-2 rounded-full bg-divider"
-                  />
                   {rendreLActe(acte)}
                 </li>
               ))}

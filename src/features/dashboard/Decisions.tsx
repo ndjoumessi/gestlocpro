@@ -814,7 +814,7 @@ export function Decisions() {
                   Sous `sm`, il repasse dessous : à 360 px un nom à droite d'un
                   libellé les comprime tous les deux.
                 */
-                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="text-body font-medium text-ink">
                       {libelle(decision.action)}

@@ -988,16 +988,22 @@ const PLAFONDS = [
     n'y tient plus — six en-têtes de journée coûtent environ deux cents pixels,
     et c'est la fonction elle-même, pas un défaut.
 
-    MESURÉ EN DEUX TEMPS : 1 327 d'abord, parce que l'auteur, qui était une
-    COLONNE, était devenu une ligne empilée sous chaque acte. Rendu à la droite
-    de l'acte au-delà de `sm` — la largeur était là, inoccupée —, il retombe à
-    1 123. Les 204 px récupérés sont la différence entre trois lignes par acte
-    et deux.
+    MESURÉ EN TROIS TEMPS, et chaque fois la mesure a commandé :
+
+      1 327  l'auteur, qui était une COLONNE, devenu une ligne empilée ;
+      1 123  rendu à la droite de l'acte au-delà de `sm` — la largeur était là,
+             inoccupée. Deux lignes par acte au lieu de trois ;
+      1 107  les pastilles du rail retirées et l'alignement ramené à
+             `items-center`, pour tenir sous le budget du premier chargement.
+
+    Les 16 derniers pixels sont donc un effet de bord d'un lot de poids, et non
+    une intention de mise en page. Ils s'inscrivent quand même : un gain non
+    inscrit se redépense.
 
     COLONNE LARGE : à relever sur le CI, pas à transposer. La leçon est inscrite
     à la ligne du manuel, et elle a coûté un gel de production.
   */
-  { adresse: '/demo/decisions', largeur: 1280, plafond: 1123, plafondLarge: 900 },
+  { adresse: '/demo/decisions', largeur: 1280, plafond: 1107, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   /* 4 555 → 5 087 LE 2026-10-01, par l'entrée du lecteur vidéo. La colonne large
      relevée sur le CI (exécution 36861634587) rend 5 134 : +47 px ici quand elle
