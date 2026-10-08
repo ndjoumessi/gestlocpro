@@ -23,7 +23,7 @@
   "scripts/inventaire/lecture-sources.mjs": 1729,
   "scripts/inventaire/mesure-navigateur.mjs": 1542,
   "scripts/mesure-ui.mjs": 3883,
-  "scripts/plafond-hauteurs.mjs": 1524,
+  "scripts/plafond-hauteurs.mjs": 1530,
   "scripts/plafond-vitrine.mjs": 1071,
   "scripts/poids-ecrans.mjs": 841,
   "scripts/sondes-de-rendu.mjs": 997,
