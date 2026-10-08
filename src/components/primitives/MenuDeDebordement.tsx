@@ -3,6 +3,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -238,20 +239,78 @@ export function MenuDeDebordement({
     lui-même, et un écouteur posé sur `window` sans capture ne voit jamais le
     défilement d'un descendant — c'est pourtant le seul qui compte ici.
   */
+  const replacerLAncre = useCallback(() => {
+    const d = declencheur.current
+    if (!d) return
+    const boite = d.getBoundingClientRect()
+    setAncre({ top: boite.bottom, right: window.innerWidth - boite.right })
+  }, [])
+
   useEffect(() => {
     if (!ouvert || !echappe) return
-    const replacer = () => {
-      const d = declencheur.current
-      if (!d) return
-      const boite = d.getBoundingClientRect()
-      setAncre({ top: boite.bottom, right: window.innerWidth - boite.right })
-    }
-    window.addEventListener('scroll', replacer, true)
-    window.addEventListener('resize', replacer)
+    window.addEventListener('scroll', replacerLAncre, true)
+    window.addEventListener('resize', replacerLAncre)
     return () => {
-      window.removeEventListener('scroll', replacer, true)
-      window.removeEventListener('resize', replacer)
+      window.removeEventListener('scroll', replacerLAncre, true)
+      window.removeEventListener('resize', replacerLAncre)
     }
+  }, [ouvert, echappe, replacerLAncre])
+
+  /*
+    ═══ LE TROISIÈME CAS : LE DÉCLENCHEUR BOUGE, ET RIEN NE LE DIT ═══
+
+    Les deux écouteurs ci-dessus couvrent le défilement et le redimensionnement.
+    Il manquait le cas où la FICHE se déplace : « Déplacer ‹ › » réordonne le
+    rail, le déclencheur glisse d'une largeur de carte, et NI `scroll` NI
+    `resize` ne partent — un réordonnancement du DOM n'émet aucun événement.
+
+    Mesuré sur `/demo/parc` le 2026-10-08 : à l'ouverture, bord droit du panneau
+    à 856 pour un déclencheur à 876. Après « Déplacer à droite », le déclencheur
+    passe à 1176 et le panneau reste à 856 — il flotte trois cents pixels trop à
+    gauche, par-dessus la fiche voisine, en portant le titre de celle qu'il a
+    quittée. C'est ce que Nelson a rapporté d'une capture.
+
+    ═══ DEUX REMÈDES ESSAYÉS, ET LE PREMIER A ÉCHOUÉ À LA MESURE ═══
+
+    1. RECALER APRÈS UN APPUI DANS LE PANNEAU, à la trame suivante. Écrit, posé,
+       MESURÉ : l'écart restait de −320. Une trame ne suffit pas — React valide
+       le réordonnancement après, et `requestAnimationFrame` rendait la position
+       d'avant. J'avais justifié ce choix par le coût ; la mesure ne l'a pas
+       soutenu, et le coût ne se discute que sur ce qui marche.
+
+    2. SUIVRE LE DÉCLENCHEUR TANT QUE LE MENU EST OUVERT. C'est ce que font les
+       bibliothèques de placement, et c'est juste par construction : on ne
+       devine plus QUELLE cause a déplacé l'ancre, on observe sa position.
+
+    ═══ CE QUE CETTE BOUCLE COÛTE, ET CE QU'ELLE NE COÛTE PAS ═══
+
+    Elle ne tourne QUE menu ouvert — jamais sur un écran au repos, où aucun
+    panneau n'existe. Elle ne provoque un rendu que si l'ancre a BOUGÉ : la
+    comparaison est faite avant `setAncre`, sans quoi un objet neuf à chaque
+    trame rendrait le composant soixante fois par seconde pour rien.
+  */
+  useEffect(() => {
+    if (!ouvert || !echappe) return
+    let trame = 0
+    const suivre = () => {
+      const d = declencheur.current
+      if (d) {
+        const boite = d.getBoundingClientRect()
+        const top = boite.bottom
+        const right = window.innerWidth - boite.right
+        /* LA COMPARAISON EST LA CONDITION DE VIABILITÉ de cette boucle, pas une
+           optimisation : `setAncre` avec un objet neuf change l'identité à
+           chaque fois, donc rendrait sans fin. */
+        setAncre((precedent) =>
+          precedent && precedent.top === top && precedent.right === right
+            ? precedent
+            : { top, right },
+        )
+      }
+      trame = requestAnimationFrame(suivre)
+    }
+    trame = requestAnimationFrame(suivre)
+    return () => cancelAnimationFrame(trame)
   }, [ouvert, echappe])
 
   /* `focusInitial: 'premier'` : le panneau ne contient QUE des commandes, la
