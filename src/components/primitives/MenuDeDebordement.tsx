@@ -282,6 +282,27 @@ export function MenuDeDebordement({
        bibliothèques de placement, et c'est juste par construction : on ne
        devine plus QUELLE cause a déplacé l'ancre, on observe sa position.
 
+    ═══ ET LES DEUX VOIES SE PARTAGENT LE TRAVAIL — MESURÉ, PAS SUPPOSÉ ═══
+
+    Éprouvé par mutation sous Playwright le 2026-10-09, et le résultat corrige
+    ce que ce commentaire affirmait d'abord. Retirer la SEULE boucle ne fait
+    rien rougir : le rail défile quand une fiche change de place, l'écouteur de
+    défilement part, et l'ancre se recale par lui. Il faut retirer LES DEUX pour
+    voir l'écart passer de 0 à −300 px.
+
+    Les deux voies ne sont donc pas l'une le secours de l'autre, elles couvrent
+    des cas DIFFÉRENTS :
+
+      · les ÉCOUTEURS prennent les déplacements qui font défiler le rail — le
+        cas courant, et le seul qu'une porte au navigateur sait provoquer ;
+      · la BOUCLE prend ceux qui n'en font rien défiler : une fiche qui bouge
+        dans un rail déjà entièrement visible n'émet aucun événement du tout.
+        C'est le cas qu'`ancreQuiSuit.test.tsx` pose en jsdom, où il ne se passe
+        RIEN sinon le changement de position.
+
+    Retirer la boucle au motif que la porte reste verte sans elle serait donc
+    une erreur : la porte ne sait pas provoquer son cas.
+
     ═══ CE QUE CETTE BOUCLE COÛTE, ET CE QU'ELLE NE COÛTE PAS ═══
 
     Elle ne tourne QUE menu ouvert — jamais sur un écran au repos, où aucun
