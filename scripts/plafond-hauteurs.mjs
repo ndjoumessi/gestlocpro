@@ -811,14 +811,30 @@ const PLAFONDS = [
     les 713 px qu'avait coûtés le sommaire des conditions générales empilé en
     UNE colonne, et la raison pour laquelle ce composant en rend deux dès 360.
 
-    LA COLONNE LARGE EST TRANSPOSÉE, PAS RELEVÉE, et c'est dit plutôt que caché :
-    5 960 + 517, le delta de CETTE machine appliqué à une colonne qu'elle ne sait
-    pas mesurer. Le travail `polices` du CI tranchera. Le sens de l'erreur est le
-    bon : une police plus large replie plus d'entrées sur deux lignes, donc le
-    vrai delta est probablement PLUS grand — la porte rougira en imprimant le
-    nombre juste, au lieu d'acheter du mou en silence.
+    LA COLONNE LARGE A ÉTÉ TRANSPOSÉE, ET LA TRANSPOSITION ÉTAIT FAUSSE — 6 477
+    inscrits (5 960 + 517, le delta de la machine de développement), 6 456
+    mesurés sur le CI le 2026-10-08. Vingt et un pixels de MOU, et cette porte
+    les refuse comme elle refuse un débordement : « un gain non inscrit se
+    redépense ».
+
+    LE RAISONNEMENT QUI A PRODUIT 6 477 ÉTAIT FAUX, ET DANS LE SENS QUE J'AVAIS
+    DÉCLARÉ SÛR. J'avais écrit qu'une police plus large replie davantage
+    d'entrées du sommaire sur deux lignes, donc que le vrai delta serait PLUS
+    grand et la porte rougirait pour débordement. Elle rend l'inverse : 496 de
+    delta au lieu de 517, la page est plus COURTE sous la police large. C'est la
+    propriété que ce fichier écrit déjà pour cet écran deux lignes plus bas — le
+    sens de l'écart s'inverse avec la largeur — et je l'ai contredite en pariant
+    sur une intuition.
+
+    CE QUI A SAUVÉ LE LOT n'est donc pas le sens de mon erreur, c'est que cette
+    porte refuse le mou. Une porte qui n'aurait regardé que le débordement aurait
+    laissé passer 21 px de plafond menteur, et personne ne l'aurait su.
+
+    MORALE, pour la prochaine fois : une colonne que cette machine ne sait pas
+    mesurer ne se transpose pas, elle se RELÈVE — `workflow_dispatch` sur
+    `main.yml` fait tourner le travail `polices`, qui imprime la table.
   */
-  { adresse: '/demo/manuel', largeur: 360, plafond: 6629, plafondLarge: 6477 },
+  { adresse: '/demo/manuel', largeur: 360, plafond: 6629, plafondLarge: 6456 },
   { adresse: '/demo/systeme', largeur: 360, plafond: 2078, plafondLarge: 2078 },
   { adresse: '/demo/portail', largeur: 360, plafond: 1163, plafondLarge: 1163 },
   { adresse: '/adresse-qui-n-existe-pas', largeur: 360, plafond: 900, plafondLarge: 900 },
