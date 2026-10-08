@@ -2311,6 +2311,9 @@ export const en: Dictionary = {
 
       mineTitle: 'Your gestures',
       mineSubtitle: 'What your role does in the product, from the first unit to re-letting it.',
+      contentsTitle: 'Contents',
+      onThisPage: 'On this page',
+      anchorHint: 'Every section has its own address: open one to send someone the link.',
       othersTitle: 'What the other roles do',
       othersBody:
         'Useful to know what you are delegating, and what your tenant sees on their side. Gestures are only named here; the detail is in your own.',

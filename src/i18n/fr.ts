@@ -3437,6 +3437,19 @@ export const fr = {
       /* ── LES GESTES ── */
       mineTitle: 'Vos gestes',
       mineSubtitle: 'Ce que votre rôle fait dans le produit, du premier logement au relogement.',
+      /* ── LE SOMMAIRE ── */
+      /* « Sommaire » et non « Table des matières » : le même mot que les pages
+         juridiques, qui portent le même composant. Deux noms pour une seule
+         forme s'apprendraient deux fois. */
+      contentsTitle: 'Sommaire',
+      /* LE RAIL NE DIT PAS « Sommaire », ET C'EST VOULU : il ne liste pas, il
+         SITUE. « Sur cette page » est la formule que les documentations
+         emploient pour ça, et elle annonce l'espion plutôt qu'une table. */
+      onThisPage: 'Sur cette page',
+      /* L'INDICE DIT CE QU'ON FAIT DU LIEN, et ce n'est pas ce qu'on fait d'une
+         clause. On ne cite pas un manuel : on envoie quelqu'un au bon endroit —
+         un propriétaire à son gestionnaire, un gestionnaire à son locataire. */
+      anchorHint: 'Chaque section a son adresse : ouvrez-la pour envoyer le lien à quelqu’un.',
       othersTitle: 'Ce que font les autres rôles',
       othersBody:
         'Utile pour savoir ce que vous déléguez, et ce que votre locataire voit de son côté. Les gestes y sont seulement nommés ; le détail est dans vos gestes à vous.',

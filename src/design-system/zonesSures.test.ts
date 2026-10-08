@@ -164,6 +164,21 @@ const TOLEREES = [
   // sur elle-même, et les insets vivent là-bas, sur la base commune aux deux
   // variantes (tiroir mobile et rail de bureau).
   'fixed inset-y-0 left-0 flex w-72',
+  // Le rail du manuel (`Manuel.tsx`) : COLLANT DANS LE FLUX, jamais contre un
+  // bord de fenêtre. Il vit à l'intérieur d'une carte, elle-même dans le
+  // `<main>` de la coquille, qui porte déjà la gouttière — il n'atteint donc
+  // aucune encoche à rembourrer.
+  //
+  // ET IL N'EXISTE QU'AU-DELÀ DE 64 rem, ce qui est le vrai argument : c'est
+  // exactement celui que l'en-tête applicatif écrit déjà vingt lignes plus haut
+  // dans `AppShell` — « l'iPhone en paysage reste sous `lg` ». Le plus large,
+  // un 16 Pro Max, rend 956 px en paysage, sous le seuil du rail ; et un iPad,
+  // qui le franchit, annonce des insets latéraux nuls. Partout où cette surface
+  // est rendue, `env(safe-area-inset-left/right)` vaut zéro.
+  //
+  // La signature est exacte : que le rail change de forme, et la tolérance
+  // cesse de correspondre — cette porte le reprendra d'elle-même.
+  'sticky top-18 h-fit max-h-[calc(100dvh-6rem)] w-52',
 ]
 
 const A_TRAITER = SURFACES.filter(

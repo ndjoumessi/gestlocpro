@@ -329,3 +329,59 @@ export const ROLES_DOCUMENTES: readonly Role[] = [...new Set(GESTES.flatMap((g) 
 export function gestesDe(role: Role): readonly Geste[] {
   return GESTES.filter((g) => g.roles.includes(role))
 }
+
+/**
+ * UNE SUITE : les gestes CONSÉCUTIFS d'un même écran.
+ *
+ * ═══ POURQUOI CE DÉCOUPAGE VIT ICI, ET PLUS DANS L'ÉCRAN ═══
+ *
+ * Il était calculé dans `GroupeDeGestes`, au moment du rendu. Le sommaire a
+ * besoin du MÊME découpage — une entrée par suite, et l'ancre de chacune —, et
+ * un second regroupement écrit à côté du premier aurait divergé à la première
+ * retouche : le sommaire aurait promis une section que la page ne rend plus.
+ * C'est la raison pour laquelle les deux lisent désormais une seule fonction.
+ *
+ * ═══ CONSÉCUTIFS, ET NON « TOUS LES GESTES DE CET ÉCRAN » ═══
+ *
+ * Trier par écran rendrait l'ordre de la barre latérale, qui est celui du
+ * produit. Le registre est rangé dans l'ordre du MOIS — on monte son parc, on
+ * encaisse, on relance, on reloue — et c'est cet ordre qui apprend quelque
+ * chose. Le parc revient donc trois fois, ce qui est juste : ce ne sont pas les
+ * mêmes moments.
+ *
+ * ═══ L'ANCRE EST DÉRIVÉE, JAMAIS SAISIE ═══
+ *
+ * `adresse` seule ne suffirait pas, précisément parce que le parc revient : les
+ * trois sections porteraient `manuel-parc`, et le navigateur déposerait le
+ * lecteur sur la première des trois quelle que soit celle qu'il a demandée. Le
+ * geste de tête la distingue, et il est stable tant que ce geste ouvre la suite.
+ */
+export type Suite = {
+  /** Ce qui suit `manuel-` dans l'`id` de la section et dans l'ancre qui y mène. */
+  readonly ancre: string
+  /** La clé du libellé de l'écran, commune à toute la suite. */
+  readonly ecranKey: MessageKey
+  /** Le premier segment sous la base, pour composer le lien « Ouvrir ». */
+  readonly adresse: string
+  /** Les gestes, dans l'ordre du registre. Jamais vide. */
+  readonly gestes: readonly Geste[]
+}
+
+/** Les suites d'un rôle, dans l'ordre du mois. */
+export function suitesDe(gestes: readonly Geste[]): readonly Suite[] {
+  const suites: { ancre: string; ecranKey: MessageKey; adresse: string; gestes: Geste[] }[] = []
+
+  for (const geste of gestes) {
+    const derniere = suites[suites.length - 1]
+    if (derniere && derniere.adresse === geste.adresse) derniere.gestes.push(geste)
+    else
+      suites.push({
+        ancre: `${geste.adresse}-${cleDe(geste)}`,
+        ecranKey: geste.ecranKey,
+        adresse: geste.adresse,
+        gestes: [geste],
+      })
+  }
+
+  return suites
+}
