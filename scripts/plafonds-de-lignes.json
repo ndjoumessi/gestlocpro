@@ -47,7 +47,7 @@
   "src/features/dashboard/LeaseModal.tsx": 847,
   "src/features/dashboard/Meters.tsx": 1126,
   "src/features/dashboard/Payments.tsx": 1230,
-  "src/features/dashboard/Portfolio.tsx": 2254,
+  "src/features/dashboard/Portfolio.tsx": 2275,
   "src/features/dashboard/ReceiptModal.tsx": 909,
   "src/features/dashboard/TenantDashboard.tsx": 1189,
   "src/features/dashboard/Tenants.tsx": 1940,

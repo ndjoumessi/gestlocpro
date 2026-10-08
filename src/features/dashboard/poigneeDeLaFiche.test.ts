@@ -33,6 +33,15 @@ const SOURCES = import.meta.glob('/src/features/dashboard/Portfolio.tsx', {
 
 const PORTFOLIO = SOURCES['/src/features/dashboard/Portfolio.tsx'] ?? ''
 
+/* La table est lue elle aussi : le cas du soulignement s'appuie sur une
+   propriété de SON fichier, et une prémisse qu'on ne lit pas est une prémisse
+   qu'on suppose. */
+const TABLE = import.meta.glob('/src/components/primitives/DataTable.tsx', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>
+
 /**
  * LE BLOC `cn(...)` ENTIER du lien qui porte le numéro — et non son premier
  * fragment. Premier jet : `/'numeric title-m inline-flex[^']*'/`, qui s'arrêtait
@@ -65,6 +74,44 @@ describe('la fiche de logement', () => {
     expect(CLASSES_DU_NUMERO, 'sans cible étendue, le soulignement se justifierait').toMatch(
       /after:inset-0/,
     )
+  })
+
+  /**
+   * ET LE TABLEAU, LUI, DOIT CONTINUER DE SOULIGNER.
+   *
+   * ═══ LE DÉFAUT QUE CE CAS EMPÊCHE N'EXISTE PAS ENCORE ═══
+   *
+   * Les deux liens se ressemblent au `grep` — même numéro de logement, même
+   * `after:inset-0`. Le cas précédent exige que la FICHE ne souligne pas ;
+   * sans celui-ci, le premier qui cherchera `hover:underline` pour
+   * « harmoniser » retirera aussi celui du tableau, et la porte le félicitera.
+   *
+   * Or `DataTable` ne porte AUCUN `hover` — zéro occurrence, vérifié le
+   * 2026-10-08 — et la rangée n'est pas cliquable, par une décision écrite dans
+   * `Portfolio.tsx`. Le soulignement y est donc la SEULE affordance du lien :
+   * le retirer rendrait « A3 » indistinguable d'un texte ordinaire.
+   *
+   * ═══ LA PRÉMISSE EST GARDÉE AVEC LA CONCLUSION ═══
+   *
+   * Ce cas ne vaut que tant que la rangée reste inerte. Le jour où `DataTable`
+   * gagnera un survol, le soulignement redeviendra redondant et ce cas devra
+   * tomber — il vérifie donc AUSSI l'absence de `hover`, pour que la prémisse
+   * rougisse en même temps que la règle qu'elle soutient.
+   */
+  it('garde le soulignement dans le TABLEAU, où rien d’autre ne le dit', () => {
+    /* GUILLEMETS DOUBLES : ce `className` est une chaîne littérale, pas un
+       `cn(...)` comme celui de la fiche. Premier jet avec des apostrophes — il
+       ne trouvait rien, et le cas rougissait sur une source pourtant juste. */
+    const lienDuTableau = /"numeric font-medium text-ink[^"]*"/.exec(PORTFOLIO)?.[0] ?? ''
+    expect(lienDuTableau, 'le lien du tableau est introuvable').not.toBe('')
+    expect(lienDuTableau, 'le tableau deviendrait muet').toMatch(/hover:underline/)
+
+    const DATA_TABLE = TABLE['/src/components/primitives/DataTable.tsx'] ?? ''
+    expect(DATA_TABLE.length).toBeGreaterThan(1000)
+    expect(
+      DATA_TABLE.includes('hover:'),
+      'la rangée s’éclaire désormais : le soulignement redevient redondant, et ce cas doit être revu',
+    ).toBe(false)
   })
 
   /**
