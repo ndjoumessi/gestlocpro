@@ -783,7 +783,11 @@ const PLAFONDS = [
      entre les deux machines va dans les deux sens, et recopier la colonne
      étroite aurait laissé 22 px de mou sur la porte publique. */
   { adresse: '/demo/vacance', largeur: 360, plafond: 1436, plafondLarge: 1414 },
-  { adresse: '/demo/decisions', largeur: 360, plafond: 1521, plafondLarge: 1521 },
+  /* 1 521 → 1 387 LE 2026-10-09 : le registre se lit par journée, et la date
+     cesse d'être répétée à chaque ligne. UN GAIN de 134 px à cette largeur, et
+     un gain s'inscrit — « un gain non inscrit se redépense ».
+     COLONNE LARGE : à relever sur le CI, pas à transposer. */
+  { adresse: '/demo/decisions', largeur: 360, plafond: 1387, plafondLarge: 1521 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   /*
     LE MANUEL, ET C'EST LE PLUS LONG ÉCRAN DU PRODUIT À CETTE LARGEUR — devant
@@ -978,7 +982,22 @@ const PLAFONDS = [
      lui-même vit dans une modale, et n'allonge donc pas l'écran. */
   { adresse: '/demo/acces', largeur: 1280, plafond: 1240, plafondLarge: 1240 },
   { adresse: '/demo/vacance', largeur: 1280, plafond: 900, plafondLarge: 900 },
-  { adresse: '/demo/decisions', largeur: 1280, plafond: 900, plafondLarge: 900 },
+  /*
+    900 → 1 123 LE 2026-10-09, ET C'EST UNE HAUSSE ASSUMÉE. 900 était le
+    PLANCHER de la fenêtre : le tableau tenait dessous. Le registre par journée
+    n'y tient plus — six en-têtes de journée coûtent environ deux cents pixels,
+    et c'est la fonction elle-même, pas un défaut.
+
+    MESURÉ EN DEUX TEMPS : 1 327 d'abord, parce que l'auteur, qui était une
+    COLONNE, était devenu une ligne empilée sous chaque acte. Rendu à la droite
+    de l'acte au-delà de `sm` — la largeur était là, inoccupée —, il retombe à
+    1 123. Les 204 px récupérés sont la différence entre trois lignes par acte
+    et deux.
+
+    COLONNE LARGE : à relever sur le CI, pas à transposer. La leçon est inscrite
+    à la ligne du manuel, et elle a coûté un gel de production.
+  */
+  { adresse: '/demo/decisions', largeur: 1280, plafond: 1123, plafondLarge: 900 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   /* 4 555 → 5 087 LE 2026-10-01, par l'entrée du lecteur vidéo. La colonne large
      relevée sur le CI (exécution 36861634587) rend 5 134 : +47 px ici quand elle

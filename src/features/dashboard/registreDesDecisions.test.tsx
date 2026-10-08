@@ -136,7 +136,12 @@ describe('le registre des décisions', () => {
     await attendreLeChargement()
 
     const texte = screen.getByRole('main').textContent ?? ''
-    expect(texte).toContain('Par qui')
+    /* L'EN-TÊTE « PAR QUI » A DISPARU AVEC LA COLONNE, et ce cas ne le réclame
+       plus : le registre se lit désormais par journée, où la date est un titre
+       et non une cellule. Ce qu'il garde est ce qu'il gardait vraiment — que
+       les DEUX noms soient lisibles dès qu'ils sont deux, et que la phrase de
+       l'auteur unique se taise. Exiger l'en-tête en plus figerait la forme
+       d'hier au lieu de la propriété. */
     expect(texte).toContain('Arsène Nkolo')
     expect(texte).toContain('Diane Fotso')
     expect(texte, 'la phrase de l’auteur unique ment dès qu’ils sont deux').not.toContain(
@@ -427,8 +432,17 @@ describe('le registre des décisions', () => {
     await renderApp('/demo/decisions')
     await attendreLeChargement()
 
-    expect(screen.getAllByRole('row').length, 'le registre de démonstration est vide').toBeGreaterThan(
-      1,
-    )
+    /* LES ACTES SONT DES ÉLÉMENTS DE LISTE depuis que le registre se lit par
+       journée : une liste de journées, chacune portant la sienne d'actes. On
+       compte donc les `listitem` plutôt que les `row`.
+
+       DEUX AU MINIMUM, et non « plus de zéro » : une seule entrée serait aussi
+       ce que rendrait un registre qui n'affiche qu'une journée vide — le
+       `listitem` de la journée elle-même. Le plancher doit dépasser ce que la
+       coquille produit toute seule. */
+    expect(
+      screen.getAllByRole('listitem').length,
+      'le registre de démonstration est vide',
+    ).toBeGreaterThan(2)
   })
 })
