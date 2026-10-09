@@ -212,22 +212,35 @@ describe('les lignes du registre des décisions', () => {
       },
     })
 
-    const tableau = await screen.findByRole('table')
-    const lignes = within(tableau).getAllByRole('row').slice(1)
-    expect(lignes.length, 'le registre a perdu ses lignes').toBe(2)
+    /*
+      ═══ LE MÉCANISME A CHANGÉ, LA PROPRIÉTÉ NON ═══
 
-    const noms = lignes.map((ligne) => {
-      const entetes = within(ligne).getAllByRole('rowheader')
-      expect(entetes.length, 'la ligne n’a pas d’en-tête, ou en a plusieurs').toBe(1)
-      return entetes[0].textContent ?? ''
-    })
+      Ce cas lisait un `rowheader` par rangée : c'est ce que `DataTable` posait,
+      et le registre n'est plus un tableau depuis qu'il se lit par journée. La
+      date y est un TITRE porté une fois, et les actes sont les éléments de la
+      liste qu'il nomme.
+
+      CE QU'ON VÉRIFIE EST PLUS FORT QU'AVANT, et c'est l'apport du lot : les
+      deux décisions du même jour tiennent sous UNE SEULE date — l'ancien
+      tableau l'écrivait deux fois, et rien ne l'interdisait. Le reste est
+      inchangé : chacune se nomme par son ACTION, et les deux noms diffèrent.
+    */
+    const journees = await screen.findAllByRole('heading', { level: 3 })
+    expect(journees.length, 'les deux décisions du même jour ont deux dates').toBe(1)
+
+    const actes = within(
+      journees[0]!.parentElement!.querySelector('ol')!,
+    ).getAllByRole('listitem')
+    expect(actes.length, 'le registre a perdu ses actes').toBe(2)
+
+    const noms = actes.map((acte) => acte.textContent ?? '')
 
     /* DEUX NOMS DISTINCTS pour deux décisions du même jour. C'est ce que la date
        ne pouvait pas donner, et c'est pour cela que l'identité est l'ACTION —
        sans que la date perde sa première colonne, qui est l'ordre de lecture
        d'une chronologie. */
-    expect(noms[0], 'l’en-tête ne nomme pas l’action').toMatch(/paiement|loyer|encaiss/i)
-    expect(noms[1], 'l’en-tête ne nomme pas l’action').toMatch(/devis|travaux|valid/i)
+    expect(noms[0], 'l’acte ne nomme pas son action').toMatch(/paiement|loyer|encaiss/i)
+    expect(noms[1], 'l’acte ne nomme pas son action').toMatch(/devis|travaux|valid/i)
     expect(noms[0]).not.toBe(noms[1])
   })
 })

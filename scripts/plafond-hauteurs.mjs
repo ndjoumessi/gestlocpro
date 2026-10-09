@@ -787,7 +787,7 @@ const PLAFONDS = [
      cesse d'être répétée à chaque ligne. UN GAIN de 134 px à cette largeur, et
      un gain s'inscrit — « un gain non inscrit se redépense ».
      COLONNE LARGE : à relever sur le CI, pas à transposer. */
-  { adresse: '/demo/decisions', largeur: 360, plafond: 1387, plafondLarge: 1521 },
+  { adresse: '/demo/decisions', largeur: 360, plafond: 1387, plafondLarge: 1387 },
   { adresse: '/demo/prise-en-main', largeur: 360, plafond: 1633, plafondLarge: 1611 },
   /*
     LE MANUEL, ET C'EST LE PLUS LONG ÉCRAN DU PRODUIT À CETTE LARGEUR — devant
@@ -1000,10 +1000,19 @@ const PLAFONDS = [
     une intention de mise en page. Ils s'inscrivent quand même : un gain non
     inscrit se redépense.
 
-    COLONNE LARGE : à relever sur le CI, pas à transposer. La leçon est inscrite
-    à la ligne du manuel, et elle a coûté un gel de production.
+    ═══ LA COLONNE LARGE EST RELEVÉE, ET LES DEUX COÏNCIDENT ═══
+
+    1 107 des DEUX côtés — `workflow_dispatch` sur la branche, exécution
+    37859411075, sur le commit exact qui a été poussé. Pas transposée : la leçon
+    de la ligne du manuel a coûté un gel de production.
+
+    ET LA COÏNCIDENCE EST UN RÉSULTAT, pas une commodité. Sur le code d'AVANT les
+    dernières retouches, le CI rendait 1 131 contre 1 123 ici — huit pixels
+    d'écart. Ils ont disparu avec `items-baseline`, remplacé par `items-center` :
+    une ligne de base dépend de la police, un centrage non. C'est pourquoi les
+    deux nombres sont égaux sans être recopiés l'un sur l'autre.
   */
-  { adresse: '/demo/decisions', largeur: 1280, plafond: 1107, plafondLarge: 900 },
+  { adresse: '/demo/decisions', largeur: 1280, plafond: 1107, plafondLarge: 1107 },
   { adresse: '/demo/prise-en-main', largeur: 1280, plafond: 1358, plafondLarge: 1358 },
   /* 4 555 → 5 087 LE 2026-10-01, par l'entrée du lecteur vidéo. La colonne large
      relevée sur le CI (exécution 36861634587) rend 5 134 : +47 px ici quand elle
