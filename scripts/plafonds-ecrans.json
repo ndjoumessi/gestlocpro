@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "14731849",
- "empreinteDesSources": "d79e620a1b0de10248ca07d996d7ffe8e402a70487441de871bfb7f590d06558",
+ "course": "e278ead4",
+ "empreinteDesSources": "2f157c1c78199638bf892ea4d91e3f9a51c59887922a501ad2d349850ca4d49e",
  "mesures": {
   "/@360": {
-   "octets": 493753,
-   "octetsFil": 161719,
+   "octets": 493863,
+   "octetsFil": 161740,
    "requetes": 4,
    "releve": {
-    "de": 579465,
+    "de": 493753,
     "requetesDe": 4,
-    "motif": "les affordances de la fiche de logement : +229 o sur le paquet applicatif (la poignée et son groupe nommé) et +328 sur l'index (l'icône grip, six points, entre dans la famille partagée). Ce que ça achète : le porter-déposer existait depuis le lot du rail réordonnable et RIEN ne l'annonçait — seul « Déplacer ‹ › » au fond du menu de débordement en portait trace. Le soulignement du numéro part dans le même lot, en sens inverse : il désignait une cible de 20 px quand la vraie, étendue par un pseudo-élément, fait la largeur de la fiche",
-    "course": "17598fe9"
+    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
+    "course": "e278ead4"
    }
   },
   "/demo@360": {
-   "octets": 534843,
-   "octetsFil": 155734,
+   "octets": 534967,
+   "octetsFil": 155752,
    "requetes": 2,
    "releve": {
-    "de": 534271,
+    "de": 534843,
     "requetesDe": 2,
-    "motif": "la case qui crée une fiche de locataire, et le retrait du bouton + de l'en-tête d'immeuble au-dessus de lg : +572 o bruts, +46 o sur le fil, +1 ms. Ce que ça achète : la liste des locataires porte enfin le geste qui la remplit à l'endroit où l'on finit de la lire — le bouton de page est en haut, derrière le défilement de dix fiches. Elle ne paraît que s'il existe un logement vacant, condition que le bouton de page portait déjà en se grisant. Le + de l'en-tête part là où la case du rail fait le même geste, et RESTE sous lg, où il n'y a pas de rail : sans lui, un téléphone n'aurait plus aucun moyen de remplir un immeuble. ZÉRO classe CSS neuve, ZÉRO clé neuve — les utilitaires et le libellé sont ceux qui existent. La vitrine ne bouge pas.",
-    "course": "14731849"
+    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
+    "course": "e278ead4"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64615,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 493753,
-   "octetsFil": 161719,
+   "octets": 493863,
+   "octetsFil": 161740,
    "requetes": 4,
    "releve": {
-    "de": 579465,
+    "de": 493753,
     "requetesDe": 4,
-    "motif": "les affordances de la fiche de logement : +229 o sur le paquet applicatif (la poignée et son groupe nommé) et +328 sur l'index (l'icône grip, six points, entre dans la famille partagée). Ce que ça achète : le porter-déposer existait depuis le lot du rail réordonnable et RIEN ne l'annonçait — seul « Déplacer ‹ › » au fond du menu de débordement en portait trace. Le soulignement du numéro part dans le même lot, en sens inverse : il désignait une cible de 20 px quand la vraie, étendue par un pseudo-élément, fait la largeur de la fiche",
-    "course": "17598fe9"
+    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
+    "course": "e278ead4"
    }
   },
   "/demo@1280": {
-   "octets": 534843,
-   "octetsFil": 155734,
+   "octets": 534967,
+   "octetsFil": 155752,
    "requetes": 2,
    "releve": {
-    "de": 534271,
+    "de": 534843,
     "requetesDe": 2,
-    "motif": "la case qui crée une fiche de locataire, et le retrait du bouton + de l'en-tête d'immeuble au-dessus de lg : +572 o bruts, +46 o sur le fil, +1 ms. Ce que ça achète : la liste des locataires porte enfin le geste qui la remplit à l'endroit où l'on finit de la lire — le bouton de page est en haut, derrière le défilement de dix fiches. Elle ne paraît que s'il existe un logement vacant, condition que le bouton de page portait déjà en se grisant. Le + de l'en-tête part là où la case du rail fait le même geste, et RESTE sous lg, où il n'y a pas de rail : sans lui, un téléphone n'aurait plus aucun moyen de remplir un immeuble. ZÉRO classe CSS neuve, ZÉRO clé neuve — les utilitaires et le libellé sont ceux qui existent. La vitrine ne bouge pas.",
-    "course": "14731849"
+    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
+    "course": "e278ead4"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28379,
+   "octetsFil": 28381,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64613,
+   "octetsFil": 64615,
    "requetes": 3,
    "releve": {
     "de": 65639,
