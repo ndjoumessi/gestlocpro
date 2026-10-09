@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sourceDuDictionnaire } from './test/dictionnaireDuClient.js'
 
 /**
  * CHAQUE VARIABLE D'UN LIBELLÉ D'AVIS EST FOURNIE PAR SON BÂTISSEUR.
@@ -38,7 +39,9 @@ const RACINE = join(import.meta.dirname, '../..')
 
 /** Les variables que les libellés d'une famille réclament. */
 function variablesDesLibelles(): Map<string, string[]> {
-  const fr = readFileSync(join(RACINE, 'src/i18n/fr.ts'), 'utf8').split('\n')
+  /* LES DEUX MOITIÉS : le bloc `msg` vit dans `fr-app.ts` depuis la scission.
+     Lu sur `fr.ts` seul, ce cas ne trouve plus son bloc du tout. */
+  const fr = sourceDuDictionnaire('fr').split('\n')
   const debut = fr.findIndex((l) => l.trim() === 'msg: {')
   if (debut < 0) throw new Error('bloc `msg` introuvable dans `fr.ts`')
   let prof = 0

@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { prisma } from '../db.js'
 import { NOM_COOKIE } from '../auth/session.js'
+import { sourceDuDictionnaire } from '../test/dictionnaireDuClient.js'
 
 /**
  * Contrat entre le serveur et les écrans, éprouvé contre un VRAI parc.
@@ -44,7 +44,7 @@ function placeholders(gabarit: string): string[] {
  * sans rien vérifier.
  */
 function gabaritsDuClient(): Map<string, string[]> {
-  const source = readFileSync(new URL('../../../src/i18n/fr.ts', import.meta.url), 'utf8')
+  const source = sourceDuDictionnaire('fr')
   const bloc = source.slice(source.indexOf('      msg: {'))
   const parMessage = new Map<string, string[]>()
 

@@ -37,6 +37,23 @@
  * CE MODULE NE FAIT RIEN À L'IMPORT — il n'expose qu'une fonction. Ce dépôt a
  * déjà payé l'inverse : importer un script de `scripts/` pour en prendre une
  * fonction l'EXÉCUTE.
+ *
+ * ═══ ET LE SERVEUR LIT CE DICTIONNAIRE AUSSI ═══
+ *
+ * Quatre cas de `server/src` le lisent pour vérifier que les clés que le serveur
+ * ÉCRIT ont un libellé en face. Ils ont leur propre module —
+ * `server/src/test/dictionnaireDuClient.ts` —, parce que `server/` est un autre
+ * projet TypeScript et n'importe rien d'ici.
+ *
+ * LA LEÇON VAUT PLUS QUE LE CORRECTIF. La scission est passée au vert sur
+ * `check:rapide` ET `check:navigateur`, et a rougi EN INTÉGRATION CONTINUE sur
+ * ces quatre cas — « leaseRenewal manque à src/i18n/fr.ts », d'une clé qui est
+ * écrite. La règle du dépôt dit de lancer la porte serveur quand `server/` bouge
+ * ou que le routeur bouge ; ni l'un ni l'autre n'avait bougé. Ce qui avait bougé
+ * était un fichier du CLIENT que le serveur lit sans que rien ne le compile.
+ *
+ * La règle qui tient vraiment : `npm run check:server` dès qu'on touche à
+ * `src/i18n/`, quoi qu'il arrive au reste.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'

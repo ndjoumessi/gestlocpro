@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { sourceDuDictionnaire } from './test/dictionnaireDuClient.js'
 
 /**
  * TOUTE VALEUR D'ÉNUMÉRATION AFFICHÉE PORTE UN LIBELLÉ, DANS LES DEUX LANGUES.
@@ -103,7 +104,7 @@ function valeursDe(nom: string): string[] {
 
 /** Le bloc littéral d'une famille, commentaires retirés. */
 function blocDeLaFamille(langue: 'fr' | 'en', chemin: string): string | null {
-  let reste = readFileSync(join(RACINE, `src/i18n/${langue}.ts`), 'utf8')
+  let reste = sourceDuDictionnaire(langue)
   let profondeur = 4
   for (const feuille of chemin.split('.').slice(1)) {
     const debut = reste.indexOf(`\n${' '.repeat(profondeur)}${feuille}: {`)
