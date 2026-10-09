@@ -329,6 +329,63 @@ export const RESSOURCES_EXTERNES_PESEES = {}
  * bougé : sortir de `app.` les vingt clés qu'un module IMPATIENT emprunte, puis
  * scinder le dictionnaire. Relever le budget ne fait que reculer l'échéance —
  * une quatrième fois n'aura plus d'argument.
+ *
+ * ═══ LA SCISSION A ÉTÉ FAITE — 2026-10-09, ET LE BUDGET DESCEND ═══
+ *
+ *     159 992 o  avant          →     133 364 o  après
+ *
+ * 26 628 octets de moins sur CHAQUE première visite, soit 533 ms à la vitesse
+ * de référence de ce relevé (400 kb/s). C'est le gain que les trois chapitres
+ * ci-dessus annonçaient sans le prendre.
+ *
+ * L'OBSTACLE ÉTAIT CINQ FOIS PLUS PETIT QUE CE QUI EST ÉCRIT PLUS HAUT, et la
+ * leçon vaut plus que le gain : la liste des « vingt clés, huit modules dont
+ * deux primitives partagées » a été REMESURÉE avant d'être crue, et elle était
+ * périmée. Le relevé du 2026-10-09 — marche du graphe d'imports depuis
+ * `main.tsx`, puis vérification clé par clé dans le paquet construit — en
+ * trouve CINQ, dans DEUX fichiers : `app.crash.*` (`FrontiereDErreur`) et
+ * `app.dashboard.chartTitle` / `openMonth` (`Hero`). Elles vivent maintenant
+ * dans `common.crash` et `common.chart`. Les groupes `app.offline.*`,
+ * `app.parkFailure.*`, `app.sessionFailure.*`, `app.exported`,
+ * `app.works.samples.*` et `app.dashboard.scale*` ne sont plus cités par aucun
+ * module impatient ; `Charts.tsx` n'est même plus dans le paquet d'entrée.
+ *
+ * UN FAUX POSITIF A FAILLI COÛTER HUIT DÉPLACEMENTS INUTILES. `src/data/
+ * portfolio.ts` cite huit clés `app.*` et paraissait impatient par
+ * `useDates.ts` — qui n'en importe qu'un TYPE, effacé à la compilation. Le
+ * paquet construit tranche : `app.payments.methodMobile`, zéro occurrence dans
+ * `index.js`, deux dans `EspaceApplicatif.js`.
+ *
+ * LA GARDE QUE CE FICHIER RÉCLAMAIT EXISTE :
+ * `scripts/check-dictionnaire-impatient.mjs`. Elle refuse toute citation de
+ * `app.*` — et tout import de valeur de `fr-app` — depuis un module du paquet
+ * d'entrée. Elle est née ROUGE sur les cinq clés, et sa seconde règle a été
+ * éprouvée par mutation. C'était la condition posée ici : « livrer ça sans
+ * garde capable de distinguer les modules impatients des autres aurait été un
+ * mauvais échange ».
+ *
+ * ═══ LE NOUVEAU NOMBRE : 137 000, ET SA MARGE EST PROVISOIRE ═══
+ *
+ * 3 636 o au-dessus du mesuré. Les trois relèvements précédents dimensionnaient
+ * leur marge sur une croissance de 156 o par lot, relevée sur quinze commits.
+ * CE CHIFFRE NE S'APPLIQUE PLUS, et il faut le dire plutôt que de le recopier :
+ * il mesurait la croissance des DEUX dictionnaires réunis, et le plus gros
+ * contributeur — les chaînes d'écrans — ne tombe plus de ce côté-ci. Une clé
+ * d'écran ajoutée aujourd'hui coûte ZÉRO octet au premier chargement.
+ *
+ * Je ne sais donc pas à quelle vitesse ce budget se consommera désormais, et je
+ * ne l'invente pas : 3 636 o est une marge choisie par PRUDENCE NON MESURÉE,
+ * du même ordre que les précédentes. Le premier rouge la remesurera pour de
+ * bon, sur des lots d'après la scission.
+ *
+ * CE QUI RESTE À PRENDRE, mesuré le même jour, section par section de `fr.ts` :
+ *
+ *   common      5 578 o gzip      auth      4 775 o      marketing  4 404 o
+ *   terms       3 511 o           privacy   2 141 o      nav        1 834 o
+ *
+ * `terms` + `privacy` + `legal` font 6 377 o de pages légales qu'un visiteur de
+ * la page d'accueil n'ouvre presque jamais : c'est la prochaine scission
+ * évidente, et elle n'est pas prise ici — un lot, un sujet.
  */
-export const BUDGET_PREMIER_CHARGEMENT = 160_000
+export const BUDGET_PREMIER_CHARGEMENT = 137_000
 

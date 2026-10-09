@@ -1,4 +1,29 @@
 import type { ReactNode } from 'react'
+/**
+ * LES MOTS DES ÉCRANS, DÉPOSÉS PAR LE MORCEAU QUI LES PORTE.
+ *
+ * Cet import est la MOITIÉ VISIBLE de la scission du dictionnaire : il range
+ * `fr-app.ts` — 86 Ko bruts, 28 Ko compressés — dans le morceau applicatif
+ * plutôt que dans le paquet d'entrée, et la page d'accueil cesse de télécharger
+ * les mots d'écrans que son visiteur n'ouvrira peut-être jamais. Mesuré :
+ * 159 992 → 133 364 octets sur le premier chargement de la vitrine.
+ *
+ * STATIQUE, ET C'EST LE POINT. Un `import()` dynamique en ferait un morceau de
+ * plus, donc un ALLER-RETOUR de plus pour qui ouvre l'application — 300 à
+ * 800 ms sur le réseau visé. `poids-ecrans` a refusé cette première rédaction en
+ * ces termes : « /demo : 2 → 3 REQUÊTES ». Ici, les octets voyagent avec du code
+ * déjà demandé : l'application ne paie rien.
+ *
+ * LE DÉPÔT A LIEU À L'ÉVALUATION DU MODULE, donc avant que le moindre écran de
+ * cet arbre ne se rende — c'est la sémantique d'un import, et il n'y a rien à
+ * attendre ni à synchroniser. `dictionnaireApplicatif.test.tsx` garde que cette
+ * ligne existe : sans elle, chaque clé `app.*` s'afficherait en toutes lettres.
+ */
+import { frApp } from '@/i18n/fr-app'
+import { poserDictionnaireApplicatif } from '@/i18n/I18nProvider'
+
+poserDictionnaireApplicatif(frApp)
+
 import { Route, Routes } from 'react-router-dom'
 import { ROLES_PAR_ADRESSE } from '@/app/adressesParRole'
 import { Demo } from '@/routes/Demo'

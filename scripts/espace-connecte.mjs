@@ -139,6 +139,7 @@ import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
    se cherche par sa CLÉ, jamais par une phrase recopiée : une phrase recopiée
    se périme au premier remaniement du dictionnaire, en silence. */
 import { dictionnaireAPlat } from './check-i18n.mjs'
+import { francaisAPlat } from './dictionnaire-francais.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -158,7 +159,7 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
  * `mesure-ui` — contraste, cibles, noms, thème sombre — n'avaient donc jamais
  * été passées sur ces états-là.
  */
-const FR = dictionnaireAPlat(readFileSync(join(RACINE, 'src/i18n/fr.ts'), 'utf8'))
+const FR = francaisAPlat(RACINE)
 /* L'ANGLAIS AUSSI : la passe des notes ne cherchait qu'en français, et une note
    dont la traduction cesse de paraître serait passée — le défaut fondateur de
    `mesure-ui` n'existait qu'en anglais, et la leçon vaut pour les notes. */

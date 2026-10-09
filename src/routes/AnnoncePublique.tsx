@@ -114,12 +114,12 @@ export function AnnoncePublique() {
   const base = annonce ? baseDeConversion(annonce.currency) : null
   const mentionDeConversion = base
     ? base.date
-      ? t('app.documents.pdfConverted', {
+      ? t('common.pdfConverted', {
           currency: CURRENCY_DEFS[base.depuis].label,
           date: d.fullDate(partiesDeDateISO(base.date)),
           rate: formatTaux(base.taux, locale),
         })
-      : t('app.documents.pdfConvertedPegged', {
+      : t('common.pdfConvertedPegged', {
           currency: CURRENCY_DEFS[base.depuis].label,
           rate: formatTaux(base.taux, locale),
         })

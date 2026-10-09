@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fr } from './fr'
+import { frApp } from './fr-app'
 import { en } from './en'
 import { ALERTS, type AlertMessage } from '@/data/portfolio'
 
@@ -30,7 +31,10 @@ function aplatir(noeud: Noeud, prefixe = ''): Record<string, string> {
   return sortie
 }
 
-const FR = aplatir(fr as unknown as Noeud)
+/* Les deux moitiés du dictionnaire français réunies : `app` vit dans `fr-app.ts`
+   depuis qu'elle est chargée avec les écrans. Un test qui ne lirait que `fr`
+   passerait au vert sur un dictionnaire amputé des trois quarts. */
+const FR = aplatir({ ...fr, ...frApp } as unknown as Noeud)
 const EN = aplatir(en as unknown as Noeud)
 
 /** Jetons `{nom}` d'une chaîne, triés pour être comparables. */

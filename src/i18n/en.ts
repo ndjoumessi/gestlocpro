@@ -107,6 +107,23 @@ export const en: Dictionary = {
     perYear: '/ year',
     yes: 'Yes',
     no: 'No',
+
+    // Voir `fr.ts` : pourquoi ces deux groupes ont quitté `app.`.
+    crash: {
+      title: 'This screen stopped',
+      body:
+        'An error halted the display. The rest of the app still works: try again, or go back home.',
+      details: 'Technical detail',
+    },
+
+pdfConverted: 'Amounts converted from {currency} at the {date} rate: {rate}.',
+    pdfConvertedPegged: 'Amounts converted from {currency} at the legal parity: {rate}.',
+
+    chart: {
+      title: 'Collections over {count} months',
+      title_one: 'Collections this month',
+      openMonth: 'Current month, still open.',
+    },
   },
 
   theme: {
@@ -563,8 +580,6 @@ export const en: Dictionary = {
       csvConverted: 'Amounts converted from {from} to {currency}, at the {date} rate: {rate}.',
       csvConvertedPegged:
         'Amounts converted from {from} to {currency}, at the legal parity: {rate}.',
-      pdfConverted: 'Amounts converted from {currency} at the {date} rate: {rate}.',
-      pdfConvertedPegged: 'Amounts converted from {currency} at the legal parity: {rate}.',
       pdfImputation:
         'The payment cleared {rent} of rent, {water} of water and {power} of power. Allocation follows that order.',
       pdfWithheldNote:
@@ -718,12 +733,9 @@ export const en: Dictionary = {
       overdueTenants_one: '{count} tenant · up to {days} days',
       vacantUnits: '{count} vacant units',
       vacantUnits_one: '{count} vacant unit',
-      chartTitle: 'Collections over {count} months',
-      chartTitle_one: 'Collections this month',
       chartTableCaption: 'Monthly figures behind the chart, split by rent, water and electricity.',
       chartNote:
         'Amounts collected per month, split between rent, water and electricity. The current month is still open.',
-      openMonth: 'Current month, still open.',
       recoveryEmptyTitle: 'Nothing to recover this month',
       recoveryEmptyBody:
         'No lease is active: as soon as a unit is let, the rent due and the share collected appear here.',
@@ -2405,13 +2417,6 @@ export const en: Dictionary = {
       title: 'Data unavailable',
       body:
         'The server did not return your portfolio. What is shown elsewhere still holds; try again in a moment.',
-    },
-
-    crash: {
-      title: 'This screen stopped',
-      body:
-        'An error halted the display. The rest of the app still works: try again, or go back home.',
-      details: 'Technical detail',
     },
 
     sessionFailure: {

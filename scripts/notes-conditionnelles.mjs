@@ -85,7 +85,7 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
-import { dictionnaireAPlat } from './check-i18n.mjs'
+import { francaisAPlat } from './dictionnaire-francais.mjs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -681,7 +681,7 @@ for (const [cle, entree] of Object.entries(REGISTRE)) {
 exigerUnPaquetAJour()
 
 
-const fr = dictionnaireAPlat(await readFile(join(SRC, 'i18n/fr.ts'), 'utf8'))
+const fr = francaisAPlat(join(SRC, '..'))
 const mesurables = Object.entries(REGISTRE).filter(([, e]) => !e.nonMesurable)
 const releve = []
 const serveur = await servirLaPrevisualisation('notes-conditionnelles', PORT)

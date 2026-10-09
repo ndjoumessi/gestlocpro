@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fr } from './fr'
+import { frApp } from './fr-app'
 import { en } from './en'
 
 /**
@@ -15,7 +16,7 @@ import { en } from './en'
  * de ce test échouait pour cette seule raison — sans rien dire du produit.
  */
 const DICTIONNAIRES: [string, Record<string, unknown>][] = [
-  ['fr', fr as unknown as Record<string, unknown>],
+  ['fr', { ...fr, ...frApp } as unknown as Record<string, unknown>],
   ['en', en as unknown as Record<string, unknown>],
 ]
 

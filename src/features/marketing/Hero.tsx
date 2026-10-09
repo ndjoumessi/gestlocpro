@@ -284,8 +284,8 @@ function HeroPreview({
                deux ; l'appeler sans paramètre affichait `{count}` EN CLAIR sur la
                page de vente — attrapé par `mesure-ui` à 320 et 360 px, en anglais.
                Le hero dessine les mêmes `COLLECTIONS` que sa légende annonce. */
-            caption={t('app.dashboard.chartTitle', { count: bars.length })}
-            openPeriodNote={t('app.dashboard.openMonth')}
+            caption={t('common.chart.title', { count: bars.length })}
+            openPeriodNote={t('common.chart.openMonth')}
           />
         </div>
 

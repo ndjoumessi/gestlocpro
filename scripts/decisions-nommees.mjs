@@ -38,6 +38,7 @@
  * quelle.
  */
 import { readFile, readdir } from 'node:fs/promises'
+import { sourceDuFrancais } from './dictionnaire-francais.mjs'
 import { join } from 'node:path'
 import { exit } from 'node:process'
 
@@ -411,7 +412,10 @@ async function sourcesDuServeur(dossier) {
 const plaintes = plaintesDe(
   (await sourcesDuServeur(join(RACINE, 'server/src'))).join('\n'),
   await readFile(join(RACINE, 'src/features/dashboard/Decisions.tsx'), 'utf8'),
-  await readFile(join(RACINE, 'src/i18n/fr.ts'), 'utf8'),
+  /* LES DEUX MOITIÉS : `app.decisions.actions` vit dans `fr-app.ts` depuis la
+     scission. Lu sur `fr.ts` seul, ce script rendait soixante actions « sans
+     libellé » qui sont toutes nommées. */
+  sourceDuFrancais(RACINE),
 )
 
 if (plaintes.length) {

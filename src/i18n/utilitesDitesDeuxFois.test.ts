@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fr } from './fr'
+import { frApp } from './fr-app'
 import { en } from './en'
 
 /**
@@ -38,7 +38,7 @@ import { en } from './en'
  * contre le schéma, celle-ci garde les deux blocs l'un contre l'autre.
  */
 const paires = [
-  ['fr', fr.app.meters.utility, fr.app.decisions.utilities],
+  ['fr', frApp.app.meters.utility, frApp.app.decisions.utilities],
   ['en', en.app.meters.utility, en.app.decisions.utilities],
 ] as const
 
