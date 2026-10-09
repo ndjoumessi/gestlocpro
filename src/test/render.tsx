@@ -329,6 +329,38 @@ export async function renderApp(
   return resultat
 }
 
+/**
+ * UNE COMMANDE DE LA RANGÉE D'EN-TÊTE, par son nom.
+ *
+ * Un écran peut offrir le même geste deux fois : en tête de page, et au bout de
+ * la grille qu'il rend — la case qui crée une fiche de locataire, celle qui
+ * ajoute un logement. Les deux portent le même nom accessible PARCE QUE c'est le
+ * même geste : `gestesQuiSeDistinguent` n'exige des noms distincts qu'entre
+ * commandes d'une MÊME liste. Une requête globale en trouve donc deux et échoue.
+ *
+ * CHERCHE LE GESTE, PAS LE CONTENEUR, et la première rédaction faisait l'inverse
+ * — elle rendait la rangée, à charge pour l'appelant d'y chercher. Mesuré : sur
+ * `/app/…` il y a plus d'une rangée `data-actions`, et `querySelector` rendait
+ * la mauvaise. Chercher le geste parmi TOUTES les rangées ne peut pas se tromper
+ * de rangée.
+ *
+ * ATTENDUE, ET CE N'EST PAS UN `waitFor` AJOUTÉ POUR FAIRE PASSER : les cas qui
+ * emploient cette poignée cliquaient auparavant par `findByRole`, qui attend
+ * déjà. La rendre synchrone leur RETIRAIT cette attente, et l'écran se monte
+ * après une réponse. L'attente revient là où elle était, une fois.
+ */
+export async function actionDeLaPage(nom: RegExp | string): Promise<HTMLElement> {
+  return waitFor(() => {
+    const trouves = Array.from(document.querySelectorAll('[data-actions]')).flatMap((rangee) => [
+      ...within(rangee as HTMLElement).queryAllByRole('button', { name: nom }),
+      ...within(rangee as HTMLElement).queryAllByRole('link', { name: nom }),
+    ])
+    if (trouves.length !== 1)
+      throw new Error(`« ${nom} » : ${trouves.length} commande(s) dans la rangée d'en-tête`)
+    return trouves[0]!
+  })
+}
+
 /** Rend un composant isolé avec les mêmes providers, sans routeur d'application. */
 export function renderWithProviders(
   ui: ReactElement,

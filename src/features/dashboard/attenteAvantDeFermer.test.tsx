@@ -198,7 +198,7 @@ describe('l’ajout d’un logement', () => {
     })
     await renderApp('/app/parc', { session: SESSION })
     await attendreLeChargement()
-    await cliquerAction(/Ajouter un logement/)
+    await cliquerAction(/^Ajouter un logement$/)
     const dialogue = screen.getByRole('dialog')
     const clavier = userEvent.setup()
     await clavier.type(within(dialogue).getByRole('textbox', { name: /Numéro/ }), 'B1')

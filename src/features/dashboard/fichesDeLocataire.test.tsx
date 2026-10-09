@@ -314,3 +314,106 @@ describe('les locataires sur bureau', () => {
     })
   }
 })
+
+/**
+ * LA CASE D'AJOUT AU BOUT DE LA GRILLE.
+ *
+ * Nelson l'a demandée le 2026-10-09 en montrant celle des logements : on arrive
+ * au bout d'une liste de locataires quand on vient de les compter et qu'il en
+ * manque un. Le bouton de page, lui, est en haut, derrière le défilement de dix
+ * fiches.
+ *
+ * ═══ SA CONDITION EST CE QU'IL Y A À GARDER ═══
+ *
+ * Une fiche de locataire se crée SUR un logement vacant — le bouton de page
+ * porte cette condition depuis toujours, en se grisant. La case, elle, ne paraît
+ * pas du tout : une case d'ajout grisée sans raison dite serait pire que pas de
+ * case, et le bouton grisé reste visible pour porter le motif.
+ *
+ * Les deux cas ci-dessous tiennent les DEUX branches avec DEUX jeux de données.
+ * Un seul des deux ne garderait rien : un parc sans logement libre rend « pas de
+ * case » vrai quelle que soit la condition écrite.
+ */
+describe('la case qui crée une fiche de locataire', () => {
+  /** Le même parc, plus un logement libre — c'est lui qui autorise la case. */
+  function parcAvecUnLogementLibre() {
+    const serveur = installerFauxServeur()
+    serveur.quand('GET', `/parks/${PARC}/portfolio`, {
+      status: 200,
+      body: {
+        collections: [],
+        leaseCharges: [],
+        buildings: [
+          {
+            id: 'imm-1',
+            name: 'Résidence Essos',
+            district: 'Essos',
+            units: [
+              unite('u-a1', 'A1', 'paid', 'Charles Ngassa', 110000),
+              {
+                id: 'u-a3',
+                label: 'A3',
+                type: 'T2',
+                surfaceSqm: 54,
+                rentMinor: 110000,
+                paidMinor: 0,
+                status: 'vacant',
+                leaseId: null,
+                leaseStartsOn: null,
+                overdueDays: null,
+                tenant: null,
+              },
+            ],
+          },
+        ],
+        works: [],
+        deposits: [],
+        readings: [],
+        inspections: [],
+        notifications: [],
+      },
+    })
+    return serveur
+  }
+
+  async function ouvrir(avecLibre: boolean) {
+    if (avecLibre) parcAvecUnLogementLibre()
+    else parc()
+    await renderApp('/app/locataires', { session: SESSION, largeur: 1280 })
+    await attendreLeChargement()
+    return screen.getByRole('main')
+  }
+
+  it('paraît quand un logement est libre, et ouvre la modale', async () => {
+    const main = await ouvrir(true)
+    const liste = within(main).getByRole('list', { name: 'Locataires et baux' })
+
+    const case_ = within(liste).getByRole('button', { name: 'Créer une fiche locataire' })
+    expect(case_).toBeInTheDocument()
+
+    /* ELLE N'EST PAS UN LOCATAIRE. La liste porte un nom et un compte ; une case
+       d'ajout qui s'y ajouterait ferait lire « 2 locataires » pour un seul.
+       `role="presentation"` est ce qui l'en retire, sans retirer son bouton de
+       l'arbre d'accessibilité. */
+    expect(
+      within(liste).getAllByRole('listitem').length,
+      'la case d’ajout s’est fait compter comme un locataire',
+    ).toBe(1)
+
+    await userEvent.setup().click(case_)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('ne paraît pas quand aucun logement n’est libre', async () => {
+    const main = await ouvrir(false)
+    const liste = within(main).getByRole('list', { name: 'Locataires et baux' })
+
+    /* LA MOITIÉ NÉGATIVE, et elle a besoin de sa moitié positive : sans la ligne
+       suivante, une grille VIDE rendrait ce cas vrai sans rien garder. */
+    expect(within(liste).getAllByRole('listitem').length).toBeGreaterThan(0)
+    expect(
+      within(liste).queryByRole('button', { name: 'Créer une fiche locataire' }),
+      'la case s’offre alors qu’aucun logement ne peut l’accueillir',
+    ).toBeNull()
+  })
+})

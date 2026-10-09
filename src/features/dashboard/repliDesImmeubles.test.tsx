@@ -107,35 +107,123 @@ describe('l’ordre des immeubles', () => {
 })
 
 /**
- * L'IMMEUBLE VIDE PORTE LE GESTE QUI LE REMPLIT.
+ * TOUT IMMEUBLE PORTE LE GESTE QUI LE REMPLIT — vide ou peuplé.
  *
  * Relevé en production : quatre résidences sans logement, chacune sur une rangée
  * pleine, disant trois fois la même absence — « aucun logement », un loyer de
  * zéro, un rapport de zéro sur zéro — et n'offrant aucun moyen d'y remédier. Le
  * seul chemin rouvrait la liste des immeubles sur le PREMIER du parc.
  *
- * La démonstration n'a que trois immeubles, tous peuplés : aucune porte au
- * navigateur ne rend ce cas. Ce fichier est le seul endroit qui le mesure.
+ * CE FICHIER A GARDÉ L'INVERSE JUSQU'AU 2026-10-09 : « un immeuble peuplé n'a
+ * pas à se faire remplir ». La phrase décrivait un immeuble qu'on vient de
+ * créer, pas un parc qu'on exploite — Nelson l'a nommé en montrant son écran :
+ * remplir un immeuble qui a déjà trois logements repassait par le bouton de
+ * page, qui rouvre la liste sur le PREMIER immeuble du parc. L'immeuble vide
+ * garde son bouton PLEIN, qui tient la place du loyer et du rapport absents ;
+ * l'immeuble peuplé reçoit une icône, qui n'en prend aucune.
+ *
+ * La démonstration n'a que des immeubles peuplés : la moitié « vide » de ces cas
+ * n'est rendue par aucune porte au navigateur, et ce fichier est le seul endroit
+ * qui la mesure.
  */
-describe('l’immeuble vide', () => {
-  it('offre d’y ajouter un logement, et le plein ne l’offre pas', async () => {
+describe('le geste qui remplit un immeuble', () => {
+  it('est offert par le vide ET par le peuplé, sous le même nom', async () => {
     await ouvrir()
 
-    /* LE NOM ACCESSIBLE PORTE L'IMMEUBLE : quatre immeubles vides, c'est quatre
-       boutons au même texte visible, qu'un lecteur d'écran doit distinguer. */
-    const geste = within(enTete('Résidence Neuve')).getByRole('button', {
-      name: 'Ajouter un logement à Résidence Neuve',
-    })
-    expect(geste).toBeInTheDocument()
+    /* LE NOM ACCESSIBLE PORTE L'IMMEUBLE : sept immeubles, c'est sept boutons au
+       même texte visible — ou sans texte du tout, celui du peuplé étant une
+       icône — qu'un lecteur d'écran doit pouvoir distinguer. */
     expect(
-      within(enTete('Résidence Pleine')).queryByRole('button', { name: /Ajouter un logement à/ }),
-      'un immeuble peuplé n’a pas à se faire remplir',
-    ).toBeNull()
+      within(enTete('Résidence Neuve')).getByRole('button', {
+        name: 'Ajouter un logement à Résidence Neuve',
+      }),
+    ).toBeInTheDocument()
+    /* DANS LA CARTE, PAS DANS L'EN-TÊTE. Au-dessus de `lg`, l'immeuble peuplé
+       porte son geste au bout du RAIL de ses fiches — l'en-tête n'en a plus
+       depuis que l'icône « + » en est partie. L'immeuble vide, lui, n'a pas de
+       rail : son bouton reste dans l'en-tête, et c'est pourquoi les deux
+       assertions ne visent pas la même boîte. */
+    expect(
+      within(enTete('Résidence Pleine').parentElement as HTMLElement).getByRole('button', {
+        name: 'Ajouter un logement à Résidence Pleine',
+      }),
+      'un immeuble peuplé n’offre pas d’y ajouter un logement',
+    ).toBeInTheDocument()
 
     /* « 0/0 » ÉTAIT EXACT ET MUET, et il part avec le loyer de zéro. Le plein,
        lui, garde son rapport — c'est la mesure de cet écran. */
     expect(within(enTete('Résidence Neuve')).queryByText('0/0')).toBeNull()
     expect(within(enTete('Résidence Pleine')).getByText('2/2')).toBeInTheDocument()
+  })
+
+  /**
+   * LA CASE AU BOUT DU RAIL, ET CE QU'ELLE NE DOIT PAS ÊTRE.
+   *
+   * Elle vit DANS le `<ul>` du rail — c'est ce qui lui donne une colonne plutôt
+   * qu'une rangée sous la carte, donc zéro hauteur de page — et tout ce qui
+   * entre dans ce `<ul>` par `children` devient une FICHE : une clé que l'ordre
+   * réconcilie, que le menu « Déplacer » promène et que le glissement permute.
+   * Elle passe donc par `queue`, et ce cas garde la distinction : le rail montre
+   * une tuile de plus et compte toujours DEUX fiches.
+   */
+  it('pose une case d’ajout au bout du rail, qui n’est pas une fiche', async () => {
+    await ouvrir()
+
+    /* La carte de l'immeuble : son en-tête ET son rail. Les deux gestes y
+       vivent, et c'est leur COUPLE que ce cas garde — l'un atteignable, l'autre
+       visible. */
+    const carte = enTete('Résidence Pleine').parentElement as HTMLElement
+    /* UNE SEULE, ET C'EST LE POINT. L'en-tête a porté une icône « + » à côté de
+       la case pendant un lot ; Nelson l'a retirée le 2026-10-09 — « le bouton +
+       n'est pas nécessaire ». Deux commandes pour un même geste, à quelques
+       centimètres l'une de l'autre, n'apprennent rien de plus qu'une seule.
+
+       Elle SURVIT sous `lg`, où il n'y a pas de rail où poser une case : c'est
+       `enTeteDImmeuble` qui le dit, et ce cas rend à 1 280 px. */
+    expect(
+      within(carte).getAllByRole('button', { name: 'Ajouter un logement à Résidence Pleine' })
+        .length,
+      'le geste est offert deux fois dans la même carte, ou plus du tout',
+    ).toBe(1)
+
+    /* ET ELLE NE COMPTE NI COMME FICHE NI COMME ÉLÉMENT DE LISTE. Le rail porte
+       deux logements ; `role="presentation"` est ce qui empêche la case de
+       devenir un troisième — dans le compte du lecteur d'écran comme dans les
+       deux contrats que `parcEnFiches` et `railDesLogements` tiennent sur les
+       éléments de cette liste. */
+    const rail = within(carte).getByRole('list', { name: 'Résidence Pleine' })
+    expect(
+      within(rail).getAllByRole('listitem').length,
+      'la case d’ajout s’est fait compter comme un logement',
+    ).toBe(2)
+    expect(rail.querySelectorAll('[data-fiche-logement]').length).toBe(2)
+  })
+
+  /**
+   * ET LES DEUX OUVRENT SUR L'IMMEUBLE QU'ON A MONTRÉ.
+   *
+   * C'est TOUT ce que le lot achète : sans la préselection, ces deux boutons ne
+   * valent pas mieux que celui de la page, qui rouvre la liste sur le PREMIER
+   * immeuble du parc. La fixture déclare « Résidence Neuve » EN PREMIER — donc
+   * un code qui ignorerait l'immeuble transmis choisirait `b-vide`, et ce cas
+   * rougirait. C'est le même montage que le cas de l'immeuble vide, retourné.
+   */
+  it('ouvre la modale sur l’immeuble peuplé, et non sur le premier du parc', async () => {
+    await ouvrir()
+    const carte = enTete('Résidence Pleine').parentElement as HTMLElement
+    await userEvent
+      .setup()
+      .click(
+        within(carte).getByRole('button', { name: 'Ajouter un logement à Résidence Pleine' }),
+      )
+
+    const modale = await screen.findByRole('dialog')
+    const immeuble = within(modale).getByRole('combobox', {
+      name: /Immeuble/,
+    }) as HTMLSelectElement
+    /* La fixture déclare « Résidence Neuve » EN PREMIER : un code qui ignorerait
+       l'immeuble transmis choisirait `b-vide`, et ce cas rougirait. */
+    expect(immeuble.value, 'la case du rail n’ouvre pas sur son propre immeuble').toBe('b-plein')
   })
 
   it('ouvre la modale SUR cet immeuble, et non sur le premier du parc', async () => {

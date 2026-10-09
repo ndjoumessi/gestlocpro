@@ -47,13 +47,13 @@
   "src/features/dashboard/LeaseModal.tsx": 847,
   "src/features/dashboard/Meters.tsx": 1126,
   "src/features/dashboard/Payments.tsx": 1230,
-  "src/features/dashboard/Portfolio.tsx": 2275,
+  "src/features/dashboard/Portfolio.tsx": 2460,
   "src/features/dashboard/ReceiptModal.tsx": 909,
   "src/features/dashboard/TenantDashboard.tsx": 1189,
-  "src/features/dashboard/Tenants.tsx": 1940,
+  "src/features/dashboard/Tenants.tsx": 1981,
   "src/features/dashboard/Works.tsx": 1208,
   "src/features/dashboard/documentsPdf.ts": 1053,
-  "src/i18n/en.ts": 2973,
+  "src/i18n/en.ts": 2977,
   "src/i18n/fr.ts": 1195,
   "src/routes/SignUp.tsx": 1341,
   "src/features/dashboard/Deposits.tsx": {
@@ -61,6 +61,6 @@
    "motif": "l'écran des cautions était à dix lignes du plafond : le quatrième terme du pied — ce que les cautions rendues retirent à la soustraction — ne tenait pas dans ce qui restait. Le fichier porte un tableau, trois indicateurs, un arbitrage, deux exports et leurs motifs ; c'est un découpage qu'il doit, pas un commentaire de trop.",
    "le": "2026-10-06"
   },
-  "src/i18n/fr-app.ts": 3123
+  "src/i18n/fr-app.ts": 3150
  }
 }

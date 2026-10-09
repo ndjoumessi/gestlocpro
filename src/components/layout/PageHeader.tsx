@@ -111,7 +111,13 @@ export function PageHeader({
           bureau ne montrent. Le bloc de titre porte déjà `min-w-0` : c'est lui
           qui cède la place, et le titre se replie, ce qu'un titre sait faire. */}
       {(actions || debordement) && (
-        <div className="flex flex-wrap items-center gap-2">
+        /* `data-actions` : la rangée de commandes de la PAGE, par opposition à
+           celles que le contenu rend lui-même. Les cas en ont besoin depuis
+           qu'un écran peut offrir le même geste aux deux endroits — le bouton de
+           page et la case au bout d'une grille portent le même nom, parce que
+           c'est le même geste, et une requête qui ne dit pas lequel elle vise en
+           trouve deux. */
+        <div data-actions="" className="flex flex-wrap items-center gap-2">
           {actions}
           {/*
             LE DÉBORDEMENT VIT DANS L'EN-TÊTE, ET NON CHEZ L'APPELANT.
