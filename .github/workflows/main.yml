@@ -117,10 +117,47 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        # La même image que `docker-compose.yml` sert en développement. Éprouver
-        # sur une autre version de Postgres que celle qu'on lance chez soi ferait
-        # de l'intégration continue un second environnement à déboguer.
-        image: postgres:17-alpine
+        # ═══ LE MIROIR D'AWS, ET NON DOCKER HUB ═══
+        #
+        # Le 2026-10-09, `postgres:17-alpine` a fait rougir `main` deux fois
+        # d'affilée à l'étape `Initialize containers` : « toomanyrequests: You
+        # have reached your unauthenticated pull rate limit ». Docker Hub compte
+        # les tirages ANONYMES par adresse IP, et cinq exécutions dans la
+        # journée avaient épuisé le quota de la machine d'exécution. Aucun
+        # défaut de code — la même arborescence était verte vingt minutes plus
+        # tôt sur la chaîne de la PR, et 969/969 en local. `ce rouge gèle la
+        # production` a bloqué le déploiement pendant une heure.
+        #
+        # `public.ecr.aws/docker/library/…` est le miroir qu'AWS tient des
+        # images officielles. Il ne demande aucune authentification et n'a pas
+        # de quota anonyme, donc il ne retire au dépôt NI un secret à gérer, NI
+        # une panne à attendre.
+        #
+        # C'EST LA MÊME IMAGE, MESURÉ ET NON SUPPOSÉ. Le 2026-10-10, le manifeste
+        # de `17-alpine` rend le même condensé des deux côtés :
+        # `sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24`.
+        # Le relevé vaut pour ce jour-là : l'étiquette `17-alpine` BOUGE à chaque
+        # correctif de Postgres, et les deux registres ne se synchronisent pas à
+        # la seconde. Le refaire si un écart de comportement est soupçonné —
+        # c'est deux appels à l'API des registres, sans démon Docker.
+        #
+        # `docker-compose.yml` continue de nommer `postgres:17-alpine` pour le
+        # développement : une machine tire l'image une fois et la garde, le
+        # quota ne la concerne pas. Les deux noms désignent le même contenu, donc
+        # l'intégration continue n'est toujours pas un second environnement à
+        # déboguer — ce que la version de Postgres garantissait, le condensé le
+        # garantit plus strictement.
+        #
+        # ET CE N'EST PAS `docker/login-action` QUI AURAIT SAUVÉ L'AUTRE VOIE.
+        # Un travail s'exécute dans l'ordre `Set up job`, `Initialize
+        # containers`, PUIS les étapes : l'image d'un service est tirée avant
+        # que la moindre étape n'ait tourné. S'authentifier demanderait la clé
+        # `credentials:` sur le service, et deux secrets à tenir.
+        #
+        # `scripts/check-tirages-anonymes.mjs` refuse désormais tout service
+        # tiré en anonyme du registre par défaut — y compris celui qu'on
+        # ajouterait demain sans y penser. Il accepte les deux issues.
+        image: public.ecr.aws/docker/library/postgres:17-alpine
         env:
           POSTGRES_USER: gestlocpro
           POSTGRES_PASSWORD: gestlocpro
@@ -277,7 +314,10 @@ jobs:
     # continue un second environnement à déboguer.
     services:
       postgres:
-        image: postgres:17-alpine
+        # Le même miroir, pour la même raison, décrite en entier sur le service
+        # du travail `serveur` : le quota anonyme de Docker Hub se compte par
+        # adresse IP et gèle la production quand il s'épuise.
+        image: public.ecr.aws/docker/library/postgres:17-alpine
         env:
           POSTGRES_USER: gestlocpro
           POSTGRES_PASSWORD: gestlocpro
