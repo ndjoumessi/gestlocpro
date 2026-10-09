@@ -242,5 +242,39 @@ describe('les lignes du registre des décisions', () => {
     expect(noms[0], 'l’acte ne nomme pas son action').toMatch(/paiement|loyer|encaiss/i)
     expect(noms[1], 'l’acte ne nomme pas son action').toMatch(/devis|travaux|valid/i)
     expect(noms[0]).not.toBe(noms[1])
+
+    /*
+      ═══ LE RAIL SE VOIT ET NE S'ENTEND PAS ═══
+
+      Chaque acte porte une pastille sur le rail depuis que le budget a cessé de
+      l'interdire. Elle est DÉCORATIVE, et c'est la seule chose qu'il faut tenir :
+      une pastille qui perdrait son `aria-hidden` ajouterait autant de « puce » à
+      écouter qu'il y a d'actes, sur un écran qu'on parcourt à rebours.
+
+      DEUX MOITIÉS, et la première a failli être fausse : j'avais d'abord cherché
+      une puce dans le texte de l'acte. Il en porte déjà une — « 145 000 FCFA ·
+      Mobile Money » —, et l'assertion rougissait sur un séparateur légitime.
+      Elle mesurait autre chose que ce qu'elle disait.
+
+      Ce qui tient vraiment : la pastille ne porte AUCUN texte, et elle est
+      masquée à l'AT. Une pastille muette qui perdrait `aria-hidden` reste
+      annoncée — « image », ou rien selon le lecteur —, donc les deux comptent.
+    */
+    for (const acte of actes) {
+      const pastille = acte.querySelector(':scope > span[aria-hidden="true"]')
+      expect(pastille, 'l’acte a perdu sa pastille de rail').not.toBeNull()
+      expect(
+        pastille!.textContent,
+        'la pastille du rail porte du texte, donc elle se lit',
+      ).toBe('')
+    }
+
+    /* ET ELLE N'EST PAS UN ÉLÉMENT DE PLUS. Le compte des actes est déjà vérifié
+       plus haut ; cette ligne dit pourquoi il tient encore : la pastille vit
+       DANS l'acte, pas à côté de lui. */
+    expect(
+      journees[0]!.parentElement!.querySelectorAll('ol > li > span[aria-hidden="true"]').length,
+      'les pastilles ne sont pas une par acte',
+    ).toBe(2)
   })
 })

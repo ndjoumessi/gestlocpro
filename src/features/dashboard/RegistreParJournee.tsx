@@ -90,34 +90,58 @@ export function RegistreParJournee<T>({
             */}
             <ol aria-labelledby={id} className="mt-2 flex flex-col border-s border-divider">
               {journee.actes.map((acte) => (
-                <li key={cleDeLActe(acte)} className="py-2.5 ps-4">
+                <li key={cleDeLActe(acte)} className="relative py-2.5 ps-4">
                   {/*
-                    ═══ PAS DE PASTILLE SUR LE RAIL, ET C'EST LE BUDGET QUI PAIE ═══
+                    ═══ LA PASTILLE DU RAIL, RENDUE — LA DETTE EST PAYÉE ═══
 
-                    Le premier jet en posait une par acte, à la manière des
-                    fils d'activité. Elle demandait trois utilitaires que la
-                    feuille PARTAGÉE ne portait pas encore — un décalage négatif,
-                    une position verticale, et une valeur arbitraire pour la
-                    centrer sur la bordure.
+                    Le premier jet en posait une par acte. Elle demandait des
+                    utilitaires que la feuille PARTAGÉE ne portait pas, et le
+                    premier chargement de la vitrine n'avait plus que QUINZE
+                    OCTETS de marge : 159 985 pour 160 000. Trois règles de plus
+                    l'ont fait passer à 160 039, et la porte a refusé — à juste
+                    titre. Le commentaire qui la retirait finissait par « les
+                    pastilles reviendront quand la marge existera ».
 
-                    Or le premier chargement de la vitrine n'avait plus que
-                    QUINZE OCTETS de marge sur son budget, mesurés : 159 985 pour
-                    160 000. Trois règles de plus l'ont fait passer à 160 039, et
-                    la porte a refusé — à juste titre. Le fichier du budget dit
-                    lui-même qu'une quatrième hausse « n'aura plus d'argument » :
-                    le vrai correctif est de scinder le dictionnaire, pas de
-                    reculer la ligne.
+                    ELLE EXISTE. La scission du dictionnaire a sorti les mots des
+                    écrans du paquet d'entrée : 133 364 octets pour un budget
+                    ramené à 137 000. Ces règles-ci sont mesurées dans le lot, et
+                    le relevé de poids porte leur prix.
 
-                    Le rail seul groupe déjà les actes, et il ne coûte rien :
-                    `border-s` était là. Les pastilles reviendront quand la
-                    marge existera.
+                    DÉCORATIVE, ET IL FAUT QUE ÇA LE RESTE. `aria-hidden` : un
+                    rail qui s'annoncerait serait dix-huit « puce » de plus à
+                    écouter, sur un registre qu'on parcourt à rebours. Elle ne
+                    porte aucun texte et ne dit rien que la date ne dise déjà.
+
+                    AUCUNE TRANSFORMATION POUR LA CENTRER. Le décalage vertical
+                    de moitié serait la façon courante, et ce dépôt l'a déjà
+                    payée : une transformation, même d'un pixel, fait de son
+                    élément le bloc conteneur de ses descendants `fixed` — et un
+                    acte porte un menu qui s'échappe en `fixed`. Le décalage est
+                    donc posé en dur.
+
+                    ET IL EST MESURÉ, PAS CALCULÉ. Au navigateur, sur
+                    `/demo/decisions` : centre du rail à 288,50, centre de la
+                    pastille à 289,00 — un demi-pixel. Verticalement, centre de
+                    la pastille à 298,49 contre 297,24 pour la première ligne de
+                    l'acte : 1,25 px trop bas.
+
+                    CES 1,25 PX RESTENT, ET C'EST UN ARBITRAGE. Les corriger
+                    demanderait une graduation que la feuille PARTAGÉE ne porte
+                    pas — donc une règle de plus, payée par la page d'accueil,
+                    pour un écart sous le seuil où l'œil le voit. C'est
+                    exactement l'échange que ce fichier a déjà refusé une fois.
+                    DEUX règles neuves ont été nécessaires ici, et pas une de
+                    plus ; leur prix est au relevé de poids du lot.
 
                     ET LE COMMENTAIRE COMPTE AUTANT QUE LE CODE : Tailwind v4
-                    balaie les fichiers comme du TEXTE. Écrire la classe
-                    arbitraire en prose, ne serait-ce que pour expliquer qu'on
-                    l'a retirée, la fait entrer dans la feuille. Elle n'est donc
-                    nommée nulle part ici.
+                    balaie les fichiers comme du TEXTE. Aucune classe n'est
+                    nommée dans cette prose — l'y écrire la ferait entrer dans la
+                    feuille, fût-ce pour expliquer qu'on ne l'emploie pas.
                   */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute -start-0.5 top-5 size-1 rounded-full bg-border-strong"
+                  />
                   {rendreLActe(acte)}
                 </li>
               ))}
