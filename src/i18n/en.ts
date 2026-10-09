@@ -841,6 +841,10 @@ pdfConverted: 'Amounts converted from {currency} at the {date} rate: {rate}.',
       rentExpected: 'expected',
       overdueFor: '{days}d',
       buildingRent: '{amount} / month',
+      // Voir `fr-app.ts` : pourquoi le total du parc ne s'appelle pas « Rent due ».
+      kpiRent: 'Portfolio rent',
+      // Voir `fr.ts` : la note qui porte ce qui est réellement appelé.
+      kpiRentNote: 'of which {amount} due',
       monthShown: 'Month shown',
       previousMonth: 'Previous month',
       nextMonth: 'Next month',

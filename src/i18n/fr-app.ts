@@ -653,9 +653,36 @@ export const frApp = {
          jours comme à vingt-quatre, et ce n'est pas la même décision. La donnée
          était déjà sur la ligne — `overdueDays` — et la pastille la jetait. */
       overdueFor: '{days} j',
-      /* CE QUE L'IMMEUBLE RAPPORTE, à côté de ce qu'il remplit. Un écran de
+      /* CE QUE L'IMMEUBLE PÈSE, à côté de ce qu'il remplit. Un écran de
          propriétaire portait l'occupation sans jamais porter l'argent. */
       buildingRent: '{amount} / mois',
+      /* LE TOTAL DU PARC A SON PROPRE NOM, parce qu'il ne compte pas la même
+         chose que son homonyme. `app.dashboard.expected` — « Loyers attendus » —
+         coiffe sur le tableau de bord et les paiements ce que les BAUX appellent
+         ce mois-ci ; ici le chiffre couvre tous les lots, vides compris. Deux
+         nombres sous un seul mot est la confusion que `indicateursEnDouble`
+         traque dans l'autre sens.
+
+         ÉCRIT, RETIRÉ, PUIS RENDU — et le détour mérite d'être dit. Il a été
+         retiré parce qu'il ne restait que huit octets au budget du premier
+         chargement, et que ce dictionnaire partait alors avec la page d'accueil.
+         La scission l'a sorti de là : ces octets-ci ne sont plus payés par
+         personne qui ne les lise. Une contrainte de poids avait fait perdre un
+         mot juste ; elle a cessé d'exister, le mot revient. */
+      kpiRent: 'Loyer du parc',
+      /* L'ÉCART ENTRE LE PARC PLEIN ET CE QUI RENTRE, dans la note du total :
+         c'est lui que la vacance creuse, et il n'était écrit nulle part.
+
+         SANS LE COMPTE DES BAUX — et le motif a changé sous cette clé. Écrite,
+         elle disait que la forme longue, avec ses deux pluriels, poussait le
+         premier chargement de la vitrine à 160 019 o pour un budget de 160 000.
+         C'ÉTAIT VRAI, ET CE NE L'EST PLUS : depuis la scission du dictionnaire,
+         cette section ne part plus avec la page d'accueil, et cette clé ne lui
+         coûte RIEN. Ce qui reste est la seule raison qui tienne encore : la
+         carte voisine dit déjà « 2/7 occupées », et le compte des baux y serait
+         une troisième fois le même fait. La forme longue redeviendrait gratuite
+         le jour où quelqu'un la jugerait meilleure. */
+      kpiRentNote: '{amount} appelés',
       monthShown: 'Mois affiché',
       previousMonth: 'Mois précédent',
       nextMonth: 'Mois suivant',

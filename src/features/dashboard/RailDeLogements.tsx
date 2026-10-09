@@ -104,11 +104,28 @@ export function RailDeLogements({
   libelle,
   className,
   children,
+  queue,
 }: {
   id?: string
   libelle?: string
   className?: string
   children: ReactNode
+  /**
+   * UNE TUILE DE FIN, QUI N'EST PAS UNE FICHE.
+   *
+   * Elle sort APRÈS les fiches, dans le `<ul>` et donc dans la grille — c'est
+   * la condition pour qu'elle occupe une colonne du rail plutôt qu'une rangée
+   * sous lui. Elle ne passe PAS par `children`, et la distinction porte tout ce
+   * lot : tout ce qui entre par `children` est une fiche, donc une clé de
+   * `clesServies`, donc quelque chose que l'ordre réconcilie, que le menu
+   * déplace et que le glissement permute. Une tuile « ajouter » prise pour une
+   * fiche se laisserait réordonner et compterait dans « 3 sur 4 ».
+   *
+   * Elle n'a pas non plus `data-fiche-logement` : c'est par cet attribut que le
+   * glissement relève les centres des colonnes, et un centre de plus déplacerait
+   * les fiches vers une case qui n'en est pas une.
+   */
+  queue?: ReactNode
 }) {
   const t = useT()
   const rail = useRef<HTMLUListElement>(null)
@@ -622,6 +639,8 @@ export function RailDeLogements({
             ...(cle === cleDeplacee ? { 'data-deplacee': '' } : {}),
           } as Record<string, unknown>)
         })}
+        {/* La tuile de fin, dernière colonne de la grille — voir `queue`. */}
+        {queue}
       </ul>
 
       {/*

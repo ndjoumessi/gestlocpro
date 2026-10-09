@@ -331,7 +331,12 @@ const MODALES: Modale[] = [
      en fiches, le 2026-09-07, il la porte : « Corriger la fiche de Charles
      Ngassa ». `rang: 0` reste, le geste se répétant par fiche. */
   { nom: 'Corriger une fiche', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Corriger la fiche de /, rang: 0, forme: 'saisie' },
-  { nom: 'Créer une fiche locataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Créer une fiche locataire$/, forme: 'saisie' },
+  /* `rang: 0` depuis le 2026-10-09 : l'écran offre ce geste DEUX fois, en tête
+     de page et au bout de la grille des fiches. Le même nom des deux côtés est
+     voulu — c'est le même geste, et `gestesQuiSeDistinguent` n'exige des noms
+     distincts qu'entre commandes d'une MÊME liste. Le rang dit lequel ce
+     parcours ouvre : celui de l'en-tête, qui vient d'abord dans le document. */
+  { nom: 'Créer une fiche locataire', fichier: 'features/dashboard/Tenants.tsx', adresse: '/demo/locataires', bouton: /^Créer une fiche locataire$/, rang: 0, forme: 'saisie' },
   { nom: 'Confier des immeubles', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Confier des immeubles$/, rang: 0, forme: 'saisie' },
   { nom: 'Relier à une fiche', fichier: 'features/dashboard/Access.tsx', adresse: '/demo/acces', bouton: /^Relier à une fiche — /, rang: 0, forme: 'saisie' },
 

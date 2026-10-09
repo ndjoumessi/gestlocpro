@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { waitFor } from '@testing-library/react'
-import { renderApp, screen, userEvent, within } from '@/test/render'
+import { actionDeLaPage, renderApp, screen, userEvent, within } from '@/test/render'
 import { installerFauxServeur } from '@/test/api'
 import { IMMEUBLE, PARK, SESSION_AVEC_PARC, U2, portefeuille } from './noTechnicalIds.test'
 
@@ -250,7 +250,7 @@ describe('rattacher un locataire', () => {
 
     const user = userEvent.setup()
     await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
-    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+    await user.click(await actionDeLaPage(/créer une fiche locataire/i))
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
     await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
@@ -368,7 +368,7 @@ describe('saisir un logement', () => {
     await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findAllByText('Bonamoussadi')
 
-    await user.click(screen.getByRole('button', { name: /ajouter un logement/i }))
+    await user.click(screen.getByRole('button', { name: /^ajouter un logement$/i }))
     await user.type(screen.getByLabelText(/numéro du logement/i), 'B7')
     await user.type(screen.getByLabelText(/surface/i), '64')
     await user.type(screen.getByLabelText(/loyer mensuel/i), '130000')
@@ -405,7 +405,7 @@ describe('saisir un logement', () => {
     await renderApp('/app/parc', { session: SESSION_AVEC_PARC })
     await screen.findAllByText('Bonamoussadi')
 
-    await user.click(screen.getByRole('button', { name: /ajouter un logement/i }))
+    await user.click(screen.getByRole('button', { name: /^ajouter un logement$/i }))
     await user.type(screen.getByLabelText(/numéro du logement/i), 'a1')
     await user.type(screen.getByLabelText(/surface/i), '50')
     await user.type(screen.getByLabelText(/loyer mensuel/i), '90000')
@@ -437,7 +437,7 @@ describe('saisir les termes du bail', () => {
 
     const user = userEvent.setup()
     await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
-    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+    await user.click(await actionDeLaPage(/créer une fiche locataire/i))
 
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
     await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
@@ -472,7 +472,7 @@ describe('saisir les termes du bail', () => {
 
     const user = userEvent.setup()
     await renderApp('/app/locataires', { session: SESSION_AVEC_PARC })
-    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+    await user.click(await actionDeLaPage(/créer une fiche locataire/i))
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
     await user.type(screen.getByLabelText(/^téléphone/i), '688401277')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))

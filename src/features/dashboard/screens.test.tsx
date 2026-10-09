@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, switchRole, attendreLeChargement, userEvent, within } from '@/test/render'
+import { actionDeLaPage, attendreLeChargement, renderApp, screen, switchRole, userEvent, within } from '@/test/render'
 import { UNITS, WORKS } from '@/data/portfolio'
 
 /**
@@ -246,7 +246,7 @@ describe('indicatif de la fiche locataire', () => {
   async function ouvrirLaFiche() {
     const user = userEvent.setup()
     await renderApp('/app/locataires')
-    await user.click(await screen.findByRole('button', { name: /créer une fiche locataire/i }))
+    await user.click(await actionDeLaPage(/créer une fiche locataire/i))
     return user
   }
 
