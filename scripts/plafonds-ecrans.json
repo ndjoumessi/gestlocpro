@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "8aa8ccad",
- "empreinteDesSources": "f83c624e73945a86a76c6f5004d8f94b64ac350eac861a77a8fb33b2ec608503",
+ "course": "4d08c32e",
+ "empreinteDesSources": "8df89e2c8940cc6531fa6f2e5c98b12f9af86f80fb1986a2af49de5c27d711ba",
  "mesures": {
   "/@360": {
    "octets": 579793,
-   "octetsFil": 188366,
+   "octetsFil": 188364,
    "requetes": 4,
    "releve": {
     "de": 579465,
@@ -22,14 +22,14 @@
    }
   },
   "/demo@360": {
-   "octets": 447020,
-   "octetsFil": 126804,
+   "octets": 447388,
+   "octetsFil": 126990,
    "requetes": 2,
    "releve": {
-    "de": 446704,
+    "de": 447020,
     "requetesDe": 2,
-    "motif": "le panneau d'un menu qui échappe suit désormais son déclencheur : +316 o sur le paquet applicatif, une boucle de trames qui ne tourne QUE menu ouvert et ne rend QUE si l'ancre a bougé. Ce que ça achète : « Déplacer ‹ › » réordonne le rail sans émettre ni scroll ni resize, et le panneau restait 320 px en arrière — au-dessus de la fiche voisine, en portant le titre de celle qu'il avait quittée. Mesuré sur /demo/parc avant correctif : panneau 856, déclencheur passé de 876 à 1176",
-    "course": "8aa8ccad"
+    "motif": "le registre se lit par journée : +368 o sur le paquet applicatif, zéro sur l'index. Ce que ça achète : sur la production, « 05/09/2026 » était écrit SEPT fois d'affilée sur dix-huit lignes, et la seule structure qu'un registre possède — ce qui s'est passé le même jour — n'apparaissait nulle part. La date devient un titre que l'on saute au lecteur d'écran. Le premier chargement de la vitrine, lui, ne bouge PAS : les pastilles du rail ont été retirées et ps-5 ramené à ps-4 pour n'employer que des utilitaires que la feuille partagée porte déjà — il ne lui restait que quinze octets de budget",
+    "course": "4d08c32e"
    }
   },
   "/demo/paiements@360": {
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 579793,
-   "octetsFil": 188366,
+   "octetsFil": 188364,
    "requetes": 4,
    "releve": {
     "de": 579465,
@@ -77,14 +77,14 @@
    }
   },
   "/demo@1280": {
-   "octets": 447020,
-   "octetsFil": 126804,
+   "octets": 447388,
+   "octetsFil": 126990,
    "requetes": 2,
    "releve": {
-    "de": 446704,
+    "de": 447020,
     "requetesDe": 2,
-    "motif": "le panneau d'un menu qui échappe suit désormais son déclencheur : +316 o sur le paquet applicatif, une boucle de trames qui ne tourne QUE menu ouvert et ne rend QUE si l'ancre a bougé. Ce que ça achète : « Déplacer ‹ › » réordonne le rail sans émettre ni scroll ni resize, et le panneau restait 320 px en arrière — au-dessus de la fiche voisine, en portant le titre de celle qu'il avait quittée. Mesuré sur /demo/parc avant correctif : panneau 856, déclencheur passé de 876 à 1176",
-    "course": "8aa8ccad"
+    "motif": "le registre se lit par journée : +368 o sur le paquet applicatif, zéro sur l'index. Ce que ça achète : sur la production, « 05/09/2026 » était écrit SEPT fois d'affilée sur dix-huit lignes, et la seule structure qu'un registre possède — ce qui s'est passé le même jour — n'apparaissait nulle part. La date devient un titre que l'on saute au lecteur d'écran. Le premier chargement de la vitrine, lui, ne bouge PAS : les pastilles du rail ont été retirées et ps-5 ramené à ps-4 pour n'employer que des utilitaires que la feuille partagée porte déjà — il ne lui restait que quinze octets de budget",
+    "course": "4d08c32e"
    }
   },
   "/demo/paiements@1280": {

@@ -385,8 +385,25 @@ const plaintes = []
     // Monté PAR UN AUTRE FICHIER. Un composant qui ne s'emploie que chez lui
     // n'a pas d'entrée non plus — et le fichier de test ne compte pas : s'y
     // monter soi-même est exactement ce qui masque le défaut.
+    /*
+      `<Nom<` AUTANT QUE `<Nom ` : LE PARAMÈTRE DE TYPE S'INTERCALE.
+
+      Première rédaction : `[\\s/>]` seul. Un composant générique monté avec son
+      type explicite — `<RegistreParJournee<DecisionApi> …>` — n'était donc
+      jamais reconnu, et la porte le déclarait orphelin alors qu'un écran le
+      montait bel et bien. Trouvé le 2026-10-09, sur le premier composant
+      générique que ce dépôt ait monté ainsi.
+
+      LE REMÈDE ÉTAIT DÉJÀ ÉCRIT CENT LIGNES PLUS HAUT, pour le contrôle jumeau
+      des méthodes d'API : « `.nom(` autant que `.nom<{ … }>(` ». La moitié de ce
+      fichier connaissait le piège, l'autre non.
+
+      `<` NE CRÉE PAS DE FAUX NÉGATIF : en TSX, `<Nom<` n'a qu'une lecture, celle
+      d'un élément générique. Une comparaison s'écrirait avec des espaces et des
+      opérandes, jamais collée à un nom en capitale.
+    */
     const monte = [...sources].some(
-      ([chemin, texte]) => chemin !== source && new RegExp(`<${nom}[\\s/>]`).test(texte),
+      ([chemin, texte]) => chemin !== source && new RegExp(`<${nom}[\\s/><]`).test(texte),
     )
     if (!monte) {
       plaintes.push(

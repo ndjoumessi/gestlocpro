@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { DataTable, EmptyState, type Column } from '@/components/primitives/DataTable'
+import { EmptyState } from '@/components/primitives/DataTable'
+import { RegistreParJournee, parJournee } from './RegistreParJournee'
 import { Button } from '@/components/primitives/Button'
 import { Notice } from '@/components/primitives/Notice'
 import { SkeletonRegion, SkeletonTable } from '@/components/primitives/Skeleton'
@@ -707,90 +708,32 @@ export function Decisions() {
      découper reviendrait à ré-analyser ce qu'on vient d'assembler. Quand il n'y
      en a qu'un, n'importe quelle ligne le porte ; on prend la première. */
   const auteurUnique = auteurs.size === 1 ? ((registre ?? [])[0] ?? null) : null
-  const toutesLesColonnes: Column<DecisionApi>[] = [
-    {
-      key: 'when',
-      header: t('app.decisions.colWhen'),
-      /* LA DATE EN PREMIER, parce qu'un registre se lit comme une
-         chronologie : c'est la colonne qui donne le rythme, et la
-         déplacer à droite obligerait à balayer chaque ligne. */
-      render: (decision) => (
-        <span className="text-muted">{d.fullDate(partiesDeDateISO(decision.at))}</span>
-      ),
-    },
-    {
-      key: 'what',
-      /*
-        ═══ CE QUI NOMME UNE DÉCISION EST L'ACTION, PAS SA DATE ═══
-
-        Aucune des trois colonnes ne portait de rôle, et `role` est facultatif :
-        les trois tombaient donc dans le `contexte`. En fiches — la forme que ce
-        registre prend sous 64 rem — la carte n'avait AUCUNE ligne de tête, juste
-        trois couples empilés, « Quand : 12 mars 2026 », « Quoi : Loyer appelé »,
-        « Par qui : Awa ». Rien ne nommait la carte. En tableau, aucune ligne
-        n'avait de nom, et le `<th scope="row">` que `DataTable` pose désormais
-        n'avait aucune colonne à poser.
-
-        L'IDENTITÉ EST « QUOI », ET LA DATE RESTE EN PREMIÈRE COLONNE. Les deux
-        ne se disputent pas : le rôle dit ce qui NOMME la ligne, la position dit
-        comment on la BALAIE. Un registre se lit comme une chronologie — c'est
-        écrit au-dessus, et la date garde donc sa place —, mais « 12 mars 2026 »
-        ne nomme pas une décision : trois décisions du même jour porteraient le
-        même nom, et c'est justement le cas ordinaire d'un registre.
-      */
-      role: 'identite',
-      header: t('app.decisions.colWhat'),
-      /* LE DÉTAIL SOUS L'ACTION, et non dans une quatrième colonne :
-         il n'existe pas pour toutes les décisions, et une colonne à
-         moitié vide se lit comme une donnée manquante. Sous le
-         libellé, son absence ne se voit pas — c'est le motif des
-         lignes d'alerte du tableau de bord. */
-      render: (decision) => {
-        const quoi = detail(decision)
-        return (
-          <div className="flex flex-col gap-0.5">
-            <span className="font-medium">{libelle(decision.action)}</span>
-            {quoi && <span className="text-caption text-muted">{quoi}</span>}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'who',
-      header: t('app.decisions.colWho'),
-      /* UN ACTEUR NUL SE DIT. `actorId` est en `SetNull` pour que le
-         registre survive à la suppression d'un compte : une décision
-         dont l'auteur est parti reste une décision prise, et la
-         masquer effacerait l'histoire pour protéger un nom qui
-         n'existe plus. */
-      render: (decision) =>
-        /* LE SYSTÈME D'ABORD, et l'ordre est le sujet : un acte automatique a
-           lui aussi un `actor` nul, et tester la nullité en premier le ferait
-           tomber dans « Compte supprimé ». */
-        decision.actorSystem ? (
-          <span className="text-muted">{t('app.decisions.systemActor')}</span>
-        ) : decision.actor === null ? (
-          /* AUCUN NOM DU TOUT : les décisions prises avant que ce registre ne
-             conserve le nom, par des comptes déjà effacés. Il n'existe plus
-             nulle part et aucune migration ne peut le retrouver. */
-          <span className="text-muted">{t('app.decisions.unknownActor')}</span>
-        ) : decision.actorGone ? (
-          /* LE NOM, PUIS SON ÉTAT. Dans cet ordre : c'est le nom qu'on cherche,
-             et « parti » est ce qu'on apprend en le lisant. L'inverse —
-             « Compte supprimé · Diane Fotso » — mettrait l'accessoire devant
-             la réponse à « qui a fait ça ? ». */
-          <span className="flex flex-col gap-0.5">
-            <span>{decision.actor}</span>
-            <span className="text-caption text-muted">{t('app.decisions.actorGone')}</span>
-          </span>
-        ) : (
-          decision.actor
-        ),
-    },
-  ]
-  const colonnes = auteurUnique
-    ? toutesLesColonnes.filter((colonne) => colonne.key !== 'who')
-    : toutesLesColonnes
+  /**
+   * QUI A ÉCRIT CET ACTE — la prose de l'ancienne colonne « Par qui », gardée
+   * alors que la colonne a disparu.
+   *
+   * `actorId` est en `SetNull` pour que le registre survive à la suppression
+   * d'un compte : une décision dont l'auteur est parti reste une décision
+   * prise, et la masquer effacerait l'histoire pour protéger un nom qui
+   * n'existe plus.
+   *
+   * L'ORDRE DES CAS EST LE SUJET. Le système d'abord : un acte automatique a
+   * lui aussi un `actor` nul, et tester la nullité en premier le ferait tomber
+   * dans « Compte supprimé ». Puis le nom absent — les décisions prises avant
+   * que ce registre ne conserve le nom, par des comptes déjà effacés : il
+   * n'existe plus nulle part et aucune migration ne peut le retrouver. Puis le
+   * nom SUIVI de son état : c'est le nom qu'on cherche, et « parti » est ce
+   * qu'on apprend en le lisant — l'inverse mettrait l'accessoire devant la
+   * réponse à « qui a fait ça ? ».
+   */
+  const nomDeLAuteur = (decision: DecisionApi) =>
+    decision.actorSystem
+      ? t('app.decisions.systemActor')
+      : decision.actor === null
+        ? t('app.decisions.unknownActor')
+        : decision.actorGone
+          ? `${decision.actor} · ${t('app.decisions.actorGone')}`
+          : decision.actor
 
   return (
     <>
@@ -822,12 +765,73 @@ export function Decisions() {
                   : t('app.decisions.singleActorUnknown')}
             </p>
           )}
-          <DataTable<DecisionApi>
-            caption={t('app.decisions.title')}
-            fiches
-            rows={registre ?? []}
-            rowKey={(decision) => decision.id}
-            columns={colonnes}
+          {/*
+            ═══ PAR JOURNÉE, ET NON EN TABLEAU ═══
+
+            Relevé sur la production le 2026-10-09 : sur dix-huit lignes
+            visibles, « 05/09/2026 » était écrit SEPT fois d'affilée. Une
+            colonne entière répétait ce que la précédente venait de dire, et la
+            seule structure qu'un registre possède — ce qui s'est passé le même
+            jour — n'apparaissait nulle part.
+
+            `DataTable` RESTE LE BON OUTIL PARTOUT AILLEURS : elle aligne des
+            colonnes comparables et rend une grille de fiches sous `lg`. Un
+            registre ne se compare pas, il se parcourt à rebours ; sa date est
+            un TITRE, pas une cellule. Voir `RegistreParJournee`.
+
+            CE QU'ON PERD EN SORTANT DE `DataTable`, et il faut le dire : sa
+            légende, ses en-têtes de colonne, son `<th scope="row">` et sa
+            seconde forme. Les trois premiers n'ont plus d'objet — il n'y a plus
+            de colonnes —, et la quatrième non plus, puisque cette forme-ci est
+            la même à toutes les largeurs.
+          */}
+          <RegistreParJournee<DecisionApi>
+            journees={parJournee(registre ?? [], (decision) => {
+              const parties = partiesDeDateISO(decision.at)
+              return {
+                /* LA CLÉ EST L'ISO COURT, pas la date mise en forme : deux
+                   langues rendent deux libellés pour le même jour, et grouper
+                   sur le libellé scinderait une journée au changement de
+                   langue. */
+                cle: decision.at.slice(0, 10),
+                libelle: d.fullDate(parties),
+              }
+            })}
+            cleDeLActe={(decision) => decision.id}
+            rendreLActe={(decision) => {
+              const quoi = detail(decision)
+              return (
+                /*
+                  ═══ L'AUTEUR REMONTE À DROITE AU-DELÀ DE `sm` ═══
+
+                  Il était une COLONNE et il est devenu une ligne empilée : à
+                  1280 px, la page est passée de 900 à 1327 px de haut, soit
+                  quatre cent vingt-sept de plus pour la même information.
+                  Mesuré, pas supposé.
+
+                  La largeur était pourtant là, inoccupée. `justify-between` la
+                  lui rend et l'acte retrouve deux lignes au lieu de trois.
+                  Sous `sm`, il repasse dessous : à 360 px un nom à droite d'un
+                  libellé les comprime tous les deux.
+                */
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-body font-medium text-ink">
+                      {libelle(decision.action)}
+                    </span>
+                    {quoi && <span className="text-caption text-muted">{quoi}</span>}
+                  </div>
+                  {/* L'AUTEUR SEULEMENT S'ILS SONT PLUSIEURS — la note en tête
+                      le dit déjà une fois quand il est unique, et le répéter
+                      dix-huit fois est précisément le défaut qu'on referme. */}
+                  {!auteurUnique && (
+                    <span className="shrink-0 text-caption text-muted">
+                      {nomDeLAuteur(decision)}
+                    </span>
+                  )}
+                </div>
+              )
+            }}
           />
 
           {suivant && (
