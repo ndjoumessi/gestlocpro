@@ -32,9 +32,10 @@ import { attendreLeChargement, renderApp, screen, switchRole, userEvent, within 
  * montre » — et un cas qui inscrirait 1 226 000 rougirait au premier changement
  * des données de démonstration sans rien avoir gardé.
  *
- * Deux exceptions, écrites là où elles se produisent : le parc, dont le pied
- * somme MOINS que ses cellules parce qu'un lot vacant n'appelle pas de loyer, et
- * les relevés, dont le pied somme les montants qui EXISTENT.
+ * UNE SEULE EXCEPTION DEPUIS LE 2026-10-09, écrite là où elle se produit : les
+ * relevés, dont le pied somme les montants qui EXISTENT. Le parc en était la
+ * seconde — son pied écartait les lots vacants — et il est rentré dans le rang :
+ * voir son cas, qui dit pourquoi.
  */
 
 /** Les chiffres d'un montant rendu — insécables, signes et devise retirés. */
@@ -250,7 +251,7 @@ describe('le pied qui somme la colonne qu’il somme', () => {
     expect(cellulesDuPied, 'le pied ne couvre pas exactement les colonnes').toBe(colonnes)
   })
 
-  it('écarte du total les lots que le parc ne facture pas', async () => {
+  it('somme TOUS les lots du parc, vides compris', async () => {
     /*
       À 375 px, ET CE N'EST PAS UN CHOIX DE COMMODITÉ.
 
@@ -264,13 +265,16 @@ describe('le pied qui somme la colonne qu’il somme', () => {
     await renderApp('/demo/parc', { largeur: 375 })
     await attendreLeChargement()
 
-    /* L'ÉCRAN A DÉJÀ TRANCHÉ, DEUX FOIS, dans ces termes : « un lot vide
-       n'appelle rien, et l'additionner ferait lire un revenu qui n'existe pas ».
-       `loyersAttendus` et `loyerDe` appliquent la règle ; le pied aussi.
+    /* CE CAS GARDAIT L'INVERSE JUSQU'AU 2026-10-09, sous la règle que l'écran
+       portait alors : « un lot vide n'appelle rien, et l'additionner ferait lire
+       un revenu qui n'existe pas ». Le pied était le SEUL du produit à sommer
+       moins que ses cellules, et il s'écrit sous « Total · N lignes » : sept
+       lignes annoncées, deux sommées, rien pour dire l'écart. Nelson l'a lu
+       comme un montant faux, ce qui est la seule lecture possible d'un total
+       qu'on ne peut pas recomposer à la main.
 
-       C'EST DONC LE SEUL PIED QUI SOMME MOINS QUE SES CELLULES, et l'écart est
-       celui que la fiche ANNONCE : sur un lot vide, elle écrit le montant suivi
-       de « attendu ». */
+       Ce qui n'est pas appelé reste dit sur la LIGNE, où la cellule d'un lot
+       vide écrit son montant suivi de « attendu ». */
     /* LE LOYER SE TROUVE PAR SON INTITULÉ, et non par la première classe
        `numeric` de la carte : le libellé du logement — « A1 » — en porte une
        aussi, et c'est lui que le document offre d'abord. Une fiche range sa
@@ -284,8 +288,12 @@ describe('le pied qui somme la colonne qu’il somme', () => {
     expect(loyers.length, 'aucune fiche de logement').toBeGreaterThan(1)
     expect(loyers.every((l) => /\d/.test(l)), 'une fiche ne montre pas son loyer').toBe(true)
 
+    /* LA DÉMONSTRATION DOIT PORTER DES LOTS VIDES, sans quoi les deux sommes
+       coïncident et ce cas passerait au vert sous l'ANCIENNE règle comme sous la
+       nouvelle — il ne garderait plus rien. C'est l'écart qui le rend mesurable,
+       et les deux lignes suivantes refusent qu'il disparaisse. */
     const vacants = loyers.filter((c) => /attendu/i.test(c))
-    expect(vacants.length, 'la démonstration n’a aucun lot vacant à écarter').toBeGreaterThan(0)
+    expect(vacants.length, 'la démonstration n’a aucun lot vacant').toBeGreaterThan(0)
 
     const toutes = loyers.reduce((somme, c) => somme + chiffres(c), 0)
     const facturees = loyers
@@ -297,8 +305,8 @@ describe('le pied qui somme la colonne qu’il somme', () => {
     expect(pied, 'le parc en fiches n’a pas de pied de totaux').not.toBeNull()
     expect(
       chiffres(within(pied as HTMLElement).getByRole('definition').textContent ?? ''),
-      'le pied additionne des loyers que personne ne verse',
-    ).toBe(facturees)
+      'le pied n’additionne pas les lots vides qu’il annonce dans son compte de lignes',
+    ).toBe(toutes)
   })
 
   it('ne chiffre pas une refacturation sur des relevés qui n’existent pas', async () => {

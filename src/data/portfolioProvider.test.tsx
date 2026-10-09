@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderApp, screen, userEvent, attendreLeChargement } from '@/test/render'
+import { actionDeLaPage, attendreLeChargement, renderApp, screen, userEvent } from '@/test/render'
 
 /**
  * Propagation de l'état partagé.
@@ -140,7 +140,7 @@ describe('création d’une fiche locataire', () => {
     const user = userEvent.setup()
     await renderApp('/app/locataires')
 
-    await user.click(screen.getByRole('button', { name: /créer une fiche locataire/i }))
+    await user.click(await actionDeLaPage(/créer une fiche locataire/i))
     await user.type(screen.getByLabelText(/nom complet/i), 'Awa Diallo')
     await user.type(screen.getByLabelText(/^téléphone/i), '699445566')
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
@@ -163,7 +163,7 @@ describe('création d’une fiche locataire', () => {
     const user = userEvent.setup()
     await renderApp('/app/locataires')
 
-    await user.click(screen.getByRole('button', { name: /créer une fiche locataire/i }))
+    await user.click(await actionDeLaPage(/créer une fiche locataire/i))
     await user.click(screen.getByRole('button', { name: /^enregistrer$/i }))
 
     // La modale n'annonçait « code d'invitation envoyé par SMS » qu'à condition

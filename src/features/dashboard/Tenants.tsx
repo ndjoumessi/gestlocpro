@@ -28,6 +28,8 @@ import { initiales } from './initiales'
 import { useTriDansLAdresse } from '@/lib/useTriDansLAdresse'
 import { DatePicker } from '@/components/primitives/DatePicker'
 import { useToast } from '@/components/primitives/Toast'
+import { cn } from '@/lib/cn'
+import { Icon } from '@/components/primitives/Icon'
 import { useCurrency } from '@/currency/CurrencyProvider'
 import { useI18n, useT } from '@/i18n/I18nProvider'
 import { useDates } from '@/lib/useDates'
@@ -629,6 +631,45 @@ export function Tenants() {
           </li>
         )
       })}
+      {/*
+        LA CASE AU BOUT DE LA GRILLE — le même geste que celle du parc, et pour
+        la même raison : on arrive au bout d'une liste de locataires quand on
+        vient de les compter et qu'il en manque un. Nelson l'a demandée le
+        2026-10-09, en montrant celle des logements.
+
+        ELLE NE PARAÎT QUE S'IL Y A UN LOGEMENT VACANT, et ce n'est pas une
+        omission : une fiche de locataire se crée SUR un logement libre — c'est
+        la condition que le bouton de page porte depuis toujours, en se grisant.
+        Une case d'ajout grisée sans raison dite serait pire que pas de case ; le
+        bouton de page reste, lui, visible et grisé, et c'est là que la condition
+        se lit.
+
+        `role="presentation"` : la liste porte le nom « Locataires » et répond
+        « N éléments ». Cette case n'est pas un locataire. Le bouton qu'elle
+        contient reste atteignable et annoncé — c'est exactement l'arbitrage de
+        la case du parc, et il est écrit là-bas.
+
+        AUCUNE CLASSE NEUVE, AUCUNE CLÉ NEUVE : les utilitaires sont ceux de la
+        case du parc, et le libellé est celui du bouton de page.
+      */}
+      {vacant.length > 0 && (
+        <li role="presentation" className="row-span-5 flex">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className={cn(
+              'flex min-h-11 flex-1 cursor-pointer flex-col items-center justify-center gap-2',
+              'rounded-lg border border-dashed border-divider p-4',
+              'text-body text-muted transition-colors',
+              'hover:border-border-strong hover:bg-surface-sunken hover:text-ink',
+              'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent',
+            )}
+          >
+            <Icon name="plus" size={20} />
+            {t('app.tenants.addTenant')}
+          </button>
+        </li>
+      )}
     </ul>
   )
 

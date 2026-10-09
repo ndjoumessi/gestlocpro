@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "9dd851d8",
- "empreinteDesSources": "9766694844446d4e74e0cb818602910ad40467cdb29dfe5c34e8b24630e5e80d",
+ "course": "14731849",
+ "empreinteDesSources": "d79e620a1b0de10248ca07d996d7ffe8e402a70487441de871bfb7f590d06558",
  "mesures": {
   "/@360": {
    "octets": 493753,
-   "octetsFil": 161721,
+   "octetsFil": 161719,
    "requetes": 4,
    "releve": {
     "de": 579465,
@@ -22,19 +22,19 @@
    }
   },
   "/demo@360": {
-   "octets": 533478,
-   "octetsFil": 155526,
+   "octets": 534843,
+   "octetsFil": 155734,
    "requetes": 2,
    "releve": {
-    "de": 447388,
+    "de": 534271,
     "requetesDe": 2,
-    "motif": "scission du dictionnaire : la section `app` de `fr.ts` (86 Ko bruts) quitte le paquet d'entrée pour le morceau applicatif, qui l'importe statiquement. LES OCTETS NE SONT PAS AJOUTÉS, ILS CHANGENT DE LIGNE — cette porte mesure des incréments en cache (voir son propre commentaire : « chaque écran suivant ne paie que son morceau paresseux »), donc ce que / perd apparaît comme un gain de /demo. Bilan pour un visiteur : / passe de 579 793 à 493 805 o bruts, −26 642 sur le fil, −533 ms à 400 kb/s, et c'est un gain SEC pour quiconque n'ouvre jamais l'application. Celui qui l'ouvre télécharge les mêmes octets, répartis autrement : +1 891 o sur le fil au total, parce qu'un dictionnaire gzippé à part compresse un peu moins bien qu'au milieu du reste. ZÉRO REQUÊTE DE PLUS, et c'est ce qui a décidé la conception : la première rédaction chargeait `fr-app` par son propre import() et cette porte l'a refusée — « /demo : 2 → 3 REQUÊTES », 300 à 800 ms d'aller-retour sur le réseau visé. L'import statique depuis EspaceApplicatif range les mots dans un morceau déjà demandé.",
-    "course": "1dcfd724"
+    "motif": "la case qui crée une fiche de locataire, et le retrait du bouton + de l'en-tête d'immeuble au-dessus de lg : +572 o bruts, +46 o sur le fil, +1 ms. Ce que ça achète : la liste des locataires porte enfin le geste qui la remplit à l'endroit où l'on finit de la lire — le bouton de page est en haut, derrière le défilement de dix fiches. Elle ne paraît que s'il existe un logement vacant, condition que le bouton de page portait déjà en se grisant. Le + de l'en-tête part là où la case du rail fait le même geste, et RESTE sous lg, où il n'y a pas de rail : sans lui, un téléphone n'aurait plus aucun moyen de remplir un immeuble. ZÉRO classe CSS neuve, ZÉRO clé neuve — les utilitaires et le libellé sont ceux qui existent. La vitrine ne bouge pas.",
+    "course": "14731849"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 493753,
-   "octetsFil": 161721,
+   "octetsFil": 161719,
    "requetes": 4,
    "releve": {
     "de": 579465,
@@ -77,19 +77,19 @@
    }
   },
   "/demo@1280": {
-   "octets": 533478,
-   "octetsFil": 155526,
+   "octets": 534843,
+   "octetsFil": 155734,
    "requetes": 2,
    "releve": {
-    "de": 447388,
+    "de": 534271,
     "requetesDe": 2,
-    "motif": "scission du dictionnaire : la section `app` de `fr.ts` (86 Ko bruts) quitte le paquet d'entrée pour le morceau applicatif, qui l'importe statiquement. LES OCTETS NE SONT PAS AJOUTÉS, ILS CHANGENT DE LIGNE — cette porte mesure des incréments en cache (voir son propre commentaire : « chaque écran suivant ne paie que son morceau paresseux »), donc ce que / perd apparaît comme un gain de /demo. Bilan pour un visiteur : / passe de 579 793 à 493 805 o bruts, −26 642 sur le fil, −533 ms à 400 kb/s, et c'est un gain SEC pour quiconque n'ouvre jamais l'application. Celui qui l'ouvre télécharge les mêmes octets, répartis autrement : +1 891 o sur le fil au total, parce qu'un dictionnaire gzippé à part compresse un peu moins bien qu'au milieu du reste. ZÉRO REQUÊTE DE PLUS, et c'est ce qui a décidé la conception : la première rédaction chargeait `fr-app` par son propre import() et cette porte l'a refusée — « /demo : 2 → 3 REQUÊTES », 300 à 800 ms d'aller-retour sur le réseau visé. L'import statique depuis EspaceApplicatif range les mots dans un morceau déjà demandé.",
-    "course": "1dcfd724"
+    "motif": "la case qui crée une fiche de locataire, et le retrait du bouton + de l'en-tête d'immeuble au-dessus de lg : +572 o bruts, +46 o sur le fil, +1 ms. Ce que ça achète : la liste des locataires porte enfin le geste qui la remplit à l'endroit où l'on finit de la lire — le bouton de page est en haut, derrière le défilement de dix fiches. Elle ne paraît que s'il existe un logement vacant, condition que le bouton de page portait déjà en se grisant. Le + de l'en-tête part là où la case du rail fait le même geste, et RESTE sous lg, où il n'y a pas de rail : sans lui, un téléphone n'aurait plus aucun moyen de remplir un immeuble. ZÉRO classe CSS neuve, ZÉRO clé neuve — les utilitaires et le libellé sont ceux qui existent. La vitrine ne bouge pas.",
+    "course": "14731849"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28379,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64613,
    "requetes": 3,
    "releve": {
     "de": 65639,

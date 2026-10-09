@@ -22,7 +22,7 @@ import {
 import { GRILLE_QUATRE_INDICATEURS } from './grillesDIndicateurs'
 import { AU_DELA_LG, useAuDela } from '@/lib/useAuDela'
 import { Input } from '@/components/primitives/Input'
-import { Button } from '@/components/primitives/Button'
+import { Button, IconButton } from '@/components/primitives/Button'
 import { Modal } from '@/components/primitives/Modal'
 import { Icon } from '@/components/primitives/Icon'
 import { cn } from '@/lib/cn'
@@ -497,7 +497,29 @@ export function Portfolio() {
     serait invisible — personne ne compte douze pastilles à la main.
   */
   const idsAffiches = new Set(unitesAffichees.map((u) => u.id))
-  const loyersAttendus = unitesAffichees
+  /*
+    LE LOYER DU PARC PORTE TOUS SES LOTS, VIDES COMPRIS — et c'est un
+    RENVERSEMENT, demandé par Nelson le 2026-10-09.
+
+    Jusqu'ici cette somme écartait les lots vacants, sous une règle écrite trois
+    fois dans ce fichier : « un lot vide n'appelle rien, et l'additionner ferait
+    lire un revenu qui n'existe pas ». La règle était défendable et le nombre
+    juste ; ce qui ne l'était pas, c'est ce que l'écran en faisait lire. Relevé
+    sur un parc réel de sept lots dont deux loués : la carte annonçait
+    « 15 671 FCFA », le pied de colonne écrivait le même nombre sous « Total ·
+    7 lignes », et chacune des sept fiches montrait un loyer dont la somme fait
+    259 671. Trois endroits, un seul mot — « attendu » — pour deux grandeurs
+    opposées : ce que les baux appellent, et ce que le lot vaudrait loué.
+
+    LE CHIFFRE COUVRE DONC CE QUE L'ÉCRAN MONTRE, et c'est la seule lecture qui
+    rende le pied de colonne vrai : sept lignes, sept loyers, une somme. Ce qui
+    est RÉELLEMENT appelé ne disparaît pas pour autant — la note de la carte le
+    porte (`kpiRentNote`), et c'est l'écart entre les deux que creuse la
+    vacance.
+  */
+  const loyersAttendus = unitesAffichees.reduce((somme, u) => somme + u.rent, 0)
+  /** Ce que les baux appellent vraiment, pour la note qui accompagne le total. */
+  const loyersAppeles = unitesAffichees
     .filter((u) => u.status !== 'vacant')
     .reduce((somme, u) => somme + u.rent, 0)
   const chantiersDuParc = works.filter((w) => w.status !== 'done' && idsAffiches.has(w.unitId))
@@ -521,15 +543,14 @@ export function Portfolio() {
   }
 
   /**
-   * CE QUE L'IMMEUBLE APPELLE CE MOIS-CI — la somme des loyers de ses lots
-   * OCCUPÉS.
+   * CE QUE PÈSE L'IMMEUBLE — la somme des loyers de TOUS ses lots.
    *
-   * Pas le loyer du parc plein : un lot vide n'appelle rien, et l'additionner
-   * ferait lire un revenu qui n'existe pas. Ce qu'il coûte de ne pas le louer se
-   * lit sur SA ligne, où la colonne Loyer dit « attendu ».
+   * Même règle que le total de la rangée d'indicateurs, et pour la même raison :
+   * la somme des en-têtes d'immeuble doit faire le total du parc. Écarter les
+   * lots vides ici et pas là-haut donnerait deux chiffres qui ne se recomposent
+   * pas, et c'est précisément le défaut que ce lot ferme.
    */
-  const loyerDesLignes = (lignes: Unit[]) =>
-    lignes.filter((u) => u.status !== 'vacant').reduce((somme, u) => somme + u.rent, 0)
+  const loyerDesLignes = (lignes: Unit[]) => lignes.reduce((somme, u) => somme + u.rent, 0)
 
   /**
    * LE TAUX, BORNÉ UNE FOIS POUR LES QUATRE TUILES.
@@ -764,14 +785,15 @@ export function Portfolio() {
                       !auTableau && 'w-full justify-between',
                     )}
                   >
-                    {/* CE QUE L'IMMEUBLE RAPPORTE, avant ce qu'il remplit.
+                    {/* CE QUE L'IMMEUBLE PÈSE, avant ce qu'il remplit.
 
                         L'en-tête portait l'occupation et la barre — jamais
                         l'argent — sur l'écran d'un propriétaire. La somme est
-                        celle des loyers des lots OCCUPÉS : c'est ce qui est
-                        appelé ce mois-ci, pas ce que l'immeuble vaudrait plein.
-                        Le manque à gagner des lots vides se lit sur leurs
-                        lignes, où la colonne Loyer dit « attendu ».
+                        celle de TOUS ses lots depuis le 2026-10-09 : les
+                        en-têtes d'immeuble doivent se recomposer en le total du
+                        parc, et l'ancienne règle — les lots occupés seuls — les
+                        en empêchait. Ce qui n'est pas appelé se lit sur la ligne
+                        du lot, où le loyer est suivi de « attendu ».
 
                         Masquée sous `sm` : la boîte y fait moins de 320 px et le
                         montant y prendrait la place du rapport, qui est la
@@ -831,6 +853,58 @@ export function Portfolio() {
                         />
                       </div>
                     ) : null}
+                    {/*
+                      AJOUTER UN LOGEMENT DEPUIS L'IMMEUBLE QUI EN A DÉJÀ.
+
+                      Le geste existait pour un immeuble VIDE seulement — c'est
+                      le bouton plein, trois lignes plus haut —, et nulle part
+                      pour les autres : remplir un immeuble qui compte déjà trois
+                      logements passait par le bouton de page, qui rouvre la
+                      liste sur le PREMIER immeuble du parc et oblige à refaire
+                      le choix qu'on venait de faire en regardant. Nelson l'a
+                      nommé le 2026-10-09 : « que de cliquer chaque fois sur le
+                      bouton global ».
+
+                      RIEN DE NEUF SOUS LE CAPOT : `setLogementPour` et la
+                      préselection de `AddUnitModal` sont posées depuis le lot
+                      des immeubles vides. Il manquait l'affordance.
+
+                      SOUS `lg` SEULEMENT, ET C'EST TOUT CE QUI RESTE DE CE
+                      BOUTON. Il a d'abord paru aux deux largeurs, à côté de la
+                      case d'ajout du rail. Nelson l'a vu et l'a tranché le
+                      2026-10-09 : « le bouton + pour l'ajout d'un logement n'est
+                      pas nécessaire ». Il avait raison — deux commandes pour un
+                      même geste, à quelques centimètres l'une de l'autre,
+                      n'apprennent rien de plus qu'une seule.
+
+                      IL RESTE EN FICHES, et ce n'est pas une demi-mesure : la
+                      case vit DANS le rail, et le rail n'existe qu'au-dessus de
+                      `lg`. Sous cette largeur, `DataTable` rend les fiches
+                      lui-même et il n'y a aucun rail où poser une case. Retirer
+                      ce bouton des deux côtés laisserait un téléphone sans aucun
+                      moyen de remplir un immeuble, sinon le bouton de page qui
+                      rouvre la liste sur le PREMIER immeuble du parc —
+                      c'est-à-dire exactement le défaut que ce lot ferme.
+
+                      ICÔNE SEULE, ET LA RAISON N'EST PAS MESURÉE : cette bande
+                      porte déjà le loyer, le rapport et les trois points, et le
+                      montant se masque DÉJÀ sous `sm` faute de place. Ce qui EST
+                      mesuré, c'est qu'elle ne coûte aucune hauteur :
+                      `IconButton` fait 44 px, comme le déclencheur du menu
+                      qu'elle voisine.
+
+                      LE MÊME NOM ACCESSIBLE QUE LA CASE ET QUE LE BOUTON DE
+                      L'IMMEUBLE VIDE — `addUnitTo`, portant le nom de
+                      l'immeuble. Un geste ne s'appelle pas de trois façons selon
+                      la largeur de l'écran.
+                    */}
+                    {vide || auTableau ? null : (
+                      <IconButton
+                        icon="plus"
+                        label={t('app.portfolio.addUnitTo', { name: b?.name ?? '' })}
+                        onClick={() => setLogementPour(id)}
+                      />
+                    )}
                     {/* LES DEUX ISSUES DE L'IMMEUBLE, SOUS LES MÊMES TROIS POINTS
                         QUE CELLES DE SES LIGNES.
 
@@ -926,7 +1000,91 @@ export function Portfolio() {
           <Card key={id} as="section" flush aria-labelledby={`immeuble-${id}`}>
             {enTeteDImmeuble(id, 'tableau', lignes)}
             {lignes.length > 0 && (
-              <RailDeLogements id={idDuGroupe(id)} libelle={b?.name}>
+              <RailDeLogements
+                id={idDuGroupe(id)}
+                libelle={b?.name}
+                queue={
+                  /*
+                    LA CASE VIDE AU BOUT DU RAIL — le geste là où l'œil finit de
+                    lire l'immeuble.
+
+                    Le bouton de l'en-tête rend le geste ATTEIGNABLE ; celui-ci
+                    le rend VISIBLE. Ce sont deux publics : on arrive à l'en-tête
+                    quand on sait ce qu'on veut faire, on arrive au bout du rail
+                    quand on vient de compter ses logements et qu'il en manque
+                    un. La grammaire est celle que cet écran applique déjà aux
+                    immeubles sans logement — « une chose vide porte le geste qui
+                    la remplit » — descendue d'un étage.
+
+                    ELLE NE COÛTE AUCUNE HAUTEUR, et c'est ce qui la rend
+                    possible ici : le rail est une rangée qui DÉFILE, à hauteur
+                    constante quel que soit le nombre de colonnes. `row-span-5`
+                    lui donne les cinq rangées d'une fiche, donc exactement sa
+                    hauteur — la carte d'immeuble ne grandit pas d'un pixel. La
+                    même tuile posée dans une grille qui s'empile aurait ajouté
+                    une rangée par immeuble.
+
+                    EN POINTILLÉS, ET SANS OMBRE AU SURVOL : une fiche est un
+                    objet qui existe, cette case est une place à prendre. Le trait
+                    discontinu est la seule chose qui les distingue à deux mètres,
+                    et c'est la convention qu'elle partage avec toutes les cases
+                    d'ajout du web.
+
+                    AUCUNE CLASSE NEUVE : la feuille partagée est à dix-sept
+                    octets de son budget de premier chargement, et une utilitaire
+                    inédite s'y paierait sur la page d'accueil, qui ne rend
+                    jamais cet écran. Chacune de celles-ci est déjà émise.
+                  */
+                  /*
+                    `role="presentation"` — LA CASE N'EST PAS UN LOGEMENT.
+
+                    Elle doit être un `<li>` : le `<ul>` du rail EST la grille, et
+                    un enfant d'une autre balise y serait invalide. Mais la liste
+                    porte le nom de l'immeuble et répond « liste, 5 éléments »
+                    pour quatre logements — et deux contrats de ce dépôt le
+                    disent par écrit : « une carte par immeuble, une fiche par
+                    logement » (`parcEnFiches`), et « toute fiche du rail reprend
+                    ses rangées par `subgrid` » (`railDesLogements`), que cette
+                    case ne fait pas.
+
+                    Le rôle de présentation retire la CASE du compte sans retirer
+                    son bouton de l'arbre : il reste atteignable à la tabulation
+                    et annoncé par son nom. Le `<li>` n'étant pas focalisable, le
+                    navigateur n'a aucune raison de rendre le rôle inopérant.
+                  */
+                  <li role="presentation" className="mb-3 row-span-5 flex snap-start">
+                    <button
+                      type="button"
+                      onClick={() => setLogementPour(id)}
+                      aria-label={t('app.portfolio.addUnitTo', { name: b?.name ?? '' })}
+                      className={cn(
+                        /* `min-h-11` : la case fait toute la hauteur d'une fiche
+                           — `flex-1` dans une colonne de cinq rangées —, mais le
+                           plancher des cibles tactiles lit la SOURCE et ne sait
+                           pas calculer une hauteur de grille. Le déclarer n'est
+                           pas une concession : 44 px est bien le minimum qu'elle
+                           tient, quelle que soit la fiche d'à côté. */
+                        'flex min-h-11 flex-1 cursor-pointer flex-col items-center justify-center gap-2',
+                        'rounded-lg border border-dashed border-divider p-4',
+                        'text-body text-muted transition-colors',
+                        /* `border-border-strong` ET NON `border-accent` AU SURVOL : la teinte
+                           d'accent aurait demandé une utilitaire que la feuille
+                           partagée n'émet pas encore, et il ne lui restait que
+                           quinze octets de budget de premier chargement — payés
+                           sur la page d'accueil, qui ne rend jamais cet écran.
+                           Mesuré : `.hover\:border-accent:hover` était la SEULE
+                           règle neuve du lot, +40 o sur le fil. C'est aussi le
+                           survol que les fiches voisines portent déjà. */
+                        'hover:border-border-strong hover:bg-surface-sunken hover:text-ink',
+                        'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent',
+                      )}
+                    >
+                      <Icon name="plus" size={20} />
+                      {t('app.portfolio.addUnitTitle')}
+                    </button>
+                  </li>
+                }
+              >
                 {lignes.map((unit) => (
                   <li
                     key={unit.id}
@@ -1558,11 +1716,37 @@ export function Portfolio() {
             </div>
           }
         />
+{/* « LOYER DU PARC » ET NON « LOYERS ATTENDUS », parce que le nombre
+            a changé de sens et que l'autre libellé était PARTAGÉ.
+
+            `app.dashboard.expected` coiffe le même mot sur le tableau de bord et
+            sur les paiements, où il désigne ce que les baux appellent ce
+            mois-ci — ce que cette carte-ci ne dit plus : elle compte tous les
+            lots, vides compris. Deux écrans montrant deux nombres différents
+            sous un intitulé identique est exactement la confusion que
+            `indicateursEnDouble` traque dans l'autre sens.
+
+            IL AVAIT ÉTÉ ABANDONNÉ, ET LE MOTIF A DISPARU. Ce libellé était écrit,
+            puis retiré, faute de huit octets au budget du premier chargement : le
+            dictionnaire français partait alors avec la page d'accueil. La
+            scission l'en a sorti. Une contrainte de poids avait coûté un mot
+            juste ; elle n'existe plus, le mot revient, et l'angle mort que ce lot
+            déclarait se referme.
+
+            LA NOTE PORTE LE SECOND NOMBRE. Elle disait « 2 baux actifs », ce qui
+            sous un total de parc plein se lisait comme la portée du total. Elle
+            dit maintenant quelle PART de ce total est réellement appelée : la
+            vacance se lit dans l'écart entre les deux. Le compte des baux, lui,
+            n'y revient pas — la carte voisine montre « 2/7 occupées », et le
+            dictionnaire français voyage avec la page d'accueil, où ces octets se
+            paient (voir `kpiRentNote`). */}
         <StatCard
           icone="layers"
-          label={t('app.dashboard.expected')}
+          label={t('app.portfolio.kpiRent')}
           value={money(loyersAttendus, { compact: true })}
-          note={t('app.dashboard.activeLeases', { count: occupied })}
+          note={t('app.portfolio.kpiRentNote', {
+            amount: money(loyersAppeles, { compact: true }),
+          })}
         />
         <StatCard
           icone="wrench"
@@ -1967,28 +2151,29 @@ export function Portfolio() {
                 money(unit.rent, { compact: true })
               ),
             /*
-              LES LOTS VACANTS SORTENT DE LA SOMME, et cet écran l'a déjà tranché
-              deux fois dans ces termes : « Pas le loyer du parc plein : un lot
-              vide n'appelle rien, et l'additionner ferait lire un revenu qui
-              n'existe pas ». `loyersAttendus` et `loyerDe` appliquent la règle
-              tous les deux ; le pied de la colonne l'applique aussi.
+              LE PIED SOMME SES PROPRES CELLULES, les lots vides compris — et
+              c'est le correctif de ce lot.
 
-              C'EST DONC LA SEULE COLONNE DU PRODUIT DONT LE PIED NE SOMME PAS SES
-              PROPRES CELLULES, et l'écart est celui que la cellule ANNONCE : sur
-              un lot vide, elle écrit le montant suivi de « attendu ». Le pied
-              somme ce qui est appelé, la ligne dit ce qui manque — c'est la
-              répartition que le commentaire de `loyerDe` décrit déjà.
+              Il les écartait, sous la règle que `loyersAttendus` portait alors :
+              « un lot vide n'appelle rien ». C'était la SEULE colonne du produit
+              dont le pied ne sommait pas ce qu'elle montrait, et le pied s'écrit
+              sous « Total · N lignes » : sept lignes annoncées, deux sommées,
+              aucune marque de l'écart. Un total qui ne se recompose pas à la
+              main est un total qu'on ne peut pas vérifier — et celui-ci se
+              vérifiait justement assez vite pour qu'on le prenne pour faux.
 
-              ET IL SOMME LES LIGNES AFFICHÉES, là où la carte du haut somme le
+              CE QUI N'EST PAS APPELÉ RESTE DIT, et sur la ligne où ça se
+              décide : la cellule d'un lot vide écrit son montant suivi de
+              « attendu ».
+
+              IL SOMME LES LIGNES AFFICHÉES, là où la carte du haut somme le
               parc : la recherche libre de cet écran filtre la table sans toucher
               aux cartes, donc chercher « Bonamoussadi » ne donnait plus aucun
               total pour ce qu'on avait sous les yeux.
             */
             total: (unites) =>
               money(
-                unites
-                  .filter((u) => u.status !== 'vacant')
-                  .reduce((somme, u) => somme + u.rent, 0),
+                unites.reduce((somme, u) => somme + u.rent, 0),
                 { compact: true },
               ),
           },
