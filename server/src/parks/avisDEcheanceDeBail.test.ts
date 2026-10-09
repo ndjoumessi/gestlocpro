@@ -9,6 +9,7 @@ import {
   executerAvisDEcheance,
   joursJusqua,
 } from '../scripts/executerAvisDEcheance.js'
+import { sourceDuDictionnaire } from '../test/dictionnaireDuClient.js'
 
 /**
  * LES ÉCHÉANCES DE BAIL PRÉVIENNENT.
@@ -286,10 +287,14 @@ describe('la clé écrite existe dans le dictionnaire', () => {
       'leaseRenewal',
       'leaseMoveOut',
     ])
-    for (const dictionnaire of ['src/i18n/fr.ts', 'src/i18n/en.ts']) {
-      const texte = readFileSync(join(racine, dictionnaire), 'utf8')
+    /* LE FRANÇAIS EST EN DEUX MOITIÉS depuis la scission, l'anglais non : ces
+       clés vivent du côté `app`, donc dans `fr-app.ts`. Lu sur `fr.ts` seul, ce
+       cas accuse d'absence une clé qui est écrite — c'est ce qu'il a fait en
+       intégration continue, et c'est ce qui a mené ici. */
+    for (const langue of ['fr', 'en'] as const) {
+      const texte = sourceDuDictionnaire(langue, racine)
       for (const cle of clesEcrites) {
-        expect(texte, `${cle} manque à ${dictionnaire}`).toContain(`${cle}: {`)
+        expect(texte, `${cle} manque au dictionnaire ${langue}`).toContain(`${cle}: {`)
       }
     }
   })

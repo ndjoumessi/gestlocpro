@@ -75,3 +75,27 @@ if (decalageDHorloge) {
   // @ts-expect-error on remplace la lecture de l'heure, pas le type
   globalThis.Date = DateDecalee
 }
+
+/**
+ * LE DICTIONNAIRE DES ÉCRANS EST DÉPOSÉ UNE FOIS, AVANT TOUT CAS.
+ *
+ * Depuis la scission du 2026-10-09, la section `app` de `fr.ts` vit dans
+ * `fr-app.ts`, et c'est `EspaceApplicatif.tsx` qui la dépose à l'évaluation de
+ * son module. En production, aucun écran de cet arbre ne se rend avant ce
+ * dépôt : c'est la sémantique d'un import, pas une course.
+ *
+ * `renderWithProviders`, lui, monte un composant SANS routeur : il n'évalue
+ * jamais `EspaceApplicatif.tsx`, donc personne ne dépose le dictionnaire.
+ * Dix-sept cas lisaient `app.inspections.issues` en toutes lettres.
+ *
+ * CE DÉPÔT NE MASQUE RIEN, et c'est la question qu'il faut se poser avant d'en
+ * poser un. Le défaut qu'il pourrait cacher — un module du PAQUET
+ * D'ENTRÉE qui prononce une clé `app.*` — est tenu statiquement, en intégration
+ * continue, par `scripts/check-dictionnaire-impatient.mjs`, qui lit le graphe
+ * d'imports et non le DOM. Et que les deux frontières attendent réellement le
+ * dictionnaire est gardé par `dictionnaireApplicatif.test.tsx`. Ce qui reste
+ * ici est ce qu'un composant monté hors de son arbre ne peut pas se donner.
+ */
+const { poserDictionnaireApplicatif } = await import('@/i18n/I18nProvider')
+const { frApp } = await import('@/i18n/fr-app')
+poserDictionnaireApplicatif(frApp)

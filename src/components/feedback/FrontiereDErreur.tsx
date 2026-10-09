@@ -123,8 +123,8 @@ function RepliDErreur({ erreur, reprendre }: { erreur: Error; reprendre: () => v
   return (
     <EcranSysteme
       ton="danger"
-      titre={t('app.crash.title')}
-      corps={t('app.crash.body')}
+      titre={t('common.crash.title')}
+      corps={t('common.crash.body')}
       actions={
         <>
           <Button onClick={reprendre}>{t('common.retry')}</Button>
@@ -152,7 +152,7 @@ function RepliDErreur({ erreur, reprendre }: { erreur: Error; reprendre: () => v
           hauteur imposée laisserait le texte collé en haut de sa boîte.
         */}
         <summary className="inline-flex min-h-11 cursor-pointer items-center text-body text-muted">
-          {t('app.crash.details')}
+          {t('common.crash.details')}
         </summary>
         <p className="mt-2 break-words text-body text-muted">{erreur.message}</p>
       </details>

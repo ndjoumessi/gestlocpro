@@ -4,7 +4,7 @@ import { VISITES } from './visiteFilmee'
 import { LOCALES } from '@/i18n/locales'
 import { adresseOuverteAuRole } from '@/app/adressesParRole'
 import type { Role } from '@/features/auth/signupState'
-import { fr } from '@/i18n/fr'
+import { frApp } from '@/i18n/fr-app'
 import { en } from '@/i18n/en'
 
 /**
@@ -132,11 +132,11 @@ describe('le manuel couvre les trois rôles', () => {
 })
 
 describe('chaque geste est décrit dans les deux langues', () => {
-  const phrases = (d: typeof fr | typeof en) =>
+  const phrases = (d: typeof frApp | typeof en) =>
     (d as unknown as { app: { manual: { gestes: Record<string, string> } } }).app.manual.gestes
 
   it('le français porte une phrase par geste', () => {
-    const manquantes = GESTES.filter((g) => !phrases(fr)[cleDe(g)]?.trim())
+    const manquantes = GESTES.filter((g) => !phrases(frApp)[cleDe(g)]?.trim())
     expect(manquantes.map(cleDe)).toEqual([])
   })
 
@@ -149,7 +149,7 @@ describe('chaque geste est décrit dans les deux langues', () => {
      retiré est du texte que personne ne lira plus, et qui vieillira seul. */
   it('aucune phrase ne décrit un geste retiré', () => {
     const connus = new Set(GESTES.map(cleDe))
-    const orphelines = Object.keys(phrases(fr)).filter((k) => !connus.has(k))
+    const orphelines = Object.keys(phrases(frApp)).filter((k) => !connus.has(k))
     expect(orphelines).toEqual([])
   })
 })

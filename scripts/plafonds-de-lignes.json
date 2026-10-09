@@ -18,7 +18,7 @@
   "« justifié » ne vaut pas « libre de grossir » : personne n'est dispensé du cliquet."
  ],
  "plafonds": {
-  "scripts/espace-connecte.mjs": 2482,
+  "scripts/espace-connecte.mjs": 2483,
   "scripts/inventaire/jetons-i18n.mjs": 1194,
   "scripts/inventaire/lecture-sources.mjs": 1729,
   "scripts/inventaire/mesure-navigateur.mjs": 1542,
@@ -53,13 +53,14 @@
   "src/features/dashboard/Tenants.tsx": 1940,
   "src/features/dashboard/Works.tsx": 1208,
   "src/features/dashboard/documentsPdf.ts": 1053,
-  "src/i18n/en.ts": 2968,
-  "src/i18n/fr.ts": 4223,
+  "src/i18n/en.ts": 2973,
+  "src/i18n/fr.ts": 1195,
   "src/routes/SignUp.tsx": 1341,
   "src/features/dashboard/Deposits.tsx": {
    "lignes": 833,
    "motif": "l'écran des cautions était à dix lignes du plafond : le quatrième terme du pied — ce que les cautions rendues retirent à la soustraction — ne tenait pas dans ce qui restait. Le fichier porte un tableau, trois indicateurs, un arbitrage, deux exports et leurs motifs ; c'est un découpage qu'il doit, pas un commentaire de trop.",
    "le": "2026-10-06"
-  }
+  },
+  "src/i18n/fr-app.ts": 3123
  }
 }

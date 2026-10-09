@@ -23,6 +23,7 @@ import { argv } from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 const ROOT = new URL('..', import.meta.url).pathname
+import { francaisAPlat } from './dictionnaire-francais.mjs'
 const SRC = join(ROOT, 'src')
 
 /**
@@ -596,7 +597,7 @@ if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
     if (!/\.test\.tsx?$/.test(rel)) sources.push([rel, code])
   }
 
-  const fr = dictionnaireAPlat(await readFile(join(SRC, 'i18n/fr.ts'), 'utf8'))
+  const fr = francaisAPlat(join(SRC, '..'))
   const en = dictionnaireAPlat(await readFile(join(SRC, 'i18n/en.ts'), 'utf8'))
 
   const aveux = [...aveuxDeSimulation('fr', fr), ...aveuxDeSimulation('en', en)]

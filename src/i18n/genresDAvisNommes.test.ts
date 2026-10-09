@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fr } from './fr'
+import { frApp } from './fr-app'
 import { en } from './en'
 
 /**
@@ -30,7 +30,7 @@ const GENRES = ['payment', 'work', 'meter', 'lease', 'announcement', 'access'] a
 
 describe('les genres d’avis', () => {
   it.each(['fr', 'en'])('sont tous nommés en %s', (langue) => {
-    const dico = (langue === 'fr' ? fr : en).app.alerts.kind as Record<string, string>
+    const dico = (langue === 'fr' ? frApp : en).app.alerts.kind as Record<string, string>
     const absents = GENRES.filter((g) => !dico[g])
     expect(
       absents,
@@ -41,7 +41,7 @@ describe('les genres d’avis', () => {
   it('n’en nomment aucun qui n’existe plus', () => {
     /* Le sens inverse : un libellé qui survit à son genre est du texte mort que
        personne ne voit jamais, et qui se traduit à chaque relecture. */
-    const morts = Object.keys(fr.app.alerts.kind).filter(
+    const morts = Object.keys(frApp.app.alerts.kind).filter(
       (cle) => !(GENRES as readonly string[]).includes(cle),
     )
     expect(morts).toEqual([])

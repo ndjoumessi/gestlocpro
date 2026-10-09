@@ -467,12 +467,12 @@ export function useMentionDeConversion() {
          cours-là ne se repêche pas. Avec le nombre, la pièce se suffit. */
       const rate = formatTaux(base.taux, locale)
       return base.date
-        ? t('app.documents.pdfConverted', {
+        ? t('common.pdfConverted', {
             currency,
             date: d.fullDate(partiesDeDateISO(base.date)),
             rate,
           })
-        : t('app.documents.pdfConvertedPegged', { currency, rate })
+        : t('common.pdfConvertedPegged', { currency, rate })
     },
     [baseDeConversion, d, locale, t],
   )

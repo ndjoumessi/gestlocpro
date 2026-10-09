@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { DATE_LOCALE, DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
 import { fr, type Dictionary } from './fr'
+import type { frApp } from './fr-app'
 
 /**
  * UN dictionnaire reste impatient, l'autre devient paresseux — pas les deux.
@@ -114,6 +115,50 @@ export function chargerAnglais(): Promise<Dictionary> {
   return promesseAnglais
 }
 
+/**
+ * LE DICTIONNAIRE DES ÉCRANS EST POSÉ PAR LE MORCEAU QUI LES PORTE.
+ *
+ * ═══ POURQUOI UN DÉPÔT, ET NON UNE PROMESSE ═══
+ *
+ * La première rédaction de ce lot chargeait `fr-app.ts` par son propre
+ * `import()`, joint aux promesses des deux frontières paresseuses. Ça marchait,
+ * et `poids-ecrans` l'a REFUSÉ, avec le nombre qui tranche :
+ *
+ *     /demo@1280 : 2 → 3 REQUÊTES
+ *     /          : −26 622 o sur le fil, −532 ms à 400 kb/s
+ *     /demo      : +28 090 o sur le fil, +562 ms, PLUS un aller-retour
+ *
+ * « Les octets se rapportent ; les requêtes se refusent » — un aller-retour
+ * coûte 300 à 800 ms sur le réseau visé, quoi qu'il transporte. L'échange
+ * revenait à faire payer ceux qui SE SERVENT du produit pour accélérer ceux qui
+ * le regardent. Ce dépôt a déjà refusé trois `lazy()` pour cette raison exacte.
+ *
+ * `EspaceApplicatif.tsx` importe donc `fr-app` STATIQUEMENT et appelle
+ * `poserDictionnaireApplicatif` à l'évaluation de son module. Rollup range les
+ * mots dans le morceau applicatif, que l'écran télécharge de toute façon : la
+ * vitrine garde son gain entier, l'application ne paie ni octet ni requête de
+ * plus, et il n'y a plus rien à attendre — le module est évalué avant que le
+ * premier écran ne se rende, c'est la sémantique d'un import.
+ *
+ * `francais` est RECOMPOSÉ une fois, au dépôt, et non à chaque appel de `t()` :
+ * étaler trois mille clés par traduction serait un coût par mot rendu.
+ *
+ * AUCUN RE-RENDU N'EST DÉCLENCHÉ, et il ne doit pas l'être. Les seuls modules
+ * qui lisent `app.*` vivent dans le morceau qui vient de poser le dictionnaire —
+ * quand ils se rendent, la fusion a déjà eu lieu. Poser un état React ici ferait
+ * repeindre tout l'arbre pour un changement que personne ne peut observer.
+ *
+ * ET CE QUI GARDE TOUT ÇA : `check-dictionnaire-impatient.mjs` refuse qu'un
+ * module du paquet d'entrée cite `app.*` ou importe `fr-app`, et
+ * `dictionnaireApplicatif.test.tsx` refuse que le morceau applicatif oublie de
+ * déposer ses mots.
+ */
+let francais: object = fr
+
+export function poserDictionnaireApplicatif(section: object): void {
+  francais = { ...fr, ...section }
+}
+
 /** Chemins pointés valides, dérivés du dictionnaire français. */
 type Join<K, P> = K extends string
   ? P extends string
@@ -131,7 +176,16 @@ type LeafPaths<T> = T extends object
     }[keyof T]
   : never
 
-export type MessageKey = LeafPaths<typeof fr>
+/**
+ * Les deux moitiés du dictionnaire français, réunies — voir `fr-app.ts`.
+ *
+ * Le TYPE reste entier des deux côtés de la frontière de chargement, et c'est
+ * délibéré : un écran applicatif nomme `app.portfolio.title` sans avoir à savoir
+ * que ces mots arrivent par un autre morceau. Ce que le typage ne peut donc PAS
+ * dire, c'est qu'un module du paquet d'entrée n'a pas le droit d'y toucher —
+ * `check-dictionnaire-impatient.mjs` est la garde qui le dit à sa place.
+ */
+export type MessageKey = LeafPaths<typeof fr & typeof frApp>
 
 export type TranslateVars = Record<string, string | number>
 
@@ -271,7 +325,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: MessageKey, vars?: TranslateVars) => {
-      const dictionary = locale === 'en' ? anglais : fr
+      const dictionary = locale === 'en' ? anglais : francais
 
       /**
        * PENDANT LE CHARGEMENT DU DICTIONNAIRE PARESSEUX : AUCUN texte, plutôt
@@ -312,11 +366,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (typeof vars?.count === 'number') {
         const category = new Intl.PluralRules(DATE_LOCALE[locale]).select(vars.count)
         template =
-          resolve(dictionary, `${key}_${category}`) ?? resolve(fr, `${key}_${category}`)
+          resolve(dictionary, `${key}_${category}`) ?? resolve(francais, `${key}_${category}`)
       }
 
       // Repli sur le français plutôt que d'afficher une clé brute à l'écran.
-      template ??= resolve(dictionary, key) ?? resolve(fr, key)
+      template ??= resolve(dictionary, key) ?? resolve(francais, key)
 
       if (template === undefined) {
         if (import.meta.env.DEV) console.warn(`[i18n] clé manquante : ${key}`)
