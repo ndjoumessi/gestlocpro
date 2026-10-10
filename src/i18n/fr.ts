@@ -1187,9 +1187,28 @@ export type DictionaryShape<T> = {
 }
 
 /**
- * La forme ENTIÈRE, les deux moitiés réunies — c'est contre elle que `en.ts` est
- * typé, et elle ne doit pas se scinder avec le chargement : l'anglais reste un
- * seul fichier, et un écran applicatif nomme ses clés sans savoir de quel côté
- * de la frontière elles vivent.
+ * La forme ENTIÈRE, les deux moitiés réunies — c'est elle que `t()` consulte, et
+ * c'est d'elle que `MessageKey` dérive. Un écran applicatif nomme donc
+ * `app.portfolio.title` sans savoir de quel côté de la frontière de CHARGEMENT
+ * ces mots vivent, ni dans quelle langue.
+ *
+ * CE QUE DISAIT CETTE PROSE, ET POURQUOI ELLE A CHANGÉ. Elle affirmait que la
+ * forme « ne doit pas se scinder avec le chargement : l'anglais reste un seul
+ * fichier ». C'était vrai du lot qui l'a écrite, et c'est faux depuis que
+ * `en-app.ts` existe. La forme ENTIÈRE n'a pas bougé pour autant — ce sont les
+ * deux formes de MOITIÉ, ci-dessous, qui ont été ajoutées à côté d'elle. Un
+ * dictionnaire se type contre le français moitié par moitié ; il se LIT entier.
  */
 export type Dictionary = DictionaryShape<typeof fr & typeof frApp>
+
+/**
+ * La moitié qui part avec la vitrine — ce que `en.ts` doit traduire.
+ *
+ * Le typage reste la garde la moins chère du dépôt : une clé ajoutée ici sans
+ * traduction anglaise rougit à la compilation, avant toute exécution. La
+ * scission anglaise ne lui retire rien, elle la découpe en deux contrats.
+ */
+export type DictionaryVitrine = DictionaryShape<typeof fr>
+
+/** La moitié qui part avec les écrans — ce que `en-app.ts` doit traduire. */
+export type DictionaryApp = DictionaryShape<typeof frApp>

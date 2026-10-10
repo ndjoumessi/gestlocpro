@@ -23,7 +23,7 @@ import { argv } from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 const ROOT = new URL('..', import.meta.url).pathname
-import { francaisAPlat } from './dictionnaire-francais.mjs'
+import { dictionnaireAPlatDe, francaisAPlat } from './dictionnaire-du-client.mjs'
 const SRC = join(ROOT, 'src')
 
 /**
@@ -598,7 +598,14 @@ if (import.meta.url === pathToFileURL(argv[1] ?? '').href) {
   }
 
   const fr = francaisAPlat(join(SRC, '..'))
-  const en = dictionnaireAPlat(await readFile(join(SRC, 'i18n/en.ts'), 'utf8'))
+  /*
+    LES DEUX MOITIÉS, et jamais `en.ts` seul. Cette porte BALAIE les libellés —
+    aveux de simulation, promesses de canal — plutôt qu'elle ne compare les
+    langues. Une moitié manquante ne la ferait donc pas rougir : elle cesserait
+    silencieusement de regarder 2074 lignes d'anglais. C'est la forme anglaise
+    du piège que la scission française avait déjà payé.
+  */
+  const en = dictionnaireAPlatDe('en', join(SRC, '..'))
 
   const aveux = [...aveuxDeSimulation('fr', fr), ...aveuxDeSimulation('en', en)]
 

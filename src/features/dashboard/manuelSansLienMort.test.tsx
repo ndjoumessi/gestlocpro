@@ -5,7 +5,7 @@ import { LOCALES } from '@/i18n/locales'
 import { adresseOuverteAuRole } from '@/app/adressesParRole'
 import type { Role } from '@/features/auth/signupState'
 import { frApp } from '@/i18n/fr-app'
-import { en } from '@/i18n/en'
+import { enApp } from '@/i18n/en-app'
 
 /**
  * UN MANUEL QUI ENVOIE AU MAUVAIS ENDROIT EST PIRE QU'AUCUN MANUEL.
@@ -132,7 +132,7 @@ describe('le manuel couvre les trois rôles', () => {
 })
 
 describe('chaque geste est décrit dans les deux langues', () => {
-  const phrases = (d: typeof frApp | typeof en) =>
+  const phrases = (d: typeof frApp | typeof enApp) =>
     (d as unknown as { app: { manual: { gestes: Record<string, string> } } }).app.manual.gestes
 
   it('le français porte une phrase par geste', () => {
@@ -141,7 +141,7 @@ describe('chaque geste est décrit dans les deux langues', () => {
   })
 
   it('l’anglais aussi — une clé non traduite s’affiche brute', () => {
-    const manquantes = GESTES.filter((g) => !phrases(en)[cleDe(g)]?.trim())
+    const manquantes = GESTES.filter((g) => !phrases(enApp)[cleDe(g)]?.trim())
     expect(manquantes.map(cleDe)).toEqual([])
   })
 

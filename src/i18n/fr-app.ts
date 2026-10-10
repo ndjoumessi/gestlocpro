@@ -11,11 +11,22 @@
  * des mots d'écrans de gestion, pour quelqu'un qui lit une page de vente et ne
  * s'inscrira peut-être jamais.
  *
- * Ce fichier est chargé par la MÊME promesse que l'espace applicatif et que
- * l'annonce publique (voir `chargerDictionnaireApplicatif` dans
- * `I18nProvider.tsx`, et ses deux appelants dans `App.tsx`). Aucun écran ne peut
- * donc se rendre avant ses mots : c'est React qui le garantit, par le `Suspense`
- * de la frontière, et non une convention qu'on se rappellerait de tenir.
+ * CE PARAGRAPHE DÉCRIVAIT UN DESSIN QUI N'A JAMAIS ÉTÉ RETENU, et il a survécu
+ * trois lots. Il annonçait que ce fichier arrivait « par la MÊME promesse que
+ * l'espace applicatif », via un `chargerDictionnaireApplicatif` dans
+ * `I18nProvider.tsx` — fonction qui n'existe pas. C'était le premier jet, celui
+ * que `poids-ecrans` a refusé en comptant « /demo : 2 → 3 REQUÊTES ».
+ *
+ * CE QUI SE PASSE VRAIMENT : `EspaceApplicatif.tsx` importe `frApp`
+ * STATIQUEMENT et appelle `poserDictionnaireApplicatif` à l'évaluation de son
+ * module. Rollup range donc ces mots dans le morceau applicatif, que l'écran
+ * télécharge de toute façon — ni octet ni requête de plus — et il n'y a rien à
+ * attendre : un import est évalué avant le premier rendu. `dictionnaireApplicatif.test.tsx`
+ * garde cette propriété-là, et l'exige STATIQUE en toutes lettres.
+ *
+ * L'ANGLAIS, LUI, PASSE BIEN PAR UNE PROMESSE — voir `en-app.ts`. La recette
+ * d'ici lui est interdite : un import statique mettrait ses mots dans le morceau
+ * que les francophones téléchargent.
  *
  * ═══ LA FAUTE QUE CETTE SCISSION REND POSSIBLE, ET QUI LA GARDE ═══
  *

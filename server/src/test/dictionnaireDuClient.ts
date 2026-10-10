@@ -12,11 +12,13 @@ import { join } from 'node:path'
  * libellé en face. C'est la seule chose qui empêche une clé brute d'arriver à
  * l'écran d'un utilisateur.
  *
- * Depuis la scission du 2026-10-09, ce dictionnaire vit dans DEUX fichiers :
- * `fr.ts` (ce qui part avec la page d'accueil) et `fr-app.ts` (les mots des
- * écrans, chargés avec eux). La frontière est une décision de CHARGEMENT ; pour
- * qui veut savoir ce que le produit sait dire, le dictionnaire est un seul
- * objet — et toutes les clés que le serveur écrit sont du côté `app`.
+ * LES DEUX LANGUES SONT SCINDÉES, et chacune en deux fichiers : `fr.ts` /
+ * `fr-app.ts` depuis le 2026-10-09, `en.ts` / `en-app.ts` depuis le 2026-10-10.
+ * La frontière est une décision de CHARGEMENT ; pour qui veut savoir ce que le
+ * produit sait dire, le dictionnaire est un seul objet — et toutes les clés que
+ * le serveur écrit sont du côté `app`, donc dans la moitié qui se charge à
+ * part. Lire la moitié vitrine seule rendrait « leaseRenewal manque » sur une
+ * clé qui existe.
  *
  * CE QUE ÇA A COÛTÉ, et c'est la raison d'être de ce fichier : la scission est
  * passée au vert sur `check:rapide` et `check:navigateur`, et a rougi EN
@@ -32,7 +34,7 @@ import { join } from 'node:path'
  * { » — puis découpent à partir de lui. Ils ne reconstruisent aucun chemin de
  * clé, donc l'ordre et l'imbrication des deux moitiés leur sont indifférents.
  *
- * `scripts/dictionnaire-francais.mjs`, lui, expose EN PLUS une version aplatie,
+ * `scripts/dictionnaire-du-client.mjs`, lui, expose EN PLUS une version aplatie,
  * parce que ses appelants demandent des clés par chemin pointé et que la machine
  * à pile qui les construit ne revient pas à zéro en fin de fichier. Le piège est
  * décrit là-bas ; il ne touche pas les cas d'ici.
@@ -46,6 +48,8 @@ const RACINE = new URL('../../../', import.meta.url).pathname
  */
 export function sourceDuDictionnaire(langue: 'fr' | 'en', racine = RACINE): string {
   const fichiers =
-    langue === 'fr' ? ['src/i18n/fr.ts', 'src/i18n/fr-app.ts'] : ['src/i18n/en.ts']
+    langue === 'fr'
+      ? ['src/i18n/fr.ts', 'src/i18n/fr-app.ts']
+      : ['src/i18n/en.ts', 'src/i18n/en-app.ts']
   return fichiers.map((f) => readFileSync(join(racine, f), 'utf8')).join('\n')
 }

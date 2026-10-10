@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { frApp } from './fr-app'
-import { en } from './en'
+import { enApp } from './en-app'
 
 /**
  * LES DEUX BLOCS QUI NOMMENT L'EAU ET L'ÉLECTRICITÉ DISENT LA MÊME CHOSE.
@@ -39,7 +39,7 @@ import { en } from './en'
  */
 const paires = [
   ['fr', frApp.app.meters.utility, frApp.app.decisions.utilities],
-  ['en', en.app.meters.utility, en.app.decisions.utilities],
+  ['en', enApp.app.meters.utility, enApp.app.decisions.utilities],
 ] as const
 
 describe('l’eau et l’électricité, nommées à deux endroits', () => {

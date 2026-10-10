@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { frApp } from './fr-app'
-import { en } from './en'
+import { enApp } from './en-app'
 
 /**
  * CHAQUE GENRE D'AVIS PORTE UN LIBELLÉ, DANS LES DEUX LANGUES.
@@ -30,7 +30,7 @@ const GENRES = ['payment', 'work', 'meter', 'lease', 'announcement', 'access'] a
 
 describe('les genres d’avis', () => {
   it.each(['fr', 'en'])('sont tous nommés en %s', (langue) => {
-    const dico = (langue === 'fr' ? frApp : en).app.alerts.kind as Record<string, string>
+    const dico = (langue === 'fr' ? frApp : enApp).app.alerts.kind as Record<string, string>
     const absents = GENRES.filter((g) => !dico[g])
     expect(
       absents,

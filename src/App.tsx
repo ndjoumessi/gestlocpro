@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
+import { signalerEspaceApplicatif } from './i18n/I18nProvider'
 import { Landing } from './routes/Landing'
 import { KitchenSink } from './routes/KitchenSink'
 /*
@@ -81,7 +82,26 @@ import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
 let promesseEspaceApplicatif: Promise<{ default: typeof import('./app/EspaceApplicatif').EspaceApplicatif }> | undefined
 
 export function chargerEspaceApplicatif() {
-  promesseEspaceApplicatif ??= import('./app/EspaceApplicatif').then((m) => ({
+  /*
+    DEUX PROMESSES DANS LE MÊME BATTEMENT, et c'est ce qui rend la scission de
+    `en-app.ts` gratuite en temps.
+
+    `signalerEspaceApplicatif` rend la moitié applicative ANGLAISE — ou une
+    promesse déjà résolue si l'anglais n'est pas en jeu, c'est-à-dire pour tout
+    utilisateur français, qui ne paie donc ni octet ni requête. Les deux partent
+    ensemble, derrière l'attente qui existait déjà : le morceau applicatif pèse
+    153 895 o compressés contre ~24 000 pour les mots, six fois plus, donc c'est
+    lui qui décide du temps au mur.
+
+    ET C'EST AUSSI CE QUI INTERDIT L'ÉCRAN BLANC. `t()` rend `''` pour une clé
+    absente. Si les mots arrivaient après le premier rendu, un utilisateur
+    anglais verrait un tableau de bord sans texte. En joignant les promesses
+    ici, c'est React qui garantit l'ordre, pas une convention.
+  */
+  promesseEspaceApplicatif ??= Promise.all([
+    import('./app/EspaceApplicatif'),
+    signalerEspaceApplicatif(),
+  ]).then(([m]) => ({
     default: m.EspaceApplicatif,
   }))
   return promesseEspaceApplicatif

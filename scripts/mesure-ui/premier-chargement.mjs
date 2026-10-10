@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import { RACINE } from './contexte.mjs'
-import { moduleReserveALaLangueParesseuse, modulesReservesALApplication } from './adresses.mjs'
+import { modulesReservesALaLangueParesseuse, modulesReservesALApplication } from './adresses.mjs'
 
 /**
  * LA FUITE — exacte, sans seuil, jamais relevée.
@@ -38,8 +38,8 @@ import { moduleReserveALaLangueParesseuse, modulesReservesALApplication } from '
 export function mesurerFuite() {
   const chemin = join(RACINE, '.carte-des-paquets.json')
   const carte = JSON.parse(readFileSync(chemin, 'utf8'))
-  const langue = moduleReserveALaLangueParesseuse()
-  const reserves = [...modulesReservesALApplication(), ...(langue ? [langue] : [])]
+  const langue = modulesReservesALaLangueParesseuse()
+  const reserves = [...modulesReservesALApplication(), ...langue]
 
   const fautifs = []
   for (const [nomPaquet, info] of Object.entries(carte)) {

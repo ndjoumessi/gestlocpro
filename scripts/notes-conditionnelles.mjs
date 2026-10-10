@@ -85,7 +85,7 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { exit } from 'node:process'
 import { SANS_AGENT_DE_SERVICE } from './mesure-sans-agent.mjs'
-import { francaisAPlat } from './dictionnaire-francais.mjs'
+import { francaisAPlat } from './dictionnaire-du-client.mjs'
 import { servirLaPrevisualisation } from './serveur-de-previsualisation.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')

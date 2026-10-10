@@ -110,23 +110,37 @@ export function modulesReservesALApplication() {
  * SECOND sujet, distinct de `modulesReservesALApplication` ci-dessus.
  *
  * Celui-là dérive la liste des vingt écrans de gestion depuis
- * `EspaceApplicatif.tsx`, la frontière `/app` et `/demo`. `i18n/en.ts` n'a
- * rien à voir avec cette frontière-là : il est paresseux jusque sur `/`, la
- * vitrine elle-même — voir `src/i18n/I18nProvider.tsx`, qui porte
+ * `EspaceApplicatif.tsx`, la frontière `/app` et `/demo`. Les DEUX moitiés
+ * anglaises n'ont rien à voir avec cette frontière-là : elles sont paresseuses
+ * jusque sur `/`, la vitrine elle-même — voir `src/i18n/I18nProvider.tsx`, qui porte
  * l'argumentaire complet de l'échange. Le fondre dans la liste ci-dessus
- * aurait forcé l'extension `.tsx` codée en dur sur UN fichier qui est
- * `i18n/en.ts`, pas `.tsx` — et aurait mélangé deux raisons de rester hors du
+ * aurait forcé l'extension `.tsx` codée en dur sur des fichiers qui sont
+ * `i18n/en.ts` et `i18n/en-app.ts`, pas `.tsx` — et aurait mélangé deux raisons de rester hors du
  * paquet impatient qui n'ont rien en commun.
  *
- * DÉRIVÉ, et non recopié : le chemin lu dans le seul `import(...)` de
+ * DÉRIVÉ, et non recopié : les chemins lus dans CHAQUE `import(...)` de
  * `I18nProvider.tsx` — même raison que ci-dessus, une chaîne recopiée se
  * périme le jour où quelqu'un renomme le fichier sans penser à cette garde.
  */
-export function moduleReserveALaLangueParesseuse() {
+export function modulesReservesALaLangueParesseuse() {
   const source = readFileSync(join(RACINE, 'src/i18n/I18nProvider.tsx'), 'utf8')
-  const specificateur = source.match(/import\(['"]([^'"]+)['"]\)/)
-  if (!specificateur) return null
-  return 'i18n/' + specificateur[1].replace(/^\.\//, '') + '.ts'
+  /*
+    TOUS LES `import()`, ET NON LE PREMIER.
+
+    Cette fonction était au SINGULIER et lisait `source.match(…)` sans `/g` —
+    donc le premier appel dynamique rencontré, et lui seul. C'était juste tant
+    que l'anglais tenait en un fichier. Depuis la scission du 2026-10-10 il y en
+    a deux, `./en` et `./en-app`, et la version singulière aurait rendu `en`
+    seul : un import statique d'`en-app` dans le paquet d'entrée serait passé
+    INAPERÇU, alors que c'est exactement la fuite que `mesurerFuite` existe pour
+    refuser.
+
+    Toujours DÉRIVÉ, jamais recopié — une chaîne écrite ici se périmerait au
+    premier renommage.
+  */
+  return [...source.matchAll(/import\(['"]([^'"]+)['"]\)/g)]
+    .map((m) => 'i18n/' + m[1].replace(/^\.\//, '') + '.ts')
+    .filter((chemin, rang, tous) => tous.indexOf(chemin) === rang)
 }
 
 export function adressesDeLApplication() {

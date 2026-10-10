@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
  */
 import ESPACE from '@/app/EspaceApplicatif.tsx?raw'
 import APP from '@/App.tsx?raw'
+import EN from '@/i18n/en.ts?raw'
 
 /**
  * LE MORCEAU APPLICATIF DÉPOSE SES PROPRES MOTS.
@@ -57,5 +58,53 @@ describe('le morceau applicatif porte ses mots', () => {
        chargeait `fr-app` par un `import()`, Rollup en referait un morceau
        séparé, et la requête refusée reviendrait par une autre porte. */
     expect(sansCommentaires(APP)).not.toMatch(/import\(\s*['"][^'"]*fr-app['"]/)
+  })
+
+  /**
+   * ═══ L'ANGLAIS SUIT LA RÈGLE INVERSE, ET C'EST VOULU ═══
+   *
+   * `fr-app` DOIT être importé statiquement ici ; `en-app` ne doit JAMAIS
+   * l'être. Ce n'est pas une incohérence : c'est la même visée — que personne
+   * ne télécharge des mots qu'il ne lira pas.
+   *
+   * Le français est la langue par défaut, ses mots partent donc dans le morceau
+   * applicatif que tout utilisateur télécharge. Un import statique de `en-app`
+   * au même endroit mettrait les mots ANGLAIS dans ce même morceau : chaque
+   * utilisateur FRANÇAIS paierait ~24 Ko compressés pour une langue qu'il n'a
+   * pas demandée — l'exact inverse du lot qui a créé `en-app.ts`.
+   *
+   * Et rien dans le typage ne le dit. `import { enApp } from '@/i18n/en-app'`
+   * compile, passe la revue, et ne se voit qu'au relevé de poids.
+   */
+  it('n’importe JAMAIS `en-app`, ni statiquement ni autrement', () => {
+    const source = sansCommentaires(ESPACE)
+
+    expect(
+      source,
+      'les mots anglais voyageraient dans le morceau que les francophones téléchargent',
+    ).not.toMatch(/['"][^'"]*en-app['"]/)
+  })
+
+  it('`en.ts` ne rapatrie pas sa propre moitié', () => {
+    /* LA SECONDE VOIE PAR LAQUELLE LA SCISSION SE DÉFERAIT, et la plus
+       silencieuse : si `en.ts` importait `en-app`, Rollup fusionnerait les deux
+       dans le morceau anglais et le visiteur de la vitrine retéléchargerait
+       tout. Aucune porte de poids ne mesure l'anglais — c'est ce cas-ci, et lui
+       seul, qui tient la frontière. */
+    expect(sansCommentaires(EN), 'la scission anglaise serait annulée').not.toMatch(
+      /['"][^'"]*en-app['"]/,
+    )
+  })
+
+  it('la moitié anglaise est jointe à la promesse de l’espace applicatif', () => {
+    /* CE QUI REND LA REQUÊTE GRATUITE EN TEMPS. Les deux partent dans le même
+       battement, derrière l'attente qui existait déjà ; le morceau applicatif
+       pèse 6,4 fois plus, donc c'est lui qui décide. Séparées, la moitié
+       anglaise deviendrait un aller-retour SÉRIALISÉ — et le produit afficherait
+       un tableau de bord sans texte le temps qu'elle arrive, `t()` rendant `''`
+       pour une clé absente. */
+    expect(sansCommentaires(APP), 'la moitié anglaise n’est plus jointe').toMatch(
+      /signalerEspaceApplicatif\(\)/,
+    )
   })
 })

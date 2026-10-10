@@ -80,9 +80,44 @@ export function sourceDuFrancais(racine) {
  * @returns {Map<string, string>} Chemin pointé → texte.
  */
 export function francaisAPlat(racine) {
+  return dictionnaireAPlatDe('fr', racine)
+}
+
+/**
+ * LES MOITIÉS DE CHAQUE LANGUE, ET POURQUOI CETTE TABLE EXISTE.
+ *
+ * Le français a été scindé le 2026-10-09, l'anglais le 2026-10-10 — pour des
+ * raisons différentes (`fr` partait avec la page d'accueil, `en` partait entier
+ * chez un visiteur anglais de la vitrine) mais avec la même conséquence pour
+ * qui LIT ces fichiers comme du texte : il y en a deux.
+ *
+ * Nommer les moitiés ICI, une fois, plutôt que dans chaque porte : c'est ce qui
+ * a manqué à la scission française. Quatre scripts lisaient `fr.ts` et aucun
+ * n'avait de raison de deviner qu'un second fichier venait d'apparaître.
+ */
+const MOITIES = {
+  fr: ['src/i18n/fr.ts', 'src/i18n/fr-app.ts'],
+  en: ['src/i18n/en.ts', 'src/i18n/en-app.ts'],
+}
+
+/**
+ * Le dictionnaire d'une langue, aplati — chaque moitié SÉPARÉMENT, puis fusionné.
+ *
+ * C'EST LE GESTE QUI COMPTE, et il est décrit en entier dans l'en-tête de ce
+ * fichier : `dictionnaireAPlat` est une machine à pile dont la profondeur ne
+ * revient pas à zéro en fin de fichier. Aplatir une concaténation rend donc des
+ * chemins faux — la scission française l'a payé d'un VERT MENSONGER, 2197 clés
+ * dont aucune `app.*` atteignable.
+ */
+export function dictionnaireAPlatDe(langue, racine) {
   const carte = new Map()
-  for (const fichier of ['src/i18n/fr.ts', 'src/i18n/fr-app.ts'])
+  for (const fichier of MOITIES[langue])
     for (const [cle, valeur] of dictionnaireAPlat(readFileSync(join(racine, fichier), 'utf8')))
       carte.set(cle, valeur)
   return carte
+}
+
+/** Les sources d'une langue bout à bout — pour les portes qui cherchent un motif. */
+export function sourceDuDictionnaire(langue, racine) {
+  return MOITIES[langue].map((f) => readFileSync(join(racine, f), 'utf8')).join('\n')
 }
