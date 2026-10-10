@@ -11,6 +11,7 @@ import {
 import { DATE_LOCALE, DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
 import { fr } from './fr'
 import type { frApp } from './fr-app'
+import type { frLegal } from './fr-legal'
 
 /**
  * UN dictionnaire reste impatient, l'autre devient paresseux — pas les deux.
@@ -133,8 +134,10 @@ export function chargerAnglais(): Promise<object> {
     déjà peint. L'invariant du fournisseur (`locale` n'avance que muni du
     dictionnaire) s'étend ainsi à la seconde moitié, sans l'affaiblir.
   */
-  return espaceApplicatifDemande
-    ? Promise.all([promesseAnglais, chargerAnglaisApplicatif()]).then(([vitrine]) => vitrine)
+  return chargeursAnglaisDemandes.length > 0
+    ? Promise.all([promesseAnglais, ...chargeursAnglaisDemandes.map((c) => c())]).then(
+        ([vitrine]) => vitrine,
+      )
     : promesseAnglais
 }
 
@@ -164,20 +167,48 @@ export function chargerAnglaisApplicatif(): Promise<object> {
   return promesseAnglaisApplicatif
 }
 
-let espaceApplicatifDemande = false
+/**
+ * LA MOITIÉ JURIDIQUE ANGLAISE — même raison et même chemin que l'applicative.
+ */
+let promesseAnglaisJuridique: Promise<object> | null = null
+
+export function chargerAnglaisJuridique(): Promise<object> {
+  promesseAnglaisJuridique ??= import('./en-legal').then((module) => {
+    poserSectionAnglaise(module.enLegal)
+    return module.enLegal
+  })
+  return promesseAnglaisJuridique
+}
 
 /**
- * `chargerEspaceApplicatif` (`App.tsx`) le dit en partant, et reçoit en retour
- * la promesse à joindre à la sienne.
+ * LES MOITIÉS ANGLAISES RÉCLAMÉES JUSQU'ICI.
+ *
+ * Chaque frontière paresseuse d'`App.tsx` se signale en partant et reçoit en
+ * retour la promesse à joindre à la sienne. La liste sert deux fois : à rendre
+ * cette promesse-là, et à faire en sorte qu'une bascule TARDIVE vers l'anglais
+ * réclame TOUTES les moitiés déjà ouvertes — sans quoi un utilisateur passé à
+ * l'anglais depuis une page juridique y lirait des trous.
  *
  * LA CONDITION EST `promesseAnglais`, ET NON LA LANGUE STOCKÉE. Elle vaut non
  * nulle exactement quand l'anglais a été demandé une fois — par le stockage au
  * démarrage ou par une bascule. Un utilisateur français ne paie donc NI octet
  * NI requête pour des mots qu'il ne lira pas, ce qui est tout l'objet du lot.
  */
+const chargeursAnglaisDemandes: (() => Promise<object>)[] = []
+
+function signalerMoitieAnglaise(chargeur: () => Promise<object>): Promise<unknown> {
+  if (!chargeursAnglaisDemandes.includes(chargeur)) chargeursAnglaisDemandes.push(chargeur)
+  return promesseAnglais ? chargeur() : Promise.resolve()
+}
+
+/** `chargerEspaceApplicatif` (`App.tsx`) le dit en partant. */
 export function signalerEspaceApplicatif(): Promise<unknown> {
-  espaceApplicatifDemande = true
-  return promesseAnglais ? chargerAnglaisApplicatif() : Promise.resolve()
+  return signalerMoitieAnglaise(chargerAnglaisApplicatif)
+}
+
+/** `chargerPagesJuridiques` (`App.tsx`) le dit en partant. */
+export function signalerPagesJuridiques(): Promise<unknown> {
+  return signalerMoitieAnglaise(chargerAnglaisJuridique)
 }
 
 /**
@@ -218,10 +249,41 @@ export function signalerEspaceApplicatif(): Promise<unknown> {
  * `dictionnaireApplicatif.test.tsx` refuse que le morceau applicatif oublie de
  * déposer ses mots.
  */
+/**
+ * LES SECTIONS FRANÇAISES DIFFÉRÉES, et il y en a PLUSIEURS depuis le 2026-10-10.
+ *
+ * `poserDictionnaireApplicatif` écrivait `francais = { ...fr, ...section }` :
+ * juste tant qu'il n'y en avait qu'une, faux dès la deuxième — chaque dépôt
+ * repartait de `fr` et effaçait le précédent. Les sections s'accumulent donc, et
+ * `francais` se recompose à chaque arrivée.
+ *
+ * UNE SECTION NE S'EMPILE PAS DEUX FOIS. `src/test/setup.ts` les dépose à
+ * l'évaluation du module, et un rechargement à chaud rejouerait ce module : sans
+ * ce garde-fou le tableau grossirait sans fin pour un résultat identique.
+ *
+ * LA FUSION EST DE SURFACE, et c'est ce qui dicte le découpage : deux moitiés
+ * qui porteraient la même clé de premier niveau s'écraseraient au lieu de se
+ * compléter. C'est pourquoi les quatre clés que le paquet d'entrée doit lire —
+ * les trois liens juridiques du pied de page et l'indice du sommaire — ont
+ * changé de SECTION plutôt que de rester dans `legal`, `privacy` et `terms` :
+ * `nav` et `common` restent entières dans `fr.ts`, et les trois sections
+ * juridiques partent entières.
+ */
+const sectionsDifferees: object[] = []
 let francais: object = fr
 
+function recomposerFrancais(): void {
+  francais = Object.assign({}, fr, ...sectionsDifferees)
+}
+
 export function poserDictionnaireApplicatif(section: object): void {
-  francais = { ...fr, ...section }
+  poserSectionFrancaise(section)
+}
+
+export function poserSectionFrancaise(section: object): void {
+  if (sectionsDifferees.includes(section)) return
+  sectionsDifferees.push(section)
+  recomposerFrancais()
 }
 
 /**
@@ -240,7 +302,7 @@ export function poserDictionnaireApplicatif(section: object): void {
  */
 let anglais: object | null = null
 let vitrineAnglaise: object | null = null
-let sectionAnglaise: object | null = null
+const sectionsAnglaises: object[] = []
 
 /**
  * LES DEUX MOITIÉS SE RÉUNISSENT DANS N'IMPORTE QUEL ORDRE.
@@ -263,11 +325,16 @@ let sectionAnglaise: object | null = null
  * suffit donc pas à déclarer l'anglais prêt.
  */
 function recomposerAnglais(): void {
-  anglais = vitrineAnglaise ? { ...vitrineAnglaise, ...(sectionAnglaise ?? {}) } : null
+  anglais = vitrineAnglaise ? Object.assign({}, vitrineAnglaise, ...sectionsAnglaises) : null
 }
 
 export function poserDictionnaireApplicatifAnglais(section: object): void {
-  sectionAnglaise = section
+  poserSectionAnglaise(section)
+}
+
+export function poserSectionAnglaise(section: object): void {
+  if (sectionsAnglaises.includes(section)) return
+  sectionsAnglaises.push(section)
   recomposerAnglais()
 }
 
@@ -290,7 +357,7 @@ export function poserDictionnaireApplicatifAnglais(section: object): void {
  *
  * ═══ CE QU'ELLE N'EFFACE PAS, ET C'EST VOULU ═══
  *
- * `sectionAnglaise` reste en place. `src/test/setup.ts` la dépose une fois pour
+ * `sectionsAnglaises` reste en place. `src/test/setup.ts` les dépose une fois pour
  * tous les cas, comme le morceau applicatif le fait en production ; l'effacer
  * ici obligerait chaque appelant à la reposer, et modéliserait un état qui
  * n'existe pas — une application chargée sans ses mots.
@@ -299,7 +366,8 @@ export function oublierLAnglaisCharge(): void {
   vitrineAnglaise = null
   promesseAnglais = null
   promesseAnglaisApplicatif = null
-  espaceApplicatifDemande = false
+  promesseAnglaisJuridique = null
+  chargeursAnglaisDemandes.length = 0
   recomposerAnglais()
 }
 
@@ -329,7 +397,7 @@ type LeafPaths<T> = T extends object
  * dire, c'est qu'un module du paquet d'entrée n'a pas le droit d'y toucher —
  * `check-dictionnaire-impatient.mjs` est la garde qui le dit à sa place.
  */
-export type MessageKey = LeafPaths<typeof fr & typeof frApp>
+export type MessageKey = LeafPaths<typeof fr & typeof frApp & typeof frLegal>
 
 export type TranslateVars = Record<string, string | number>
 

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { signalerEspaceApplicatif } from './i18n/I18nProvider'
+import { signalerEspaceApplicatif, signalerPagesJuridiques } from './i18n/I18nProvider'
 import { Landing } from './routes/Landing'
 import { KitchenSink } from './routes/KitchenSink'
 /*
@@ -32,9 +32,6 @@ import { Login } from './routes/Login'
 import { ForgotPassword } from './routes/ForgotPassword'
 import { ResetPassword } from './routes/ResetPassword'
 import { NotFound } from './routes/NotFound'
-import { MentionsLegales } from './routes/MentionsLegales'
-import { Confidentialite } from './routes/Confidentialite'
-import { ConditionsGenerales } from './routes/ConditionsGenerales'
 import { useT } from './i18n/I18nProvider'
 import { FrontiereDErreur } from './components/feedback/FrontiereDErreur'
 
@@ -110,6 +107,46 @@ export function chargerEspaceApplicatif() {
 const EspaceApplicatif = lazy(chargerEspaceApplicatif)
 
 /**
+ * LES TROIS PAGES JURIDIQUES, UN SEUL MORCEAU — voir `PagesJuridiques.tsx`.
+ *
+ * Elles étaient impatientes : tout visiteur de la vitrine téléchargeait trois
+ * écrans et leurs mots pour des pages qu'il n'ouvre pas. Ce sont des
+ * DESTINATIONS, au sens où l'est déjà l'annonce publique — on y arrive par un
+ * lien du pied de page, on n'y circule pas. L'aller-retour est payé par qui les
+ * ouvre, une fois, et les trois le partagent.
+ *
+ * `??=` : la promesse est un COUP UNIQUE et partagé, comme ses deux voisines.
+ * Les trois `lazy()` ci-dessous nomment le même spécificateur, donc le second
+ * et le troisième sont servis par le premier.
+ */
+let promessePagesJuridiques: Promise<typeof import('./routes/PagesJuridiques')> | undefined
+
+export function chargerPagesJuridiques() {
+  /*
+    DEUX PROMESSES DANS LE MÊME BATTEMENT, même recette que l'espace applicatif :
+    `signalerPagesJuridiques` rend la moitié juridique ANGLAISE — ou une promesse
+    déjà résolue si l'anglais n'est pas en jeu, donc pour tout utilisateur
+    français, qui ne paie ni octet ni requête. Jointes ici, les deux arrivent
+    avant le premier rendu, et `t()` ne rend jamais `''` sur une page juridique.
+  */
+  promessePagesJuridiques ??= Promise.all([
+    import('./routes/PagesJuridiques'),
+    signalerPagesJuridiques(),
+  ]).then(([m]) => m)
+  return promessePagesJuridiques
+}
+
+const MentionsLegales = lazy(() =>
+  chargerPagesJuridiques().then((m) => ({ default: m.MentionsLegales })),
+)
+const Confidentialite = lazy(() =>
+  chargerPagesJuridiques().then((m) => ({ default: m.Confidentialite })),
+)
+const ConditionsGenerales = lazy(() =>
+  chargerPagesJuridiques().then((m) => ({ default: m.ConditionsGenerales })),
+)
+
+/**
  * L'ANNONCE PUBLIQUE EST DÉTACHÉE, ET C'EST LE BUDGET QUI L'A DÉCIDÉ.
  *
  * ═══ CE QUI S'EST PASSÉ ═══
@@ -180,6 +217,32 @@ const AnnoncePublique = lazy(() =>
 function ChargementAnnonce() {
   const t = useT()
   return <p className="p-8 text-body text-muted">{t('common.loading')}</p>
+}
+
+/**
+ * L'ATTENTE DU MORCEAU JURIDIQUE.
+ *
+ * MÊME FORME que `ChargementAnnonce`, et ce n'est pas une duplication qu'on
+ * aurait oublié de factoriser : les deux répondent à la même question — « que
+ * montrer pendant qu'une DESTINATION se charge ? » — et la réponse se trouve
+ * être la même aujourd'hui. Les fondre ferait d'un accident une règle, et le
+ * jour où l'une des deux veut autre chose, il faudrait la défaire.
+ *
+ * PAS D'`aria-live` : contrairement à l'annonce, une page juridique n'enchaîne
+ * pas sur une seconde attente. Il n'y a rien à annoncer deux fois, et rien à
+ * annoncer du tout pour un remplacement qui dure le temps d'un aller-retour.
+ */
+function ChargementPageJuridique() {
+  const t = useT()
+  /* `data-testid` : le seul repère stable qu'a `src/test/render.tsx` pour
+     attendre la résolution de ce découpage avant de rendre la main à un cas —
+     même raison que pour la coquille de l'espace applicatif. Un texte traduit
+     se retraduit, et ce repli ne porte aucun rôle ARIA qui lui soit propre. */
+  return (
+    <p data-testid="chargement-page-juridique" className="p-8 text-body text-muted">
+      {t('common.loading')}
+    </p>
+  )
 }
 
 function ChargementEspaceApplicatif() {
@@ -255,12 +318,44 @@ export function App() {
             </Suspense>
           }
         />
+        {/*
+          LES TROIS PAGES JURIDIQUES, chacune derrière sa `Suspense` mais toutes
+          servies par le MÊME morceau — voir `PagesJuridiques.tsx`. Une seule
+          `Suspense` ne suffirait pas : `Routes` n'en rend qu'une à la fois, et
+          c'est l'élément rendu qui doit porter la frontière.
+
+          Le repli est le même que celui de l'annonce publique, et pour la même
+          raison : une page juridique est une DESTINATION, pas un écran de
+          gestion — lui dessiner la coquille d'un tableau de bord promettrait
+          une application que le visiteur n'a pas demandée.
+        */}
         {/* La première page juridique du produit — voir `MentionsLegales.tsx`. */}
-        <Route path="/mentions-legales" element={<MentionsLegales />} />
+        <Route
+          path="/mentions-legales"
+          element={
+            <Suspense fallback={<ChargementPageJuridique />}>
+              <MentionsLegales />
+            </Suspense>
+          }
+        />
         {/* La deuxième — voir `Confidentialite.tsx`. */}
-        <Route path="/confidentialite" element={<Confidentialite />} />
+        <Route
+          path="/confidentialite"
+          element={
+            <Suspense fallback={<ChargementPageJuridique />}>
+              <Confidentialite />
+            </Suspense>
+          }
+        />
         {/* La troisième — voir `ConditionsGenerales.tsx`. */}
-        <Route path="/conditions-generales" element={<ConditionsGenerales />} />
+        <Route
+          path="/conditions-generales"
+          element={
+            <Suspense fallback={<ChargementPageJuridique />}>
+              <ConditionsGenerales />
+            </Suspense>
+          }
+        />
 
         {/*
           `/*` sur les deux : ce sont désormais des ROUTES DESCENDANTES.

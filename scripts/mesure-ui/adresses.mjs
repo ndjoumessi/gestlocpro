@@ -106,6 +106,33 @@ export function modulesReservesALApplication() {
 }
 
 /**
+ * LES TROIS PAGES JURIDIQUES ET LEURS MOTS, réservés à leur propre morceau.
+ *
+ * TROISIÈME sujet, distinct des deux autres. Elles étaient impatientes jusqu'au
+ * 2026-10-10 : tout visiteur de la vitrine téléchargeait trois écrans et leurs
+ * 5 955 o de mots compressés pour des pages qu'il n'ouvre pas. Elles vivent
+ * désormais derrière une frontière partagée, décrite dans
+ * `src/routes/PagesJuridiques.tsx`.
+ *
+ * DÉRIVÉ de la barrique, et non recopié : les trois réexports nommés disent
+ * exactement ce qui part avec ce morceau, et un renommage les suit. `fr-legal`
+ * s'y ajoute parce que la barrique l'importe statiquement — c'est tout l'objet
+ * du montage, et c'est aussi ce qui le rendrait réversible sans bruit.
+ *
+ * CE QUE ÇA ATTRAPE QUE `check-dictionnaire-impatient.mjs` N'ATTRAPE PAS :
+ * celui-là marche le graphe des SOURCES depuis `main.tsx` ; celui-ci lit le
+ * paquet CONSTRUIT. Un module tiré dans le paquet d'entrée par une voie
+ * transitive que la marche ne suit pas tombe ici, et seulement ici.
+ */
+export function modulesReservesAuxPagesJuridiques() {
+  const source = readFileSync(join(RACINE, 'src/routes/PagesJuridiques.tsx'), 'utf8')
+  const pages = [...source.matchAll(/^export \{ \w+ \} from '\.\/(\w+)'/gm)].map(
+    (m) => 'routes/' + m[1] + '.tsx',
+  )
+  return [...pages, 'routes/PagesJuridiques.tsx', 'i18n/fr-legal.ts']
+}
+
+/**
  * LE DICTIONNAIRE ANGLAIS, réservé à son propre chargement paresseux — un
  * SECOND sujet, distinct de `modulesReservesALApplication` ci-dessus.
  *
