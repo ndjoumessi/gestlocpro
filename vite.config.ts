@@ -85,6 +85,34 @@ export default defineConfig({
     que refaite : la prochaine lecture de la carte des sources retombera sur ce
     « development » et posera la même question.
   */
+  /*
+    UN MORCEAU MINUSCULE COÛTE PLUS CHER QU'IL NE PÈSE.
+
+    La scission des pages juridiques (2026-10-10) a fait de
+    `SommaireDesRubriques` un module PARTAGÉ : les pages juridiques et l'écran
+    du manuel l'emploient tous deux. Rollup en a donc émis un morceau à part,
+    769 octets bruts — et `EspaceApplicatif` a dû le réclamer séparément.
+    `poids-ecrans` l'a refusé avec le chiffre qui tranche : « /demo : 2 → 3
+    REQUÊTES ».
+
+    C'est la règle du dépôt, et elle est juste : un aller-retour coûte 300 à
+    800 ms sur le réseau visé, quoi qu'il transporte. Sept cent soixante-neuf
+    octets dupliqués en coûtent deux.
+
+    LE SEUIL EST MESURÉ, PAS CHOISI AU HASARD. Il doit dépasser 769 et rester
+    sous `AnnoncePublique` (2 977 octets bruts), qui est une VRAIE frontière :
+    la fondre dans le paquet d'entrée rendrait à la vitrine des octets qu'on a
+    payé un lot pour en sortir. 1 500 tient les deux bouts.
+
+    RELIRE CE NOMBRE si une frontière paresseuse descend sous 1 500 octets :
+    elle serait absorbée en silence, et le relevé de poids le dirait — mais
+    après coup.
+  */
+  build: {
+    rollupOptions: {
+      output: { experimentalMinChunkSize: 1500 },
+    },
+  },
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },

@@ -806,6 +806,48 @@ export function releverLesSources() {
     }
   }
 
+  /**
+   * LES COMPOSANTS PARESSEUX NE SONT NI IMPORTÉS NI DÉCLARÉS.
+   *
+   * `const MentionsLegales = lazy(…)` dans `App.tsx` n'est pas un `import`, donc
+   * la table des imports ne le connaît pas ; ce n'est pas non plus un
+   * `export function`, donc l'index ne le connaît pas davantage. Et `App.tsx`
+   * est une FRONTIÈRE, donc même le repli d'attente déclaré à côté est écarté :
+   * les trois adresses juridiques rendaient une composition VIDE, et la porte a
+   * refusé — « ce n'est pas aucun défaut, c'est une lecture cassée ».
+   *
+   * RÉSOLU PAR LE NOM, et c'est le seul repère qui subsiste : le spécificateur
+   * du `import()` ne figure pas dans la déclaration — il vit dans une fonction
+   * de chargement partagée par les trois pages, elle-même derrière une barrique
+   * de réexports. Deux indirections qu'un lecteur de texte ne suivra pas.
+   *
+   * ET L'AMBIGUÏTÉ EST UN REFUS, pas un choix au hasard. Si deux fichiers
+   * exportaient un composant du même nom, en prendre un serait rendre une carte
+   * fausse d'une ligne — exactement ce que cette porte existe pour empêcher.
+   */
+  const plaintesParesseuses = []
+  const paresseuxDuFichier = new Map()
+  for (const [rel, f] of fichiers) {
+    for (const m of f.code.matchAll(/\bconst\s+([A-Z]\w*)\s*=\s*lazy\s*\(/g)) {
+      const nom = m[1]
+      /* LE FICHIER DÉCLARANT EST ÉCARTÉ, sans quoi l'ambiguïté est systématique :
+         `const X = lazy(…)` est lui-même indexé comme un composant de ce
+         fichier-ci, donc chaque nom aurait toujours DEUX candidats dont l'un
+         est son propre site. Ce qu'on cherche est l'AUTRE. */
+      const candidats = [...index.keys()].filter(
+        (cle) => cle.endsWith(`::${nom}`) && !cle.startsWith(`${rel}::`),
+      )
+      if (candidats.length === 1) paresseuxDuFichier.set(`${rel}::${nom}`, index.get(candidats[0]))
+      else if (candidats.length > 1) {
+        plaintesParesseuses.push(
+          `composant paresseux · \`${nom}\` dans ${rel} est exporté par ` +
+            `${candidats.length} fichiers (${candidats.join(', ')}). La résolution par le nom ` +
+            `ne peut pas trancher, et en choisir un rendrait une carte fausse d'une ligne.`,
+        )
+      }
+    }
+  }
+
   const resoudre = (rel, nomTag) => {
     const f = fichiers.get(rel)
     if (!f) return null
@@ -813,11 +855,17 @@ export function releverLesSources() {
       const cible = f.imports.get(nomTag)
       return cible ? (index.get(`${cible}::${nomTag}`) ?? null) : null
     }
-    return index.get(`${rel}::${nomTag}`) ?? null
+    /* LA TABLE DES PARESSEUX PASSE EN PREMIER, et l'ordre est le correctif.
+       `const X = lazy(…)` est indexé comme un composant du fichier déclarant :
+       interroger l'index d'abord rend TOUJOURS cette déclaration-là, que la
+       frontière écarte ensuite — les trois adresses juridiques rendaient une
+       composition vide pour cette seule raison. Ce qu'on veut est le fichier
+       qui porte vraiment l'écran. */
+    return paresseuxDuFichier.get(`${rel}::${nomTag}`) ?? index.get(`${rel}::${nomTag}`) ?? null
   }
 
   // ── 2. Gardes des gardes : les motifs doivent encore trouver ───────────────
-  const plaintes = []
+  const plaintes = [...plaintesParesseuses]
   const balisesLues = [...fichiers.values()].reduce((n, f) => n + f.balises.length, 0)
 
   const tokens = readFileSync(join(SRC, 'design-system/tokens.css'), 'utf8')

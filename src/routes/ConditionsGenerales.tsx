@@ -93,7 +93,7 @@ export function ConditionsGenerales() {
             <p>{t('terms.purpose.body')}</p>
             <p className="mt-3">
               {t('terms.purpose.publisher')}{' '}
-              <LienInterne to="/mentions-legales" libelle={t('legal.footerLink')} />
+              <LienInterne to="/mentions-legales" libelle={t('nav.legalLink')} />
             </p>
           </Rubrique>
 
@@ -130,7 +130,7 @@ export function ConditionsGenerales() {
             <p className="mt-3">{t('terms.data.controller')}</p>
             <p className="mt-3">
               {t('terms.data.privacy')}{' '}
-              <LienInterne to="/confidentialite" libelle={t('privacy.footerLink')} />
+              <LienInterne to="/confidentialite" libelle={t('nav.privacyLink')} />
             </p>
           </Rubrique>
 

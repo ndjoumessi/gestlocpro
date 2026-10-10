@@ -197,13 +197,13 @@ export function PublicFooter() {
               to="/mentions-legales"
               className="-my-[14px] inline-flex min-h-11 min-w-11 items-center pr-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
             >
-              {t('legal.footerLink')}
+              {t('nav.legalLink')}
             </Link>
             <Link
               to="/confidentialite"
               className="-my-[14px] inline-flex min-h-11 min-w-11 items-center px-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
             >
-              {t('privacy.footerLink')}
+              {t('nav.privacyLink')}
             </Link>
             {/* LA TROISIÈME PAGE JURIDIQUE, et elle DOIT être ici : un texte
                 qu'on s'engage à respecter et qu'aucun lien n'atteint n'est pas
@@ -215,7 +215,7 @@ export function PublicFooter() {
               to="/conditions-generales"
               className="-my-[14px] inline-flex min-h-11 min-w-11 items-center px-2 text-label text-on-dark-muted no-underline transition-colors duration-150 hover:text-on-dark"
             >
-              {t('terms.footerLink')}
+              {t('nav.termsLink')}
             </Link>
           </div>
         </div>

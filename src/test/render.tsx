@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactElement } from 'react'
-import { App, chargerEspaceApplicatif } from '@/App'
+import { App, chargerEspaceApplicatif, chargerPagesJuridiques } from '@/App'
 import { chargerAnglais, I18nProvider } from '@/i18n/I18nProvider'
 import { ThemeProvider } from '@/theme/ThemeProvider'
 import { CurrencyProvider } from '@/currency/CurrencyProvider'
@@ -194,6 +194,30 @@ function decouper(route: string): { pathname: string; search: string; hash: stri
  * provoque un rendu que React doit purger avant qu'on rende la main, sans
  * quoi le test lirait le DOM d'avant la substitution.
  */
+/**
+ * LA TROISIÈME FRONTIÈRE — les pages juridiques, depuis le 2026-10-10.
+ *
+ * MÊME FORME que sa voisine, et pour les mêmes deux raisons : `act` parce que
+ * la résolution de `lazy` provoque un rendu que React doit purger, et le tour
+ * de boucle parce que la promesse résolue ne fait que NOTER que le composant
+ * est prêt — le nouveau rendu de la frontière est programmé dans la boucle
+ * d'événements, pas dans la micro-tâche courante.
+ *
+ * APRÈS `attendreLEspaceApplicatif`, et l'ordre n'est pas indifférent : les
+ * deux lisent un marqueur dans le DOM et sortent sans rien faire s'il est
+ * absent. Une adresse juridique ne monte pas l'espace applicatif et
+ * réciproquement, donc une seule des deux agit à chaque appel — mais les
+ * mettre dans cet ordre garde la lecture conforme à celle des routes.
+ */
+async function attendreLesPagesJuridiques(): Promise<void> {
+  const repli = screen.queryByTestId('chargement-page-juridique')
+  if (!repli) return
+  await act(async () => {
+    await chargerPagesJuridiques()
+    await new Promise((resoudre) => setTimeout(resoudre, 0))
+  })
+}
+
 async function attendreLEspaceApplicatif(): Promise<void> {
   const repli = screen.queryByTestId('chargement-espace-applicatif')
   if (!repli) return
@@ -325,6 +349,7 @@ export async function renderApp(
 
   await attendreLaLangue(preferences.locale ?? 'fr')
   await attendreLEspaceApplicatif()
+  await attendreLesPagesJuridiques()
 
   return resultat
 }

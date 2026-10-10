@@ -114,7 +114,7 @@ export function SommaireDesRubriques({
           phrase est la seule chose qui apprenne qu'elle est faite pour être
           copiée — une réponse à un locataire ou à un gestionnaire cite une
           clause, pas une page. */}
-      <p className="mt-2 text-caption text-muted">{indice ?? t('legal.anchorHint')}</p>
+      <p className="mt-2 text-caption text-muted">{indice ?? t('common.anchorHint')}</p>
     </nav>
   )
 }

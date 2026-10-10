@@ -86,7 +86,8 @@ export function francaisAPlat(racine) {
 /**
  * LES MOITIÉS DE CHAQUE LANGUE, ET POURQUOI CETTE TABLE EXISTE.
  *
- * Le français a été scindé le 2026-10-09, l'anglais le 2026-10-10 — pour des
+ * Le français a été scindé le 2026-10-09, l'anglais le 2026-10-10, et les trois
+ * sections juridiques le même jour — TROIS moitiés par langue désormais — pour des
  * raisons différentes (`fr` partait avec la page d'accueil, `en` partait entier
  * chez un visiteur anglais de la vitrine) mais avec la même conséquence pour
  * qui LIT ces fichiers comme du texte : il y en a deux.
@@ -96,8 +97,8 @@ export function francaisAPlat(racine) {
  * n'avait de raison de deviner qu'un second fichier venait d'apparaître.
  */
 const MOITIES = {
-  fr: ['src/i18n/fr.ts', 'src/i18n/fr-app.ts'],
-  en: ['src/i18n/en.ts', 'src/i18n/en-app.ts'],
+  fr: ['src/i18n/fr.ts', 'src/i18n/fr-app.ts', 'src/i18n/fr-legal.ts'],
+  en: ['src/i18n/en.ts', 'src/i18n/en-app.ts', 'src/i18n/en-legal.ts'],
 }
 
 /**

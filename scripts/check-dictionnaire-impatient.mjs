@@ -110,8 +110,28 @@ function modulesImpatients(entree = ENTREE) {
  * qu'une clé construite prend le plus souvent (`'app.' + section`), et la
  * laisser passer rouvrirait le trou par sa porte la plus simple.
  */
+/**
+ * LES SECTIONS QUI N'ARRIVENT PAS AVEC LE PAQUET D'ENTRÉE, et le morceau qui
+ * les porte.
+ *
+ * Il n'y en avait qu'une — `app`, avec `fr-app`. Les trois sections juridiques
+ * ont pris le même chemin le 2026-10-10, derrière la frontière paresseuse des
+ * pages qui les lisent. La règle est identique pour toutes : un module du
+ * paquet d'entrée qui les prononce s'exécute AVANT elles, et `t()` rend `''`.
+ *
+ * NOMMÉES ICI, UNE FOIS. Les ajouter à la volée dans trois expressions
+ * régulières aurait été le moyen sûr d'en oublier une.
+ */
+const SECTIONS_DIFFEREES = [
+  { prefixes: ['app'], morceau: 'fr-app' },
+  { prefixes: ['legal', 'privacy', 'terms'], morceau: 'fr-legal' },
+]
+
+const PREFIXES = SECTIONS_DIFFEREES.flatMap((s) => s.prefixes)
+const MOTIF_DES_CLES = new RegExp(`['"\`]((?:${PREFIXES.join('|')})\\.[A-Za-z0-9_.]*)['"\`]`, 'g')
+
 function clesApplicativesDe(source) {
-  return [...source.matchAll(/['"`](app\.[A-Za-z0-9_.]*)['"`]/g)].map((m) => m[1])
+  return [...source.matchAll(MOTIF_DES_CLES)].map((m) => m[1])
 }
 
 /* ═══ LE TÉMOIN, en deux moitiés, parce que la garde a deux moitiés ═══
@@ -128,8 +148,22 @@ const TEMOIN_SOURCE = [
   "t('app.' + section)",
   "t('common.cancel')",
   "// app.pas.une.chaine",
+  /* UNE CLÉ DE CHAQUE SECTION DIFFÉRÉE, et pas seulement d'`app` : le témoin
+     doit tomber le jour où quelqu'un ajoute une section à la liste sans
+     toucher au lecteur. `nav.legalLink` est là pour l'inverse — une clé qui
+     RESSEMBLE aux juridiques et doit rester invisible au lecteur. */
+  "t('legal.title')",
+  "t('privacy.intro')",
+  "t('terms.updatedOn')",
+  "t('nav.legalLink')",
 ].join('\n')
-const TEMOIN_ATTENDU = ['app.crash.title', 'app.']
+const TEMOIN_ATTENDU = [
+  'app.crash.title',
+  'app.',
+  'legal.title',
+  'privacy.intro',
+  'terms.updatedOn',
+]
 
 const obtenu = clesApplicativesDe(TEMOIN_SOURCE)
 if (JSON.stringify(obtenu) !== JSON.stringify(TEMOIN_ATTENDU)) {
@@ -177,7 +211,11 @@ if (ancresFautives.length) {
  * Un import de TYPE reste permis : `I18nProvider` en a besoin pour `MessageKey`,
  * et il ne tire rien.
  */
-const IMPORT_DU_MORCEAU = /^\s*import\s+(?!type\s)[^;]*?from\s*['"][^'"]*fr-app['"]/m
+const MORCEAUX = SECTIONS_DIFFEREES.map((s) => s.morceau)
+const IMPORT_DU_MORCEAU = new RegExp(
+  `^\\s*import\\s+(?!type\\s)[^;]*?from\\s*['"][^'"]*(${MORCEAUX.join('|')})['"]`,
+  'm',
+)
 
 const plaintes = []
 for (const fichier of [...impatients].sort()) {
@@ -185,13 +223,13 @@ for (const fichier of [...impatients].sort()) {
   if (fichier.startsWith(join(SRC, 'i18n'))) continue
   const source = readFileSync(fichier, 'utf8')
   for (const cle of clesApplicativesDe(source)) plaintes.push(`${relatif(fichier)} · ${cle}`)
-  if (IMPORT_DU_MORCEAU.test(source))
-    plaintes.push(`${relatif(fichier)} · importe \`fr-app\` autrement qu'en type`)
+  const importe = IMPORT_DU_MORCEAU.exec(source)
+  if (importe) plaintes.push(`${relatif(fichier)} · importe \`${importe[1]}\` autrement qu'en type`)
 }
 
 if (plaintes.length) {
   console.error(
-    `✗ ${plaintes.length} citation(s) de \`app.*\` dans un module du paquet d'entrée :\n`,
+    `✗ ${plaintes.length} citation(s) d'une section différée dans un module du paquet d'entrée :\n`,
   )
   for (const p of plaintes) console.error('  ' + p)
   console.error(
@@ -206,5 +244,7 @@ if (plaintes.length) {
 }
 
 console.log(
-  `✓ Témoin classé, et aucun des ${impatients.size} modules du paquet d'entrée ne cite \`app.*\`.`,
+  `✓ Témoin classé, et aucun des ${impatients.size} modules du paquet d'entrée ne cite ` +
+    PREFIXES.map((p) => `\`${p}.*\``).join(', ') +
+    '.',
 )

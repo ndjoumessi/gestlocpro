@@ -96,11 +96,22 @@ if (decalageDHorloge) {
  * dictionnaire est gardé par `dictionnaireApplicatif.test.tsx`. Ce qui reste
  * ici est ce qu'un composant monté hors de son arbre ne peut pas se donner.
  */
-const { poserDictionnaireApplicatif, poserDictionnaireApplicatifAnglais } = await import(
-  '@/i18n/I18nProvider'
-)
+const {
+  poserDictionnaireApplicatif,
+  poserDictionnaireApplicatifAnglais,
+  poserSectionFrancaise,
+  poserSectionAnglaise,
+} = await import('@/i18n/I18nProvider')
 const { frApp } = await import('@/i18n/fr-app')
 poserDictionnaireApplicatif(frApp)
+
+/*
+  LES MOTS DES TROIS PAGES JURIDIQUES, pour la même raison : en production ils
+  arrivent avec le morceau qui porte les pages, et ici aucun morceau n'est
+  chargé. Sans ce dépôt, tout cas qui rend une page juridique lirait `''`.
+*/
+const { frLegal } = await import('@/i18n/fr-legal')
+poserSectionFrancaise(frLegal)
 
 /*
   L'ANGLAIS AUSSI, depuis la scission du 2026-10-10. En production, la moitié
@@ -112,3 +123,6 @@ poserDictionnaireApplicatif(frApp)
 */
 const { enApp } = await import('@/i18n/en-app')
 poserDictionnaireApplicatifAnglais(enApp)
+
+const { enLegal } = await import('@/i18n/en-legal')
+poserSectionAnglaise(enLegal)

@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "697a3b71",
- "empreinteDesSources": "bcd279a6d19807dc2cc99119afbb32cdd81089e938b1312f808590e3f78a90f0",
+ "course": "336f8462",
+ "empreinteDesSources": "9154a01bc58b649d621a98c36488a48c72d66a23d65b26f993d2e807c09c528c",
  "mesures": {
   "/@360": {
-   "octets": 494216,
-   "octetsFil": 161905,
+   "octets": 466432,
+   "octetsFil": 154754,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -22,19 +22,19 @@
    }
   },
   "/demo@360": {
-   "octets": 534967,
-   "octetsFil": 155753,
+   "octets": 534968,
+   "octetsFil": 155752,
    "requetes": 2,
    "releve": {
-    "de": 534843,
+    "de": 534967,
     "requetesDe": 2,
-    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
-    "course": "e278ead4"
+    "motif": "UN OCTET sur /demo, prix du seuil de taille minimale de morceau posé dans vite.config.ts. La scission des trois pages juridiques a fait de SommaireDesRubriques un module partagé entre elles et l'ecran du manuel : Rollup en a emis un morceau de 769 octets bruts, et cette porte l'a refuse avec le bon chiffre - /demo : 2 a 3 REQUETES. Un aller-retour coute 300 a 800 ms sur le reseau vise ; 769 octets en coutent deux. Le seuil (1500) est mesure pour viser ce morceau sans toucher a AnnoncePublique, 2977 octets bruts, qui est une vraie frontiere. Ce que cet octet achete : / perd 7 167 octets sur le fil, 143 ms a 400 kb/s, et /demo garde ses 2 requetes",
+    "course": "336f8462"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64615,
+   "octetsFil": 64614,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,8 +66,8 @@
    }
   },
   "/@1280": {
-   "octets": 494216,
-   "octetsFil": 161905,
+   "octets": 466432,
+   "octetsFil": 154754,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -77,19 +77,19 @@
    }
   },
   "/demo@1280": {
-   "octets": 534967,
-   "octetsFil": 155753,
+   "octets": 534968,
+   "octetsFil": 155752,
    "requetes": 2,
    "releve": {
-    "de": 534843,
+    "de": 534967,
     "requetesDe": 2,
-    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
-    "course": "e278ead4"
+    "motif": "UN OCTET sur /demo, prix du seuil de taille minimale de morceau posé dans vite.config.ts. La scission des trois pages juridiques a fait de SommaireDesRubriques un module partagé entre elles et l'ecran du manuel : Rollup en a emis un morceau de 769 octets bruts, et cette porte l'a refuse avec le bon chiffre - /demo : 2 a 3 REQUETES. Un aller-retour coute 300 a 800 ms sur le reseau vise ; 769 octets en coutent deux. Le seuil (1500) est mesure pour viser ce morceau sans toucher a AnnoncePublique, 2977 octets bruts, qui est une vraie frontiere. Ce que cet octet achete : / perd 7 167 octets sur le fil, 143 ms a 400 kb/s, et /demo garde ses 2 requetes",
+    "course": "336f8462"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28381,
+   "octetsFil": 28380,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64615,
+   "octetsFil": 64614,
    "requetes": 3,
    "releve": {
     "de": 65639,

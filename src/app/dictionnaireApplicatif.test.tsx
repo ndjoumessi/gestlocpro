@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import ESPACE from '@/app/EspaceApplicatif.tsx?raw'
 import APP from '@/App.tsx?raw'
 import EN from '@/i18n/en.ts?raw'
+import JURIDIQUES from '@/routes/PagesJuridiques.tsx?raw'
 
 /**
  * LE MORCEAU APPLICATIF DÉPOSE SES PROPRES MOTS.
@@ -105,6 +106,53 @@ describe('le morceau applicatif porte ses mots', () => {
        pour une clé absente. */
     expect(sansCommentaires(APP), 'la moitié anglaise n’est plus jointe').toMatch(
       /signalerEspaceApplicatif\(\)/,
+    )
+  })
+
+  /**
+   * ═══ LA FRONTIÈRE JURIDIQUE SUIT LES MÊMES RÈGLES ═══
+   *
+   * Les trois pages juridiques et leurs mots ont quitté le paquet d'entrée le
+   * 2026-10-10 : `/` y a gagné 7 167 octets sur le fil, 143 ms à 400 kb/s. Le
+   * montage est celui de l'espace applicatif, mot pour mot — une barrique de
+   * réexports nommés qui importe `fr-legal` STATIQUEMENT et le dépose, et la
+   * moitié anglaise jointe à la promesse du morceau.
+   *
+   * CE QUI LE DÉFERAIT SANS BRUIT : un import statique d'une des trois pages
+   * depuis `App.tsx` les ramènerait toutes dans le paquet d'entrée, et rien ne
+   * rougirait — ni le typage, ni les cas, ni le budget d'octets tant que la
+   * marge tient.
+   */
+  it('la barrique importe `fr-legal` STATIQUEMENT, et l’installe', () => {
+    const source = sansCommentaires(JURIDIQUES)
+
+    expect(source, 'les mots juridiques ne voyagent plus avec leurs pages').toMatch(
+      /^\s*import \{ frLegal \} from '@\/i18n\/fr-legal'/m,
+    )
+    expect(source, 'les mots sont importés mais jamais posés').toMatch(
+      /^\s*poserSectionFrancaise\(frLegal\)/m,
+    )
+  })
+
+  it('la barrique n’importe JAMAIS `en-legal`', () => {
+    /* MÊME RAISON QUE POUR `en-app` : un import statique mettrait les mots
+       ANGLAIS dans le morceau que les francophones téléchargent. */
+    expect(sansCommentaires(JURIDIQUES)).not.toMatch(/['"][^'"]*en-legal['"]/)
+  })
+
+  it('`App.tsx` n’importe aucune des trois pages statiquement', () => {
+    const source = sansCommentaires(APP)
+
+    for (const page of ['MentionsLegales', 'Confidentialite', 'ConditionsGenerales']) {
+      expect(source, `${page} est redevenue impatiente`).not.toMatch(
+        new RegExp(`^\\s*import \\{ ${page} \\} from`, 'm'),
+      )
+    }
+  })
+
+  it('la moitié juridique anglaise est jointe à la promesse du morceau', () => {
+    expect(sansCommentaires(APP), 'la moitié juridique anglaise n’est plus jointe').toMatch(
+      /signalerPagesJuridiques\(\)/,
     )
   })
 })
