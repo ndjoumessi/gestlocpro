@@ -28,11 +28,28 @@ function carteDesPaquets(): Plugin {
     name: 'carte-des-paquets',
     apply: 'build',
     generateBundle(_options, bundle) {
-      const carte: Record<string, { isDynamicEntry: boolean; modules: string[] }> = {}
+      const carte: Record<
+        string,
+        { isDynamicEntry: boolean; modules: string[]; imports: string[] }
+      > = {}
       for (const [nomFichier, chunk] of Object.entries(bundle)) {
         if (chunk.type !== 'chunk') continue
         carte[nomFichier] = {
           isDynamicEntry: chunk.isDynamicEntry,
+          /*
+            LES IMPORTS STATIQUES ENTRE MORCEAUX, et pourquoi ils ont manqué.
+
+            `poids-anglais.mjs` vérifiait que chaque moitié du dictionnaire vit
+            dans son propre morceau. Une mutation l'a prise en défaut : un
+            `import './en-legal'` depuis `en.ts` ne FUSIONNE pas les deux — il
+            fait importer l'un par l'autre. Les morceaux restent distincts, la
+            porte restait verte, et le visiteur anglais de la vitrine
+            téléchargeait quand même les deux.
+
+            `dynamicImports` n'est PAS listé : un `import()` est précisément la
+            frontière qu'on veut, il ne tire rien tant que personne ne l'appelle.
+          */
+          imports: chunk.imports,
           // Filtré à `/src/` : les dépendances de `node_modules` ne sont pas
           // ce que la garde de fuite examine, et les lister alourdirait le
           // fichier sans rien ajouter à ce qu'il sert.
