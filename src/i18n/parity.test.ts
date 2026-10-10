@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { fr } from './fr'
 import { frApp } from './fr-app'
 import { en } from './en'
+import { enApp } from './en-app'
 import { ALERTS, type AlertMessage } from '@/data/portfolio'
 
 /**
@@ -35,7 +36,12 @@ function aplatir(noeud: Noeud, prefixe = ''): Record<string, string> {
    depuis qu'elle est chargée avec les écrans. Un test qui ne lirait que `fr`
    passerait au vert sur un dictionnaire amputé des trois quarts. */
 const FR = aplatir({ ...fr, ...frApp } as unknown as Noeud)
-const EN = aplatir(en as unknown as Noeud)
+/* L'ANGLAIS A LES SIENNES AUSSI depuis le 2026-10-10, et la remarque ci-dessus
+   vaut mot pour mot : ce cas-ci est précisément celui qui dirait si une moitié
+   manquait — mais seulement s'il les réunit toutes les deux. Lire `en` seul
+   aurait rendu « 1620 chemins absents en anglais », un rouge juste pour une
+   raison fausse. */
+const EN = aplatir({ ...en, ...enApp } as unknown as Noeud)
 
 /** Jetons `{nom}` d'une chaîne, triés pour être comparables. */
 const jetons = (texte: string) => [...texte.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()

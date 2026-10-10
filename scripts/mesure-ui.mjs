@@ -67,7 +67,7 @@
  * machine. Le paquet `playwright` n'embarque pas le navigateur.
  */
 import { spawn } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 
@@ -830,19 +830,38 @@ if (fuite.reserves.length === 0) {
 
 /*
   GARDE DU GARDE, symétrique de celle juste au-dessus — mais pour l'AUTRE
-  moitié de la liste. `moduleReserveALaLangueParesseuse` dérive son chemin du
-  seul `import(...)` d'`I18nProvider.tsx` : si ce fichier perd sa frontière
-  paresseuse — `en.ts` réimporté en statique, le seul `import(...)` disparu —
-  la fonction rend `null` en silence, et la fuite qu'elle est censée nommer ne
-  serait alors JAMAIS signalée par ce mécanisme-ci. C'est exactement la
-  panne que `BUDGET_PREMIER_CHARGEMENT`, plus bas, rattrape par le poids —
-  mais cette porte-ci doit nommer le module, pas seulement gonfler un total.
+  moitié de la liste. `modulesReservesALaLangueParesseuse` dérive ses chemins
+  des `import(...)` d'`I18nProvider.tsx` : si ce fichier perd une frontière
+  paresseuse — une moitié anglaise réimportée en statique, son `import(...)`
+  disparu — la fonction la tait, et la fuite qu'elle est censée nommer ne
+  serait alors JAMAIS signalée par ce mécanisme-ci. C'est exactement la panne
+  que `BUDGET_PREMIER_CHARGEMENT`, plus bas, rattrape par le poids — mais
+  cette porte-ci doit nommer le module, pas seulement gonfler un total.
+
+  ON COMPARE AU DISQUE, ET NON À ZÉRO. Cette garde testait `!fuite.langue`,
+  juste tant que la fonction rendait UN chemin ou `null`. Elle rend un TABLEAU
+  depuis la scission anglaise du 2026-10-10, et `[]` est *truthy* : le test
+  serait devenu mort sans bruit. Le remplacer par `length === 0` n'aurait
+  rattrapé que la disparition TOTALE — perdre une moitié sur deux serait passé.
+  La liste attendue se lit donc dans `src/i18n/`, et aucun nombre n'est écrit
+  ici : une troisième moitié, le jour où elle existera, sera exigée d'office.
 */
-if (!fuite.langue) {
+const MOITIES_ANGLAISES = readdirSync(join(RACINE, 'src/i18n'))
+  .filter((f) => /^en.*\.ts$/.test(f) && !f.includes('.test.'))
+  .map((f) => 'i18n/' + f)
+  .sort()
+const manquantes = MOITIES_ANGLAISES.filter((m) => !fuite.langue.includes(m))
+
+if (manquantes.length > 0) {
   console.error(
-    "\n✗ mesure-ui : aucun `import()` dynamique trouvé dans src/i18n/I18nProvider.tsx.\n" +
-      "   La frontière paresseuse du dictionnaire anglais a disparu — ou changé de\n" +
-      '   forme au point que cette garde ne la reconnaît plus.\n',
+    `\n✗ mesure-ui : ${manquantes.length} moitié(s) du dictionnaire anglais sans ` +
+      "`import()` dynamique dans src/i18n/I18nProvider.tsx.\n",
+  )
+  for (const m of manquantes) console.error(`   ${m}`)
+  console.error(
+    '\n   Une frontière paresseuse a disparu — ou changé de forme au point que\n' +
+      "   cette garde ne la reconnaît plus. Dans les deux cas le fichier part\n" +
+      "   désormais avec le paquet d'entrée, chez des visiteurs qui ne le liront pas.\n",
   )
   process.exit(1)
 }

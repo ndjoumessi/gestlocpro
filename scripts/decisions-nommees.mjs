@@ -38,7 +38,7 @@
  * quelle.
  */
 import { readFile, readdir } from 'node:fs/promises'
-import { sourceDuFrancais } from './dictionnaire-francais.mjs'
+import { sourceDuFrancais } from './dictionnaire-du-client.mjs'
 import { join } from 'node:path'
 import { exit } from 'node:process'
 

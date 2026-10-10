@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { DATE_LOCALE, DEFAULT_LOCALE, LOCALES, resolveDateLocale, type Locale } from './locales'
-import { fr, type Dictionary } from './fr'
+import { fr } from './fr'
 import type { frApp } from './fr-app'
 
 /**
@@ -102,7 +102,14 @@ import type { frApp } from './fr-app'
  * qu'aucune attente n'y soit ajoutée par cette correction — `dictionary`
  * vaut toujours `fr`, jamais `null`, sur ce chemin.
  */
-let promesseAnglais: Promise<Dictionary> | null = null
+/*
+  `object` ET NON `Dictionary` : ce que `./en` exporte est désormais la MOITIÉ
+  vitrine, et la forme entière n'existe qu'une fois les deux réunies. Le typage
+  fin vit là où il sert — `en.ts` est typé `DictionaryVitrine`, `en-app.ts`
+  `DictionaryApp`, tous deux dérivés du français. Ici on ne transporte qu'un
+  objet dont `t()` lira des chemins, exactement comme `francais`.
+*/
+let promesseAnglais: Promise<object> | null = null
 /**
  * Exportée pour `src/test/render.tsx` : c'est le seul repère stable qu'un
  * test puisse attendre avant d'asserter sur du texte anglais, la promesse
@@ -110,9 +117,67 @@ let promesseAnglais: Promise<Dictionary> | null = null
  * `data-testid` de `ChargementEspaceApplicatif` dans `App.tsx`, sous une
  * forme différente parce qu'ici rien ne doit apparaître dans le DOM.
  */
-export function chargerAnglais(): Promise<Dictionary> {
-  promesseAnglais ??= import('./en').then((module) => module.en)
-  return promesseAnglais
+export function chargerAnglais(): Promise<object> {
+  promesseAnglais ??= import('./en').then((module) => {
+    vitrineAnglaise = module.en
+    recomposerAnglais()
+    return module.en
+  })
+  /*
+    SI L'ESPACE APPLICATIF EST DÉJÀ LÀ, L'ANGLAIS DOIT ARRIVER ENTIER.
+
+    C'est le cas de la bascule TARDIVE : un utilisateur déjà dans un écran
+    passe au français vers l'anglais. `chargerEspaceApplicatif` est passé il y a
+    longtemps et ne repassera pas, donc personne d'autre ne demanderait la
+    moitié applicative — et `t('app.…')` rendrait `''` sur un tableau de bord
+    déjà peint. L'invariant du fournisseur (`locale` n'avance que muni du
+    dictionnaire) s'étend ainsi à la seconde moitié, sans l'affaiblir.
+  */
+  return espaceApplicatifDemande
+    ? Promise.all([promesseAnglais, chargerAnglaisApplicatif()]).then(([vitrine]) => vitrine)
+    : promesseAnglais
+}
+
+let promesseAnglaisApplicatif: Promise<object> | null = null
+
+/**
+ * LA MOITIÉ APPLICATIVE ANGLAISE — et pourquoi elle ne se dépose pas comme la
+ * française.
+ *
+ * `fr-app` arrive par un import STATIQUE depuis `EspaceApplicatif.tsx` : la
+ * sémantique d'un import garantit que le module est évalué avant le premier
+ * rendu, donc rien à attendre et aucun re-rendu à déclencher. La même recette
+ * mettrait ici les mots ANGLAIS dans le morceau que les utilisateurs FRANÇAIS
+ * téléchargent — voir l'en-tête de `en-app.ts`.
+ *
+ * La moitié anglaise arrive donc par son propre `import()`, joint à la promesse
+ * de l'espace applicatif dans `chargerEspaceApplicatif` (`App.tsx`). Les deux
+ * partent dans le même battement, derrière la même frontière `Suspense` : aucun
+ * écran ne se rend avant ses mots, et le temps au mur ne bouge pas puisque le
+ * morceau applicatif est 6,4 fois plus gros.
+ */
+export function chargerAnglaisApplicatif(): Promise<object> {
+  promesseAnglaisApplicatif ??= import('./en-app').then((module) => {
+    poserDictionnaireApplicatifAnglais(module.enApp)
+    return module.enApp
+  })
+  return promesseAnglaisApplicatif
+}
+
+let espaceApplicatifDemande = false
+
+/**
+ * `chargerEspaceApplicatif` (`App.tsx`) le dit en partant, et reçoit en retour
+ * la promesse à joindre à la sienne.
+ *
+ * LA CONDITION EST `promesseAnglais`, ET NON LA LANGUE STOCKÉE. Elle vaut non
+ * nulle exactement quand l'anglais a été demandé une fois — par le stockage au
+ * démarrage ou par une bascule. Un utilisateur français ne paie donc NI octet
+ * NI requête pour des mots qu'il ne lira pas, ce qui est tout l'objet du lot.
+ */
+export function signalerEspaceApplicatif(): Promise<unknown> {
+  espaceApplicatifDemande = true
+  return promesseAnglais ? chargerAnglaisApplicatif() : Promise.resolve()
 }
 
 /**
@@ -157,6 +222,85 @@ let francais: object = fr
 
 export function poserDictionnaireApplicatif(section: object): void {
   francais = { ...fr, ...section }
+}
+
+/**
+ * LE DICTIONNAIRE ANGLAIS VIT AU MODULE, comme le français, et pour la même
+ * raison : la fusion des deux moitiés se paie UNE FOIS, au dépôt, et non à
+ * chaque appel de `t()`.
+ *
+ * Il valait auparavant un état React, parce qu'il n'avait qu'une moitié et que
+ * son arrivée devait faire avancer `locale`. Ce rôle-là reste à un état — mais
+ * un BOOLÉEN désormais (`anglaisPret`), parce qu'une seconde moitié peut
+ * arriver plus tard et qu'un état porteur de la première l'aurait masquée.
+ *
+ * `null` tant que l'anglais n'est pas chargé : c'est le seul cas où `t()` rend
+ * `''`, et le fournisseur le rend injoignable après le premier rendu en
+ * retenant `locale` au français jusqu'à l'arrivée du dictionnaire.
+ */
+let anglais: object | null = null
+let vitrineAnglaise: object | null = null
+let sectionAnglaise: object | null = null
+
+/**
+ * LES DEUX MOITIÉS SE RÉUNISSENT DANS N'IMPORTE QUEL ORDRE.
+ *
+ * Le premier jet écrivait `if (anglais) anglais = { ...anglais, ...section }` :
+ * un dépôt arrivé AVANT le chargement de la vitrine était jeté en silence. Ça
+ * ne se voyait pas en production, où `chargerEspaceApplicatif` joint les deux
+ * promesses et où la vitrine gagne toujours — mais `src/test/setup.ts` dépose
+ * les sections à l'évaluation du module, donc avant tout chargement, et quatorze
+ * cas sont tombés d'un coup. Le français n'avait pas ce défaut parce que sa
+ * vitrine est un import statique, présente dès le départ.
+ *
+ * Garder les deux moitiés SÉPARÉMENT et recomposer à chaque arrivée supprime
+ * l'ordre du problème. La fusion reste payée une fois par arrivée, jamais par
+ * appel de `t()`.
+ *
+ * `anglais` reste `null` tant que la VITRINE manque : c'est le seul cas où
+ * `t()` rend `''`, et le fournisseur le rend injoignable après le premier rendu
+ * en retenant `locale` au français jusque-là. Une moitié applicative seule ne
+ * suffit donc pas à déclarer l'anglais prêt.
+ */
+function recomposerAnglais(): void {
+  anglais = vitrineAnglaise ? { ...vitrineAnglaise, ...(sectionAnglaise ?? {}) } : null
+}
+
+export function poserDictionnaireApplicatifAnglais(section: object): void {
+  sectionAnglaise = section
+  recomposerAnglais()
+}
+
+/**
+ * REND UN ÉTAT DE PREMIER CHARGEMENT — réservé aux cas qui éprouvent l'attente.
+ *
+ * ═══ POURQUOI CETTE FONCTION A DÛ EXISTER ═══
+ *
+ * Le dictionnaire anglais vivait dans un état React, qui repart à zéro à chaque
+ * montage. Il vit au module depuis la scission du 2026-10-10, parce qu'il a
+ * deux moitiés et qu'un état porteur de la première masquerait la seconde — et
+ * une variable de module SURVIT d'un cas au suivant dans un même fichier.
+ *
+ * En production la différence est invisible : il n'y a qu'un montage par
+ * chargement de page, et `anglais` y est toujours nul au départ. Mieux même —
+ * un remontage ultérieur affiche désormais l'anglais SANS repasser par le fond
+ * uni, là où l'ancienne rédaction imposait une attente pour un dictionnaire
+ * déjà en mémoire. L'invariant tenu n'a pas bougé : le sous-arbre ne se monte
+ * jamais avec du français ni du vide quand l'anglais est demandé.
+ *
+ * ═══ CE QU'ELLE N'EFFACE PAS, ET C'EST VOULU ═══
+ *
+ * `sectionAnglaise` reste en place. `src/test/setup.ts` la dépose une fois pour
+ * tous les cas, comme le morceau applicatif le fait en production ; l'effacer
+ * ici obligerait chaque appelant à la reposer, et modéliserait un état qui
+ * n'existe pas — une application chargée sans ses mots.
+ */
+export function oublierLAnglaisCharge(): void {
+  vitrineAnglaise = null
+  promesseAnglais = null
+  promesseAnglaisApplicatif = null
+  espaceApplicatifDemande = false
+  recomposerAnglais()
 }
 
 /** Chemins pointés valides, dérivés du dictionnaire français. */
@@ -252,7 +396,13 @@ function readStoredRegion(): string | null {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale)
   const [region, setRegionState] = useState<string | null>(readStoredRegion)
-  const [anglais, setAnglais] = useState<Dictionary | null>(null)
+  /*
+    UN BOOLÉEN, ET NON LE DICTIONNAIRE. Cet état ne sert qu'à faire avancer
+    `locale` et à repeindre l'arbre quand l'anglais arrive ; le dictionnaire
+    lui-même vit au module, parce qu'il a DEUX moitiés et qu'un état porteur de
+    la première masquerait la seconde.
+  */
+  const [anglaisPret, setAnglaisPret] = useState(false)
 
   /**
    * La langue DEMANDÉE, distincte de `locale` — la langue EFFECTIVE, celle
@@ -300,20 +450,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
    * second changement de langue survenu avant que le premier n'ait résolu.
    */
   useEffect(() => {
-    if (demandee !== 'en' || anglais) {
+    if (demandee !== 'en' || anglaisPret) {
       if (demandee !== locale) setLocaleState(demandee)
       return
     }
     let annule = false
-    chargerAnglais().then((dictionnaire) => {
+    chargerAnglais().then(() => {
       if (annule) return
-      setAnglais(dictionnaire)
+      setAnglaisPret(true)
       setLocaleState('en')
     })
     return () => {
       annule = true
     }
-  }, [demandee, anglais, locale])
+  }, [demandee, anglaisPret, locale])
 
   useEffect(() => {
     if (region) ecrireStockage('local', REGION_KEY, region)
@@ -378,7 +528,26 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
       return interpolate(template, vars)
     },
-    [locale, anglais],
+    /*
+      `locale` SEUL, et le dictionnaire anglais n'y figure pas — ni la valeur,
+      qui vit au module et n'est pas réactive, ni le booléen `anglaisPret`, que
+      le linter a eu raison de refuser.
+
+      CE N'EST PAS UNE CONCESSION AU LINTER : `t` lit `anglais` À L'APPEL, pas à
+      sa création, donc il n'a jamais besoin d'être recréé pour voir une moitié
+      qui vient d'arriver. Les trois moments où ce qu'il rend change sont
+      couverts autrement :
+
+        · bascule fr → en : `setAnglaisPret` et `setLocaleState('en')` partent
+          dans le même callback, donc `locale` change et recrée `t` de toute façon ;
+        · premier rendu sous l'anglais stocké : `children` n'est pas monté tant
+          que le dictionnaire manque, donc personne n'appelle `t` avant ;
+        · dépôt de la moitié applicative : aucun re-rendu n'est nécessaire, pour
+          la raison exacte écrite du côté français — les seuls modules qui
+          nomment `app.*` se rendent après la frontière `Suspense` qui a attendu
+          ce dépôt.
+    */
+    [locale],
   )
 
   const dateLocale = resolveDateLocale(locale, region)

@@ -7,23 +7,23 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "e278ead4",
- "empreinteDesSources": "2f157c1c78199638bf892ea4d91e3f9a51c59887922a501ad2d349850ca4d49e",
+ "course": "697a3b71",
+ "empreinteDesSources": "bcd279a6d19807dc2cc99119afbb32cdd81089e938b1312f808590e3f78a90f0",
  "mesures": {
   "/@360": {
-   "octets": 493863,
-   "octetsFil": 161740,
+   "octets": 494216,
+   "octetsFil": 161905,
    "requetes": 4,
    "releve": {
-    "de": 493753,
+    "de": 493863,
     "requetesDe": 4,
-    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
-    "course": "e278ead4"
+    "motif": "le câblage de la scission anglaise : signalerEspaceApplicatif joint la moitié en-app à la promesse de l'espace applicatif, et le dictionnaire anglais passe d'un état React à deux moitiés recomposées au module. +355 o non compressés (+140 gzip) payés par la vitrine FRANÇAISE, 4 requêtes inchangées. Ce qu'ils achètent : le visiteur ANGLAIS de la vitrine passe de 36 609 à 12 004 o gzip (-24 605, soit -492 ms a 400 kb/s), et EspaceApplicatif ne bouge pas d'un octet",
+    "course": "373c4fe7"
    }
   },
   "/demo@360": {
    "octets": 534967,
-   "octetsFil": 155752,
+   "octetsFil": 155753,
    "requetes": 2,
    "releve": {
     "de": 534843,
@@ -66,19 +66,19 @@
    }
   },
   "/@1280": {
-   "octets": 493863,
-   "octetsFil": 161740,
+   "octets": 494216,
+   "octetsFil": 161905,
    "requetes": 4,
    "releve": {
-    "de": 493753,
+    "de": 493863,
     "requetesDe": 4,
-    "motif": "les pastilles du rail du registre, rendues : +110 o bruts sur / (+21 sur le fil, 0 ms) et +124 sur /demo (+18 sur le fil). Elles avaient été RETIRÉES parce que la feuille partagée n'avait plus que quinze octets de budget de premier chargement, et le commentaire qui les retirait finissait par « les pastilles reviendront quand la marge existera ». Elle existe : la scission du dictionnaire a ramené ce chargement à 133 359 o pour un budget de 137 000. EXACTEMENT DEUX RÈGLES NEUVES dans la feuille, vérifiées par diff des sélecteurs émis avant/après — un décalage de départ d'un demi-pas et une taille d'un pas. Le centrage a été MESURÉ au navigateur, pas calculé : centre du rail 288,50 contre 289,00 pour la pastille, et 1,25 px d'écart vertical avec la première ligne de l'acte — écart LAISSÉ TEL QUEL, parce que le corriger demanderait une graduation que la feuille ne porte pas, donc une règle de plus payée par la page d'accueil pour un décalage que l'œil ne voit pas. Ce que ça achète : le rail groupait les actes par un trait, sans rien marquer sur chacun ; la pastille rend la chronologie lisible acte par acte, et reste décorative — aria-hidden, aucun texte, gardée par mutation.",
-    "course": "e278ead4"
+    "motif": "le câblage de la scission anglaise : signalerEspaceApplicatif joint la moitié en-app à la promesse de l'espace applicatif, et le dictionnaire anglais passe d'un état React à deux moitiés recomposées au module. +355 o non compressés (+140 gzip) payés par la vitrine FRANÇAISE, 4 requêtes inchangées. Ce qu'ils achètent : le visiteur ANGLAIS de la vitrine passe de 36 609 à 12 004 o gzip (-24 605, soit -492 ms a 400 kb/s), et EspaceApplicatif ne bouge pas d'un octet",
+    "course": "373c4fe7"
    }
   },
   "/demo@1280": {
    "octets": 534967,
-   "octetsFil": 155752,
+   "octetsFil": 155753,
    "requetes": 2,
    "releve": {
     "de": 534843,

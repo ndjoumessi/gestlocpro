@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { oublierLAnglaisCharge } from './I18nProvider'
 import { renderWithProviders, screen, waitFor } from '@/test/render'
 import { PublicHeader } from '@/components/layout/PublicHeader'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
@@ -29,6 +30,15 @@ function nomsAccessiblesVides(racine: ParentNode): string[] {
   })
   return trouvailles
 }
+
+/*
+  UN VRAI PREMIER CHARGEMENT À CHAQUE CAS. Le dictionnaire anglais vit au module
+  depuis qu'il a deux moitiés : sans cette remise à zéro, le second cas d'un
+  fichier part d'un anglais DÉJÀ chargé par le premier, et l'instant d'attente
+  que ces cas observent n'existe plus. C'est l'état du test qui fuit, pas le
+  produit — en production il n'y a qu'un montage par chargement de page.
+*/
+beforeEach(oublierLAnglaisCharge)
 
 describe('la garde détecte vraiment un nom accessible vide', () => {
   it('ne rend pas « aucun trouvé » par construction — sinon elle ne garde rien', () => {

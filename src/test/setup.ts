@@ -96,6 +96,19 @@ if (decalageDHorloge) {
  * dictionnaire est gardé par `dictionnaireApplicatif.test.tsx`. Ce qui reste
  * ici est ce qu'un composant monté hors de son arbre ne peut pas se donner.
  */
-const { poserDictionnaireApplicatif } = await import('@/i18n/I18nProvider')
+const { poserDictionnaireApplicatif, poserDictionnaireApplicatifAnglais } = await import(
+  '@/i18n/I18nProvider'
+)
 const { frApp } = await import('@/i18n/fr-app')
 poserDictionnaireApplicatif(frApp)
+
+/*
+  L'ANGLAIS AUSSI, depuis la scission du 2026-10-10. En production, la moitié
+  applicative anglaise arrive jointe à la promesse de l'espace applicatif ; ici
+  aucun morceau n'est chargé, donc personne ne la demanderait, et tout cas qui
+  rend un écran en anglais lirait `''` — `t()` rend la chaîne vide pour une clé
+  absente. Le dépôt est posé AVANT tout chargement, ce que `recomposerAnglais`
+  accepte dans n'importe quel ordre.
+*/
+const { enApp } = await import('@/i18n/en-app')
+poserDictionnaireApplicatifAnglais(enApp)

@@ -138,8 +138,7 @@ import { ecransDeLEspaceConnecte } from './inventaire/routes.mjs'
 /* Le MÊME aplatissement que `check-i18n` et ' + B + 'notes-conditionnelles' + B + '. Une note
    se cherche par sa CLÉ, jamais par une phrase recopiée : une phrase recopiée
    se périme au premier remaniement du dictionnaire, en silence. */
-import { dictionnaireAPlat } from './check-i18n.mjs'
-import { francaisAPlat } from './dictionnaire-francais.mjs'
+import { dictionnaireAPlatDe, francaisAPlat } from './dictionnaire-du-client.mjs'
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -163,7 +162,9 @@ const FR = francaisAPlat(RACINE)
 /* L'ANGLAIS AUSSI : la passe des notes ne cherchait qu'en français, et une note
    dont la traduction cesse de paraître serait passée — le défaut fondateur de
    `mesure-ui` n'existait qu'en anglais, et la leçon vaut pour les notes. */
-const EN = dictionnaireAPlat(readFileSync(join(RACINE, 'src/i18n/en.ts'), 'utf8'))
+// Les DEUX moitiés anglaises — `en.ts` seul rendrait des clés `app.*` absentes,
+// et cette porte s'inscrit huit fois par l'API réelle sur des écrans applicatifs.
+const EN = dictionnaireAPlatDe('en', RACINE)
 
 /**
  * LES NOTES CONDITIONNELLES QUE SEUL L'ESPACE CONNECTÉ PEUT PEINDRE.
