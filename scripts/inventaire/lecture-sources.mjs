@@ -746,7 +746,13 @@ export const PLANCHERS_DE_LECTURE = {
   // lus, 22,7 % perdables. Les deux compteurs ont franchi le seuil au même
   // passage de CI, ce qui est attendu — ils mesurent la même croissance par deux
   // bouts, les sources et leurs gardes.
-  'fichiers de test écartés': 230,
+  // 230 → 259 le 2026-10-11, et le piège décrit juste au-dessus s'est refermé
+  // sur moi : `avisDEcheancePerimee.test.tsx` est une garde du CLIENT, les deux
+  // chaînes locales étaient vertes, et c'est la porte du SERVEUR qui a rougi au
+  // tour suivant — 288 fichiers lus, plancher à 230, 20,1 % perdables. La
+  // leçon ne manquait pas, elle était écrite ; c'est de l'avoir lue APRÈS qui
+  // a coûté un passage de CI.
+  'fichiers de test écartés': 259,
 }
 
 export function releverLesSources() {

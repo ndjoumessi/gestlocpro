@@ -156,7 +156,18 @@ describe('messages d’alerte', () => {
 
   it('porte l’année sur une échéance de bail', async () => {
     await renderApp('/app/signalements', { locale: 'en' })
-    expect(screen.getByText(/expires on 30\/09\/2026/)).toBeInTheDocument()
+    /*
+      LA FORME, ET NON LA DATE. Ce cas gardait « expires on 30/09/2026 » en
+      clair. Depuis le 2026-10-11, l'échéance de la démonstration est un
+      DÉCALAGE — `ilYAJours(-45)` — pour que la carte cesse d'annoncer « dans
+      45 jours » sur une date passée. La date bouge donc chaque jour, et
+      l'affirmer en clair ferait rougir ce cas tous les matins.
+
+      CE QU'IL GARDE N'A PAS CHANGÉ : que le millésime soit là. « 30/09 » sans
+      année ne dit pas si le préavis court cette année ou la suivante, et c'est
+      le seul défaut que ce cas existe pour attraper.
+    */
+    expect(screen.getByText(/expires on \d{2}\/\d{2}\/\d{4}/)).toBeInTheDocument()
   })
 
   it('formate les montants dans la devise choisie', async () => {

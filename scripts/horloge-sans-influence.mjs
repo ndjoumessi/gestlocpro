@@ -96,7 +96,14 @@ const APRES_LA_BASCULE_EN_MINUTES = 1
    existe pour rejouer : « Émis le … » se rend par `d.fullDate`, une date
    ABSOLUE, mais rien dans l'assertion ne le dit, et la prochaine rédaction
    pourrait la passer en relatif sans que personne ne le voie. */
-const FICHIERS_DATES_ATTENDUS = 63
+/* 63 → 64 (2026-10-11) : `avisDEcheancePerimee.test.tsx`, né avec le recalcul
+   du compte d'un avis d'échéance. Il porte un `createdAt` en clair, et surtout
+   il CONSTRUIT ses échéances depuis l'horloge — `dansNJours(10)` et
+   `dansNJours(-11)` — pour éprouver les deux côtés d'une date butoir. C'est
+   exactement le genre de cas que cette porte doit rejouer : la frontière entre
+   « dans 10 jours » et « dépassée de 11 jours » est une bascule, et une bascule
+   se franchit à une heure précise. */
+const FICHIERS_DATES_ATTENDUS = 64
 
 function fichiersDeCas(dossier) {
   const trouves = []

@@ -2765,6 +2765,11 @@ export const frApp = {
         leaseRenewal: {
           title: 'Bail {unit} à renouveler dans {count} jours',
           title_one: 'Bail {unit} à renouveler dans {count} jour',
+          /* LE PASSÉ, parce que le titre promet un avenir et que l'échéance peut
+             être franchie. `{count}` vaut alors la valeur ABSOLUE — voir
+             `Alerts.tsx`, qui recalcule le compte depuis la date. */
+          titlePasse: 'Bail {unit} à renouveler — échéance dépassée de {count} jours',
+          titlePasse_one: 'Bail {unit} à renouveler — échéance dépassée d’{count} jour',
           detail: '{tenant} · échéance au {date}',
         },
         /**
@@ -2781,6 +2786,8 @@ export const frApp = {
         leaseMoveOut: {
           title: 'Départ de {unit} dans {count} jours',
           title_one: 'Départ de {unit} dans {count} jour',
+          titlePasse: 'Départ de {unit} — date dépassée de {count} jours',
+          titlePasse_one: 'Départ de {unit} — date dépassée d’{count} jour',
           detail: '{tenant} · sortie le {date} · état des lieux et caution à solder',
         },
         partialPayment: {
