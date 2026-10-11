@@ -623,26 +623,40 @@ export function MenuAxe({
         */
         onClick={ferme ? undefined : () => c.onClick?.()}
         className={cn(
-          'inline-flex size-11 shrink-0 items-center justify-center rounded-md',
+          'inline-flex size-11 shrink-0 items-center justify-center rounded-lg',
           'transition-colors duration-150',
+          /* LE SEGMENT SE SOULÈVE sur le creux du rail : `--color-surface` est
+             au-DESSUS de `--color-paper` dans les DEUX thèmes (#ffffff sur
+             #f6f9fc, #0f1d32 sur #0a1628), donc le survol est un relief et
+             survit au retournement. Pas `bg-surface-sunken` : c'est le rail.
+             `shadow-e1`, le barreau nommé le plus bas, et non le `shadow-sm` de
+             Tailwind : le dépôt ne connaît que e1/e2/e3, et une ombre écrite
+             hors barreau ne suit pas le thème sombre, où les trois passent au
+             noir pur pour rester visibles sur un fond presque noir. */
           ferme
             ? 'cursor-not-allowed text-muted opacity-45'
-            : 'cursor-pointer text-ink hover:bg-surface-sunken',
+            : 'cursor-pointer text-ink hover:bg-surface hover:shadow-e1',
         )}
       >
-        <Icon name={nom} size={16} className="opacity-70" />
+        {/* PAS D'`opacity-70` comme les icônes de `MenuElement`, qui
+            ACCOMPAGNENT un libellé quand celle-ci EST le geste. Les deux
+            opacités se multipliaient sur la flèche fermée — 0,45 × 0,70, soit
+            31 % de l'encre sourde, ~1,35:1 : WCAG 1.4.3 exempte les contrôles
+            inactifs, donc aucune porte ne la voyait manquer. */}
+        <Icon name={nom} size={16} />
       </button>
     )
   }
   return (
-    /* `pr-1` et non `pr-3` : les deux cibles portent leur propre rembourrage de
-       44 px, et l'ajouter au leur décollerait la seconde du bord du panneau. */
+    /* `px-3` COMME LES ENTRÉES PLEINES : `pr-1` calait de l'air contre de
+       l'air tant que les cibles étaient invisibles. Le rail, lui, est un BORD,
+       et il tombait à 8 px de la paroi quand « Corriger » commence à 16. */
     /* `role="group"` AVEC SON NOM : ARIA admet un groupe parmi les enfants d'un
        `menu`, et c'est ce que cette rangée est — un ensemble nommé de deux
        entrées liées. Le nom n'est pas décoratif : sans lui, un lecteur d'écran
        annoncerait deux flèches sans dire de quoi elles sont les deux sens, et
        `menusLicites` refuse d'ailleurs un groupe anonyme. */
-    <div role="group" aria-label={libelle} className="flex min-h-11 w-full items-center gap-2.5 rounded-md pl-3 pr-1">
+    <div role="group" aria-label={libelle} className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-3">
       {/*
         UNE CALE, PAS UNE ICÔNE, ET C'EST UN CHOIX.
 
@@ -661,7 +675,26 @@ export function MenuAxe({
       */}
       <span aria-hidden="true" className="w-4 shrink-0" />
       <span className="flex-1 text-body text-ink">{libelle}</span>
-      <span className="flex shrink-0 gap-1">
+      {/*
+        ═══ UN RAIL CREUSÉ, ET LES DEUX SENS DEDANS ═══
+
+        Les flèches n'avaient ni cadre ni fond jusqu'au survol : deux glyphes de
+        16 px dans deux carrés invisibles de 44. Sur la capture, « Déplacer » se
+        lisait comme un libellé suivi de deux signes de PONCTUATION — seule
+        commande du panneau dont la cible ne se voit pas. Et un contrôle qui
+        attend le survol n'existe pas au doigt, où il n'y a pas de survol.
+
+        UN RAIL PLUTÔT QU'UN CADRE PAR FLÈCHE, deuxième écriture : encadrer
+        chacune, mesuré sur `/demo/parc`, rendait la paire bancale — A1 ne peut
+        pas reculer, donc une carte blanche à droite et un chevron fantôme à
+        gauche, deux natures pour un seul axe. Le rail est UN objet, entier même
+        quand un sens est fermé — ce que la fermeture-plutôt-que-retrait dit
+        déjà plus haut. PAS D'`overflow-hidden` dessus : l'anneau de focus est
+        un `outline` à `outline-offset: 2px` (`tokens.css`), qu'un ancêtre qui
+        rogne couperait sur les bords extérieurs. Segments bord à bord, sans
+        rembourrage — la rangée garde ses 44 px, comme ses voisines.
+      */}
+      <span className="flex shrink-0 items-center rounded-lg bg-surface-sunken">
         {sens('chevronLeft', gauche)}
         {sens('chevronRight', droite)}
       </span>
@@ -774,10 +807,26 @@ export function MenuElement({
       )}
       <span className="flex min-w-0 flex-1 flex-col">
         <span>{children}</span>
-        {/* LA RAISON SOUS LE LIBELLÉ, en `text-caption` : elle qualifie le
-            geste, elle ne le remplace pas — et la fiche reste lisible d'un
-            coup d'œil, le motif ne se lisant que si l'on s'y arrête. */}
-        {ferme && raison && <span className="text-caption text-pretty">{raison}</span>}
+        {/* LA RAISON SOUS LE LIBELLÉ : elle qualifie le geste, pas plus.
+
+            ═══ ELLE ÉTAIT ÉCRITE `text-caption`, QUI N'EXISTE PAS ═══
+
+            Aucun `--text-caption` dans `tokens.css`, donc Tailwind v4 n'émet
+            AUCUNE règle : la chaîne est absente de `dist/assets/*.css`. La
+            raison héritait du bouton, soit `text-body` — 14 px MESURÉ sur
+            `/demo/parc` en 1280 —, la taille exacte du geste qu'elle qualifie,
+            dans la même encre, le bouton entier étant `text-muted` dès qu'il
+            porte une raison. Elle prenait trois lignes et l'entrée 81 px, soit
+            40 % d'un panneau dont les deux gestes DISPONIBLES tiennent sur une
+            ligne chacun : le menu parlait surtout de ce qu'on ne peut pas faire.
+
+            `text-label` est le plancher typographique (12 px), et il est
+            déclaré. La taille porte SEULE la hiérarchie : l'encre reste celle du
+            bouton, une raison plus pâle que le geste éteint étant une phrase
+            qu'on tend sans la rendre lisible — ce que `ferme` refuse déjà.
+            (Vingt-neuf autres emplois de `text-caption` sont morts pareillement
+            et portent `text-muted` à côté, donc hors de ce menu.) */}
+        {ferme && raison && <span className="mt-0.5 text-label text-pretty">{raison}</span>}
       </span>
     </button>
   )

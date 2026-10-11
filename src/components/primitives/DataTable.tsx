@@ -140,6 +140,26 @@ export interface DataTableProps<T> {
    */
   fiches?: boolean
   /**
+   * LA TABLE GARDE LA LARGEUR DE SON CONTENU, AU LIEU DE PRENDRE LA PLACE.
+   *
+   * Le défaut est l'inverse — voir la boîte peinte plus bas : une table va au
+   * bout de la largeur offerte, pour que son bord droit soit celui des cartes
+   * au-dessus d'elle. Ce choix a un prix, et il n'est pas le même partout : il
+   * ÉLOIGNE le geste d'une rangée du sujet sur lequel il agit.
+   *
+   * `geste-pres-du-sujet` tient ce prix écran par écran, et UN seul tableau du
+   * produit y est plafonné : les codes en attente d'`Accès au parc`. Sa rangée
+   * porte un code masqué à gauche et le bouton qui le REPREND à droite ; les
+   * deux ne se lisent que l'un par l'autre. Mesuré : en pleine largeur, 793 px
+   * les séparent à 1536 et au-delà, pour un plafond de 282 — c'est le nombre
+   * exact qui avait fait écrire `w-fit` sur toutes les tables, et c'est
+   * pourquoi il est conservé ICI plutôt que partout.
+   *
+   * N'EST PAS UN RÉGLAGE DE GOÛT. Une table le demande quand son sujet et son
+   * geste forment un couple ; sinon elle s'étire, comme les cinq autres.
+   */
+  ajusteeAuContenu?: boolean
+  /**
    * LE CORPS QUE L'ÉCRAN REND LUI-MÊME — et le pied qui reste à la primitive.
    *
    * ═══ UNE TROISIÈME FORME EST APPARUE, ET ELLE A PERDU LE PIED ═══
@@ -489,6 +509,7 @@ export function DataTable<T>({
   rowKey,
   empty,
   fiches,
+  ajusteeAuContenu,
   corpsRendu,
   lignesEnTout,
   groupePar,
@@ -794,11 +815,47 @@ export function DataTable<T>({
             RIEN NE CHANGE SOUS `lg` : en deçà, ce composant ne rend pas de
             table du tout, mais des fiches. Mesuré à 360 px, aucune `<table>`
             dans le document.
+
+            ═══ DEUXIÈME ÉCRITURE : LE CADRE REPREND LA PLEINE LARGEUR ═══
+
+            Ce qui précède reste vrai de son défaut — une table de colonnes
+            courtes ÉCARTE au lieu d'élargir — mais `w-fit` le payait d'un prix
+            qui n'avait pas été mesuré : la largeur d'une table ne dépend alors
+            QUE de son contenu, donc elle ne réagit plus à la fenêtre. Relevés
+            et Dépenses mesurent 942 et 938 px à 1280 ET à 1920 — le même
+            nombre, la place offerte en plus n'allant à personne.
+
+            CE QUE ÇA DONNAIT À L'ÉCRAN, mesuré sur les six tables à 1920 :
+            paiements 95 %, cautions 91 %, relevés 74 %, dépenses 73 %, vacance
+            58 %, accès 40 % de la largeur offerte. Six écrans, six bords
+            droits différents, sous des cartes d'indicateurs qui, elles, vont
+            toujours au bout. À 1280 le défaut ne se voit pas (92-94 %) : il
+            naît de la place EN TROP, donc des grands écrans et du panneau
+            latéral replié.
+
+            `min-w-full` SUR LA TABLE ET `w-full` SUR LE CADRE, et les deux
+            gardent ce que `w-fit` protégeait. `width: auto` tient toujours les
+            colonnes à leur contenu ; `min-width: 100%` n'intervient que
+            lorsqu'il RESTE de la place. Une table plus large que son conteneur
+            n'est donc pas touchée : paiements réclame 1 046 px dans 960 à 1280,
+            et elle DÉFILE toujours — vérifié après coup, pas supposé.
+
+            L'ÉCART ENTRE COLONNES, qui est le vrai sujet de la première
+            écriture, a été mesuré sur les six tables avant de choisir. Le pire
+            passe de 54 à 199 px (accès), contre les 779 px qui avaient fait
+            écrire `w-fit` : le défaut d'origine ne revient pas, il est divisé
+            par quatre sur l'écran même qui l'avait révélé.
+
+            UNE TROISIÈME VOIE A ÉTÉ ESSAYÉE PUIS REJETÉE SUR MESURE : donner
+            tout le mou à la colonne `identite`. Elle tenait sur vacance et
+            accès (17 px) et s'effondrait sur paiements et cautions — 206 et
+            301 px —, parce que leur colonne d'identité est `unit`, qui porte
+            « A1 » : deux caractères à qui l'on offrait 300 px.
           */
-          'w-fit max-w-full',
+          ajusteeAuContenu ? 'w-fit max-w-full' : 'w-full',
         )}
       >
-      <table className="w-auto border-collapse text-body">
+      <table className={cn('w-auto border-collapse text-body', !ajusteeAuContenu && 'min-w-full')}>
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="border-b border-divider bg-surface-sunken">

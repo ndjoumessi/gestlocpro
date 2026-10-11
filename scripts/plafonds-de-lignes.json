@@ -35,11 +35,11 @@
   "src/api/gestures.test.tsx": 914,
   "src/components/layout/AppShell.tsx": 2865,
   "src/components/primitives/Charts.tsx": 2217,
-  "src/components/primitives/DataTable.tsx": 1591,
+  "src/components/primitives/DataTable.tsx": 1648,
   "src/components/primitives/DatePicker.tsx": 1218,
   "src/data/PortfolioProvider.tsx": 2422,
   "src/data/portfolio.ts": 2099,
-  "src/features/dashboard/Access.tsx": 1731,
+  "src/features/dashboard/Access.tsx": 1740,
   "src/features/dashboard/Alerts.tsx": 911,
   "src/features/dashboard/Dashboard.tsx": 1186,
   "src/features/dashboard/Decisions.tsx": 848,
@@ -61,6 +61,7 @@
    "le": "2026-10-06"
   },
   "src/i18n/fr-app.ts": 3172,
-  "src/i18n/en-app.ts": 2128
+  "src/i18n/en-app.ts": 2128,
+  "src/components/primitives/MenuDeDebordement.tsx": 833
  }
 }
