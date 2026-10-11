@@ -460,7 +460,34 @@ function importsDuFichier(rel, code) {
     table.set(m[1], resoudreChemin(rel, m[2]))
     sources.set(m[1], m[2])
   }
+  /*
+    LES RÉEXPORTS NOMMÉS — `export { X } from './Y'`.
+
+    Sans eux, une BARRIQUE casse la chaîne : l'appelant importe `MenuElement`
+    de `MenuDeDebordement`, ce fichier ne le DÉCLARE pas, et `resoudre` rendait
+    `null` — c'est-à-dire « composant du dehors qu'on ne sait pas lire ».
+    Mesuré au découpage du menu : 27 sites d'anneau de focus d'un coup, et la
+    porte a refusé, comme elle doit.
+
+    Le découpage d'un gros fichier derrière une barrique est le geste que ce
+    dépôt s'est donné pour ne pas recâbler ses appelants ; la lecture doit donc
+    le suivre, sans quoi chaque découpage à venir coûte ce refus.
+
+    `export * from` N'EST PAS LU, et c'est volontaire : il faudrait alors
+    deviner ce qui transite, et le dépôt n'en écrit aucun — s'il en apparaît
+    un, ce motif ne le verra pas et la garde du dessus rougira, ce qui est le
+    bon ordre.
+  */
+  const reexports = new Map()
+  for (const m of code.matchAll(/export\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+    const cible = resoudreChemin(rel, m[2])
+    for (const n of m[1].matchAll(/([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?/g)) {
+      const nom = n[2] ?? n[1]
+      if (/^[A-Z]/.test(nom)) reexports.set(nom, cible)
+    }
+  }
   table.sources = sources
+  table.reexports = reexports
   return table
 }
 
@@ -854,12 +881,27 @@ export function releverLesSources() {
     }
   }
 
+  /* LA BARRIQUE SE TRAVERSE, et pas plus de quatre fois : un cycle de
+     réexports ne doit pas faire tourner la lecture en rond. Quatre est au-delà
+     de tout ce que ce dépôt empile — le menu en compte un seul. */
+  const traverserLesReexports = (cible, nomTag) => {
+    for (let saut = 0; saut < 4 && cible; saut++) {
+      const direct = index.get(`${cible}::${nomTag}`)
+      if (direct) return direct
+      const porteur = fichiers.get(cible)
+      const suivant = porteur?.imports?.reexports?.get(nomTag)
+      if (!suivant || suivant === cible) return null
+      cible = suivant
+    }
+    return null
+  }
+
   const resoudre = (rel, nomTag) => {
     const f = fichiers.get(rel)
     if (!f) return null
     if (f.imports.has(nomTag)) {
       const cible = f.imports.get(nomTag)
-      return cible ? (index.get(`${cible}::${nomTag}`) ?? null) : null
+      return cible ? traverserLesReexports(cible, nomTag) : null
     }
     /* LA TABLE DES PARESSEUX PASSE EN PREMIER, et l'ordre est le correctif.
        `const X = lazy(…)` est indexé comme un composant du fichier déclarant :

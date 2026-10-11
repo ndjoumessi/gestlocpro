@@ -20,7 +20,7 @@
  "plafonds": {
   "scripts/espace-connecte.mjs": 2484,
   "scripts/inventaire/jetons-i18n.mjs": 1194,
-  "scripts/inventaire/lecture-sources.mjs": 1783,
+  "scripts/inventaire/lecture-sources.mjs": 1825,
   "scripts/inventaire/mesure-navigateur.mjs": 1609,
   "scripts/mesure-ui.mjs": 3902,
   "scripts/plafond-hauteurs.mjs": 1561,
@@ -61,7 +61,6 @@
    "le": "2026-10-06"
   },
   "src/i18n/fr-app.ts": 3172,
-  "src/i18n/en-app.ts": 2128,
-  "src/components/primitives/MenuDeDebordement.tsx": 833
+  "src/i18n/en-app.ts": 2128
  }
 }

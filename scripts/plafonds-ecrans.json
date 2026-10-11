@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "40e49161",
- "empreinteDesSources": "5eab66f459a164055f190d58f00616131b17f6118e940fc24f3891e760b1b6f4",
+ "course": "9c9457c9",
+ "empreinteDesSources": "ac75b9dc3950ece1bd681495664ec9b371447c66382a0e5c4f291b6c6c6bc031",
  "mesures": {
   "/@360": {
    "octets": 466706,
-   "octetsFil": 154767,
+   "octetsFil": 154769,
    "requetes": 4,
    "releve": {
     "de": 466679,
@@ -23,7 +23,7 @@
   },
   "/demo@360": {
    "octets": 535853,
-   "octetsFil": 156014,
+   "octetsFil": 156028,
    "requetes": 2,
    "releve": {
     "de": 535783,
@@ -34,7 +34,7 @@
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28375,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28375,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64609,
+   "octetsFil": 64611,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 466706,
-   "octetsFil": 154767,
+   "octetsFil": 154769,
    "requetes": 4,
    "releve": {
     "de": 466679,
@@ -78,7 +78,7 @@
   },
   "/demo@1280": {
    "octets": 535853,
-   "octetsFil": 156014,
+   "octetsFil": 156028,
    "requetes": 2,
    "releve": {
     "de": 535783,
@@ -89,7 +89,7 @@
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28375,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28375,
+   "octetsFil": 28377,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64609,
+   "octetsFil": 64611,
    "requetes": 3,
    "releve": {
     "de": 65639,
