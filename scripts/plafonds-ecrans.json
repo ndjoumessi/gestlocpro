@@ -7,34 +7,34 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "ea68607c",
- "empreinteDesSources": "ff03fadff78144b259db04d04fd83e5ba6de8ec7bb044ea63f84c6b0540f1b71",
+ "course": "40e49161",
+ "empreinteDesSources": "5eab66f459a164055f190d58f00616131b17f6118e940fc24f3891e760b1b6f4",
  "mesures": {
   "/@360": {
-   "octets": 466432,
-   "octetsFil": 154758,
+   "octets": 466706,
+   "octetsFil": 154767,
    "requetes": 4,
    "releve": {
-    "de": 493863,
+    "de": 466679,
     "requetesDe": 4,
-    "motif": "le câblage de la scission anglaise : signalerEspaceApplicatif joint la moitié en-app à la promesse de l'espace applicatif, et le dictionnaire anglais passe d'un état React à deux moitiés recomposées au module. +355 o non compressés (+140 gzip) payés par la vitrine FRANÇAISE, 4 requêtes inchangées. Ce qu'ils achètent : le visiteur ANGLAIS de la vitrine passe de 36 609 à 12 004 o gzip (-24 605, soit -492 ms a 400 kb/s), et EspaceApplicatif ne bouge pas d'un octet",
-    "course": "373c4fe7"
+    "motif": "les tableaux reprennent la pleine largeur : w-full sur le cadre et min-w-full sur la table, soit +27 o bruts (+7 o sur le fil, +0 ms a 400 kb/s). Ce qu'ils achetent : un bord droit identique sur les six ecrans a tableau, la ou vacance tombait a 58 pourcent et acces a 40 pourcent de la largeur offerte a 1920.",
+    "course": "14580d25"
    }
   },
   "/demo@360": {
-   "octets": 535760,
-   "octetsFil": 155978,
+   "octets": 535853,
+   "octetsFil": 156014,
    "requetes": 2,
    "releve": {
-    "de": 535602,
+    "de": 535783,
     "requetesDe": 2,
-    "motif": "158 octets sur /demo : deux gabarits sans nombre (titlePasseLongtemps, dans les deux langues) et le seuil de silence dans Alerts.tsx. Ce qu'ils achetent : au-dela de soixante jours, un avis d'echeance cesse d'egrener « depassee de 400 jours » — exact et inutile — et dit simplement qu'elle est depassee. Le detail porte toujours la date exacte, donc le lecteur garde tout. Le seuil est celui que depuis() emploie deja dans Works.tsx pour passer des semaines aux mois, la ou le compte exact n'apprend plus rien ; deux seuils pour la meme question auraient ete deux reponses",
-    "course": "ea68607c"
+    "motif": "l'exception des codes en attente : le prop ajusteeAuContenu et son cablage, +70 o bruts sur /demo (+39 o sur le fil, +1 ms a 400 kb/s). Ce qu'ils achetent : les cinq autres tables gardent la pleine largeur SANS remettre 793 px entre un code masque et le bouton qui le reprend — plafond 282 tenu par geste-pres-du-sujet sur quatre largeurs.",
+    "course": "40e49161"
    }
   },
   "/demo/paiements@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28375,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -45,7 +45,7 @@
   },
   "/demo/prise-en-main@360": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28375,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -56,7 +56,7 @@
   },
   "/demo/manuel@360": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64609,
    "requetes": 3,
    "releve": {
     "de": 65639,
@@ -66,30 +66,30 @@
    }
   },
   "/@1280": {
-   "octets": 466432,
-   "octetsFil": 154758,
+   "octets": 466706,
+   "octetsFil": 154767,
    "requetes": 4,
    "releve": {
-    "de": 493863,
+    "de": 466679,
     "requetesDe": 4,
-    "motif": "le câblage de la scission anglaise : signalerEspaceApplicatif joint la moitié en-app à la promesse de l'espace applicatif, et le dictionnaire anglais passe d'un état React à deux moitiés recomposées au module. +355 o non compressés (+140 gzip) payés par la vitrine FRANÇAISE, 4 requêtes inchangées. Ce qu'ils achètent : le visiteur ANGLAIS de la vitrine passe de 36 609 à 12 004 o gzip (-24 605, soit -492 ms a 400 kb/s), et EspaceApplicatif ne bouge pas d'un octet",
-    "course": "373c4fe7"
+    "motif": "les tableaux reprennent la pleine largeur : w-full sur le cadre et min-w-full sur la table, soit +27 o bruts (+7 o sur le fil, +0 ms a 400 kb/s). Ce qu'ils achetent : un bord droit identique sur les six ecrans a tableau, la ou vacance tombait a 58 pourcent et acces a 40 pourcent de la largeur offerte a 1920.",
+    "course": "14580d25"
    }
   },
   "/demo@1280": {
-   "octets": 535760,
-   "octetsFil": 155978,
+   "octets": 535853,
+   "octetsFil": 156014,
    "requetes": 2,
    "releve": {
-    "de": 535602,
+    "de": 535783,
     "requetesDe": 2,
-    "motif": "158 octets sur /demo : deux gabarits sans nombre (titlePasseLongtemps, dans les deux langues) et le seuil de silence dans Alerts.tsx. Ce qu'ils achetent : au-dela de soixante jours, un avis d'echeance cesse d'egrener « depassee de 400 jours » — exact et inutile — et dit simplement qu'elle est depassee. Le detail porte toujours la date exacte, donc le lecteur garde tout. Le seuil est celui que depuis() emploie deja dans Works.tsx pour passer des semaines aux mois, la ou le compte exact n'apprend plus rien ; deux seuils pour la meme question auraient ete deux reponses",
-    "course": "ea68607c"
+    "motif": "l'exception des codes en attente : le prop ajusteeAuContenu et son cablage, +70 o bruts sur /demo (+39 o sur le fil, +1 ms a 400 kb/s). Ce qu'ils achetent : les cinq autres tables gardent la pleine largeur SANS remettre 793 px entre un code masque et le bouton qui le reprend — plafond 282 tenu par geste-pres-du-sujet sur quatre largeurs.",
+    "course": "40e49161"
    }
   },
   "/demo/paiements@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28375,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -100,7 +100,7 @@
   },
   "/demo/prise-en-main@1280": {
    "octets": 29569,
-   "octetsFil": 28380,
+   "octetsFil": 28375,
    "requetes": 2,
    "releve": {
     "de": 3404,
@@ -111,7 +111,7 @@
   },
   "/demo/manuel@1280": {
    "octets": 65803,
-   "octetsFil": 64614,
+   "octetsFil": 64609,
    "requetes": 3,
    "releve": {
     "de": 65639,

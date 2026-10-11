@@ -1017,6 +1017,15 @@ export function Access() {
             rows={invitations}
             rowKey={(i) => i.id}
             fiches
+            /* LE SEUL TABLEAU DU PRODUIT QUI NE S'ÉTIRE PAS, et c'est mesuré.
+
+               Sa rangée porte un code masqué et le bouton qui le REPREND : les
+               deux ne valent que l'un par l'autre. Étirée comme les cinq autres
+               tables, elle remet 793 px entre eux à 1536 et au-delà, pour un
+               plafond de 282 — le nombre exact qui a fait écrire `w-fit` à
+               l'origine, et que `geste-pres-du-sujet` tient sur quatre
+               largeurs. Voir `ajusteeAuContenu` dans `DataTable`. */
+            ajusteeAuContenu
             empty={
               <EmptyState
                 icon="key"
