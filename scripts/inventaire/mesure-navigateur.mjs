@@ -1132,11 +1132,58 @@ export async function releverAuNavigateur(options = {}) {
        les routes suivantes déclareraient un premier chargement de zéro octet.
        On redimensionne ensuite au lieu de recharger — argument de
        `mesure-ui.mjs` : onze chargements par écran contre un. */
-    for (const langue of LANGUES) {
-      for (const route of balayees) {
+    /*
+      ═══ LES POINTS SE MESURENT EN PARALLÈLE, ET LE CONTEXTE RESTE NEUF ═══
+
+      Chaque point garde SON contexte, donc son cache froid : c'est la condition
+      écrite juste au-dessus, et la parallélisation n'y touche pas. Ce qui change
+      est le nombre de points en vol.
+
+      MESURÉ AVANT DE LE FAIRE. La passe coûtait 272 s, dont 168 pour ses
+      soixante-quatre chargements à froid. Le contexte lui-même n'y est pour
+      rien — créer, ouvrir, naviguer et fermer prend 88 ms, dont 3 pour le
+      contexte. Le temps est dans l'ATTENTE : 539 ms de `networkidle`, dont un
+      demi-seconde de plancher imposé par Playwright, et 344 ms d'`aria-busy`.
+      Une attente ne s'accélère pas ; elle se recouvre.
+
+      CE QUE ÇA MET EN JEU, et il faut le dire : cette passe mesure aussi le
+      CLS, qui dépend de l'ordre d'arrivée des ressources. Quatre pages qui
+      chargent ensemble se disputent le processeur, donc les valeurs peuvent
+      bouger. Le POIDS, lui, ne le peut pas — un octet ne dépend d'aucune
+      horloge — et c'est le témoin qui a servi à valider ce lot : les
+      soixante-quatre relevés de chargement doivent être identiques au octet
+      près, avant et après. S'ils ne l'étaient pas, la parallélisation
+      corromprait la mesure et devrait être défaite.
+
+      LE DEGRÉ EST RÉGLABLE par `MESURE_PARALLELE`, et vaut quatre par défaut.
+      Le monter davantage augmente la contention, donc l'écart sur le CLS.
+    */
+    const POINTS = LANGUES.flatMap((langue) => balayees.map((route) => ({ langue, route })))
+    const PARALLELE = Math.max(1, Number(process.env.MESURE_PARALLELE ?? 4))
+
+    async function mesurerUnPoint({ langue, route }) {
+      /*
+        `releve` et `compteurs` MASQUENT ici leurs homonymes du module, et le
+        corps ci-dessous est inchangé mot pour mot. Il n'y écrit que par `push`
+        et par incrément — vérifié champ par champ — donc chaque point remplit
+        son propre seau, et la fusion plus bas rétablit l'ordre des entrées.
+        Sans cela, l'ordre du relevé dépendrait de qui finit le premier, et son
+        diff changerait à chaque exécution sans que rien n'ait bougé.
+      */
+      const releve = { refus: [], erreursDePage: [], chargement: [], cls: [], geometrie: [] }
+      const compteurs = {
+        actifsLus: 0,
+        barresMesurees: 0,
+        ciblesSondees: 0,
+        ciblesVues: 0,
+        clsObserves: 0,
+        etatsGeometrie: 0,
+        pairesExaminees: 0,
+      }
+
         const adresse = route.adresse
         const depart = Date.now()
-        journal(`   ${langue}  ${adresse} … `)
+
 
         const contexte = await navigateur.newContext({
           ...SANS_AGENT_DE_SERVICE,
@@ -1326,9 +1373,29 @@ export async function releverAuNavigateur(options = {}) {
         })
 
         await contexte.close()
-        journal(`${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
-      }
+        journal(`   ${langue}  ${adresse} … ${((Date.now() - depart) / 1000).toFixed(1)}s\n`)
+
+      return { releve: releve, compteurs: compteurs }
     }
+
+    const resultats = new Array(POINTS.length)
+    let prochainPoint = 0
+    await Promise.all(
+      Array.from({ length: Math.min(PARALLELE, POINTS.length) }, async () => {
+        for (;;) {
+          const rang = prochainPoint++
+          if (rang >= POINTS.length) return
+          resultats[rang] = await mesurerUnPoint(POINTS[rang])
+        }
+      }),
+    )
+
+    // La fusion suit l'ordre des POINTS, jamais celui des fins de tâche.
+    for (const r of resultats) {
+      for (const [cle, valeurs] of Object.entries(r.releve)) releve[cle].push(...valeurs)
+      for (const [cle, n] of Object.entries(r.compteurs)) compteurs[cle] += n
+    }
+
 
     /* ---- PASSE 2 : couleur -----------------------------------------------
        PASSE SÉPARÉE, argument de `mesure-ui.mjs` : les deux passes n'ont pas
