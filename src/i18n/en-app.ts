@@ -1822,6 +1822,7 @@ export const enApp: DictionaryApp = {
           title_one: 'Lease {unit} up for renewal in {count} day',
           titlePasse: 'Lease {unit} up for renewal — {count} days past due',
           titlePasse_one: 'Lease {unit} up for renewal — {count} day past due',
+          titlePasseLongtemps: 'Lease {unit} up for renewal — past due',
           detail: '{tenant} · expires on {date}',
         },
         leaseMoveOut: {
@@ -1829,6 +1830,7 @@ export const enApp: DictionaryApp = {
           title_one: 'Move-out from {unit} in {count} day',
           titlePasse: 'Move-out from {unit} — {count} days past the date',
           titlePasse_one: 'Move-out from {unit} — {count} day past the date',
+          titlePasseLongtemps: 'Move-out from {unit} — past the date',
           detail: '{tenant} · leaving on {date} · inspection and deposit to settle',
         },
         partialPayment: {

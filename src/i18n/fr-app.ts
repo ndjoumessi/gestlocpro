@@ -2770,6 +2770,9 @@ export const frApp = {
              `Alerts.tsx`, qui recalcule le compte depuis la date. */
           titlePasse: 'Bail {unit} à renouveler — échéance dépassée de {count} jours',
           titlePasse_one: 'Bail {unit} à renouveler — échéance dépassée d’{count} jour',
+          /* SANS NOMBRE au-delà de deux mois : le compte exact n'apprend plus
+             rien, et le détail porte la date. Voir `Alerts.tsx`. */
+          titlePasseLongtemps: 'Bail {unit} à renouveler — échéance dépassée',
           detail: '{tenant} · échéance au {date}',
         },
         /**
@@ -2788,6 +2791,7 @@ export const frApp = {
           title_one: 'Départ de {unit} dans {count} jour',
           titlePasse: 'Départ de {unit} — date dépassée de {count} jours',
           titlePasse_one: 'Départ de {unit} — date dépassée d’{count} jour',
+          titlePasseLongtemps: 'Départ de {unit} — date dépassée',
           detail: '{tenant} · sortie le {date} · état des lieux et caution à solder',
         },
         partialPayment: {

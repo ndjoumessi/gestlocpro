@@ -154,4 +154,24 @@ describe('un avis d’échéance de bail', () => {
     expect(titre.textContent, 'le compte est rendu négatif au lieu d’être absolu').not.toContain('-11')
     expect(titre.textContent, 'la valeur absolue du retard n’est pas dite').toContain('11')
   })
+
+  it('SE TAIT sur le compte au-delà de deux mois, et garde la date', async () => {
+    /* « dépassée de 400 jours » est exact et inutile : au-delà du seuil, ce
+       n'est plus un délai qu'on lit mais un état. Le détail, lui, continue de
+       porter la date exacte — c'est ce qui autorise le titre à se taire. */
+    await ouvrirLesSignalements({ tenant: 'Jean-Paul Eboa', count: 45, dueOn: dansNJours(-400) })
+
+    const titre = screen.getByText((_t, n) => (n?.textContent ?? '').includes('à renouveler') && n?.children.length === 0)
+    /* LE COMPTE, ET NON TOUT CHIFFRE : le libellé du logement en porte un —
+       « Bail A1 à renouveler ». Une première rédaction cherchait `/\d/` et
+       rougissait sur « A1 », ce qui aurait fait passer le code pour fautif. */
+    expect(titre.textContent, 'le titre égrène encore un compte qui n’apprend rien').not.toMatch(
+      /\d+\s*(jour|day)/i,
+    )
+    expect(titre.textContent, 'le compte exact est encore là').not.toContain('400')
+    expect(titre.textContent, 'le titre ne dit plus que l’échéance est dépassée').toContain('dépassée')
+
+    const detail = screen.getByText((_t, n) => (n?.textContent ?? '').includes('Jean-Paul Eboa') && n?.children.length === 0)
+    expect(detail.textContent, 'la date exacte a disparu avec le compte').toMatch(/\d{2}\/\d{2}\/\d{4}/)
+  })
 })

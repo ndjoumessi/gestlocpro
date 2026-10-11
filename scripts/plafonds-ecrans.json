@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "1d81a60a",
- "empreinteDesSources": "982c0105d0d1a98cf53f3c8f7c983a006939fe965a33d7f96a6ef1c8b86cb850",
+ "course": "ea68607c",
+ "empreinteDesSources": "ff03fadff78144b259db04d04fd83e5ba6de8ec7bb044ea63f84c6b0540f1b71",
  "mesures": {
   "/@360": {
    "octets": 466432,
-   "octetsFil": 154760,
+   "octetsFil": 154758,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -22,14 +22,14 @@
    }
   },
   "/demo@360": {
-   "octets": 535602,
-   "octetsFil": 155931,
+   "octets": 535760,
+   "octetsFil": 155978,
    "requetes": 2,
    "releve": {
-    "de": 535032,
+    "de": 535602,
     "requetesDe": 2,
-    "motif": "570 octets sur /demo : quatre gabarits au passe (leaseRenewal et leaseMoveOut, dans les deux langues) et le recalcul du compte dans Alerts.tsx. Ce qu'ils achetent : un avis d'echeance cesse de mentir. Mesure a l'ecran le 2026-10-11, la demonstration rendait « Bail B1 a renouveler dans 45 jours » au-dessus de « echeance au 30/09/2026 » — onze jours APRES l'echeance. Le gabarit promet un avenir (« DANS {count} jours ») alors que le serveur fige le compte a la naissance de l'avis et ne le reecrit jamais. Le compte se recalcule desormais depuis la date, et le titre bascule au passe une fois l'echeance franchie, avec la valeur ABSOLUE du retard",
-    "course": "1d81a60a"
+    "motif": "158 octets sur /demo : deux gabarits sans nombre (titlePasseLongtemps, dans les deux langues) et le seuil de silence dans Alerts.tsx. Ce qu'ils achetent : au-dela de soixante jours, un avis d'echeance cesse d'egrener « depassee de 400 jours » — exact et inutile — et dit simplement qu'elle est depassee. Le detail porte toujours la date exacte, donc le lecteur garde tout. Le seuil est celui que depuis() emploie deja dans Works.tsx pour passer des semaines aux mois, la ou le compte exact n'apprend plus rien ; deux seuils pour la meme question auraient ete deux reponses",
+    "course": "ea68607c"
    }
   },
   "/demo/paiements@360": {
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 466432,
-   "octetsFil": 154760,
+   "octetsFil": 154758,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -77,14 +77,14 @@
    }
   },
   "/demo@1280": {
-   "octets": 535602,
-   "octetsFil": 155931,
+   "octets": 535760,
+   "octetsFil": 155978,
    "requetes": 2,
    "releve": {
-    "de": 535032,
+    "de": 535602,
     "requetesDe": 2,
-    "motif": "570 octets sur /demo : quatre gabarits au passe (leaseRenewal et leaseMoveOut, dans les deux langues) et le recalcul du compte dans Alerts.tsx. Ce qu'ils achetent : un avis d'echeance cesse de mentir. Mesure a l'ecran le 2026-10-11, la demonstration rendait « Bail B1 a renouveler dans 45 jours » au-dessus de « echeance au 30/09/2026 » — onze jours APRES l'echeance. Le gabarit promet un avenir (« DANS {count} jours ») alors que le serveur fige le compte a la naissance de l'avis et ne le reecrit jamais. Le compte se recalcule desormais depuis la date, et le titre bascule au passe une fois l'echeance franchie, avec la valeur ABSOLUE du retard",
-    "course": "1d81a60a"
+    "motif": "158 octets sur /demo : deux gabarits sans nombre (titlePasseLongtemps, dans les deux langues) et le seuil de silence dans Alerts.tsx. Ce qu'ils achetent : au-dela de soixante jours, un avis d'echeance cesse d'egrener « depassee de 400 jours » — exact et inutile — et dit simplement qu'elle est depassee. Le detail porte toujours la date exacte, donc le lecteur garde tout. Le seuil est celui que depuis() emploie deja dans Works.tsx pour passer des semaines aux mois, la ou le compte exact n'apprend plus rien ; deux seuils pour la meme question auraient ete deux reponses",
+    "course": "ea68607c"
    }
   },
   "/demo/paiements@1280": {
