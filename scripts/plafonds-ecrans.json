@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "336f8462",
- "empreinteDesSources": "9154a01bc58b649d621a98c36488a48c72d66a23d65b26f993d2e807c09c528c",
+ "course": "7c5bcd81",
+ "empreinteDesSources": "18f71d8fc0b468e5db785d72e86f44c4e64d17c2f1d498f99ffae3c133bc5a38",
  "mesures": {
   "/@360": {
    "octets": 466432,
-   "octetsFil": 154754,
+   "octetsFil": 154758,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -22,14 +22,14 @@
    }
   },
   "/demo@360": {
-   "octets": 534968,
-   "octetsFil": 155752,
+   "octets": 535032,
+   "octetsFil": 155796,
    "requetes": 2,
    "releve": {
-    "de": 534967,
+    "de": 534968,
     "requetesDe": 2,
-    "motif": "UN OCTET sur /demo, prix du seuil de taille minimale de morceau posé dans vite.config.ts. La scission des trois pages juridiques a fait de SommaireDesRubriques un module partagé entre elles et l'ecran du manuel : Rollup en a emis un morceau de 769 octets bruts, et cette porte l'a refuse avec le bon chiffre - /demo : 2 a 3 REQUETES. Un aller-retour coute 300 a 800 ms sur le reseau vise ; 769 octets en coutent deux. Le seuil (1500) est mesure pour viser ce morceau sans toucher a AnnoncePublique, 2977 octets bruts, qui est une vraie frontiere. Ce que cet octet achete : / perd 7 167 octets sur le fil, 143 ms a 400 kb/s, et /demo garde ses 2 requetes",
-    "course": "336f8462"
+    "motif": "64 octets sur /demo : les six dates de signalement deviennent des DECALAGES, et la fonction ilYAJours les convertit en dates au chargement. Ce qu'ils achetent : la demonstration ne vieillit plus, et sa mise en page ne depend plus du jour ou on la regarde. Sonde a l'horloge falsifiee sur onze decalages, de -400 a +400 jours : /demo/travaux@1280 rend 1563 px PARTOUT et « il y a 2 mois » PARTOUT, pendant que la date affichee suit le calendrier. Avant ce lot, la meme page passait de 1580 a 1563 px en franchissant son soixantieme jour — « il y a 8 semaines » devenant « il y a 2 mois », plus court d'une ligne — ce qui faisait rougir plafond-hauteurs un jour donne",
+    "course": "7c5bcd81"
    }
   },
   "/demo/paiements@360": {
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 466432,
-   "octetsFil": 154754,
+   "octetsFil": 154758,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -77,14 +77,14 @@
    }
   },
   "/demo@1280": {
-   "octets": 534968,
-   "octetsFil": 155752,
+   "octets": 535032,
+   "octetsFil": 155796,
    "requetes": 2,
    "releve": {
-    "de": 534967,
+    "de": 534968,
     "requetesDe": 2,
-    "motif": "UN OCTET sur /demo, prix du seuil de taille minimale de morceau posé dans vite.config.ts. La scission des trois pages juridiques a fait de SommaireDesRubriques un module partagé entre elles et l'ecran du manuel : Rollup en a emis un morceau de 769 octets bruts, et cette porte l'a refuse avec le bon chiffre - /demo : 2 a 3 REQUETES. Un aller-retour coute 300 a 800 ms sur le reseau vise ; 769 octets en coutent deux. Le seuil (1500) est mesure pour viser ce morceau sans toucher a AnnoncePublique, 2977 octets bruts, qui est une vraie frontiere. Ce que cet octet achete : / perd 7 167 octets sur le fil, 143 ms a 400 kb/s, et /demo garde ses 2 requetes",
-    "course": "336f8462"
+    "motif": "64 octets sur /demo : les six dates de signalement deviennent des DECALAGES, et la fonction ilYAJours les convertit en dates au chargement. Ce qu'ils achetent : la demonstration ne vieillit plus, et sa mise en page ne depend plus du jour ou on la regarde. Sonde a l'horloge falsifiee sur onze decalages, de -400 a +400 jours : /demo/travaux@1280 rend 1563 px PARTOUT et « il y a 2 mois » PARTOUT, pendant que la date affichee suit le calendrier. Avant ce lot, la meme page passait de 1580 a 1563 px en franchissant son soixantieme jour — « il y a 8 semaines » devenant « il y a 2 mois », plus court d'une ligne — ce qui faisait rougir plafond-hauteurs un jour donne",
+    "course": "7c5bcd81"
    }
   },
   "/demo/paiements@1280": {

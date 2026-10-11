@@ -66,7 +66,21 @@ const STATUS_TONE: Record<WorkOrder['status'], StatusTone> = {
  * jamais s'annoncer « il y a 1 jour ».
  */
 function depuis({ year, month, day }: DateParts): RelativeStamp {
-  const jours = Math.floor((Date.now() - new Date(year, month, day).getTime()) / 86_400_000)
+  /*
+    DES JOURS DE CALENDRIER, ET NON UNE DIVISION DE MILLISECONDES.
+
+    L'écart brut entre `Date.now()` et un minuit se raccourcit d'une heure au
+    passage à l'heure d'été : `Math.floor` rend alors un jour de MOINS pendant
+    l'heure qui suit minuit, deux fois par an. Depuis que les signalements
+    portent un décalage figé (`ilYAJours` dans `data/portfolio.ts`), ce libellé
+    ne doit plus bouger du tout — une heure de bascule annuelle serait la
+    dernière façon qu'il aurait de changer de longueur.
+
+    `joursAvantExpiration` dans `Access.tsx` normalise déjà des deux côtés pour
+    la même raison ; c'est l'idiome du dépôt.
+  */
+  const minuit = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const jours = Math.round((minuit(new Date()) - minuit(new Date(year, month, day))) / 86_400_000)
   if (jours < 14) return { value: -Math.max(0, jours), unit: 'day' }
   if (jours < 60) return { value: -Math.round(jours / 7), unit: 'week' }
   return { value: -Math.round(jours / 30), unit: 'month' }
