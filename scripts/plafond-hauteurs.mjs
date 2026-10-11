@@ -668,6 +668,56 @@ const HORS_PORTEE = {
  * aurait remplacé une mesure du CI par une mesure d'ici — exactement ce que
  * l'en-tête de ce fichier interdit deux paragraphes plus haut.
  */
+/**
+ * LES POINTS DONT LA HAUTEUR SUIT LE CALENDRIER — exemptés du MOU, jamais du
+ * DÉBORDEMENT.
+ *
+ * ═══ CE QUI A ÉTÉ MESURÉ, ET COMMENT ═══
+ *
+ * Le 2026-10-11, cette porte a dénoncé 17 px de mou sur `/demo/travaux@1280`.
+ * La même machine en avait mesuré 1580 — le plafond exact — trois heures plus
+ * tôt, et rendait 1563 depuis. Rien de ce qui touche cet écran n'avait changé.
+ *
+ * Sonde à l'horloge falsifiée, quatre décalages :
+ *
+ *     hier, avant-hier    1580 px
+ *     aujourd'hui, demain 1563 px
+ *
+ * Et le diff des textes dit lequel :
+ *
+ *     hier        SIG-2026-042 · … · 12 août · « il y a 8 semaines »
+ *     aujourd'hui SIG-2026-042 · … · 12 août · « il y a 2 mois »
+ *
+ * « il y a 2 mois » est PLUS COURT que « il y a 8 semaines » : une ligne cesse
+ * de se replier, et la page perd dix-sept pixels. La hauteur de cet écran suit
+ * donc le calendrier, par la LONGUEUR d'une date relative — pas par son sens.
+ *
+ * ═══ POURQUOI UNE EXEMPTION, ET POURQUOI SEULEMENT DU MOU ═══
+ *
+ * Aucun nombre ne convient à un point qui en vaut deux. Inscrire 1563 ferait
+ * DÉBORDER les jours longs ; garder 1580 fait crier le mou les jours courts. Le
+ * plafond porte donc le MAXIMUM du cycle, et le débordement reste jugé : une
+ * page qui dépasserait 1580 serait un vrai défaut, quel que soit le jour.
+ *
+ * C'est le mou, et lui seul, qui n'a plus de sens ici — il mesurerait l'écart
+ * entre deux jours, pas entre deux mises en page.
+ *
+ * ═══ CE QUE CETTE LISTE NE DIT PAS ═══
+ *
+ * Qu'elle soit complète. D'autres écrans portent des dates relatives —
+ * `/demo/signalements`, `/demo/decisions` — et leurs libellés franchiront leurs
+ * propres seuils un autre jour. Cette liste nomme ce qui a été MESURÉ, pas ce
+ * qui est possible. Un mou d'une ligne sur un écran daté est le signe à
+ * reconnaître ; la sonde à l'horloge falsifiée, décrite ci-dessus, tranche en
+ * deux minutes.
+ *
+ * ET UNE EXEMPTION N'EST PAS UNE EXCUSE : si un jour ce point rend 1400, le mou
+ * ne le dira plus. C'est le prix, et il est assumé — l'autre branche de
+ * l'échange était une porte qui rougit un jour sur deux, donc une porte qu'on
+ * apprend à ignorer.
+ */
+const SUIT_LE_CALENDRIER = new Set(['/demo/travaux@1280'])
+
 const PLAFONDS = [
   /* 360 px — 23 écrans */
   { adresse: '/inscription', largeur: 360, plafond: 1371, plafondLarge: 1371 },
@@ -1345,7 +1395,7 @@ try {
       releve.push({ nom, hDoc, plafond, ...p })
       if (RELEVER) continue
 
-      if (colonneANous && plafond > hDoc) {
+      if (colonneANous && plafond > hDoc && !SUIT_LE_CALENDRIER.has(nom)) {
         plaintes.push(
           `${nom} : ${plafond - hDoc} px de MOU — le plafond (${plafond}) est au-dessus\n` +
             `   de la mesure (${hDoc}). Il ne refuse donc plus ce qu'il prétend refuser.\n` +
