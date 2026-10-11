@@ -84,7 +84,20 @@ describe('la colonne des plafonds', () => {
         verdict qu'aucune mesure ne soutenait : le dépassement de la colonne
         NORMALE sur une machine dont `system-ui` n'est pas celui de la colonne.
       */
-      const mou = /if \((\w+) && plafond > (?:m\.)?hDoc\)/.exec(source)
+      /*
+        LES CONJONCTIONS SUPPLÉMENTAIRES SONT TOLÉRÉES, et seulement APRÈS la
+        comparaison. Le 2026-10-11, `plafond-hauteurs` a ajouté
+        `&& !SUIT_LE_CALENDRIER.has(nom)` : `/demo/travaux@1280` change de
+        hauteur avec le calendrier — « il y a 8 semaines » devient « il y a
+        2 mois », plus court d'une ligne — et le mou y mesurait l'écart entre
+        deux JOURS, pas entre deux mises en page.
+
+        CE QUE CE CAS GARDE N'EN EST PAS AFFAIBLI : une conjonction ajoutée ne
+        peut que RESTREINDRE le mou, jamais l'étendre au dépassement. La
+        propriété tenue plus bas — les deux gardes ne partagent pas leur
+        condition de tête — reste exacte, et c'est elle qui compte.
+      */
+      const mou = /if \((\w+) && plafond > (?:m\.)?hDoc(?: &&[^)]*)?\)/.exec(source)
       expect(mou, `${nom} : la garde du mou a changé de forme`).not.toBeNull()
 
       const exces = /if \((\w+) && (?:m\.)?hDoc > plafond\)/.exec(source)
