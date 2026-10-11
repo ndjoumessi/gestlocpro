@@ -7,9 +7,9 @@
   "exact, que ce fichier ne peut pas relâcher."
  ],
  "plafonds": {
-  "i18n/en-app.ts": 25631,
+  "i18n/en-app.ts": 25654,
   "i18n/en-legal.ts": 4505,
   "i18n/en.ts": 7971
  },
- "motif": "47 octets sur la moitie applicative anglaise : deux gabarits au passe pour leaseRenewal et leaseMoveOut, avec leurs variantes de pluriel. Ce qu'ils achetent : un avis d'echeance cesse de promettre un avenir revolu. Mesure a l'ecran le 2026-10-11, la demonstration rendait « Bail B1 a renouveler dans 45 jours » au-dessus de « echeance au 30/09/2026 », onze jours APRES l'echeance — le serveur fige le compte a la naissance de l'avis et ne le reecrit jamais. Le compte se recalcule desormais depuis la date, et le titre bascule au passe avec la valeur absolue du retard. Sans ces gabarits, l'anglais aurait rendu « in -11 days »"
+ "motif": "23 octets : deux gabarits sans nombre, titlePasseLongtemps pour leaseRenewal et leaseMoveOut. Ce qu'ils achetent : au-dela de soixante jours, le titre cesse d'egrener un compte qui n'apprend plus rien — « echeance depassee de 400 jours » est exact et inutile. Le detail continue de porter la date exacte, donc rien n'est perdu. Le seuil n'est pas choisi ici : c'est celui que depuis() emploie deja dans Works.tsx pour passer des semaines aux mois"
 }

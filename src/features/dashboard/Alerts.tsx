@@ -162,7 +162,27 @@ function useAlertMessage() {
       Un avis sans `dueOn` ne connaît pas ce chemin : `suffixe` reste vide et la
       clé est exactement celle d'avant ce lot.
     */
-    const suffixe = part === 'title' && joursRestants !== null && joursRestants < 0 ? 'Passe' : ''
+    /*
+      ET LE COMPTE SE TAIT QUAND IL N'APPREND PLUS RIEN.
+
+      « Échéance dépassée de 400 jours » est exact et inutile : au-delà de deux
+      mois, ce n'est plus un délai qu'on lit, c'est un état. Le titre dit alors
+      qu'elle est dépassée, sans nombre, et le DÉTAIL continue de porter la date
+      exacte — rien n'est perdu, et la carte cesse d'égrener.
+
+      SOIXANTE JOURS, ET LE SEUIL N'EST PAS CHOISI ICI : c'est celui que
+      `depuis()` emploie déjà dans `Works.tsx` pour passer des semaines aux
+      mois, « là où le compte exact n'apprend plus rien ». Deux seuils
+      différents pour la même question auraient été deux réponses.
+    */
+    const SEUIL_DU_SILENCE = 60
+
+    const suffixe =
+      part !== 'title' || joursRestants === null || joursRestants >= 0
+        ? ''
+        : joursRestants < -SEUIL_DU_SILENCE
+          ? 'PasseLongtemps'
+          : 'Passe'
 
     const rendu = t(
       `app.alerts.msg.${alert.message}.${part}${suffixe}` as 'app.alerts.msg.rentOverdue.title',
