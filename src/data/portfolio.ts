@@ -1111,18 +1111,62 @@ export function montantEngage(work: WorkOrder): {
  * ne se verrait sur aucune ligne — c'est le cas qu'une mutation doit pouvoir
  * viser.
  */
+/**
+ * UNE DATE DE DÉMONSTRATION SE COMPTE DEPUIS AUJOURD'HUI, JAMAIS DEPUIS 2026.
+ *
+ * ═══ CE QUE LES DATES ABSOLUES COÛTAIENT ═══
+ *
+ * `WORKS` portait « 12 août 2026 » en dur, et `Works.tsx` en dérivait le
+ * libellé relatif affiché à côté. Le 2026-10-11, ce signalement a franchi son
+ * soixantième jour : « il y a 8 semaines » est devenu « il y a 2 mois ». La
+ * phrase est PLUS COURTE, une ligne a cessé de se replier, et
+ * `/demo/travaux@1280` a perdu dix-sept pixels — assez pour faire rougir
+ * `plafond-hauteurs`, qui disait vrai.
+ *
+ * Le défaut de fond n'était pas la porte : c'est qu'une démonstration datée de
+ * 2026 vieillit. En 2028 elle aurait annoncé « il y a 2 ans » sur un parc
+ * censé être vivant.
+ *
+ * ═══ CE QUE LE DÉCALAGE FIGE, ET CE QU'IL LAISSE BOUGER ═══
+ *
+ * Le décalage est la constante ; la date absolue s'en déduit. Donc le LIBELLÉ
+ * relatif ne bouge plus jamais — c'est lui qui changeait de longueur — et la
+ * date affichée, elle, suit le calendrier. Une démonstration est toujours
+ * d'aujourd'hui, et sa mise en page ne dépend plus du jour où on la regarde.
+ *
+ * L'IDIOME EXISTAIT DÉJÀ ICI : les avis portent `at: { value: -2, unit: 'hour' }`
+ * et les accès `new Date(Date.now() + 9 * 86_400_000)`. Les travaux étaient le
+ * dernier endroit où une date absolue nourrissait un libellé relatif.
+ *
+ * LE NOM PORTE SON UNITÉ, et ce n'est pas du zèle : ce fichier contient déjà un
+ * `ilYA` local qui compte des HEURES, pour les avis. Deux fonctions du même nom
+ * et d'unités différentes dans un même fichier est le genre de voisinage où un
+ * appel se trompe sans que rien ne rougisse — `ilYA(60)` aurait voulu dire
+ * soixante heures à six lignes d'écart.
+ *
+ * CE QUE ÇA RETIRE : `horloge-sans-influence.mjs` ne rejoue que les fixtures
+ * « écrites en clair » — il le dit lui-même. Ces six dates lui deviennent
+ * invisibles. C'est l'échange assumé : elles n'ont plus de frontière à
+ * franchir, donc plus rien à rejouer.
+ */
+function ilYAJours(jours: number): DateParts {
+  const d = new Date()
+  d.setDate(d.getDate() - jours)
+  return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() }
+}
+
 export const WORKS: WorkOrder[] = [
-  { id: 'SIG-2026-042', unitId: 'A3', titleKey: 'sinkLeak', trade: 'plumbing', status: 'quoted', quotedAmount: 45000, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 12 }, urgent: true, origin: 'tenantReport', reportedBy: 'Serge Mbarga' },
-  { id: 'SIG-2026-041', unitId: 'B2', titleKey: 'waterHeaterBreaker', trade: 'power', status: 'approved', quotedAmount: 78000, approvedAmount: 78000, reportedAt: { year: 2026, month: 7, day: 9 }, urgent: true, origin: 'tenantReport', reportedBy: 'Nadia Belinga' },
-  { id: 'SIG-2026-039', unitId: 'C1', titleKey: 'livingRoomPaint', trade: 'painting', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 5 }, urgent: false, origin: 'tenantReport', reportedBy: 'Cabinet Njoya' },
+  { id: 'SIG-2026-042', unitId: 'A3', titleKey: 'sinkLeak', trade: 'plumbing', status: 'quoted', quotedAmount: 45000, approvedAmount: null, reportedAt: ilYAJours(60), urgent: true, origin: 'tenantReport', reportedBy: 'Serge Mbarga' },
+  { id: 'SIG-2026-041', unitId: 'B2', titleKey: 'waterHeaterBreaker', trade: 'power', status: 'approved', quotedAmount: 78000, approvedAmount: 78000, reportedAt: ilYAJours(63), urgent: true, origin: 'tenantReport', reportedBy: 'Nadia Belinga' },
+  { id: 'SIG-2026-039', unitId: 'C1', titleKey: 'livingRoomPaint', trade: 'painting', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: ilYAJours(67), urgent: false, origin: 'tenantReport', reportedBy: 'Cabinet Njoya' },
   /* UN SIGNALEMENT ENCORE OUVERT, chez le locataire de la démonstration.
      A1 n'en portait qu'un, CLOS et répondu : l'état « pas encore de réponse »
      n'existait donc nulle part, et la ligne qui distingue « on ne m'a pas
      répondu » de « la réponse ne s'affiche pas » n'était mesurée par personne.
      Deux signalements, deux états, c'est aussi ce que vit un vrai locataire. */
-  { id: 'SIG-2026-045', unitId: 'A1', titleKey: 'frontDoorLock', trade: 'lock', description: 'Ça coince depuis mardi, il faut forcer la clé. J’ai essayé un peu d’huile, sans effet.', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: { year: 2026, month: 7, day: 26 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
-  { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', quotedAmount: 32000, approvedAmount: 32000, reportedAt: { year: 2026, month: 6, day: 28 }, urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
-  { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', quotedAmount: 340000, approvedAmount: 340000, reportedAt: { year: 2026, month: 6, day: 22 }, urgent: false, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' },
+  { id: 'SIG-2026-045', unitId: 'A1', titleKey: 'frontDoorLock', trade: 'lock', description: 'Ça coince depuis mardi, il faut forcer la clé. J’ai essayé un peu d’huile, sans effet.', status: 'reported', quotedAmount: null, approvedAmount: null, reportedAt: ilYAJours(46), urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
+  { id: 'SIG-2026-036', unitId: 'A1', titleKey: 'safetyValve', trade: 'plumbing', status: 'done', quotedAmount: 32000, approvedAmount: 32000, reportedAt: ilYAJours(75), urgent: false, origin: 'tenantReport', reportedBy: 'Charles Ngassa' },
+  { id: 'SIG-2026-034', unitId: 'B4', titleKey: 'fullRefurbishment', trade: 'multi', status: 'approved', quotedAmount: 340000, approvedAmount: 340000, reportedAt: ilYAJours(81), urgent: false, origin: 'ownerInitiative', reportedBy: 'Arsène Nkolo' },
 ]
 
 export interface Deposit {
