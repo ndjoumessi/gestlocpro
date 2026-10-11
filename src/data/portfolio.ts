@@ -1138,6 +1138,16 @@ export function montantEngage(work: WorkOrder): {
  * et les accès `new Date(Date.now() + 9 * 86_400_000)`. Les travaux étaient le
  * dernier endroit où une date absolue nourrissait un libellé relatif.
  *
+ * UN DÉCALAGE NÉGATIF REGARDE DEVANT. `ilYAJours(-45)` rend la date dans
+ * quarante-cinq jours, et c'est ce dont une ÉCHÉANCE a besoin : l'avis de
+ * renouvellement de bail portait « 30/09/2026 » en dur, donc le 2026-10-11 la
+ * démonstration annonçait « à renouveler dans 45 jours » pour une date passée
+ * depuis onze jours. Le titre promettait, le détail démentait.
+ *
+ * LE `count: 45` QUI RESTE À CÔTÉ N'EST PLUS LU — `Alerts.tsx` recalcule le
+ * compte depuis la date. Il est gardé parce que le SERVEUR l'écrit encore, et
+ * que cette fixture imite ce qu'une vraie base rend.
+ *
  * LE NOM PORTE SON UNITÉ, et ce n'est pas du zèle : ce fichier contient déjà un
  * `ilYA` local qui compte des HEURES, pour les avis. Deux fonctions du même nom
  * et d'unités différentes dans un même fichier est le genre de voisinage où un
@@ -1656,7 +1666,7 @@ export const ALERTS: Alert[] = [
   { id: 'n8', kind: 'work', message: 'tenantReport', data: { workId: 'SIG-2026-044', reference: 'SIG-2026-044', unitId: 'B3', text: 'Fuite sous l’évier de la cuisine, ça goutte depuis hier soir.' }, at: { value: -40, unit: 'minute' }, severity: 'medium', read: false, unitId: 'B3', channel: 'in_app' },
   { id: 'n2', kind: 'work', message: 'quotePending', data: { workId: 'SIG-2026-042', unitId: 'A3', amount: 45000 }, at: { value: -5, unit: 'hour' }, severity: 'high', read: false, unitId: 'A3' },
   { id: 'n3', kind: 'meter', message: 'metersMissing', data: { count: 2, period: { year: 2026, month: 7 }, units: ['A5', 'C2'] }, at: { value: -1, unit: 'day' }, severity: 'medium', read: true },
-  { id: 'n4', kind: 'lease', message: 'leaseRenewal', data: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: { year: 2026, month: 8, day: 30 } }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },
+  { id: 'n4', kind: 'lease', message: 'leaseRenewal', data: { unitId: 'B1', tenant: 'Jean-Paul Eboa', count: 45, dueOn: ilYAJours(-45) }, at: { value: -2, unit: 'day' }, severity: 'low', read: true, unitId: 'B1' },
   { id: 'n5', kind: 'payment', message: 'partialPayment', data: { unitId: 'A5', tenant: 'Aline Tchoumi', amount: 40000, total: 75000 }, at: { value: -3, unit: 'day' }, severity: 'medium', read: true, unitId: 'A5' },
   { id: 'n6', kind: 'work', message: 'workDone', data: { workId: 'SIG-2026-036', unitId: 'A1', on: { year: 2026, month: 6, day: 28 } }, at: { value: -5, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },
   { id: 'n7', kind: 'payment', message: 'receiptAvailable', data: { unitId: 'A1', amount: 145000, period: { year: 2026, month: 7 } }, at: { value: -6, unit: 'day' }, severity: 'low', read: true, unitId: 'A1' },

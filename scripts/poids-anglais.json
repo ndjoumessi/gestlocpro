@@ -7,9 +7,9 @@
   "exact, que ce fichier ne peut pas relâcher."
  ],
  "plafonds": {
-  "i18n/en-app.ts": 25584,
+  "i18n/en-app.ts": 25631,
   "i18n/en-legal.ts": 4505,
   "i18n/en.ts": 7971
  },
- "motif": null
+ "motif": "47 octets sur la moitie applicative anglaise : deux gabarits au passe pour leaseRenewal et leaseMoveOut, avec leurs variantes de pluriel. Ce qu'ils achetent : un avis d'echeance cesse de promettre un avenir revolu. Mesure a l'ecran le 2026-10-11, la demonstration rendait « Bail B1 a renouveler dans 45 jours » au-dessus de « echeance au 30/09/2026 », onze jours APRES l'echeance — le serveur fige le compte a la naissance de l'avis et ne le reecrit jamais. Le compte se recalcule desormais depuis la date, et le titre bascule au passe avec la valeur absolue du retard. Sans ces gabarits, l'anglais aurait rendu « in -11 days »"
 }

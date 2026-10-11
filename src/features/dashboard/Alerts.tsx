@@ -17,7 +17,7 @@ import { useDates } from '@/lib/useDates'
 import { Badge } from '@/components/primitives/Badge'
 import { useNumbers } from '@/lib/numbers'
 import { useCurrency } from '@/currency/CurrencyProvider'
-import { type Alert } from '@/data/portfolio'
+import { type Alert, type DateParts } from '@/data/portfolio'
 import { duPlusRecent } from './ordreDesAvis'
 
 /**
@@ -117,6 +117,31 @@ function useAlertMessage() {
     // Une échéance de bail porte l'année : « 30/09 » sans millésime ne dit pas
     // si le préavis court cette année ou la suivante.
     if (data.dueOn) vars.date = d.fullDate(data.dueOn)
+
+    /*
+      ═══ LE COMPTE SE RECALCULE, PARCE QUE LE GABARIT PROMET UN AVENIR ═══
+
+      « Bail {unit} à renouveler DANS {count} jours » affirme une durée qui
+      RESTE. Or `count` est écrit UNE FOIS par le serveur, au moment où l'avis
+      naît, et cet avis ne se réécrit jamais — `executerAvisDEcheance` refuse
+      de reparler d'une échéance déjà annoncée. Un avis émis à quarante-cinq
+      jours disait donc encore « dans 45 jours » quand il n'en restait que dix.
+
+      MESURÉ SUR LA DÉMONSTRATION LE 2026-10-11, à l'écran :
+
+          Bail B1 à renouveler dans 45 jours
+          Jean-Paul Eboa · échéance au 30/09/2026
+
+      Onze jours APRÈS l'échéance. La carte se contredisait elle-même : son
+      titre promettait, son détail démentait.
+
+      ON NE GARDE DONC LE COMPTE DU SERVEUR QUE QUAND IL N'Y A PAS D'ÉCHÉANCE à
+      quoi le rapporter. `rentOverdue` porte « 24 » pour vingt-quatre jours de
+      retard, sans `dueOn` : son compte est un FAIT constaté, pas une promesse,
+      et il reste tel quel.
+    */
+    const joursRestants = data.dueOn ? joursJusqua(data.dueOn) : null
+    if (joursRestants !== null) vars.count = Math.abs(joursRestants)
     if (data.period) vars.period = d.monthYear(data.period)
     if (data.units) vars.units = n.list(data.units)
     // Le texte du bailleur, tel qu'il l'a écrit. Il n'est ni formaté ni
@@ -127,8 +152,20 @@ function useAlertMessage() {
        occupant, celui-ci n'est encore rien dans le parc. */
     if (data.name) vars.name = data.name
 
+    /*
+      LE TITRE BASCULE AU PASSÉ QUAND L'ÉCHÉANCE EST FRANCHIE, et seulement lui.
+
+      `{count}` vaut alors la valeur ABSOLUE — « dépassée depuis 11 jours » et
+      non « depuis -11 jours ». Le DÉTAIL ne bascule pas : il nomme une date,
+      qui est vraie dans les deux sens.
+
+      Un avis sans `dueOn` ne connaît pas ce chemin : `suffixe` reste vide et la
+      clé est exactement celle d'avant ce lot.
+    */
+    const suffixe = part === 'title' && joursRestants !== null && joursRestants < 0 ? 'Passe' : ''
+
     const rendu = t(
-      `app.alerts.msg.${alert.message}.${part}` as 'app.alerts.msg.rentOverdue.title',
+      `app.alerts.msg.${alert.message}.${part}${suffixe}` as 'app.alerts.msg.rentOverdue.title',
       vars,
     )
 
@@ -160,6 +197,20 @@ function useAlertMessage() {
     */
     return rendu.replace(/\{[A-Za-z]\w*\}/g, '—')
   }
+}
+
+/**
+ * JOURS DE CALENDRIER JUSQU'À UNE ÉCHÉANCE — négatif une fois franchie.
+ *
+ * DES JOURS NORMALISÉS, et non une division de millisecondes : l'écart brut se
+ * raccourcit d'une heure au passage à l'heure d'été, ce qui rend un jour de
+ * moins pendant l'heure suivant minuit, deux fois par an. `joursAvantExpiration`
+ * dans `Access.tsx` et `jourUtc` côté serveur normalisent des deux côtés pour
+ * cette raison ; c'est l'idiome du dépôt.
+ */
+function joursJusqua({ year, month, day }: DateParts): number {
+  const minuit = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return Math.round((minuit(new Date(year, month, day)) - minuit(new Date())) / 86_400_000)
 }
 
 export function Alerts() {

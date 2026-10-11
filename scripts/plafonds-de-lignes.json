@@ -38,9 +38,9 @@
   "src/components/primitives/DataTable.tsx": 1591,
   "src/components/primitives/DatePicker.tsx": 1218,
   "src/data/PortfolioProvider.tsx": 2422,
-  "src/data/portfolio.ts": 2089,
+  "src/data/portfolio.ts": 2099,
   "src/features/dashboard/Access.tsx": 1731,
-  "src/features/dashboard/Alerts.tsx": 840,
+  "src/features/dashboard/Alerts.tsx": 891,
   "src/features/dashboard/Dashboard.tsx": 1186,
   "src/features/dashboard/Decisions.tsx": 848,
   "src/features/dashboard/InspectionModal.tsx": 1054,
@@ -60,11 +60,7 @@
    "motif": "l'écran des cautions était à dix lignes du plafond : le quatrième terme du pied — ce que les cautions rendues retirent à la soustraction — ne tenait pas dans ce qui restait. Le fichier porte un tableau, trois indicateurs, un arbitrage, deux exports et leurs motifs ; c'est un découpage qu'il doit, pas un commentaire de trop.",
    "le": "2026-10-06"
   },
-  "src/i18n/fr-app.ts": 3161,
-  "src/i18n/en-app.ts": {
-   "lignes": 2122,
-   "motif": "la section app du dictionnaire anglais, déplacée verbatim depuis en.ts — 2074 lignes de données traduites, sans cohésion à découper, jumelle de fr-app.ts",
-   "le": "2026-10-10"
-  }
+  "src/i18n/fr-app.ts": 3168,
+  "src/i18n/en-app.ts": 2126
  }
 }

@@ -7,12 +7,12 @@
   "exécution à l’autre, pas le coût réel d’une première visite.",
   "Les plafonds ne montent que par `--relever \"motif\"` ; le motif est gravé à côté."
  ],
- "course": "7c5bcd81",
- "empreinteDesSources": "18f71d8fc0b468e5db785d72e86f44c4e64d17c2f1d498f99ffae3c133bc5a38",
+ "course": "1d81a60a",
+ "empreinteDesSources": "982c0105d0d1a98cf53f3c8f7c983a006939fe965a33d7f96a6ef1c8b86cb850",
  "mesures": {
   "/@360": {
    "octets": 466432,
-   "octetsFil": 154758,
+   "octetsFil": 154760,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -22,14 +22,14 @@
    }
   },
   "/demo@360": {
-   "octets": 535032,
-   "octetsFil": 155796,
+   "octets": 535602,
+   "octetsFil": 155931,
    "requetes": 2,
    "releve": {
-    "de": 534968,
+    "de": 535032,
     "requetesDe": 2,
-    "motif": "64 octets sur /demo : les six dates de signalement deviennent des DECALAGES, et la fonction ilYAJours les convertit en dates au chargement. Ce qu'ils achetent : la demonstration ne vieillit plus, et sa mise en page ne depend plus du jour ou on la regarde. Sonde a l'horloge falsifiee sur onze decalages, de -400 a +400 jours : /demo/travaux@1280 rend 1563 px PARTOUT et « il y a 2 mois » PARTOUT, pendant que la date affichee suit le calendrier. Avant ce lot, la meme page passait de 1580 a 1563 px en franchissant son soixantieme jour — « il y a 8 semaines » devenant « il y a 2 mois », plus court d'une ligne — ce qui faisait rougir plafond-hauteurs un jour donne",
-    "course": "7c5bcd81"
+    "motif": "570 octets sur /demo : quatre gabarits au passe (leaseRenewal et leaseMoveOut, dans les deux langues) et le recalcul du compte dans Alerts.tsx. Ce qu'ils achetent : un avis d'echeance cesse de mentir. Mesure a l'ecran le 2026-10-11, la demonstration rendait « Bail B1 a renouveler dans 45 jours » au-dessus de « echeance au 30/09/2026 » — onze jours APRES l'echeance. Le gabarit promet un avenir (« DANS {count} jours ») alors que le serveur fige le compte a la naissance de l'avis et ne le reecrit jamais. Le compte se recalcule desormais depuis la date, et le titre bascule au passe une fois l'echeance franchie, avec la valeur ABSOLUE du retard",
+    "course": "1d81a60a"
    }
   },
   "/demo/paiements@360": {
@@ -67,7 +67,7 @@
   },
   "/@1280": {
    "octets": 466432,
-   "octetsFil": 154758,
+   "octetsFil": 154760,
    "requetes": 4,
    "releve": {
     "de": 493863,
@@ -77,14 +77,14 @@
    }
   },
   "/demo@1280": {
-   "octets": 535032,
-   "octetsFil": 155796,
+   "octets": 535602,
+   "octetsFil": 155931,
    "requetes": 2,
    "releve": {
-    "de": 534968,
+    "de": 535032,
     "requetesDe": 2,
-    "motif": "64 octets sur /demo : les six dates de signalement deviennent des DECALAGES, et la fonction ilYAJours les convertit en dates au chargement. Ce qu'ils achetent : la demonstration ne vieillit plus, et sa mise en page ne depend plus du jour ou on la regarde. Sonde a l'horloge falsifiee sur onze decalages, de -400 a +400 jours : /demo/travaux@1280 rend 1563 px PARTOUT et « il y a 2 mois » PARTOUT, pendant que la date affichee suit le calendrier. Avant ce lot, la meme page passait de 1580 a 1563 px en franchissant son soixantieme jour — « il y a 8 semaines » devenant « il y a 2 mois », plus court d'une ligne — ce qui faisait rougir plafond-hauteurs un jour donne",
-    "course": "7c5bcd81"
+    "motif": "570 octets sur /demo : quatre gabarits au passe (leaseRenewal et leaseMoveOut, dans les deux langues) et le recalcul du compte dans Alerts.tsx. Ce qu'ils achetent : un avis d'echeance cesse de mentir. Mesure a l'ecran le 2026-10-11, la demonstration rendait « Bail B1 a renouveler dans 45 jours » au-dessus de « echeance au 30/09/2026 » — onze jours APRES l'echeance. Le gabarit promet un avenir (« DANS {count} jours ») alors que le serveur fige le compte a la naissance de l'avis et ne le reecrit jamais. Le compte se recalcule desormais depuis la date, et le titre bascule au passe une fois l'echeance franchie, avec la valeur ABSOLUE du retard",
+    "course": "1d81a60a"
    }
   },
   "/demo/paiements@1280": {
