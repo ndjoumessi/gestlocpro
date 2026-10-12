@@ -460,7 +460,34 @@ function importsDuFichier(rel, code) {
     table.set(m[1], resoudreChemin(rel, m[2]))
     sources.set(m[1], m[2])
   }
+  /*
+    LES RÉEXPORTS NOMMÉS — `export { X } from './Y'`.
+
+    Sans eux, une BARRIQUE casse la chaîne : l'appelant importe `MenuElement`
+    de `MenuDeDebordement`, ce fichier ne le DÉCLARE pas, et `resoudre` rendait
+    `null` — c'est-à-dire « composant du dehors qu'on ne sait pas lire ».
+    Mesuré au découpage du menu : 27 sites d'anneau de focus d'un coup, et la
+    porte a refusé, comme elle doit.
+
+    Le découpage d'un gros fichier derrière une barrique est le geste que ce
+    dépôt s'est donné pour ne pas recâbler ses appelants ; la lecture doit donc
+    le suivre, sans quoi chaque découpage à venir coûte ce refus.
+
+    `export * from` N'EST PAS LU, et c'est volontaire : il faudrait alors
+    deviner ce qui transite, et le dépôt n'en écrit aucun — s'il en apparaît
+    un, ce motif ne le verra pas et la garde du dessus rougira, ce qui est le
+    bon ordre.
+  */
+  const reexports = new Map()
+  for (const m of code.matchAll(/export\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+    const cible = resoudreChemin(rel, m[2])
+    for (const n of m[1].matchAll(/([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?/g)) {
+      const nom = n[2] ?? n[1]
+      if (/^[A-Z]/.test(nom)) reexports.set(nom, cible)
+    }
+  }
   table.sources = sources
+  table.reexports = reexports
   return table
 }
 
@@ -683,7 +710,15 @@ export const PLANCHERS_DE_LECTURE = {
      de clé n'appartient à aucun lot : `src/` a grandi commit après commit, et ce
      plancher ne parle que le jour où la marge s'épuise. Le nombre est celui que
      `planchersDeLecture.test.ts` a demandé, pas un arrondi de confort. */
-  'fichiers scannés': 101,
+  /* 101 → 114 le 2026-10-12, par le MÊME mécanisme et à un fichier près : le
+     découpage de `MenuDeDebordement` en a ajouté UN — `MenuEntrees.tsx`, le
+     contexte partant dans un `.ts` que le balayage ne lit pas —, 127 lus, et la
+     marge est repassée sous les 20 %. Celui-ci appartient donc à un lot, à la
+     différence du tour de clé précédent : un découpage fait grandir le compte
+     des fichiers sans rien ajouter au produit, et c'est exactement le genre de
+     croissance que ce plancher doit suivre sans la commenter. Le nombre est
+     celui que la suite a imprimé. */
+  'fichiers scannés': 114,
   /* 2300 → 2594 le 2026-09-12 : 2883 balises lues, et `planchersDeLecture` refuse
      plus de 20 % d'écart. L'écart s'est creusé lot après lot — les fiches du
      parc, les menus déplacés — et c'est la page des mentions légales, huit
@@ -854,12 +889,27 @@ export function releverLesSources() {
     }
   }
 
+  /* LA BARRIQUE SE TRAVERSE, et pas plus de quatre fois : un cycle de
+     réexports ne doit pas faire tourner la lecture en rond. Quatre est au-delà
+     de tout ce que ce dépôt empile — le menu en compte un seul. */
+  const traverserLesReexports = (cible, nomTag) => {
+    for (let saut = 0; saut < 4 && cible; saut++) {
+      const direct = index.get(`${cible}::${nomTag}`)
+      if (direct) return direct
+      const porteur = fichiers.get(cible)
+      const suivant = porteur?.imports?.reexports?.get(nomTag)
+      if (!suivant || suivant === cible) return null
+      cible = suivant
+    }
+    return null
+  }
+
   const resoudre = (rel, nomTag) => {
     const f = fichiers.get(rel)
     if (!f) return null
     if (f.imports.has(nomTag)) {
       const cible = f.imports.get(nomTag)
-      return cible ? (index.get(`${cible}::${nomTag}`) ?? null) : null
+      return cible ? traverserLesReexports(cible, nomTag) : null
     }
     /* LA TABLE DES PARESSEUX PASSE EN PREMIER, et l'ordre est le correctif.
        `const X = lazy(…)` est indexé comme un composant du fichier déclarant :
