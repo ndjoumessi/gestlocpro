@@ -710,7 +710,15 @@ export const PLANCHERS_DE_LECTURE = {
      de clé n'appartient à aucun lot : `src/` a grandi commit après commit, et ce
      plancher ne parle que le jour où la marge s'épuise. Le nombre est celui que
      `planchersDeLecture.test.ts` a demandé, pas un arrondi de confort. */
-  'fichiers scannés': 101,
+  /* 101 → 114 le 2026-10-12, par le MÊME mécanisme et à un fichier près : le
+     découpage de `MenuDeDebordement` en a ajouté UN — `MenuEntrees.tsx`, le
+     contexte partant dans un `.ts` que le balayage ne lit pas —, 127 lus, et la
+     marge est repassée sous les 20 %. Celui-ci appartient donc à un lot, à la
+     différence du tour de clé précédent : un découpage fait grandir le compte
+     des fichiers sans rien ajouter au produit, et c'est exactement le genre de
+     croissance que ce plancher doit suivre sans la commenter. Le nombre est
+     celui que la suite a imprimé. */
+  'fichiers scannés': 114,
   /* 2300 → 2594 le 2026-09-12 : 2883 balises lues, et `planchersDeLecture` refuse
      plus de 20 % d'écart. L'écart s'est creusé lot après lot — les fiches du
      parc, les menus déplacés — et c'est la page des mentions légales, huit

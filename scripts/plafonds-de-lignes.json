@@ -20,7 +20,7 @@
  "plafonds": {
   "scripts/espace-connecte.mjs": 2484,
   "scripts/inventaire/jetons-i18n.mjs": 1194,
-  "scripts/inventaire/lecture-sources.mjs": 1825,
+  "scripts/inventaire/lecture-sources.mjs": 1833,
   "scripts/inventaire/mesure-navigateur.mjs": 1609,
   "scripts/mesure-ui.mjs": 3902,
   "scripts/plafond-hauteurs.mjs": 1561,
