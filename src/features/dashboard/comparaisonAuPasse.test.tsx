@@ -51,7 +51,29 @@ function sessionProprietaire(): EtatSession {
 }
 
 /**
- * Deux mois d'encaissements.
+ * LE MOIS SITUÉ `recul` CRANS AVANT CELUI OÙ NOUS SOMMES, EN UTC.
+ *
+ * ═══ POURQUOI CES MOIS ONT CESSÉ D'ÊTRE ÉCRITS EN DUR ═══
+ *
+ * Ils l'étaient — juillet et août 2026 — et ils ont tenu jusqu'au jour où la
+ * base a cessé de se prendre par POSITION. Tant que `variationDesEncaissements`
+ * lisait l'avant-dernière entrée, les mois de la fixture n'avaient aucune
+ * importance : n'importe quelle paire rendait le même verdict, en août comme en
+ * octobre. La fonction NOMME désormais le mois précédent et le cherche ; une
+ * fixture datée de l'été rend alors « pas de mois précédent » tout l'automne, et
+ * la garde rougit sans qu'une ligne de produit ait bougé.
+ *
+ * C'est le défaut que ce dépôt a déjà payé cinq fois : un nombre juste le jour
+ * où on l'écrit. En UTC comme `estLeMoisEnCours`, dont c'est la convention.
+ */
+function moisAvant(recul: number) {
+  const maintenant = new Date()
+  const total = maintenant.getUTCFullYear() * 12 + maintenant.getUTCMonth() - recul
+  return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 }
+}
+
+/**
+ * Deux mois d'encaissements : le précédent, puis celui où nous sommes.
  *
  * `avantEntier` est ce que le mois précédent a fini par encaisser ; `avantALaDate`
  * ce qu'il en avait encaissé au jour où nous sommes. Les séparer est tout le
@@ -69,8 +91,8 @@ function collections({
   courant: number
 }) {
   return [
-    { year: 2026, month: 6, rent: avantEntier, rentToDate: avantALaDate, water: 0, power: 0 },
-    { year: 2026, month: 7, rent: courant, rentToDate: courant, water: 0, power: 0 },
+    { ...moisAvant(1), rent: avantEntier, rentToDate: avantALaDate, water: 0, power: 0 },
+    { ...moisAvant(0), rent: courant, rentToDate: courant, water: 0, power: 0 },
   ]
 }
 
@@ -182,7 +204,7 @@ describe('la comparaison au passé sur les indicateurs', () => {
       passé : inventer une variation de 0 % y serait un chiffre, pas une mesure.
       Sans ce cas, la règle serait satisfaite par une pastille inconditionnelle.
     */
-    await ouvrir([{ year: 2026, month: 7, rent: 1040000, rentToDate: 1040000, water: 0, power: 0 }])
+    await ouvrir([{ ...moisAvant(0), rent: 1040000, rentToDate: 1040000, water: 0, power: 0 }])
     const texte = texteDe(/encaissé ce mois/i)
     /* On cherche une VARIATION SIGNÉE — « +12,4 % », « −16,8 % » — et non un
        pourcentage quelconque : la carte peut légitimement porter d'autres
@@ -200,9 +222,13 @@ describe('la comparaison au passé sur les indicateurs', () => {
    * personne ne regarde. On préfère ne rien comparer.
    */
   it('ne compare rien quand le serveur ne dit pas l’encaissé à la date', async () => {
+    /* LES MOIS SUIVENT L'HORLOGE ICI AUSSI, et c'est ce qui sauve ce cas d'un
+       VERT PAR VACUITÉ : avec des mois datés de l'été, la variation serait nulle
+       parce qu'aucun mois précédent n'existe dans la série — et non parce que le
+       serveur tait `rentToDate`, qui est le seul sujet de ce cas. */
     await ouvrir([
-      { year: 2026, month: 6, rent: 1250000, water: 0, power: 0 },
-      { year: 2026, month: 7, rent: 1040000, water: 0, power: 0 },
+      { ...moisAvant(1), rent: 1250000, water: 0, power: 0 },
+      { ...moisAvant(0), rent: 1040000, water: 0, power: 0 },
     ] as ReturnType<typeof collections>)
     const texte = texteDe(/encaissé ce mois/i)
     expect(texte, 'la variation est retombée sur le mois entier faute de mieux').not.toMatch(/[+−]\s?\d/)

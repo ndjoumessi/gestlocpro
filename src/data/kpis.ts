@@ -90,7 +90,8 @@ export function computeKpis(units: Unit[], readings: MeterReading[]): Kpis {
  * Trois cas où il n'y a rien à comparer, et où inventer une variation serait un
  * CHIFFRE et non une mesure :
  *
- *   · moins de deux mois d'historique — un parc qui vient de naître ;
+ *   · le mois précédent absent de la série — un parc qui vient de naître, ou
+ *     dont les échéances s'arrêtent avant lui ;
  *   · un mois précédent à zéro — la variation serait une division par zéro, et
  *     « +∞ % » ne dit rien de plus que « il n'y avait rien avant » ;
  *   · aucune série du tout, sur un serveur qui ne la rend pas encore.
@@ -124,6 +125,41 @@ export function computeKpis(units: Unit[], readings: MeterReading[]): Kpis {
  * d'encaissement inventées à côté d'un indicateur calculé — « un chiffre tiré au
  * hasard aurait contredit la carte d'à côté ».
  */
+/**
+ * CETTE PÉRIODE EST-ELLE LE MOIS OÙ NOUS SOMMES ?
+ *
+ * ═══ POURQUOI ELLE EXISTE ═══
+ *
+ * Deux signes du tableau de bord AFFIRMENT qu'une période court encore : la
+ * trame de la colonne et la phrase posée au-dessus du graphe. Les deux se
+ * décidaient sur un RANG — la dernière colonne — et non sur une date. Le rang
+ * ne vaut que si la série va jusqu'au mois courant, ce qu'aucun parc réel ne
+ * garantit : le serveur ne rend que les périodes qui portent une échéance.
+ *
+ * ═══ EN UTC, ET C'EST LE SUJET ═══
+ *
+ * `periodStart` est estampillé à minuit UTC par le serveur, et l'ancre du parc
+ * de démonstration se lit en UTC elle aussi. Comparer ces périodes au
+ * calendrier LOCAL du navigateur fabriquerait un décalage d'un mois chaque fois
+ * que les deux calendriers divergent — une poignée d'heures autour du 1er, à
+ * Douala comme à Yaoundé. Ce dépôt a déjà payé un décalage d'un mois sur les
+ * quittances ; on ne l'introduit pas ici pour économiser un `getUTC`.
+ *
+ * LE PRIX ASSUMÉ, en sens inverse : un gestionnaire à l'est de Greenwich qui
+ * ouvre son tableau de bord dans la première heure du 1er voit encore le mois
+ * qui vient de finir comme « en cours ». Son parc n'a de toute façon pas
+ * d'échéance pour le mois neuf — l'appel part dans le fuseau DU PARC, et le
+ * cron passe toutes les heures.
+ */
+export function estLeMoisEnCours(
+  periode: { year: number; month: number },
+  maintenant: Date = new Date(),
+): boolean {
+  return (
+    periode.year === maintenant.getUTCFullYear() && periode.month === maintenant.getUTCMonth()
+  )
+}
+
 export interface VariationMensuelle {
   /** En points de pourcentage, arrondi au dixième. Négatif quand ça baisse. */
   pourcentage: number
@@ -133,12 +169,33 @@ export interface VariationMensuelle {
 
 export function variationDesEncaissements(
   courant: number,
-  collections: { rent: number; rentToDate?: number }[],
+  collections: { year: number; month: number; rent: number; rentToDate?: number }[],
+  maintenant: Date = new Date(),
 ): VariationMensuelle | null {
-  if (collections.length < 2) return null
-  // L'avant-dernière entrée : la dernière est le mois COURANT, que la carte
-  // porte déjà et que l'appelant passe.
-  const precedent = collections[collections.length - 2]!
+  /**
+   * LE MOIS PRÉCÉDENT SE NOMME, IL NE SE COMPTE PAS.
+   *
+   * La base se prenait à l'AVANT-DERNIÈRE entrée, au motif que la dernière est
+   * le mois courant. Le motif tenait pour la démonstration, qui fabrique ses
+   * douze mois jusqu'à aujourd'hui ; il ne tient pour aucun parc réel. Le
+   * serveur ne rend que les périodes qui PORTENT une échéance, et aucune
+   * n'existe tant que l'appel des loyers n'a pas eu lieu — `Park.autoRentCall`
+   * naît à `false` sur tout parc.
+   *
+   * Relevé le 2026-10-20 : une série d'août et septembre, rien pour octobre.
+   * L'avant-dernière entrée était AOÛT, et la note disait « au même jour LE
+   * MOIS DERNIER » au-dessus d'une base vieille de deux mois. Le nombre était
+   * juste, sa phrase était fausse, et rien à l'écran ne les départageait.
+   *
+   * LA BORNE `< 2` DISPARAÎT AVEC LA POSITION : elle n'existait que pour
+   * qu'une avant-dernière entrée existe. Un parc né le mois dernier porte une
+   * seule période, et c'est exactement celle qu'il faut comparer.
+   */
+  const precedent = (() => {
+    const crans = maintenant.getUTCFullYear() * 12 + maintenant.getUTCMonth() - 1
+    return collections.find((c) => c.year * 12 + c.month === crans)
+  })()
+  if (!precedent) return null
   /**
    * ON COMPARE DEUX MOIS AU MÊME JOUR, ou on ne compare pas.
    *

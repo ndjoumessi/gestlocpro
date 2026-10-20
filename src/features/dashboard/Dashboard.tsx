@@ -19,7 +19,7 @@ import { useT } from '@/i18n/I18nProvider'
 import { useNumbers } from '@/lib/numbers'
 import { useCsvExport, useCsvMoney } from '@/lib/useCsvExport'
 import { useDates } from '@/lib/useDates'
-import { computeKpis, variationDesEncaissements } from '@/data/kpis'
+import { computeKpis, estLeMoisEnCours, variationDesEncaissements } from '@/data/kpis'
 import { usePortfolio } from '@/data/PortfolioProvider'
 import { RecordPaymentModal } from './RecordPaymentModal'
 import { FileDuJour, type EntreeDeFile } from './FileDuJour'
@@ -674,6 +674,11 @@ export function Dashboard() {
               // changement de langue. Même règle qu'au graphe du locataire.
               key: `${month.year}-${month.month}`,
               label: d.monthShort(month),
+              /* LA TRAME SE DÉCIDE ICI PARCE QUE LA DATE EST ICI. Le graphe ne
+                 reçoit que des libellés traduits ; c'est cet écran qui tient
+                 `year` et `month`. Voir `estLeMoisEnCours`, qui porte la
+                 convention UTC et le défaut qu'elle ferme. */
+              ouverte: estLeMoisEnCours(month),
               segments: [
                 { key: 'rent', value: month.rent },
                 { key: 'water', value: month.water },
