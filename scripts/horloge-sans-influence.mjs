@@ -103,7 +103,14 @@ const APRES_LA_BASCULE_EN_MINUTES = 1
    exactement le genre de cas que cette porte doit rejouer : la frontière entre
    « dans 10 jours » et « dépassée de 11 jours » est une bascule, et une bascule
    se franchit à une heure précise. */
-const FICHIERS_DATES_ATTENDUS = 64
+/* 64 → 65 (2026-10-20) : `periodeOuverteSelonLaDate.test.tsx`, né avec la
+   période ouverte décidée sur la date. Il porte un `leaseStartsOn` en clair,
+   mais ce n'est pas lui qui compte ici : ses cas CONSTRUISENT leur série
+   depuis l'horloge — « le mois courant », « deux mois avant » — et l'écran
+   qu'ils rendent relit cette même horloge pour décider quelle colonne est
+   hachurée. Les deux doivent bouger ENSEMBLE ; un décalage qui les
+   désolidariserait est exactement le défaut que ces cas gardent. */
+const FICHIERS_DATES_ATTENDUS = 65
 
 function fichiersDeCas(dossier) {
   const trouves = []

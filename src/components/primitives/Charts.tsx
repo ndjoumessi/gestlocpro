@@ -373,6 +373,26 @@ export interface StackedBar {
   key?: string
   label: string
   segments: { key: string; value: number }[]
+  /**
+   * CETTE PÉRIODE COURT-ELLE ENCORE ? — et c'est à l'APPELANT de le dire.
+   *
+   * La trame se posait sur `index === bars.length - 1`, au motif que la
+   * dernière colonne est le mois en cours. Ce motif n'est pas une propriété de
+   * la donnée : le tableau de bord ne reçoit que les périodes qui PORTENT une
+   * échéance, et aucune n'existe tant que l'appel des loyers n'a pas eu lieu.
+   * Un parc dont personne n'a allumé l'appel automatique s'arrête au dernier
+   * mois appelé à la main — septembre, lu le 20 octobre, était hachuré et
+   * annoncé « encore ouvert » vingt jours après sa clôture.
+   *
+   * CE COMPOSANT NE PORTE PAS DE CALENDRIER, et ne doit pas en porter : il
+   * reçoit des libellés déjà traduits, pas des dates. Lui faire lire l'horloge
+   * l'obligerait à redécouvrir la période de chaque colonne à partir d'un mois
+   * écrit en toutes lettres. L'appelant, lui, tient `year` et `month`.
+   *
+   * OPTIONNEL ET FAUX PAR DÉFAUT : une série de périodes toutes closes — un
+   * historique, un export — ne hachure rien, ce qui est la réponse juste.
+   */
+  ouverte?: boolean
 }
 
 export function StackedBarChart({
@@ -671,7 +691,17 @@ export function StackedBarChart({
         téléphone il n'y a pas de survol. Une explication qu'il faut viser pour
         obtenir n'explique rien à qui tient l'appareil du marché visé.
       */}
-      {openPeriodNote && (
+      {/*
+        ELLE SUIT LA TRAME, ET NON L'APPELANT QUI LA FOURNIT.
+
+        La phrase était affichée dès qu'on la passait. Elle AFFIRME qu'une des
+        colonnes est le mois en cours : sur une série qui s'arrête avant ce
+        mois-là, elle annonçait une colonne que le graphe ne montre pas, et
+        désignait la dernière par défaut — celle que la trame distinguait pour
+        la même mauvaise raison. Les deux signes mentaient ensemble, ce qui est
+        exactement ce qui les rendait crédibles.
+      */}
+      {openPeriodNote && bars.some((bar) => bar.ouverte) && (
         <p className="mb-2 text-body text-muted">{openPeriodNote}</p>
       )}
 
@@ -932,7 +962,7 @@ export function StackedBarChart({
 
           {bars.map((bar, index) => {
             const total = totals[index]
-            const isLast = index === bars.length - 1
+            const ouverte = bar.ouverte === true
             const isActive = active === index
 
             const detail = bar.segments
@@ -1006,7 +1036,7 @@ export function StackedBarChart({
                           // Le mois en cours est encore ouvert : sa colonne est
                           // HACHURÉE et non atténuée — voir `hachureOuverte`,
                           // qui porte le pourquoi et les ratios.
-                          background: isLast
+                          background: ouverte
                             ? hachureOuverte(SERIES_COLORS[segment.key])
                             : SERIES_COLORS[segment.key],
                           /**
@@ -1092,7 +1122,7 @@ export function StackedBarChart({
           >
             {bars.map((bar, index) => {
               const totalBas = totalsSecondaires[index]
-              const isLast = index === bars.length - 1
+              const ouverte = bar.ouverte === true
               return (
                 <span key={bar.key ?? bar.label} className="flex min-w-0 flex-1 items-end justify-center">
                   <span
@@ -1111,7 +1141,7 @@ export function StackedBarChart({
                           className={cn('w-full', i === montres.length - 1 && 'rounded-t-bar')}
                           style={{
                             height: `${totalBas ? (seg.value / totalBas) * 100 : 0}%`,
-                            background: isLast
+                            background: ouverte
                               ? hachureOuverte(SERIES_COLORS[seg.key])
                               : SERIES_COLORS[seg.key],
                             boxShadow: i > 0 ? 'inset 0 1px 0 var(--color-surface)' : undefined,
